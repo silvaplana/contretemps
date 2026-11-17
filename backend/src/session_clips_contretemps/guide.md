@@ -1,9 +1,8 @@
 Fights : onglet de la barre du bas (sous « Plus » si la barre est pleine), pour les élèves, les
 professeurs et les admins. Il n'apparaît que si la case Fights est cochée dans Admin › École ›
 Personnalisation › Fonctionnalités (éteinte au départ). Un élève n'a que « Mes combats » ; un coach
-(admin ou professeur) a trois onglets en haut : Combats (ses combats), Tournage (en trois
-volets dépliants : Tournage, Montage, Identifier combattants (pastille = nombre de combats à
-identifier, sur le volet, sur l'onglet Tournage et sur l'icône Fights de la barre du bas)) et Timer, et le menu ⋮ en haut à droite : « Paramètres de tournage », « Tests de découpage vidéo » et « Entraîner l’écoute ». Fights se rouvre
+(admin ou professeur) a trois onglets en haut : Combats (ses combats), Tournage (en deux
+volets dépliants : Tournage et Montage) et Timer, et le menu ⋮ en haut à droite : « Paramètres de tournage », « Tests de découpage vidéo » et « Entraîner l’écoute ». Fights se rouvre
 sur le dernier de ces onglets utilisé.
 
 Mes combats
@@ -30,21 +29,15 @@ Tournage › volet Montage (coachs ; l'ancien onglet Séances, Seb 12/11 au soir
   avec « Appliquer » ou « Annuler » ; rien ne change sans « Appliquer ». Puis « Noter les cris » (volet fermé : sous chaque Combattez ou Time repéré, ▶ pour le voir,
   « Bon », « Mauvais » (puis le mot vraiment dit, ou « Autre mot ») ou « Inventé » ; « Il manque un mot ici » ajoute le mot
   au moment où la vidéo est arrêtée ; « Retirer » à côté d'une note l'enlève ; « Rejouer tous les essais » d'Entraîner l'écoute compte la séance), puis « Présents reconnus : … », puis ses combats dans l'ordre. Le crayon à droite
-  d'un combat déplie Rouge et Bleu (toucher pour choisir), Inverser et « C'est bon », comme dans
-  Identifier combattants. La frise met chaque signe sur sa propre ligne, le premier en bas,
+  d'un combat déplie ses deux combattants (toucher l'un pour choisir parmi les présents, « Un autre
+  membre… » ou « Inconnu (pas du club) ») et « C'est bon », qui envoie le combat dans « Mes combats »
+  des deux. Pas de Rouge ni de Bleu. La frise met chaque signe sur sa propre ligne, le premier en bas,
   sans jamais d'image sur une autre. En bas d'une séance de la
   caméra, « Relancer la découpe » la refait de zéro avec les réglages du jour, sans refilmer : les anciens combats sont effacés.
 - Le « + » en bas à droite filme un combat avec le téléphone : « Garder ce combat ? » Garder ou
-  Jeter, puis « Qui combattait ? » : Rouge et Bleu, par les premières lettres du nom ou le micro
+  Jeter, puis « Qui combattait ? » : les deux combattants, par les premières lettres du nom ou le micro
   (« Dire le nom »), toucher le bon membre, « C'est bon ». Le combat rejoint la séance du jour, déjà
   validé.
-
-Tournage › volet Identifier combattants (coachs ; ancien onglet « À vérifier »)
-- Les combats dont l'appli n'est pas sûre, un par un : « 1 sur 3 », la vidéo, la raison.
-- Toucher la ligne Rouge ou Bleu : les présents de la séance, ou « Un autre membre… ».
-- « Inverser », puis « C'est bon » (bouton principal) : le combat part dans « Mes combats » des
-  deux.
-- « Supprimer ce clip » en bas.
 
 Paramètres de tournage (coachs, Fights › ⋮ ; ← revient à Fights)
 - Les mêmes volets qu'en bas d'un essai : « Signes et sons du club » (cases à cocher) et
@@ -103,7 +96,7 @@ Un combat ouvert
 - La vidéo, les deux noms, la date, puis les autres combats de la séance (ou « Vos autres combats ce
   jour-là »).
 - Menu ⋯ en haut à droite : Télécharger ; Partager… (WhatsApp, etc.) ; Mettre dans les favoris (ou
-  Retirer). En plus pour un coach : Inverser les noms ; Changer un nom ; Supprimer ce clip.
+  Retirer). En plus pour un coach : Changer un nom (dont « Inconnu (pas du club) ») ; Supprimer ce clip.
 
 Sélection : appui long sur un combat, puis un appui en ajoute ou en retire. Une barre en haut : ✕
 (annuler), ★ favoris, Partager, et Supprimer pour un coach.

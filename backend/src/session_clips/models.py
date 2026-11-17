@@ -68,15 +68,16 @@ class Clip(Base):
 
 
 class ClipParticipant(Base):
-    """Qui est dans un clip, de 1 à n. À deux, la place 0 est Rouge (à
-    gauche au début du combat) et la place 1 Bleu. `person_id` vide : pas
-    encore nommé."""
+    """Qui est dans un clip, de 1 à n, sans ordre (ni Rouge ni Bleu, Seb
+    17/11). `person_id` vide : pas encore nommé, ou `outsider` : quelqu'un
+    qui n'est pas du club (« Inconnu »)."""
 
     __tablename__ = "sc_participants"
 
     clip_id: Mapped[int] = mapped_column(ForeignKey("sc_clips.id"), primary_key=True)
     slot: Mapped[int] = mapped_column(Integer, primary_key=True)
     person_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    outsider: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
 
 
 class SessionAttendee(Base):

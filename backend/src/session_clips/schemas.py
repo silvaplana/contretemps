@@ -4,6 +4,7 @@ models.py)."""
 from __future__ import annotations
 
 from datetime import date, datetime
+from typing import Literal
 
 from pydantic import BaseModel
 
@@ -32,10 +33,10 @@ class FavoriteUpdate(BaseModel):
 
 
 class ParticipantsUpdate(BaseModel):
-    """Les personnes du clip, dans l'ordre des places (Rouge puis Bleu à
-    deux) ; `null` : pas encore nommé."""
+    """Les personnes du clip, dans l'ordre des places ; `null` : pas encore
+    nommé ; `"outsider"` : quelqu'un qui n'est pas du club (Seb, 17/11)."""
 
-    people: list[int | None]
+    people: list[int | Literal["outsider"] | None]
 
 
 class MeOut(BaseModel):
@@ -51,6 +52,7 @@ class PersonOut(BaseModel):
 class ParticipantOut(BaseModel):
     person_id: int | None
     name: str | None
+    outsider: bool = False
 
 
 class ClipOut(BaseModel):

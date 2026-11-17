@@ -106,11 +106,6 @@ export default function Sparring({ ecoleId, cours }) {
   const vider = useCallback(() => setSelection({ cle: '', clips: AUCUN }), [])
 
   const [essaisCaches, supprimerEssai] = useSuppressionEssai(montrer, rafraichir)
-  // Combats à identifier : pastille de l'onglet Tournage et de son volet.
-  const [aIdentifier, setAIdentifier] = useState(0)
-  useEffect(() => {
-    if (me?.is_coach) api.aVerifier().then((l) => setAIdentifier(l.length), () => {})
-  }, [version, me])
   function choisirOnglet(o) {
     setOnglet(o)
     try {
@@ -214,11 +209,12 @@ export default function Sparring({ ecoleId, cours }) {
             ]}
           />
         )}
-        {me.is_coach && <Onglets onglet={onglet} onChange={choisirOnglet} aIdentifier={aIdentifier} />}
+        {me.is_coach && <Onglets onglet={onglet} onChange={choisirOnglet} />}
         <div className="sc__corps">
           {onglet === 'mes' && <EntreeFavoris onOpen={() => setOuvert({ favoris: true })} />}
-          {/* Tournage, Montage (les séances filmées), puis Identifier combattants
-              (l'ancien onglet À vérifier) en volets (Seb, 12/11 au soir). */}
+          {/* Tournage et Montage (les séances filmées) en volets (Seb, 12/11 au
+              soir). Plus d'Identifier combattants : les noms se valident dans
+              la séance, sous le crayon (Seb, 17/11). */}
           {onglet === 'tournage' && (
             <>
               <Deroulant titre="Tournage" ouvertAuDepart>
@@ -226,17 +222,6 @@ export default function Sparring({ ecoleId, cours }) {
               </Deroulant>
               <Deroulant titre="Montage" ouvertAuDepart>
                 <Seances {...contexte} onOpen={(id) => setOuvert({ seanceId: id })} />
-              </Deroulant>
-              <Deroulant
-                titre={
-                  <>
-                    Identifier combattants
-                    {aIdentifier > 0 && <span className="sc-pastille">{aIdentifier}</span>}
-                  </>
-                }
-                ouvertAuDepart
-              >
-                <AVerifier {...contexte} />
               </Deroulant>
             </>
           )}
@@ -274,7 +259,7 @@ export default function Sparring({ ecoleId, cours }) {
   )
 }
 
-function Onglets({ onglet, onChange, aIdentifier }) {
+function Onglets({ onglet, onChange }) {
   const onglets = [
     ['mes', 'Combats'],
     ['tournage', 'Tournage'],
@@ -288,12 +273,7 @@ function Onglets({ onglet, onChange, aIdentifier }) {
       onChange={onChange}
       options={onglets.map(([cle, libelle]) => ({
         value: cle,
-        label: (
-          <>
-            {libelle}
-            {cle === 'tournage' && aIdentifier > 0 && <span className="sc-pastille">{aIdentifier}</span>}
-          </>
-        ),
+        label: libelle,
       }))}
     />
   )
@@ -714,7 +694,7 @@ function RenommerSeance({ seance, montrer, onClose, onRenommee }) {
 // filmée ; le combat rejoint la séance du jour, sans découpe.
 function FilmerCombat({ ecoleId, onEnvoye, montrer }) {
   const [film, setFilm] = useState(null) // { url, uploadId, garde }
-  const [noms, setNoms] = useState([null, null]) // { id, name } Rouge, Bleu
+  const [noms, setNoms] = useState([null, null]) // { id, name } des deux combattants, sans ordre
   const [enCours, setEnCours] = useState(false)
 
   async function filme(fichier) {
@@ -822,11 +802,9 @@ function FilmerCombat({ ecoleId, onEnvoye, montrer }) {
             </div>
           }
         >
-          {['Rouge', 'Bleu'].map((cote, i) => (
+          {[0, 1].map((i) => (
             <ChoixCombattant
-              key={cote}
-              cote={cote}
-              index={i}
+              key={i}
               choisi={noms[i]}
               autre={noms[1 - i]}
               onChoisir={(p) => setNoms((n) => n.map((x, j) => (j === i ? p : x)))}
@@ -846,7 +824,7 @@ const Reconnaissance = typeof window !== 'undefined' ? window.SpeechRecognition 
 
 // Un combattant : les premières lettres de son nom ou sa voix, puis un
 // appui sur le bon membre dans la liste.
-function ChoixCombattant({ cote, index, choisi, autre, onChoisir }) {
+function ChoixCombattant({ choisi, autre, onChoisir }) {
   const [membres, setMembres] = useState([])
   const [cherche, setCherche] = useState('')
   const [ecoute, setEcoute] = useState(false)
@@ -877,10 +855,6 @@ function ChoixCombattant({ cote, index, choisi, autre, onChoisir }) {
 
   return (
     <div className="sc-combattant">
-      <div className="sc-combattant__cote">
-        <span className={`sc-point sc-point--${index === 0 ? 'rouge' : 'bleu'}`} />
-        {cote}
-      </div>
       {choisi ? (
         <button type="button" className="sc-nom" onClick={() => onChoisir(null)}>
           <b>{choisi.name}</b>
@@ -1151,6 +1125,19 @@ function DossierSeance({ seanceId, version, caches, choisis, basculer, onBack, o
 }
 
 // Choisir un nom : les présents de la séance, puis « Un autre membre… ».
+// Les places d'un combat pour le serveur : l'id du membre, INCONNU ou null.
+const INCONNU = 'outsider'
+const gens = (c) => c.participants.map((p) => (p.outsider ? INCONNU : p.person_id))
+// Mettre `id` à la place `i` ; un membre déjà ailleurs dans le combat y laisse
+// l'ancien nom (deux inconnus peuvent combattre ensemble).
+function remplacer(people, i, id) {
+  const nouveaux = [...people]
+  const ailleurs = id === INCONNU ? -1 : nouveaux.indexOf(id)
+  if (ailleurs !== -1) nouveaux[ailleurs] = nouveaux[i]
+  nouveaux[i] = id
+  return nouveaux
+}
+
 function ChoixNom({ seanceId, onChoisir, onClose }) {
   const [presents, setPresents] = useState([])
   const [tous, setTous] = useState(null)
@@ -1184,70 +1171,32 @@ function ChoixNom({ seanceId, onChoisir, onClose }) {
             Un autre membre…
           </button>
         )}
+        {/* Quelqu'un qui n'est pas du club (Seb, 17/11). */}
+        <button type="button" onClick={() => onChoisir(INCONNU)}>
+          Inconnu (pas du club)
+        </button>
       </div>
     </div>
   )
 }
 
 function Noms({ c }) {
-  if (c.participants.every((p) => p.person_id === null)) return <div className="sc-noms">Combat sans nom</div>
+  if (c.participants.every((p) => p.person_id === null && !p.outsider)) return <div className="sc-noms">Combat sans nom</div>
   return (
     <div className="sc-noms">
       {c.participants.map((p, i) => (
-        <span key={i}>
-          {c.participants.length === 2 && <span className={`sc-point sc-point--${i === 0 ? 'rouge' : 'bleu'}`} />}
-          {p.name ?? '?'}
+        <span key={i}>{p.name ?? '?'}
         </span>
       ))}
     </div>
   )
 }
 
-function AVerifier({ version, caches, rafraichir, montrer, supprimer }) {
-  const [file, setFile] = useState(null)
-  useEffect(() => {
-    api.aVerifier().then(setFile, (e) => montrer(e.message))
-  }, [version, montrer])
-  if (!file) return null
-  const visibles = file.filter((c) => !caches.has(c.id))
-  if (!visibles.length) return <p className="sc-vide">Tout est vérifié. Les clips sont dans « Mes combats » de chaque membre.</p>
-  const c = visibles[0]
-
-  async function valider() {
-    try {
-      await api.valider(c.id)
-      montrer(`${c.participants.map((p) => p.name).join(' – ')} : validé`)
-      rafraichir()
-    } catch (e) {
-      montrer(e.message)
-    }
-  }
-
-  return (
-    <>
-      <p className="sc-meta">
-        1 sur {visibles.length} · {api.jour(c.held_on)} · combat {c.position}
-      </p>
-      {c.video && <VideoThumb key={c.id} video={c.video} />}
-      {c.check_reason && <p className="sc-raison">{c.check_reason}</p>}
-      <Combattants
-        c={c}
-        montrer={montrer}
-        onChange={(maj) => setFile((f) => f.map((x) => (x.id === maj.id ? maj : x)))}
-        onValider={valider}
-      />
-      <button type="button" className="sc-lien" onClick={() => supprimer(c.id)}>
-        Supprimer ce clip
-      </button>
-    </>
-  )
-}
-
-// Rouge et Bleu (toucher pour choisir), Inverser et « C'est bon » : dans
-// Identifier combattants et sous le crayon d'un combat de la séance (Seb, 12/11).
+// Les combattants (toucher pour choisir) et « C'est bon », sous le crayon d'un
+// combat de la séance (Seb, 12/11). Ni Rouge ni Bleu, ni Inverser (Seb, 17/11).
 function Combattants({ c, montrer, onChange, onValider }) {
   const [choix, setChoix] = useState(null) // place à nommer
-  const people = c.participants.map((p) => p.person_id)
+  const people = gens(c)
 
   async function nommer(nouveaux) {
     try {
@@ -1261,18 +1210,11 @@ function Combattants({ c, montrer, onChange, onValider }) {
     <>
       {c.participants.map((p, i) => (
         <button key={i} type="button" className="sc-nom" onClick={() => setChoix(i)}>
-          {c.participants.length === 2 && <span className={`sc-point sc-point--${i === 0 ? 'rouge' : 'bleu'}`} />}
-          {c.participants.length === 2 && <span className="sc-nom__cote">{i === 0 ? 'Rouge' : 'Bleu'}</span>}
           <b className={p.person_id === null ? 'sc-nom--vide' : ''}>{p.name ?? 'Choisir…'}</b>
           <Icon name="chevronRight" size={20} />
         </button>
       ))}
       <div className="sc-rangee">
-        {people.length === 2 && (
-          <button type="button" className="btn btn--secondary" onClick={() => nommer([people[1], people[0]])}>
-            Inverser
-          </button>
-        )}
         <button type="button" className="btn btn--primary" disabled={people.includes(null)} onClick={onValider}>
           C’est bon
         </button>
@@ -1282,12 +1224,8 @@ function Combattants({ c, montrer, onChange, onValider }) {
           seanceId={c.session_id}
           onClose={() => setChoix(null)}
           onChoisir={(id) => {
-            const nouveaux = [...people]
-            const ailleurs = nouveaux.indexOf(id)
-            if (ailleurs !== -1) nouveaux[ailleurs] = nouveaux[choix]
-            nouveaux[choix] = id
             setChoix(null)
-            nommer(nouveaux)
+            nommer(remplacer(people, choix, id))
           }}
         />
       )}
@@ -1312,7 +1250,7 @@ function Lecture({ clipId, me, version, caches, montrer, supprimer, rafraichir, 
   }, [c, me.is_coach])
 
   if (!c) return <div className="screen sc" aria-busy="true" />
-  const people = c.participants.map((p) => p.person_id)
+  const people = gens(c)
 
   async function nommer(nouveaux, texte) {
     const avant = people
@@ -1385,17 +1323,6 @@ function Lecture({ clipId, me, version, caches, montrer, supprimer, rafraichir, 
             <button type="button" onClick={() => action('favori')}>
               <Icon name="star" size={20} /> {c.favorite ? 'Retirer des favoris' : 'Mettre dans les favoris'}
             </button>
-            {me.is_coach && people.length === 2 && (
-              <button
-                type="button"
-                onClick={() => {
-                  setMenu(false)
-                  nommer([people[1], people[0]], 'Noms inversés')
-                }}
-              >
-                <Icon name="forward" size={20} /> Inverser les noms
-              </button>
-            )}
             {me.is_coach && (
               <button
                 type="button"
@@ -1429,7 +1356,6 @@ function Lecture({ clipId, me, version, caches, montrer, supprimer, rafraichir, 
             <h3>Quel nom changer ?</h3>
             {c.participants.map((p, i) => (
               <button key={i} type="button" onClick={() => setChoix(i)}>
-                {c.participants.length === 2 && <span className={`sc-point sc-point--${i === 0 ? 'rouge' : 'bleu'}`} />}
                 {p.name ?? 'Sans nom'}
               </button>
             ))}
@@ -1441,12 +1367,8 @@ function Lecture({ clipId, me, version, caches, montrer, supprimer, rafraichir, 
           seanceId={c.session_id}
           onClose={() => setChoix(null)}
           onChoisir={(id) => {
-            const nouveaux = [...people]
-            const ailleurs = nouveaux.indexOf(id)
-            if (ailleurs !== -1) nouveaux[ailleurs] = nouveaux[choix]
-            nouveaux[choix] = id
             setChoix(null)
-            nommer(nouveaux, 'Nom changé')
+            nommer(remplacer(people, choix, id), 'Nom changé')
           }}
         />
       )}

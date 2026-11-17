@@ -173,22 +173,8 @@
   font-size: 15px;
 }
 
-.sc-point {
-  display: inline-block;
-  width: 11px;
-  height: 11px;
-  margin-right: 6px;
-  border-radius: 50%;
-  vertical-align: 1px;
-}
 
-.sc-point--rouge {
-  background: var(--sc-rouge);
-}
 
-.sc-point--bleu {
-  background: var(--sc-bleu);
-}
 
 .sc-nom {
   display: flex;
@@ -206,11 +192,6 @@
   cursor: pointer;
 }
 
-.sc-nom__cote {
-  width: 54px;
-  color: var(--text-muted);
-  font-size: 15px;
-}
 
 .sc-nom b {
   flex: 1;
@@ -355,12 +336,6 @@
   font-size: 17px;
 }
 
-.sc-combattant__cote {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 700;
-}
 
 .sc-combattant__saisie {
   display: flex;
