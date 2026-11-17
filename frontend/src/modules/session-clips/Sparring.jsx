@@ -1247,6 +1247,7 @@ function QuiEstQui({ seanceId, version, montrer, rafraichir }) {
       {p && (
         <ChoixNom
           seanceId={seanceId}
+          photo={p.image}
           onClose={() => setChoix(null)}
           onChoisir={(id, nom) => {
             setChoix(null)
@@ -1272,8 +1273,9 @@ function remplacer(people, i, id) {
   return nouveaux
 }
 
-function ChoixNom({ seanceId, onChoisir, onClose }) {
+function ChoixNom({ seanceId, onChoisir, onClose, photo }) {
   const [presents, setPresents] = useState([])
+  const [grande, setGrande] = useState(false) // la photo agrandie d'un appui (Seb, 17/11)
   const [tous, setTous] = useState(null)
   const [cherche, setCherche] = useState('')
   useEffect(() => {
@@ -1284,6 +1286,17 @@ function ChoixNom({ seanceId, onChoisir, onClose }) {
   return (
     <div className="sc-feuille-fond" onClick={onClose}>
       <div className="sc-feuille" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+        {/* Qui est qui ? : la personne à nommer, sous les yeux (Seb, 17/11). */}
+        {photo && (
+          <button
+            type="button"
+            className={`sc-choix__photo${grande ? ' sc-choix__photo--grande' : ''}`}
+            onClick={() => setGrande(!grande)}
+            aria-label={grande ? 'Réduire la photo' : 'Agrandir la photo'}
+          >
+            <img src={photo} alt="" />
+          </button>
+        )}
         {tous ? (
           <input
             className="field-input"

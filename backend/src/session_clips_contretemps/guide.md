@@ -24,7 +24,7 @@ Tournage › volet Montage (coachs ; l'ancien onglet Séances, Seb 12/11 au soir
 - Une carte ouverte (même « Aucun combat trouvé ») : d'abord le volet « Vidéo de la séance » (le film
   entier, et « ↻ Tourner la vidéo » si elle est de travers), puis le volet « Qui est qui ? » : les
   personnes repérées dans les combats (photo, qu'un appui agrandit avec « Dire qui c'est » dessous ; « Personne 2 » ou le nom, la tenue, le nombre de
-  combats) ; toucher une personne ouvre les présents, « Un autre membre… » et « Inconnu (pas du
+  combats) ; toucher une personne ouvre, sous sa photo (un appui l'agrandit), les présents, « Un autre membre… » et « Inconnu (pas du
   club) » : ses combats reçoivent ce nom (Annuler 10 s), à valider ensuite sous le crayon. Une
   proposition « C'est Karim B. ? (même tenue le 12/11) » se prend avec « Oui ». En bas, « 3 combats
   remplis sur 4 ». « Repérage des combattants… » tant que le serveur n'a pas fini. Puis le volet « Combats découpés »
