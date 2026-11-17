@@ -27,6 +27,9 @@ class ForbiddenError(Exception):
     pass
 
 
+OUTSIDER = "outsider"  # quelqu'un qui n'est pas du club (Seb, 17/11)
+OUTSIDER_NAME = "Inconnu"
+
 class SessionClips:
     def __init__(self, videos: Videos, directory: Directory) -> None:
         self.videos = videos
@@ -73,6 +76,17 @@ class SessionClips:
             ):
                 result[row.clip_id].append(row.person_id)
         return result
+
+    def outsiders(self, db: Session, clip_ids: list[int]) -> set[tuple[int, int]]:
+        """Les places (clip, place) tenues par quelqu'un qui n'est pas du club."""
+        if not clip_ids:
+            return set()
+        rows = db.execute(
+            select(ClipParticipant.clip_id, ClipParticipant.slot).where(
+                ClipParticipant.clip_id.in_(clip_ids), ClipParticipant.outsider.is_(True)
+            )
+        )
+        return {(c, s) for c, s in rows}
 
     def attendees(self, db: Session, session_id: int) -> list[int]:
         return list(db.scalars(select(SessionAttendee.person_id).where(SessionAttendee.session_id == session_id)))
@@ -251,9 +265,9 @@ class SessionClips:
             db.add(SessionAttendee(session_id=session_id, person_id=person_id))
         db.commit()
 
-    def set_participants(self, db: Session, member: Member, clip_id: int, people: list[int | None]) -> Clip:
-        """Inverser, nommer ou changer un nom (coachs). Le nombre de places
-        ne change pas."""
+    def set_participants(self, db: Session, member: Member, clip_id: int, people: list[int | str | None]) -> Clip:
+        """Nommer ou changer un nom (coachs), `"outsider"` pour quelqu'un qui
+        n'est pas du club. Le nombre de places ne change pas."""
         self._require_coach(member)
         clip = self.clip(db, member, clip_id)
         rows = list(
@@ -262,10 +276,11 @@ class SessionClips:
         if len(people) != len(rows):
             raise ValueError("Le nombre de combattants ne change pas")
         known = {p.id for p in self.directory.people(db, member.org_id)}
-        if any(p is not None and p not in known for p in people):
+        if any(p not in (None, OUTSIDER) and p not in known for p in people):
             raise ValueError("Ce membre n'est pas de l'organisation")
         for row, person_id in zip(rows, people):
-            row.person_id = person_id
+            row.outsider = person_id == OUTSIDER
+            row.person_id = None if row.outsider else person_id
         db.commit()
         return clip
 
@@ -273,7 +288,8 @@ class SessionClips:
         """« C'est bon » : le clip part dans « Mes combats » de chacun."""
         self._require_coach(member)
         clip = self.clip(db, member, clip_id)
-        if None in self.participants(db, [clip.id])[clip.id]:
+        rows = db.scalars(select(ClipParticipant).where(ClipParticipant.clip_id == clip.id))
+        if any(r.person_id is None and not r.outsider for r in rows):
             raise ValueError("Choisissez d'abord tous les noms")
         clip.to_check = False
         clip.check_reason = None

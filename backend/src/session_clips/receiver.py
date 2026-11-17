@@ -54,7 +54,7 @@ from .schemas import (
     VoiceMissing,
     VoiceNote,
 )
-from .service import ForbiddenError, NotFoundError, SessionClips, clip_title
+from .service import OUTSIDER_NAME, ForbiddenError, NotFoundError, SessionClips, clip_title
 
 PREFIX = "/session-clips"
 
@@ -518,6 +518,7 @@ class SessionClipsReceiver:
             return []
         client = self.client
         people = client.participants(s, [c.id for c in clips])
+        outsiders = client.outsiders(s, [c.id for c in clips])
         names = client.directory.names(s, m.org_id, {p for ps in people.values() for p in ps if p is not None})
         videos = client.video_map(s, [c.video_id for c in clips])
         favorites = client.favorite_ids(s, m.person_id, [c.id for c in clips])
@@ -535,7 +536,8 @@ class SessionClipsReceiver:
         out = []
         for c in clips:
             ps = people[c.id]
-            shown = [names.get(p) if p is not None else None for p in ps]
+            out_slots = [(c.id, i) in outsiders for i in range(len(ps))]
+            shown = [OUTSIDER_NAME if o else names.get(p) if p is not None else None for p, o in zip(ps, out_slots)]
             video = videos.get(c.video_id)
             out.append(
                 ClipOut(
@@ -546,7 +548,9 @@ class SessionClipsReceiver:
                     to_check=c.to_check,
                     favorite=c.id in favorites,
                     check_reason=c.check_reason,
-                    participants=[ParticipantOut(person_id=p, name=n) for p, n in zip(ps, shown)],
+                    participants=[
+                        ParticipantOut(person_id=p, name=n, outsider=o) for p, n, o in zip(ps, shown, out_slots)
+                    ],
                     video=VideoSortie.model_validate(video) if video is not None else None,
                     session_title=sessions[c.session_id].title,
                     held_on=sessions[c.session_id].held_on,

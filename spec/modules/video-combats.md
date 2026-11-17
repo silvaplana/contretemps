@@ -506,8 +506,8 @@ flèche ←.
   un bouton (§6.3).
 - **Membre** : un seul écran, « Mes combats », sans onglets au-dessus.
 - **Coach** (admin ou prof) : deux onglets, **Combats | Tournage** (Seb, 12/11 au soir ; « Combats » est l'ancien « Mes
-  combats » ; Identifier combattants est un troisième volet de Tournage, et la pastille du nombre
-  à identifier est sur ce volet et sur l'onglet Tournage. Avant :
+  combats » ; Identifier combattants a été un troisième volet de Tournage du 12/11 au 17/11 : il est
+  retiré avec ses pastilles, les noms se valident dans la séance, §6.4. Avant :
   Tournage contient deux volets dépliants, **Tournage** (sélecteur, image, Filmer) puis **Montage**
   (les séances, ancien onglet Séances) ; « À vérifier » est renommé « Identifier les combattants »), et
   le menu **⋮** de l'en-tête : « Paramètres de tournage » (les volets « Signes et sons du club » et
@@ -515,8 +515,9 @@ flèche ←.
   siens ; Seb 12/11) et
   « Tests de découpage vidéo » (l'ancien sous-onglet Labo, Seb 12/11 au soir). Une ligne de séance
   ou d'essai découpé est encadrée en vert dès un combat trouvé, en rouge si aucun (Seb, 12/11). Dans
-  une séance ouverte, un crayon à droite de chaque combat déplie Rouge / Bleu, Inverser et « C'est
-  bon » (comme Identifier combattants ; valide le combat s'il était à identifier ; Seb, 12/11). Une
+  une séance ouverte, un crayon à droite de chaque combat déplie les deux combattants et « C'est
+  bon » (valide le combat s'il était à vérifier ; Seb, 12/11 ; ni Rouge, ni Bleu, ni Inverser depuis
+  le 17/11, §6.4). Une
   séance de la caméra montre son état d'abord (« Envoi : X % » d'après les octets reçus des morceaux
   en cours, « Découpe : X % », ou « Caméra éteinte : rouvrez Tournage » si rien n'est arrivé et que
   le téléphone ne répond plus depuis 30 s), puis toujours début → fin (`sc_sessions.ended_at`,
@@ -553,8 +554,8 @@ flèche ←.
   Montage se relit toutes les 5 s sur tous les téléphones, pour que la découpe se voie aussi sur la
   caméra. La
   vignette d'un essai, si l'image du serveur manque, est la première image de la vidéo. Fights
-  rouvre le dernier onglet choisi sur ce téléphone, même après avoir fermé l'appli (Seb, 12/11). « À vérifier »
-  porte le nombre de clips à vérifier dans une pastille rouge.
+  rouvre le dernier onglet choisi sur ce téléphone, même après avoir fermé l'appli (Seb, 12/11). Une
+  séance de Montage porte le nombre de combats « à vérifier ».
 - Le module s'éteint par organisation (Admin > École > Personnalisation de l'application >
   Fonctionnalités) : éteint = bouton caché, routes « introuvable » (spec/core.md §9 bis).
 
@@ -595,7 +596,7 @@ Le bouton **+** en bas à droite **filme un combat** à la main (Seb, 27/10), sa
 1. l'appareil photo du téléphone s'ouvre, le coach filme le combat et l'arrête ;
 2. « Garder ce combat ? » avec la vidéo : **Garder** ou **Jeter** (Annuler 10 s) ; un combat raté se
    jette sans rien remplir ;
-3. seulement s'il est gardé, « Qui combattait ? » : Rouge et Bleu, chacun par les **premières lettres**
+3. seulement s'il est gardé, « Qui combattait ? » : les deux combattants, sans ordre (ni Rouge ni Bleu, Seb 17/11), chacun par les **premières lettres**
    de son nom (chaque mot tapé commence un mot du nom) ou par la **voix** (micro, reconnaissance du
    navigateur), puis un appui sur le bon membre ; **C'est bon**.
 
@@ -675,7 +676,18 @@ onglets, et rouvre le panneau. Après « Fin de séance », la séance apparaît
   orpheline finit quand son dernier morceau est lu (`cut_live`). Champs `started_at`, `filmed_seconds`, `pieces_read`,
   `pieces_total` de `SessionOut`, sans nouvelle colonne.
 
-### 6.4 Identifier les combattants *(coachs ; « À vérifier » jusqu'au 12/11)*
+### 6.4 Identifier les combattants *(coachs)*
+
+**Depuis le 17/11 (Seb)** : plus de volet Identifier combattants ni de pastille (onglet Tournage,
+icône Fights de la barre du bas). Seb valide les noms dans la séance, sous le crayon de chaque combat :
+toucher un combattant ouvre les présents, « Un autre membre… » et **« Inconnu (pas du club) »** (quelqu'un
+d'extérieur au club : `sc_participants.outsider`, le combat s'appelle « Karim B. vs Inconnu »), puis
+« C'est bon », qui envoie le combat dans « Mes combats ». **Pas de Rouge ni de Bleu, pas
+d'Inverser** : un combat, c'est deux combattants, sans ordre ni numéro (Seb, 17/11). Même chose dans
+« Filmer un combat » (§6.3) et le ⋯ d'un combat ouvert (plus d'« Inverser les noms »). La validation
+reste manuelle pour l'instant, même quand l'appli aura reconnu les noms.
+
+Ce qui suit est l'écran d'avant (12/11 → 17/11), gardé pour mémoire.
 
 Badge (Seb, 12/11) : le nombre de combats à identifier est sur l'onglet et, pour les coachs, sur
 l'icône Fights de la barre du bas (`useAIdentifier.js`, relu à chaque changement d'onglet et toutes
@@ -703,13 +715,12 @@ couleurs ne servent qu'à deux.
 
 - Plein écran, flèche ← et le nom du clip en titre, ⋯ à droite.
 - La vidéo, lue par le lecteur du module `videos` (`VideoThumb`, plein écran compris).
-- Dessous : les deux noms avec leur pastille rouge et bleue, puis « Mar. 21 oct. · Adultes · 19 h ·
+- Dessous : les deux noms, puis « Mar. 21 oct. · Adultes · 19 h ·
   combat 1 ».
 - Puis « Autres combats de la séance » (coach) ou « Vos autres combats ce jour-là » (membre).
 - ⋯ pour tous (Seb, 27 octobre : chacun garde et diffuse ses combats) : « Télécharger » (le clip dans
   le téléphone), « Partager… » (le menu Partager du téléphone avec le fichier : WhatsApp, mail…, par
-  le partage web de Chrome) et « Envoyer dans la messagerie… » ; pour un coach aussi « Inverser les noms » (Annuler
-  10 s), « Changer un nom », « Supprimer ce clip » (Annuler 10 s).
+  le partage web de Chrome) et « Envoyer dans la messagerie… » ; pour un coach aussi « Changer un nom », « Supprimer ce clip » (Annuler 10 s).
 - ⋯ propose aussi « Mettre dans les favoris » / « Retirer des favoris ».
 
 **Sélection et Favoris (Seb, 27/10).** Un **appui long** sur un combat (Mes combats, dossier d'une
@@ -808,7 +819,7 @@ référence ses vidéos dans le module `videos`, jamais l'inverse. Tout est filt
 |---|---|---|
 | `sc_sessions` | une séance filmée | `id`, `org_id`, `title` (« Adultes · 19 h », le cours choisi ou tapé), `held_on` (date), `raw_video_id` (vidéo brute dans `videos`, vide une fois effacée), `status` (`processing` / `ready` ; « en cours d'envoi » se lit sur la vidéo brute), `created_by`, `created_at` |
 | `sc_clips` | un clip | `id`, `session_id`, `video_id` (le clip dans `videos`, unique), `position` (combat 1, 2…), `to_check` (booléen), `check_reason` (texte), `start_seconds` (début du combat dans une séance de la caméra : évite de le couper deux fois) |
-| `sc_participants` | qui est dans un clip | `clip_id`, `slot` (0 = Rouge, 1 = Bleu à deux ; ordre simple au-delà), `person_id` (la personne, vide = pas encore nommée) |
+| `sc_participants` | qui est dans un clip | `clip_id`, `slot` (simple ordre, sans Rouge ni Bleu depuis le 17/11), `person_id` (la personne, vide = pas encore nommée), `outsider` (quelqu'un qui n'est pas du club, « Inconnu » ; Seb 17/11) |
 | `sc_attendees` | présents reconnus à une séance | `session_id`, `person_id` |
 | `sc_favorites` | « ★ Favoris » de chacun | `person_id`, `clip_id` (effacé avec le clip) |
 | `sc_recorders` | le téléphone qui filme (étape 3) | `id`, `org_id`, `token_hash` (empreinte du jeton remis au jumelage), `pairing_code` et `pairing_expires_at` (code de 8 chiffres, 10 minutes), `state` (`ready` / `recording`, dit par le téléphone ; « hors service » se déduit de `last_seen_at`), `battery_percent`, `free_bytes`, `pending_pieces`, `last_seen_at`, `last_upload_at`, `session_id` (la séance à filmer, vide = rester prête), `started_at`, `signal` (`beep` / `light` / `both`) |

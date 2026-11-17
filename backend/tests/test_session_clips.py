@@ -104,6 +104,23 @@ def test_verifier_inverser_nommer_valider(client, db_session, e):
     assert [c["id"] for c in client.get("/session-clips/mine", headers=e["h"]["lucas"]).json()] == [clip.id]
 
 
+def test_combattant_inconnu(client, db_session, e):
+    """Un combattant qui n'est pas du club (Seb, 17/11) : « Inconnu », le
+    combat se valide et part dans « Mes combats » de l'autre."""
+    seance = _session(client, e)
+    clip = core.session_clips_client.add_clip(db_session, seance["id"], _video(db_session, e["ecole"]).id, [None, None])
+    h = e["h"]["coach"]
+    r = client.put(f"/session-clips/clips/{clip.id}/participants", json={"people": [e["karim"].id, "outsider"]}, headers=h)
+    assert r.status_code == 200, r.text
+    assert r.json()["title"] == "Karim B. vs Inconnu"
+    assert r.json()["participants"][1] == {"person_id": None, "name": "Inconnu", "outsider": True}
+    assert client.post(f"/session-clips/clips/{clip.id}/validate", headers=h).status_code == 200
+    assert [c["title"] for c in client.get("/session-clips/mine", headers=e["h"]["karim"]).json()] == ["Karim B. vs Inconnu"]
+    # Le remettre à « pas encore nommé ».
+    r = client.put(f"/session-clips/clips/{clip.id}/participants", json={"people": [e["karim"].id, None]}, headers=h)
+    assert r.json()["participants"][1] == {"person_id": None, "name": None, "outsider": False}
+
+
 def test_supprimer_un_clip_efface_sa_video(client, db_session, e):
     seance = _session(client, e)
     video_id = _video(db_session, e["ecole"]).id
