@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 from saisons.portee import toutes_saisons
 from videos import Video, Videos
 
+from . import people
 from .models import Clip, ClipParticipant, ClipSession, Favorite, LabTest, Piece, Recorder, SessionAttendee
 from .ports import Directory, Member
 
@@ -333,6 +334,7 @@ class SessionClips:
         vidéo. Effacée pendant le film, la caméra s'arrête."""
         self._require_coach(member)
         session = self.session(db, member, session_id)
+        people.forget(session.org_id, session.id)
         clip_videos = list(db.scalars(select(Clip.video_id).where(Clip.session_id == session.id)))
         piece_videos = list(db.scalars(select(Piece.video_id).where(Piece.session_id == session.id, Piece.video_id.is_not(None))))
         with toutes_saisons(db):

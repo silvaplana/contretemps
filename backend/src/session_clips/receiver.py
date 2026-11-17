@@ -17,6 +17,7 @@ from videos.schemas import VideoSortie
 from videos.videos import DecalageInvalide
 
 from . import camera, gesture_notes, lab, voice
+from . import people as who_is
 from .models import Clip, ClipSession, LabTest, Piece
 from .ports import Member
 from .schemas import (
@@ -44,7 +45,11 @@ from .schemas import (
     MeOut,
     ParticipantOut,
     ParticipantsUpdate,
+    PeopleOut,
+    PersonName,
     PersonOut,
+    FoundPerson,
+    Proposal,
     SessionCreate,
     SessionDetail,
     SessionOut,
@@ -128,6 +133,25 @@ class SessionClipsReceiver:
                 signs=json.loads(session.signs) if session.signs else [],
                 film=self._film(s, session),
             )
+
+        # Qui est qui ? (Seb, 17/11) : les personnes repérées dans les combats.
+        @app.get(f"{PREFIX}/sessions/{{session_id}}/people", response_model=PeopleOut)
+        def session_people(session_id: int, m: Member = member, s: Session = db):
+            coach(m)
+            session = guard(lambda: client.session(s, m, session_id))
+            return self._people_out(s, m, session, who_is.load(session.org_id, session.id))
+
+        @app.put(f"{PREFIX}/sessions/{{session_id}}/people/{{number}}", response_model=PeopleOut)
+        def name_person(session_id: int, number: int, body: PersonName, m: Member = member, s: Session = db):
+            coach(m)
+            session = guard(lambda: client.session(s, m, session_id))
+            if isinstance(body.who, int) and body.who not in {p.id for p in client.directory.people(s, m.org_id)}:
+                raise HTTPException(status_code=400, detail="Ce membre n'est pas de l'organisation")
+            try:
+                data = who_is.name(s, session, number, body.who)
+            except LookupError as err:
+                raise HTTPException(status_code=404, detail=str(err)) from err
+            return self._people_out(s, m, session, data)
 
         # Noter les cris d'une séance filmée (étude du 14/11), pour le rejeu.
         @app.get(f"{PREFIX}/sessions/{{session_id}}/voice-notes")
@@ -422,6 +446,36 @@ class SessionClipsReceiver:
             return self._piece_out(s, piece)
 
     # --- Mise en forme ---
+
+    def _people_out(self, s: Session, m: Member, session: ClipSession, data: dict | None) -> PeopleOut:
+        clip_ids = [c.id for c in self.client.clips_by_session(s, [session.id])[session.id]]
+        if data is None or data.get("clips") != clip_ids:
+            return PeopleOut(ready=False, persons=[], filled=0, total=len(clip_ids))
+        found = who_is.proposals(s, session, data)
+        ids = {p["member"] for p in data["persons"] if isinstance(p["member"], int)} | {x[0] for x in found.values()}
+        names = self.client.directory.names(s, m.org_id, ids)
+        fights = {n: sum(n in places for places in data["places"].values()) for n in (p["n"] for p in data["persons"])}
+        persons = [
+            FoundPerson(
+                n=p["n"],
+                image=p["image"],
+                label=who_is.outfit_label(p["shirt"], p["short"]),
+                member_id=p["member"] if isinstance(p["member"], int) else None,
+                outsider=p["member"] == who_is.OUTSIDER,
+                name=OUTSIDER_NAME if p["member"] == who_is.OUTSIDER else names.get(p["member"]),
+                fights=fights[p["n"]],
+                proposal=Proposal(member_id=found[p["n"]][0], name=names.get(found[p["n"]][0], "?"), reason=found[p["n"]][1])
+                if p["n"] in found
+                else None,
+            )
+            for p in data["persons"]
+        ]
+        rows = self.client.participants(s, clip_ids)
+        outsiders = self.client.outsiders(s, clip_ids)
+        filled = sum(
+            1 for c in clip_ids if rows[c] and all(p is not None or (c, i) in outsiders for i, p in enumerate(rows[c]))
+        )
+        return PeopleOut(ready=True, persons=persons, filled=filled, total=len(clip_ids))
 
     def _piece_out(self, s: Session, piece: Piece) -> PieceOut:
         upload = self.client.videos.obtenir_televersement(s, piece.upload_id)

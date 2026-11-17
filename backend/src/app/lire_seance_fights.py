@@ -7,7 +7,8 @@ Fights, pour comprendre une découpe ratée (Seb, 13/11/2026 : action
 
 Le détail donne chaque morceau (fichier, durée, rotation), les sons
 entendus, le nombre de personnes vues seconde par seconde, les signes et
-les combats que la découpe trouve avec les réglages du jour.
+les combats que la découpe trouve avec les réglages du jour, puis les
+personnes repérées (Qui est qui ?) et leurs distances.
 """
 
 from __future__ import annotations
@@ -22,7 +23,7 @@ from sqlalchemy import select
 from app import main  # noqa: F401  (toutes les tables connues de SQLAlchemy)
 from db import SessionLocal
 from saisons.portee import toutes_saisons
-from session_clips import lab
+from session_clips import lab, people
 from session_clips.cutting import _heard, _load_frames, _poses_path, sounds_path
 from session_clips.fights import find_fights, find_signs, trim
 from session_clips.models import Clip, ClipSession, Piece
@@ -117,6 +118,30 @@ def detail(db, session_id: int, out=print) -> None:
     _report(frames, sounds, lab.settings(db, x.org_id), out)
     for c in db.scalars(select(Clip).where(Clip.session_id == x.id).order_by(Clip.position)):
         out(f"combat coupé {c.position} · début {c.start_seconds} · à vérifier={c.to_check}")
+    _who(x, out)
+
+
+def _who(x: ClipSession, out) -> None:
+    """Qui est qui ? (Seb, 17/11) : les personnes repérées, les places de
+    chaque combat, et les distances entre personnes pour régler les seuils."""
+    data = people.load(x.org_id, x.id)
+    if data is None:
+        out("qui est qui : pas encore relu")
+        return
+    if data.get("failed"):
+        out("qui est qui : relecture ratée (voir le journal de sparring-worker)")
+    persons = data["persons"]
+    for p in persons:
+        out(
+            f"personne {p['n']} · {people.outfit_label(p['shirt'], p['short'])} · visage {'oui' if p['face'] else 'non'}"
+            f" · nom {p['member']}"
+        )
+    out("places : " + " ".join(f"{c}:{v}" for c, v in data["places"].items()))
+    for a in persons:
+        out(
+            f"  distances de {a['n']} : "
+            + " ".join(f"{b['n']}={people._person_distance(a, b):.2f}/visage {people._face_sim(a, b):.2f}" for b in persons if b is not a)
+        )
 
 
 def _report(frames: list[Frame], sounds, s, out) -> None:

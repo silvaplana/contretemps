@@ -143,6 +143,9 @@ export const notesSeance = (id) => appel(`/sessions/${id}/voice-notes`)
 export const retirerNote = (id, t) => appel(`/sessions/${id}/voice-notes?t=${t}`, { method: 'DELETE' })
 export const noterCri = (id, corps) => appel(`/sessions/${id}/voice-notes`, json('POST', corps))
 // Noter les gestes dans la frise (Seb, 15/11) et « Proposer un réglage ».
+// Qui est qui ? (Seb, 17/11) : les personnes repérées dans les combats d'une séance.
+export const personnes = (id) => appel(`/sessions/${id}/people`)
+export const nommerPersonne = (id, n, who) => appel(`/sessions/${id}/people/${n}`, json('PUT', { who }))
 export const notesGestes = (id) => appel(`/sessions/${id}/gesture-notes`)
 export const noterGeste = (id, corps) => appel(`/sessions/${id}/gesture-notes`, json('POST', corps))
 export const retirerGeste = (id, t) => appel(`/sessions/${id}/gesture-notes?t=${t}`, { method: 'DELETE' })
