@@ -337,6 +337,34 @@ Chaque école a son adresse `https://<adresse>.contretemps.silvaplana.cloud`
   `backend/.env` revient à l'adresse générique (dépannage seulement).
 
 
+## Enseignes : Assofight (spec/core.md §2.7, 17/11/2026)
+
+Même serveur, même conteneur ; les écoles de nature « combat » ont leur adresse
+`https://<adresse>.assofight.silvaplana.cloud`. À faire une fois :
+
+- **DNS** (Hostinger, zone `silvaplana.cloud`) : un enregistrement `A`
+  `*.assofight` -> `187.124.17.136` (comme `*.contretemps`).
+- **Gateway** (`~/gateway/Caddyfile`) : un bloc de plus, copie du bloc
+  `*.contretemps.silvaplana.cloud` (le `ask` du backend accepte déjà les deux
+  domaines) :
+
+```caddyfile
+*.assofight.silvaplana.cloud {
+	tls {
+		on_demand
+	}
+	reverse_proxy contretemps-frontend-ecoles:80
+}
+```
+
+- **Brevo** : l'expéditeur des mails d'Assofight est `assofight@silvaplana.cloud`
+  (`SMTP_FROM_EMAIL_ASSOFIGHT` dans `backend/.env` pour en changer). Le domaine
+  `silvaplana.cloud` doit être authentifié dans Brevo.
+- **Passer une école sur Assofight** : Admin > École > Personnalisation,
+  « Nature de l'école » > Combat (Super User). À faire après le DNS et le
+  gateway : l'ancienne adresse renvoie alors vers la nouvelle.
+
+
 ## Pages en ligne des fichiers (documents.md §5.5, depuis le 2026-10-16)
 
 Un fichier de l'appli « mis en ligne » (onglet Diffuser, en Officiel) a son

@@ -58,6 +58,7 @@ class EmailEnvoi:
         pieces_jointes: list[tuple[str, bytes]],
         corps_html: str | None = None,
         copie: str | None = None,
+        expediteur: tuple[str | None, str | None] | None = None,
     ) -> None:
         """`pieces_jointes` : liste de (nom_fichier, contenu_bytes).
         Lève une exception en cas d'échec (voir inscriptions.py qui
@@ -69,7 +70,12 @@ class EmailEnvoi:
             return
 
         message = MIMEMultipart()
-        message["From"] = f"{self.nom_expediteur} <{self.expediteur}>"
+        # `expediteur` : (nom, adresse) de l'enseigne de l'école
+        # (personnalisation/brands.py) ; None dans l'un = celui du serveur.
+        nom_expediteur, adresse_expediteur = expediteur or (None, None)
+        nom_expediteur = nom_expediteur or self.nom_expediteur
+        adresse_expediteur = adresse_expediteur or self.expediteur
+        message["From"] = f"{nom_expediteur} <{adresse_expediteur}>"
         if self.repondre_a:
             message["Reply-To"] = self.repondre_a
         message["To"] = destinataire
@@ -100,4 +106,4 @@ class EmailEnvoi:
         with smtplib.SMTP(self.hote, self.port) as serveur:
             serveur.starttls()
             serveur.login(self.utilisateur, self.mot_de_passe)
-            serveur.sendmail(self.expediteur, destinataires, message.as_string())
+            serveur.sendmail(adresse_expediteur, destinataires, message.as_string())

@@ -95,6 +95,24 @@ nouveau, toute table nouvelle est en anglais.
   manifest généré (nom sous l'icône, slogan, couleurs, icônes 192 et 512 px « maskable » depuis le
   logo), icônes, `index.html` avec `<title>`, `apple-mobile-web-app-title` et `theme-color`
   injectés. Sur iPhone, nom et icône sont figés à l'installation.
+- **Enseignes** (décision du 17 novembre, Seb) : un seul serveur pour tous les types
+  d'associations, une **enseigne par domaine** : Contretemps (`contretemps.silvaplana.cloud`,
+  danse) et Assofight (`assofight.silvaplana.cloud`, sports de combat). Chaque organisation a une
+  **nature** (colonne `ecoles.nature` : `danse` par défaut, `combat`) qui la rattache à une
+  enseigne : son adresse est `https://<adresse>.<domaine de l'enseigne>`, et une organisation sans
+  couleurs, slogan ou logo à elle prend ceux de l'enseigne (Assofight : fond noir `#16171D`, texte
+  `#F3F4F6`, jaune `#F4EA4B` comme ASC La Ciotat, le loup comme logo, slogan « Gestion et
+  enseignement pour association de sports de combat »). Une organisation qui a ses couleurs ou son
+  logo les garde. Chaque domaine n'affiche que les organisations de sa nature (liste, connexion sur
+  l'adresse générique) ; une organisation créée depuis l'adresse générique d'une enseigne prend sa
+  nature. Les mails d'accès partent de l'adresse de l'enseigne (Assofight :
+  `assofight@silvaplana.cloud` ; Contretemps : celle du serveur, inchangée) avec des liens vers son
+  domaine. La nature se change dans Personnalisation, par le Super User seulement ; l'école visitée
+  sur le domaine d'une autre enseigne renvoie vers sa bonne adresse, sans limite de durée.
+  **Contretemps et ses organisations ne changent en rien** (tests `test_enseignes.py`). Ajouter
+  une enseigne : une entrée dans `backend/src/personnalisation/brands.py` (et
+  `frontend/src/api/apparence.js`), ses icônes dans `defaut-<enseigne>/`, son domaine dans le DNS
+  et le gateway (DEPLOY.md).
 - **Personnalisation de l'application** (Admin > École), trois parties dans cet ordre :
   **Apparence visuelle** (logo, nom, slogan, couleurs, polices, adresse), **Fonctionnalités** (une
   case par module, §11.3) et **Vocabulaire** (§2). Apparence et Vocabulaire : tout admin ;

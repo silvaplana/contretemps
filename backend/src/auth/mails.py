@@ -42,16 +42,18 @@ class MailsAcces:
         """Un mail peut-il partir de ce serveur ?"""
         return self.envoi.actif or self.dans_les_journaux
 
-    def appli(self, sous_domaine: str | None = None) -> str:
-        """L'adresse de l'appli pour cette école, ou l'adresse générique."""
+    def appli(self, sous_domaine: str | None = None, nature: str | None = None) -> str:
+        """L'adresse de l'appli pour cette école, sur le domaine de
+        l'enseigne de sa nature (personnalisation/brands.py), ou l'adresse
+        générique."""
         if self.adresse_par_ecole and sous_domaine:
-            from personnalisation.personnalisation import DOMAINE_ECOLES
+            from personnalisation import brands
 
-            return f"https://{sous_domaine}.{DOMAINE_ECOLES}"
+            return f"https://{sous_domaine}.{brands.of_nature(nature).domain}"
         return self.url_appli
 
-    def lien(self, page: str, jeton: str, sous_domaine: str | None = None) -> str:
-        return f"{self.appli(sous_domaine)}/{page}?jeton={jeton}"
+    def lien(self, page: str, jeton: str, sous_domaine: str | None = None, nature: str | None = None) -> str:
+        return f"{self.appli(sous_domaine, nature)}/{page}?jeton={jeton}"
 
     # Mails rédigés pour ne pas finir en spam (constaté le 2026-10-01 avec
     # Gmail : un titre qui parle de « mot de passe », trois lignes et un lien
@@ -59,12 +61,14 @@ class MailsAcces:
     # écrit et pourquoi, version mise en forme en plus de la version texte. « Bonjour Prénom Nom, » : demande utilisateur.
     # `destinataire` : la personne à qui l'on s'adresse quand l'adresse
     # porte plusieurs profils (voir auth.py : destinataire).
-    def _sujet(self, ecole_nom: str | None) -> str:
-        return f"Votre accès à l'application {ecole_nom or 'Contretemps'}"
+    def _sujet(self, ecole_nom: str | None, nature: str | None = None) -> str:
+        from personnalisation import brands
+
+        return f"Votre accès à l'application {ecole_nom or brands.of_nature(nature).name}"
 
     def invitation(
         self, email: str, ecole_nom: str, destinataire: str, prenoms: list[str], jeton: str,
-        sous_domaine: str | None = None,
+        sous_domaine: str | None = None, nature: str | None = None,
     ) -> None:
         paragraphes = [
             f"L'école {ecole_nom} utilise une application pour ses élèves, leurs familles et ses "
@@ -80,18 +84,19 @@ class MailsAcces:
             destinataire,
             paragraphes,
             "Activer mon accès",
-            self.lien("activer", jeton, sous_domaine),
+            self.lien("activer", jeton, sous_domaine, nature),
             [
                 "Ce lien vous est personnel : ne le transférez à personne. Il est valable "
                 "15 jours et ne fonctionne qu'une seule fois.",
                 f"Ce message vous est envoyé à la demande de l'école {ecole_nom}. "
                 "Si vous ne la connaissez pas, vous pouvez l'ignorer.",
             ],
+            nature=nature,
         )
 
     def rappel(
         self, email: str, ecole_nom: str, destinataire: str, prenoms: list[str], sous_domaine: str | None = None,
-        nouvelle_ecole: bool = False,
+        nouvelle_ecole: bool = False, nature: str | None = None,
     ) -> None:
         """Réinvitation d'une personne qui a DÉJÀ créé son mot de passe
         (demande utilisateur du 2026-10-02) : pas de lien pour en choisir
@@ -117,17 +122,21 @@ class MailsAcces:
             "Ouvrir l'application",
             # Le nom voyage dans le lien : l'écran de connexion s'ouvre avec
             # « Nom Prénom ou Email » déjà rempli (demande du 2026-10-02).
-            f"{self.appli(sous_domaine)}/?identifiant={quote_plus(destinataire)}",
+            f"{self.appli(sous_domaine, nature)}/?identifiant={quote_plus(destinataire)}",
             [
                 f"Ce message vous est envoyé à la demande de l'école {ecole_nom}. "
                 "Si vous ne la connaissez pas, vous pouvez l'ignorer.",
             ],
+            nature=nature,
         )
 
     def reinitialisation(
-        self, email: str, ecole_nom: str | None, destinataire: str, jeton: str, sous_domaine: str | None = None
+        self, email: str, ecole_nom: str | None, destinataire: str, jeton: str, sous_domaine: str | None = None,
+        nature: str | None = None,
     ) -> None:
-        nom = ecole_nom or "Contretemps"
+        from personnalisation import brands
+
+        nom = ecole_nom or brands.of_nature(nature).name
         self._composer(
             email,
             ecole_nom,
@@ -137,11 +146,12 @@ class MailsAcces:
                 "Ouvrez le lien ci-dessous pour le définir.",
             ],
             "Choisir mon mot de passe",
-            self.lien("reinitialiser", jeton, sous_domaine),
+            self.lien("reinitialiser", jeton, sous_domaine, nature),
             [
                 "Ce lien est valable 1 heure et ne peut servir qu'une fois.",
                 "Si vous n'avez rien demandé, ignorez ce message : votre mot de passe ne change pas.",
             ],
+            nature=nature,
         )
 
     def _composer(
@@ -153,6 +163,7 @@ class MailsAcces:
         bouton: str,
         lien: str,
         fin: list[str],
+        nature: str | None = None,
     ) -> None:
         """Les deux versions du même message, texte et mise en forme, avec le
         lien écrit en clair dans les deux."""
@@ -172,11 +183,18 @@ class MailsAcces:
             + "".join('<p style="margin:0 0 8px;font-size:13px;color:#8a6a4a">{}</p>'.format(escape(x)) for x in fin)
             + "</div>"
         )
-        self._envoyer(email, self._sujet(ecole_nom), texte, html)
+        self._envoyer(email, self._sujet(ecole_nom, nature), texte, html, nature)
 
-    def _envoyer(self, destinataire: str, sujet: str, corps: str, corps_html: str | None = None) -> None:
+    def _envoyer(
+        self, destinataire: str, sujet: str, corps: str, corps_html: str | None = None, nature: str | None = None
+    ) -> None:
         if self.envoi.actif:
-            self.envoi.envoyer_confirmation(destinataire, sujet, corps, [], corps_html)
+            from personnalisation import brands
+
+            brand = brands.of_nature(nature)
+            self.envoi.envoyer_confirmation(
+                destinataire, sujet, corps, [], corps_html, expediteur=(brand.sender_name, brand.sender_email)
+            )
         elif self.dans_les_journaux:
             logger.warning("Mail non envoyé (pas de SMTP) à %s : %s\n%s", destinataire, sujet, corps)
         else:

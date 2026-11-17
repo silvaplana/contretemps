@@ -174,6 +174,7 @@ class Ecoles:
         code_postal: str,
         sous_domaine: str | None = None,
         ville: str | None = None,
+        nature: str | None = None,
     ) -> Ecole:
         """Toute école a une adresse web (spec §2.7) : celle demandée
         (vérifiée), sinon une proposée d'après le nom. Lève AdresseInvalide
@@ -184,7 +185,7 @@ class Ecoles:
                 raise ValueError("Cette adresse est déjà prise par une autre école.")
         else:
             sous_domaine = self.proposer_adresse(db, nom, ville, code_postal)
-        ecole = Ecole(nom=nom, code_postal=code_postal, sous_domaine=sous_domaine, ville=ville)
+        ecole = Ecole(nom=nom, code_postal=code_postal, sous_domaine=sous_domaine, ville=ville, nature=nature or "danse")
         db.add(ecole)
         db.commit()
         db.refresh(ecole)

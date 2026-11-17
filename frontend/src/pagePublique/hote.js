@@ -1,6 +1,6 @@
-// Adresse d'une page en ligne : <page>.<école>.contretemps.silvaplana.cloud
+// Adresse d'une page en ligne : <page>.<école>.<domaine de l'enseigne>
 // (documents.md §5.5), ou <page>.<école>.localhost en développement.
-const DOMAINES = ['contretemps.silvaplana.cloud', 'localhost']
+const DOMAINES = ['contretemps.silvaplana.cloud', 'assofight.silvaplana.cloud', 'localhost']
 
 export function pageDuHost(hostname) {
   const hote = (hostname ?? '').toLowerCase().replace(/\.$/, '')

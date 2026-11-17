@@ -90,7 +90,7 @@ class AuthReceiver:
 
     def _session(self, db: Session, compte: Compte, email: str) -> SessionOuverte:
         ecole = db.get(Ecole, compte.ecole_id) if compte.ecole_id else None
-        adresse = self.invitations.mails.appli(ecole.sous_domaine) if ecole is not None else None
+        adresse = self.invitations.mails.appli(ecole.sous_domaine, ecole.nature) if ecole is not None else None
         return SessionOuverte(
             compte=compte,
             jeton=self.client.ouvrir_session(db, compte, email),
@@ -103,9 +103,16 @@ class AuthReceiver:
         profils = self.client.profils_possibles(db, donnees.identifiant, donnees.mot_de_passe)
         # Sur l'adresse d'une école (spec §2.7), ses profils d'abord : si la
         # personne y a une fiche, pas de « Choisissez votre école ».
+        from personnalisation import brands
         from personnalisation.personnalisation import etiquette_du_host
 
-        etiquette = etiquette_du_host(request.headers.get("x-forwarded-host") or request.headers.get("host"))
+        host = request.headers.get("x-forwarded-host") or request.headers.get("host")
+        etiquette = etiquette_du_host(host)
+        # Sur le domaine d'une enseigne, les profils de ses écoles seulement
+        # (Seb 17/11/2026 : Assofight n'affiche que les écoles de combat).
+        brand = brands.of_host(host)
+        if brand is not None:
+            profils = [(p, e) for p, e in profils if p.ecole_id is None or db.get(Ecole, p.ecole_id).nature == brand.nature]
         dans_l_ecole = [
             (p, e) for p, e in profils if p.ecole_id and db.get(Ecole, p.ecole_id).sous_domaine == etiquette
         ]
@@ -207,6 +214,7 @@ class AuthReceiver:
                 self.invitations.mails.reinitialisation(
                     email, ecole.nom if ecole else None, f"{fiche.prenom} {fiche.nom}", jeton,
                     sous_domaine=ecole.sous_domaine if ecole else None,
+                    nature=ecole.nature if ecole else None,
                 )
             except Exception:  # noqa: BLE001 — ne rien révéler à l'écran
                 logger.exception("Mail de réinitialisation non envoyé")

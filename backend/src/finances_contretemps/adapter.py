@@ -76,7 +76,7 @@ def adresse_ecole(db: Session, ecole_id: int | None) -> str:
     from ecoles.models import Ecole
 
     ecole = db.get(Ecole, ecole_id) if ecole_id is not None else None
-    return MailsAcces().appli(ecole.sous_domaine if ecole is not None else None)
+    return MailsAcces().appli(*((ecole.sous_domaine, ecole.nature) if ecole is not None else ()))
 
 
 # Libellés des natures de dépense (notes_frais/models.py) sur la ligne de Comptes.

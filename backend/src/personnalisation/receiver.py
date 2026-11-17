@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 from db import get_db
 from ecoles.models import Ecole
 
+from . import brands
 from .adresse import AdresseInvalide
 from .images import ImageRefusee
 from .personnalisation import TYPES_IMAGE, Personnalisation, PersonnalisationRefusee
@@ -43,6 +44,10 @@ class PersonnalisationModification(BaseModel):
 
 class AdresseModification(BaseModel):
     sous_domaine: str
+
+
+class NatureModification(BaseModel):
+    nature: str
 
 
 class DetourageChoix(BaseModel):
@@ -72,6 +77,7 @@ class PersonnalisationReceiver:
         r.patch("/ecoles/{ecole_id}/personnalisation", dependencies=[Depends(self._admin)])(self.modifier)
         r.post("/ecoles/{ecole_id}/personnalisation/defaut", dependencies=[Depends(self._admin)])(self.defaut)
         r.patch("/ecoles/{ecole_id}/sous-domaine", dependencies=[Depends(self._owner)])(self.changer_adresse)
+        r.patch("/ecoles/{ecole_id}/nature", dependencies=[Depends(self._superuser)])(self.changer_nature)
         r.post("/ecoles/{ecole_id}/personnalisation/images/{type_image}", dependencies=[Depends(self._admin)])(
             self.envoyer_image
         )
@@ -111,6 +117,9 @@ class PersonnalisationReceiver:
     def _owner(self, ecole_id: int, appelant: Compte = Depends(rbac.compte_appelant)) -> None:
         rbac.require_owner(appelant, ecole_id)
 
+    def _superuser(self, appelant: Compte = Depends(rbac.compte_appelant)) -> None:
+        rbac.require_superuser(appelant)
+
     def _ecole(self, db: Session, ecole_id: int) -> Ecole:
         ecole = db.get(Ecole, ecole_id)
         if ecole is None:
@@ -142,26 +151,26 @@ class PersonnalisationReceiver:
 
     def par_host(self, request: Request, db: Session = Depends(get_db)):
         ecole, ancienne = self.client.ecole_du_host(db, _host(request))
-        vue = self.client.vue(ecole)
+        vue = self.client.vue(ecole, brands.of_host(_host(request)))
         # Ancienne adresse encore valable : l'appli renvoie vers la nouvelle.
         vue["redirige_vers"] = vue["adresse"] if ancienne else None
         return vue
 
     def entete(self, request: Request, db: Session = Depends(get_db)):
         ecole, _ = self.client.ecole_du_host(db, _host(request))
-        return HTMLResponse(self.client.entete_html(ecole), headers={"Cache-Control": "no-cache"})
+        return HTMLResponse(self.client.entete_html(ecole, brands.of_host(_host(request))), headers={"Cache-Control": "no-cache"})
 
     def manifest(self, request: Request, db: Session = Depends(get_db)):
         ecole, _ = self.client.ecole_du_host(db, _host(request))
         return JSONResponse(
-            self.client.manifest(ecole),
+            self.client.manifest(ecole, brands.of_host(_host(request))),
             media_type="application/manifest+json",
             headers={"Cache-Control": "no-cache"},
         )
 
     def icone_par_host(self, nom: str, request: Request, db: Session = Depends(get_db)):
         ecole, _ = self.client.ecole_du_host(db, _host(request))
-        contenu = self.client.icone(ecole, nom)
+        contenu = self.client.icone(ecole, nom, brands.of_host(_host(request)))
         if contenu is None:
             raise HTTPException(status_code=404)
         return Response(contenu, media_type="image/png", headers={"Cache-Control": "public, max-age=3600"})
@@ -202,6 +211,17 @@ class PersonnalisationReceiver:
             raise HTTPException(status_code=400, detail=str(erreur)) from erreur
         except ValueError as erreur:
             raise HTTPException(status_code=409, detail=str(erreur)) from erreur
+        return self.client.vue(ecole)
+
+    def changer_nature(self, ecole_id: int, donnees: NatureModification, db: Session = Depends(get_db)):
+        """Super User seulement (Seb 17/11/2026) : l'école change d'enseigne
+        et d'adresse ; l'ancienne renvoie vers la nouvelle (ecole_du_host)."""
+        if donnees.nature not in brands.NATURES:
+            raise HTTPException(status_code=400, detail="Nature inconnue")
+        ecole = self._ecole(db, ecole_id)
+        ecole.nature = donnees.nature
+        db.commit()
+        db.refresh(ecole)
         return self.client.vue(ecole)
 
     def envoyer_image(
