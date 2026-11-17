@@ -59,6 +59,8 @@ export const nommer = async (id, people) => clip(await appel(`/clips/${id}/parti
 export const valider = async (id) => clip(await appel(`/clips/${id}/validate`, { method: 'POST' }))
 export const supprimer = (id) => appel(`/clips/${id}`, { method: 'DELETE' })
 export const membres = () => appel('/people')
+// Choisir un nom : tous les membres, les habitués du jour en tête (Seb, 17/11).
+export const nomsSeance = (id) => appel(`/sessions/${id}/names`)
 // La caméra de la salle (étape 3).
 export const camera = () => appel('/camera')
 // Fights › Tournage sur « Caméra » : ce téléphone devient la caméra de l'école.

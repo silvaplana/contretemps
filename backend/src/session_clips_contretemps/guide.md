@@ -24,8 +24,9 @@ Tournage › volet Montage (coachs ; l'ancien onglet Séances, Seb 12/11 au soir
 - Une carte ouverte (même « Aucun combat trouvé ») : d'abord le volet « Vidéo de la séance » (le film
   entier, et « ↻ Tourner la vidéo » si elle est de travers), puis le volet « Qui est qui ? » : les
   personnes repérées dans les combats (photo, qu'un appui agrandit avec « Dire qui c'est » dessous ; « Personne 2 » ou le nom, la tenue, le nombre de
-  combats) ; toucher une personne ouvre, sous sa photo (un appui l'agrandit), les présents, « Un autre membre… » et « Inconnu (pas du
-  club) » : ses combats reçoivent ce nom (Annuler 10 s), à valider ensuite sous le crayon. Une
+  combats) ; toucher une personne ouvre, sous sa photo (un appui l'agrandit), un champ « Taper un nom » (les
+  premières lettres filtrent), tous les membres (ceux de la séance et des mêmes jours des semaines
+  d'avant en tête) et « Inconnu (pas du club) » : ses combats reçoivent ce nom (Annuler 10 s), à valider ensuite sous le crayon. Une
   proposition « C'est Karim B. ? (même tenue le 12/11) » se prend avec « Oui ». En bas, « 3 combats
   remplis sur 4 ». « Repérage des combattants… » tant que le serveur n'a pas fini. Puis le volet « Combats découpés »
   (« Présents reconnus : … » et ses combats dans l'ordre, chacun avec son crayon), puis « Signes repérés » (la frise, comme dans un test, sans les signes décochés, en gris pointillé les cris pas assez sûrs ; toucher un signe montre ce moment
@@ -38,8 +39,8 @@ Tournage › volet Montage (coachs ; l'ancien onglet Séances, Seb 12/11 au soir
   avec « Appliquer » ou « Annuler » ; rien ne change sans « Appliquer ». Puis « Noter les cris » (volet fermé : sous chaque Combattez ou Time repéré, ▶ pour le voir,
   « Bon », « Mauvais » (puis le mot vraiment dit, ou « Autre mot ») ou « Inventé » ; « Il manque un mot ici » ajoute le mot
   au moment où la vidéo est arrêtée ; « Retirer » à côté d'une note l'enlève ; « Rejouer tous les essais » d'Entraîner l'écoute compte la séance). Le crayon à droite
-  d'un combat déplie ses deux combattants (toucher l'un pour choisir parmi les présents, « Un autre
-  membre… » ou « Inconnu (pas du club) ») et « C'est bon », qui envoie le combat dans « Mes combats »
+  d'un combat déplie ses deux combattants (toucher l'un pour choisir son nom de la même façon, ou
+  « Inconnu (pas du club) ») et « C'est bon », qui envoie le combat dans « Mes combats »
   des deux. Pas de Rouge ni de Bleu. La frise met chaque signe sur sa propre ligne, le premier en bas,
   sans jamais d'image sur une autre. En bas d'une séance de la
   caméra, « Relancer la découpe » la refait de zéro avec les réglages du jour, sans refilmer : les anciens combats sont effacés.

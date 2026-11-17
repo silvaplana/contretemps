@@ -141,6 +141,15 @@ class SessionClipsReceiver:
             session = guard(lambda: client.session(s, m, session_id))
             return self._people_out(s, m, session, who_is.load(session.org_id, session.id))
 
+        @app.get(f"{PREFIX}/sessions/{{session_id}}/names", response_model=list[PersonOut])
+        def session_names(session_id: int, m: Member = member, s: Session = db):
+            """Choisir un nom : tous les membres, ceux de la séance et des mêmes
+            jours des semaines d'avant en tête (Seb, 17/11)."""
+            coach(m)
+            session = guard(lambda: client.session(s, m, session_id))
+            names = {p.id: p.name for p in client.directory.people(s, m.org_id)}
+            return [PersonOut(id=i, name=names[i]) for i in client.name_order(s, session)]
+
         @app.put(f"{PREFIX}/sessions/{{session_id}}/people/{{number}}", response_model=PeopleOut)
         def name_person(session_id: int, number: int, body: PersonName, m: Member = member, s: Session = db):
             coach(m)
