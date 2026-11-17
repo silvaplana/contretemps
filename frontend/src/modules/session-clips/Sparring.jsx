@@ -1259,7 +1259,6 @@ function QuiEstQui({ seanceId, version, montrer, rafraichir }) {
   )
 }
 
-// Choisir un nom : les présents de la séance, puis « Un autre membre… ».
 // Les places d'un combat pour le serveur : l'id du membre, INCONNU ou null.
 const INCONNU = 'outsider'
 const gens = (c) => c.participants.map((p) => (p.outsider ? INCONNU : p.person_id))
@@ -1274,15 +1273,16 @@ function remplacer(people, i, id) {
 }
 
 function ChoixNom({ seanceId, onChoisir, onClose, photo }) {
-  const [presents, setPresents] = useState([])
+  // Tous les membres tout de suite, ceux de la séance et des mêmes jours des
+  // semaines d'avant en tête ; les premières lettres tapées filtrent (Seb, 17/11).
+  const [noms, setNoms] = useState([])
   const [grande, setGrande] = useState(false) // la photo agrandie d'un appui (Seb, 17/11)
-  const [tous, setTous] = useState(null)
   const [cherche, setCherche] = useState('')
   useEffect(() => {
-    api.detailSeance(seanceId).then((s) => setPresents(s.attendees), () => {})
+    api.nomsSeance(seanceId).then(setNoms, () => {})
   }, [seanceId])
-  const sansAccents = (t) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
-  const liste = tous ? tous.filter((p) => sansAccents(p.name).includes(sansAccents(cherche))) : presents
+  const debut = sansAccents(cherche.trim())
+  const liste = debut ? noms.filter((p) => sansAccents(p.name).split(/[\s-]+/).some((mot) => mot.startsWith(debut))) : noms
   return (
     <div className="sc-feuille-fond" onClick={onClose}>
       <div className="sc-feuille" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
@@ -1297,27 +1297,17 @@ function ChoixNom({ seanceId, onChoisir, onClose, photo }) {
             <img src={photo} alt="" />
           </button>
         )}
-        {tous ? (
-          <input
-            className="field-input"
-            autoFocus
-            placeholder="Chercher un membre"
-            value={cherche}
-            onChange={(e) => setCherche(e.target.value)}
-          />
-        ) : (
-          <h3>Présents à la séance</h3>
-        )}
+        <input
+          className="field-input sc-choix__cherche"
+          placeholder="Taper un nom"
+          value={cherche}
+          onChange={(e) => setCherche(e.target.value)}
+        />
         {liste.map((p) => (
           <button key={p.id} type="button" onClick={() => onChoisir(p.id, p.name)}>
             {p.name}
           </button>
         ))}
-        {!tous && (
-          <button type="button" onClick={() => api.membres().then(setTous, () => setTous([]))}>
-            Un autre membre…
-          </button>
-        )}
         {/* Quelqu'un qui n'est pas du club (Seb, 17/11). */}
         <button type="button" onClick={() => onChoisir(INCONNU)}>
           Inconnu (pas du club)

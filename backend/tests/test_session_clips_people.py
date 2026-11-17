@@ -183,3 +183,30 @@ def test_choix_de_la_photo():
     de_dos_grand = photo_score(face=0.0, overlap=0.0, height=0.9)
     de_face_colle = photo_score(face=0.9, overlap=0.5, height=0.6)
     assert de_face_seul > de_face_colle > de_dos_grand
+
+
+def test_noms_proposes_en_tete(client, db_session, e, tmp_path, monkeypatch):  # noqa: F811
+    """Seb, 17/11 : choisir un nom va plus vite, avec en tête les présents
+    puis ceux des séances du même jour les semaines précédentes."""
+    monkeypatch.setattr("videos.stockage.DOSSIER_VIDEOS_LIVE", tmp_path)
+    sc = core.session_clips_client
+    ecole, coach = e["ecole"].id, _coach(db_session, e)
+    seb, karim, lucas = e["seb"].id, e["karim"].id, e["lucas"].id
+    # Lundis 2 et 9/11 : Karim deux fois, Seb une fois ; mercredi 11/11 : Seb.
+    _, a = _seance(db_session, ecole, e["coach"].id, dt.date(2026, 11, 2), 1, sc)
+    sc.set_participants(db_session, coach, a[0].id, [karim, None])
+    _, b = _seance(db_session, ecole, e["coach"].id, dt.date(2026, 11, 9), 2, sc)
+    sc.set_participants(db_session, coach, b[0].id, [karim, seb])
+    _, c = _seance(db_session, ecole, e["coach"].id, dt.date(2026, 11, 11), 3, sc)
+    for clip in c:
+        sc.set_participants(db_session, coach, clip.id, [seb, None])
+    # Lundi 16/11 : Lucas déjà nommé dans un combat de la séance.
+    s, d = _seance(db_session, ecole, e["coach"].id, dt.date(2026, 11, 16), 1, sc)
+    sc.set_participants(db_session, coach, d[0].id, [lucas, None])
+
+    r = client.get(f"/session-clips/sessions/{s.id}/names", headers=e["h"]["coach"])
+    assert r.status_code == 200
+    ids = [p["id"] for p in r.json()]
+    assert ids[:3] == [lucas, karim, seb]
+    assert sorted(ids) == sorted(p.id for p in core.session_clips_client.directory.people(db_session, ecole))
+    assert client.get(f"/session-clips/sessions/{s.id}/names", headers=e["h"]["seb"]).status_code == 403

@@ -556,7 +556,7 @@ flèche ←.
   ou d'essai découpé est encadrée en vert dès un combat trouvé, en rouge si aucun (Seb, 12/11). Dans
   une séance ouverte (Seb, 17/11) : « Vidéo de la séance », puis le volet « Qui est qui ? » (§5,
   Identification : une ligne par personne repérée, avec sa petite image, « Personne 2 » ou son nom,
-  sa tenue et « Qui ? » ; la vignette montre la personne en entier, tête en haut ; toucher la ligne ouvre, sous sa photo (un appui l'agrandit), les présents, « Un autre membre… » et « Inconnu (pas
+  sa tenue et « Qui ? » ; la vignette montre la personne en entier, tête en haut ; toucher la ligne ouvre, sous sa photo (un appui l'agrandit), le choix du nom (ci-dessous) et « Inconnu (pas
   du club) » ; une proposition « C'est Karim B. ? » avec « Oui » ; en bas « 3 combats remplis sur
   4 » ; « Repérage des combattants… » tant que le worker n'a pas fini), puis le volet « Combats
   découpés », puis les signes, puis les cris. Un crayon à droite de chaque combat déplie les deux combattants et « C'est
@@ -733,9 +733,15 @@ onglets, et rouvre le panneau. Après « Fin de séance », la séance apparaît
 
 **Depuis le 17/11 (Seb)** : plus de volet Identifier combattants ni de pastille (onglet Tournage,
 icône Fights de la barre du bas). Seb valide les noms dans la séance, sous le crayon de chaque combat :
-toucher un combattant ouvre les présents, « Un autre membre… » et **« Inconnu (pas du club) »** (quelqu'un
+toucher un combattant ouvre le choix du nom et **« Inconnu (pas du club) »** (quelqu'un
 d'extérieur au club : `sc_participants.outsider`, le combat s'appelle « Karim B. vs Inconnu »), puis
-« C'est bon », qui envoie le combat dans « Mes combats ». **Pas de Rouge ni de Bleu, pas
+« C'est bon », qui envoie le combat dans « Mes combats ».
+
+**Choisir un nom (Seb, 17/11)** : tous les membres tout de suite, sans « Un autre membre… ». En tête
+ceux de la séance (présents, déjà nommés dans un combat), puis ceux qui ont combattu le même jour de
+la semaine les 8 semaines d'avant, les plus fréquents d'abord, puis les autres par ordre alphabétique
+(`GET /session-clips/sessions/{id}/names`). Un champ « Taper un nom » en haut, qui reste visible quand
+on fait défiler : les premières lettres d'un mot du nom filtrent la liste, sans tenir compte des accents. **Pas de Rouge ni de Bleu, pas
 d'Inverser** : un combat, c'est deux combattants, sans ordre ni numéro (Seb, 17/11). Même chose dans
 « Filmer un combat » (§6.3) et le ⋯ d'un combat ouvert (plus d'« Inverser les noms »). La validation
 reste manuelle pour l'instant, même quand l'appli aura reconnu les noms.

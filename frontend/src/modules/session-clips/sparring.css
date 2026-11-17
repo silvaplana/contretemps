@@ -1252,3 +1252,10 @@
   font-weight: 700;
   color: var(--accent);
 }
+
+/* Le champ reste en haut quand on fait défiler les noms (Seb, 17/11). */
+.sc-feuille .field-input.sc-choix__cherche {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
