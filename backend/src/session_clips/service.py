@@ -16,8 +16,8 @@ from saisons.portee import toutes_saisons
 from videos import Video, Videos
 
 from . import people
-from .models import Clip, ClipParticipant, ClipSession, Favorite, LabTest, Piece, Recorder, SessionAttendee
-from .ports import Directory, Member
+from .models import Clip, ClipParticipant, ClipSession, Favorite, LabTest, Piece, Recorder, SessionAttendee, Viewed
+from .ports import Directory, Member, Notifier
 
 
 class NotFoundError(Exception):
@@ -32,9 +32,10 @@ OUTSIDER = "outsider"  # quelqu'un qui n'est pas du club (Seb, 17/11)
 OUTSIDER_NAME = "Inconnu"
 
 class SessionClips:
-    def __init__(self, videos: Videos, directory: Directory) -> None:
+    def __init__(self, videos: Videos, directory: Directory, notifier: Notifier | None = None) -> None:
         self.videos = videos
         self.directory = directory
+        self.notifier = notifier
         # Une vidéo supprimée (d'ici ou du panneau « Usage vidéo ») emporte
         # son clip, ou détache la séance de sa vidéo brute.
         videos.quand_supprimee(self._video_deleted)
@@ -125,6 +126,24 @@ class SessionClips:
                 .order_by(ClipSession.held_on.desc(), ClipSession.id.desc(), Clip.position)
             )
         )
+
+    def viewed_ids(self, db: Session, person_id: int, clip_ids: list[int]) -> set[int]:
+        if not clip_ids:
+            return set()
+        return set(db.scalars(select(Viewed.clip_id).where(Viewed.person_id == person_id, Viewed.clip_id.in_(clip_ids))))
+
+    def new_count(self, db: Session, member: Member) -> int:
+        """Les combats validés de la personne qu'elle n'a pas encore ouverts."""
+        mine = [c.id for c in self.my_clips(db, member)]
+        return len(mine) - len(self.viewed_ids(db, member.person_id, mine))
+
+    def mark_viewed(self, db: Session, member: Member, clip: Clip) -> None:
+        """La personne ouvre un de ses combats validés : il n'est plus nouveau."""
+        if clip.to_check or member.person_id not in self.participants(db, [clip.id])[clip.id]:
+            return
+        if db.get(Viewed, (member.person_id, clip.id)) is None:
+            db.add(Viewed(person_id=member.person_id, clip_id=clip.id))
+            db.commit()
 
     def to_check(self, db: Session, org_id: int) -> list[Clip]:
         return list(
@@ -230,7 +249,9 @@ class SessionClips:
         video = self.videos.finaliser(
             db, upload_id, nom=video_name(today, "", f"combat {position}"), uploaded_by=member.person_id
         )
-        return self.add_clip(db, session.id, video.id, people)
+        clip = self.add_clip(db, session.id, video.id, people)
+        self._announce(db, member.org_id, clip)
+        return clip
 
     def add_clip(
         self,
@@ -292,10 +313,24 @@ class SessionClips:
         rows = db.scalars(select(ClipParticipant).where(ClipParticipant.clip_id == clip.id))
         if any(r.person_id is None and not r.outsider for r in rows):
             raise ValueError("Choisissez d'abord tous les noms")
+        was_new = clip.to_check
         clip.to_check = False
         clip.check_reason = None
         db.commit()
+        if was_new:
+            self._announce(db, member.org_id, clip)
         return clip
+
+    def _announce(self, db: Session, org_id: int, clip: Clip) -> None:
+        """« Nouveau combat » sur le téléphone de chaque combattant (Seb, 17/11)."""
+        people = [p for p in self.participants(db, [clip.id])[clip.id] if p is not None]
+        if self.notifier is None or not people:
+            return
+        names = self.directory.names(db, org_id, set(people))
+        outsiders = len(self.outsiders(db, [clip.id]))
+        shown = [names.get(p, "?") for p in self.participants(db, [clip.id])[clip.id] if p is not None]
+        title = clip_title(shown + [OUTSIDER_NAME] * outsiders)
+        self.notifier.notify(db, org_id, people, "Nouveau combat", f"{title} : il est dans Fights › Combats.")
 
     def delete_clip(self, db: Session, member: Member, clip_id: int) -> None:
         self._require_coach(member)

@@ -90,6 +90,16 @@ class SessionAttendee(Base):
     person_id: Mapped[int] = mapped_column(Integer, primary_key=True)
 
 
+class Viewed(Base):
+    """Les combats qu'une personne a déjà ouverts : les autres combats
+    validés où elle apparaît sont « nouveaux » (pastille de Fights, Seb 17/11)."""
+
+    __tablename__ = "sc_viewed"
+
+    person_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    clip_id: Mapped[int] = mapped_column(ForeignKey("sc_clips.id"), primary_key=True, index=True)
+
+
 class Favorite(Base):
     """« ★ Favoris » : les combats qu'une personne a mis de côté. Propres à
     chacun (un élève ne voit que ses combats, Seb 27/10)."""

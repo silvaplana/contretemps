@@ -96,6 +96,7 @@ class ClipOut(BaseModel):
     favorite: bool = False
     check_reason: str | None = None
     participants: list[ParticipantOut]
+    new: bool = False  # un combat validé de celui qui regarde, pas encore ouvert
     video: VideoSortie | None
     # Pour « Mes combats » et la lecture : la séance en clair.
     session_title: str

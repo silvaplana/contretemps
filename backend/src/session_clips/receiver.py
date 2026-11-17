@@ -209,7 +209,14 @@ class SessionClipsReceiver:
 
         @app.get(f"{PREFIX}/clips/{{clip_id}}", response_model=ClipOut)
         def get_clip(clip_id: int, m: Member = member, s: Session = db):
-            return self._clips_out(s, m, [guard(lambda: client.clip(s, m, clip_id))])[0]
+            clip = guard(lambda: client.clip(s, m, clip_id))
+            client.mark_viewed(s, m, clip)
+            return self._clips_out(s, m, [clip])[0]
+
+        @app.get(f"{PREFIX}/new")
+        def new_clips(m: Member = member, s: Session = db):
+            """La pastille de Fights (Seb, 17/11) : combats validés pas encore ouverts."""
+            return {"count": client.new_count(s, m)}
 
         @app.put(f"{PREFIX}/clips/{{clip_id}}/participants", response_model=ClipOut)
         def set_participants(clip_id: int, body: ParticipantsUpdate, m: Member = member, s: Session = db):
@@ -576,6 +583,7 @@ class SessionClipsReceiver:
         names = client.directory.names(s, m.org_id, {p for ps in people.values() for p in ps if p is not None})
         videos = client.video_map(s, [c.video_id for c in clips])
         favorites = client.favorite_ids(s, m.person_id, [c.id for c in clips])
+        viewed = client.viewed_ids(s, m.person_id, [c.id for c in clips])
         sessions = {c.session_id: s.get(ClipSession, c.session_id) for c in clips}
         # Le rang d'une paire dans sa séance, pour « … vs … 2 ».
         order = client.clips_by_session(s, list(sessions))
@@ -601,6 +609,7 @@ class SessionClipsReceiver:
                     title=clip_title(shown, rank.get(c.id, 1)),
                     to_check=c.to_check,
                     favorite=c.id in favorites,
+                    new=not c.to_check and m.person_id in ps and c.id not in viewed,
                     check_reason=c.check_reason,
                     participants=[
                         ParticipantOut(person_id=p, name=n, outsider=o) for p, n, o in zip(ps, shown, out_slots)
