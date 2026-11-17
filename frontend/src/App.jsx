@@ -49,6 +49,7 @@ import Blog, { blogDuRetourInstagram } from './modules/publications/Blog.jsx'
 import * as publicationsApi from './modules/publications/api.js'
 import * as publicationsPartage from './modules/publications/partage.js'
 import Sparring from './modules/session-clips/Sparring.jsx'
+import useNouveaux from './modules/session-clips/useNouveaux.js'
 import MesNotesDeFrais from './modules/notes-frais/MesNotesDeFrais.jsx'
 import SupervisionScreen from './screens/SupervisionScreen.jsx'
 
@@ -418,6 +419,8 @@ function App() {
   }
   const blogActif = tabs.find((t) => t.key === activeTab)?.blog ?? null
   const modulesEteints = new Set(modules.filter((m) => !m.enabled).map((m) => m.key))
+  // Fights : combats validés pas encore ouverts (Seb, 17/11).
+  const nouveauxCombats = useNouveaux(Boolean(compteReel) && !modulesEteints.has('session_clips'), `${ecole.id}|${activeUser.id}|${activeTab}`)
   useEffect(() => {
     const onglets = ongletsAvec({ publications: blogs ?? [] })
     const eteint = (t) => modules.some((m) => m.key === t.module && !m.enabled)
@@ -1384,7 +1387,7 @@ function App() {
         onChange={setActiveTab}
         profil={activeUser}
         eteints={modulesEteints}
-        alertes={{ messagerie: totalNonLus }}
+        alertes={{ messagerie: totalNonLus, sparring: nouveauxCombats }}
         tabs={tabs}
       />
     </div>

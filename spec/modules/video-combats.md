@@ -605,6 +605,15 @@ flèche ←.
 
 ### 6.2 Mes combats *(tous)*
 
+**Nouveaux combats (Seb, 17/11)** : quand un combat est validé (« C'est bon » sous le crayon, ou
+« Filmer un combat »), chaque combattant du club reçoit une notification sur son téléphone,
+« Nouveau combat · Seb R. vs Karim B. : il est dans Fights › Combats. » (port `Notifier` du module,
+branché sur les notifications push de Contretemps comme Docs). Une pastille compte ses combats
+validés pas encore ouverts, sur l'icône Fights de la barre du bas et sur l'onglet Combats d'un coach ;
+le combat porte « Nouveau » dans la liste jusqu'à ce qu'il l'ouvre. Table `sc_viewed` (personne,
+combat) : les combats déjà validés le 17/11 y ont été mis, pour ne pas allumer une pastille de
+tous les anciens combats.
+
 - Les clips où la personne apparaît, du plus récent au plus ancien, regroupés par séance (« JEU. 23 OCT.
   · ADULTES »).
 - Chaque ligne : vignette avec la durée, « vs Karim B. », « Combat 3 · 2 min 20 ».
@@ -863,6 +872,7 @@ référence ses vidéos dans le module `videos`, jamais l'inverse. Tout est filt
 |---|---|---|
 | `sc_sessions` | une séance filmée | `id`, `org_id`, `title` (« Adultes · 19 h », le cours choisi ou tapé), `held_on` (date), `raw_video_id` (vidéo brute dans `videos`, vide une fois effacée), `status` (`processing` / `ready` ; « en cours d'envoi » se lit sur la vidéo brute), `created_by`, `created_at` |
 | `sc_clips` | un clip | `id`, `session_id`, `video_id` (le clip dans `videos`, unique), `position` (combat 1, 2…), `to_check` (booléen), `check_reason` (texte), `start_seconds` (début du combat dans une séance de la caméra : évite de le couper deux fois) |
+| `sc_viewed` | les combats qu'une personne a déjà ouverts (Seb, 17/11) | `person_id`, `clip_id` ; un combat validé de la personne sans ligne est « Nouveau » |
 | `sc_participants` | qui est dans un clip | `clip_id`, `slot` (simple ordre, sans Rouge ni Bleu depuis le 17/11), `person_id` (la personne, vide = pas encore nommée), `outsider` (quelqu'un qui n'est pas du club, « Inconnu » ; Seb 17/11) |
 | `sc_attendees` | présents reconnus à une séance | `session_id`, `person_id` |
 | `sc_favorites` | « ★ Favoris » de chacun | `person_id`, `clip_id` (effacé avec le clip) |

@@ -26,6 +26,12 @@ class Person:
     name: str
 
 
+class Notifier(Protocol):
+    def notify(self, db: Session, org_id: int, person_ids: list[int], title: str, body: str) -> None:
+        """Une notification sur le téléphone de chaque personne (Seb, 17/11 :
+        un nouveau combat validé). Ne fait jamais échouer l'appelant."""
+
+
 class Directory(Protocol):
     def people(self, db: Session, org_id: int) -> list[Person]:
         """Les membres actuels de l'organisation, pour nommer un combattant."""

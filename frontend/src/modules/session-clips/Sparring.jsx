@@ -106,6 +106,11 @@ export default function Sparring({ ecoleId, cours }) {
   const vider = useCallback(() => setSelection({ cle: '', clips: AUCUN }), [])
 
   const [essaisCaches, supprimerEssai] = useSuppressionEssai(montrer, rafraichir)
+  // Combats validés pas encore ouverts : pastille de l'onglet Combats (Seb, 17/11).
+  const [nouveaux, setNouveaux] = useState(0)
+  useEffect(() => {
+    api.nouveaux().then((r) => setNouveaux(r.count), () => {})
+  }, [version, ouvert])
   function choisirOnglet(o) {
     setOnglet(o)
     try {
@@ -209,7 +214,7 @@ export default function Sparring({ ecoleId, cours }) {
             ]}
           />
         )}
-        {me.is_coach && <Onglets onglet={onglet} onChange={choisirOnglet} />}
+        {me.is_coach && <Onglets onglet={onglet} onChange={choisirOnglet} nouveaux={nouveaux} />}
         <div className="sc__corps">
           {onglet === 'mes' && <EntreeFavoris onOpen={() => setOuvert({ favoris: true })} />}
           {/* Tournage et Montage (les séances filmées) en volets (Seb, 12/11 au
@@ -259,7 +264,7 @@ export default function Sparring({ ecoleId, cours }) {
   )
 }
 
-function Onglets({ onglet, onChange }) {
+function Onglets({ onglet, onChange, nouveaux }) {
   const onglets = [
     ['mes', 'Combats'],
     ['tournage', 'Tournage'],
@@ -273,7 +278,12 @@ function Onglets({ onglet, onChange }) {
       onChange={onChange}
       options={onglets.map(([cle, libelle]) => ({
         value: cle,
-        label: libelle,
+        label: (
+          <>
+            {libelle}
+            {cle === 'mes' && nouveaux > 0 && <span className="sc-pastille">{nouveaux}</span>}
+          </>
+        ),
       }))}
     />
   )
@@ -320,6 +330,7 @@ function MesCombats({ me, version, caches, choisis, basculer, onOpen }) {
           <span className="sc-meta">
             Combat {c.position}
             {duree(c.video) && ` · ${duree(c.video)}`}
+            {c.new && <span className="sc-chip sc-chip--info">Nouveau</span>}
           </span>
         </LigneClip>
       </div>

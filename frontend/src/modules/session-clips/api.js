@@ -52,6 +52,8 @@ export const detailSeance = async (id) => seance(await appel(`/sessions/${id}`))
 export const creerSeance = async (corps) => seance(await appel('/sessions', json('POST', corps)))
 export const filmerCombat = async (corps) => clip(await appel('/fights', json('POST', corps)))
 export const mesCombats = async () => (await appel('/mine')).map(clip)
+// La pastille de Fights : combats validés pas encore ouverts (Seb, 17/11).
+export const nouveaux = () => appel('/new')
 export const obtenirClip = async (id) => clip(await appel(`/clips/${id}`))
 export const nommer = async (id, people) => clip(await appel(`/clips/${id}/participants`, json('PUT', { people })))
 export const valider = async (id) => clip(await appel(`/clips/${id}/validate`, { method: 'POST' }))

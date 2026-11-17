@@ -6,11 +6,17 @@ du 27 octobre 2026) : on le met au point pour un club de combat."""
 from registry import Module, guide_file
 from session_clips import SessionClips, SessionClipsReceiver
 
+from documents_contretemps.adapter import NotifieurDocuments
+
 from .adapter import AnnuaireSparring, membre_appelant
 
 
 def mount(app, core) -> None:
-    core.session_clips_client = SessionClips(videos=core.videos_client, directory=AnnuaireSparring())
+    core.session_clips_client = SessionClips(
+        videos=core.videos_client,
+        directory=AnnuaireSparring(),
+        notifier=NotifieurDocuments(core.notifications_client),
+    )
     SessionClipsReceiver(client=core.session_clips_client, app=app, current_member=membre_appelant)
 
 

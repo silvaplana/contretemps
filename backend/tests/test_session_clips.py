@@ -221,3 +221,34 @@ def test_favoris(client, db_session, e):
     mettre("coach", a)
     assert client.delete(f"/session-clips/clips/{a.id}", headers=e["h"]["coach"]).status_code == 204
     assert client.get("/session-clips/favorites", headers=e["h"]["coach"]).json() == []
+
+
+def test_nouveaux_combats(client, db_session, e, monkeypatch):
+    """Seb, 17/11 : une pastille sur Fights pour les combats validés pas
+    encore regardés ; ouvrir le combat l'enlève. Et une notification sur le
+    téléphone de chaque combattant quand le combat est validé."""
+    seance = _session(client, e)
+    sc = core.session_clips_client
+    envois = []
+    monkeypatch.setattr(sc, "notifier", type("N", (), {"notify": lambda self, db, org, people, title, body: envois.append((sorted(people), title, body))})())
+    h = e["h"]
+    clip = sc.add_clip(db_session, seance["id"], _video(db_session, e["ecole"], "a").id, [e["seb"].id, None])
+    # Pas encore validé : rien de nouveau.
+    assert client.get("/session-clips/new", headers=h["seb"]).json() == {"count": 0}
+    client.put(f"/session-clips/clips/{clip.id}/participants", json={"people": [e["seb"].id, e["karim"].id]}, headers=h["coach"])
+    client.post(f"/session-clips/clips/{clip.id}/validate", headers=h["coach"])
+    assert envois == [(sorted([e["seb"].id, e["karim"].id]), "Nouveau combat", "Seb R. vs Karim B. : il est dans Fights › Combats.")]
+    # Valider encore (sous le crayon) ne renvoie rien.
+    client.post(f"/session-clips/clips/{clip.id}/validate", headers=h["coach"])
+    assert len(envois) == 1
+    assert client.get("/session-clips/new", headers=h["seb"]).json() == {"count": 1}
+    assert client.get("/session-clips/new", headers=h["karim"]).json() == {"count": 1}
+    assert client.get("/session-clips/new", headers=h["lucas"]).json() == {"count": 0}
+    assert [c["new"] for c in client.get("/session-clips/mine", headers=h["seb"]).json()] == [True]
+    # Seb l'ouvre : plus nouveau pour lui, toujours pour Karim. Le coach qui
+    # l'ouvre ne change rien.
+    client.get(f"/session-clips/clips/{clip.id}", headers=h["coach"])
+    client.get(f"/session-clips/clips/{clip.id}", headers=h["seb"])
+    assert client.get("/session-clips/new", headers=h["seb"]).json() == {"count": 0}
+    assert [c["new"] for c in client.get("/session-clips/mine", headers=h["seb"]).json()] == [False]
+    assert client.get("/session-clips/new", headers=h["karim"]).json() == {"count": 1}
