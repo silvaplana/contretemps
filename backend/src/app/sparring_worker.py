@@ -34,6 +34,7 @@ from session_clips.cutting import cut_live, cut_session, live_sessions, sessions
 from session_clips.detector import detect
 from session_clips.hearing import hear
 from session_clips.lab import read_test, tests_to_read
+from session_clips.people import Faces, failed, recognize, sessions_to_recognize
 from session_clips.service import SessionClips
 from session_clips.hearing import _audio, hear_club_without
 from session_clips.voice import hear_tests, recover_truths, run_replays
@@ -59,6 +60,7 @@ def run() -> None:
         print(f"Réponses d'avant retrouvées : {recover_truths(_audio)}.")
     except Exception:
         traceback.print_exc()
+    faces = None  # modèles des visages, chargés à la première séance à relire
     while True:
         db = SessionLocal()
         try:
@@ -69,6 +71,10 @@ def run() -> None:
             if debut <= datetime.now(ZoneInfo("Europe/Paris")).hour < fin:
                 for session in sessions_to_cut(db):
                     _cut(db, session, lambda: cut_session(db, clips, session, detect, hear))
+            # Qui est qui ? (Seb, 17/11) : les combattants des séances découpées.
+            for session in sessions_to_recognize(db)[:1]:  # une par tour : la caméra passe avant
+                faces = faces or Faces()
+                _recognize(db, clips, session, faces)
         finally:
             db.close()
         for _ in range(INTERVALLE_SECONDES // TEST_SECONDES):
@@ -78,6 +84,17 @@ def run() -> None:
             except Exception:
                 traceback.print_exc()
             time.sleep(TEST_SECONDES)
+
+
+def _recognize(db, clips, session, faces) -> None:
+    try:
+        n = recognize(db, clips.videos, session, faces)
+        print(f"Séance {session.id} : {n} personne(s) repérée(s).")
+    except Exception:
+        db.rollback()
+        failed(session, db)
+        print(f"Séance {session.id} : repérage des personnes impossible.")
+        traceback.print_exc()
 
 
 def _cut(db, session, action) -> None:

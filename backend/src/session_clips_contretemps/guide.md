@@ -19,7 +19,12 @@ Tournage › volet Montage (coachs ; l'ancien onglet Séances, Seb 12/11 au soir
   la vidéo est encore sur un téléphone caméra éteint. Une séance pas encore découpée (« La vidéo arrive… », « Découpe cette nuit ») ne s'ouvre
   pas.
 - Une carte ouverte (même « Aucun combat trouvé ») : d'abord le volet « Vidéo de la séance » (le film
-  entier, et « ↻ Tourner la vidéo » si elle est de travers), puis le volet « Combats découpés »
+  entier, et « ↻ Tourner la vidéo » si elle est de travers), puis le volet « Qui est qui ? » : les
+  personnes repérées dans les combats (petite image, « Personne 2 » ou le nom, la tenue, le nombre de
+  combats) ; toucher une personne ouvre les présents, « Un autre membre… » et « Inconnu (pas du
+  club) » : ses combats reçoivent ce nom (Annuler 10 s), à valider ensuite sous le crayon. Une
+  proposition « C'est Karim B. ? (même tenue le 12/11) » se prend avec « Oui ». En bas, « 3 combats
+  remplis sur 4 ». « Repérage des combattants… » tant que le serveur n'a pas fini. Puis le volet « Combats découpés »
   (« Présents reconnus : … » et ses combats dans l'ordre, chacun avec son crayon), puis « Signes repérés » (la frise, comme dans un test, sans les signes décochés, en gris pointillé les cris pas assez sûrs ; toucher un signe montre ce moment
   dans la vidéo ; « Aucun signe repéré. » s'il n'y en a pas ; se décoche dans ⋮ › Paramètres de tournage › « Montrer la
   frise des signes »). Toucher un geste ou un Combattez / Time de la frise ouvre en bas de l'écran « Bon », « Mauvais »

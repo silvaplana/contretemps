@@ -462,9 +462,45 @@ d'un bloc, de nuit, en connaissant toute la vidéo à l'avance.
    ne bloque pas la lecture : la vidéo est lue sans les sons. Les sons d'un morceau de la caméra
    sont gardés à côté de ses postures (`<id>.sounds.json`). Pas encore : les bras croisés sur la
    poitrine. Un combat repéré sans poing levé devient un « combat sans nom ».
-3. **Identification** : il suit chaque personne image par image, et compare les deux combattants aux
-   empreintes du jour. Si la confiance est faible, comme avec deux t-shirts noirs unis, le clip est
-   marqué « à vérifier ». Pas de reconnaissance faciale.
+3. **Identification** (Seb, 17/11, « Qui est qui ? », maquette
+   https://claude.ai/artifact/Hit5tQEqa3CoUqQXGGGfHA ; `people.py`). Une fois la séance découpée,
+   `sparring-worker` relit chaque combat découpé (2 images par seconde, YOLO pose) et suit ses deux
+   combattants (les deux plus grands corps, rattachés d'une image à l'autre par leur position). Pour
+   chacun il garde :
+   - sa **tenue** : un histogramme de couleurs (teinte, saturation, luminosité) du haut (des épaules
+     aux hanches) et du bas (des hanches aux genoux), et la couleur médiane de chacun pour l'écran
+     (« T-shirt rouge, short noir ») ;
+   - son **visage**, quand on le voit : YuNet repère le visage autour de la tête, SFace en tire une
+     empreinte de 128 nombres (modèles d'OpenCV, téléchargés une fois par le worker dans
+     `<VIDEOS_DIR>/../models/faces/`, sans changer l'image Docker) ; jusqu'à 8 visages par combattant ;
+   - une petite image de lui en entier (jpeg en data URL, comme les images de la frise).
+
+   Les combattants de tous les combats sont ensuite **regroupés par personne** : deux combattants
+   sont la même personne si leur distance est sous 0,35, jamais deux combattants d'un même combat.
+   Distance = 1 − le recouvrement des histogrammes de tenue (0 = mêmes couleurs) ; quand les deux
+   visages sont vus, elle est la moyenne de celle de la tenue et de celle du visage (0 si les
+   empreintes se ressemblent à 0,6 ou plus, 1 à 0). Seuils de départ, à régler sur les vraies
+   séances.
+
+   Le résultat va dans `<dossier de l'école>/people/<séance>.json` (pas de table : comme les notes
+   des gestes) : les personnes (tenue, visage, image, nom donné), et pour chaque combat la personne
+   de chaque place. Il est refait quand les combats de la séance changent (« Relancer la découpe ») ;
+   les noms déjà donnés suivent la personne qui ressemble le plus.
+
+   **Visages (Seb, 17/11)** : Seb veut reconnaître aussi les têtes ; il demandera les accords écrits
+   (parents pour les mineurs) et fera ensuite la case d'accord par adhérent. En attendant, pour voir
+   si ça marche, les visages servent pour tout le monde. Les empreintes restent sur le VPS, dans le
+   dossier de l'école ; effacer une séance les efface.
+
+   Ce qui est fait d'un nom donné dans « Qui est qui ? » (§6.3) : chaque combat où la personne
+   apparaît reçoit ce nom à sa place, si elle est vide (un nom mis à la main n'est jamais écrasé).
+   Le combat reste « à vérifier » : **la validation des noms reste manuelle** (« C'est bon » sous le
+   crayon, Seb 17/11).
+
+   **Propositions** : une personne pas encore nommée est comparée aux personnes nommées des autres
+   séances de l'école. Sous 0,30, l'appli propose le nom : « C'est Karim B. ? (même visage, vu le
+   9/11 et le 12/11) » si les visages se ressemblent (0,45 ou plus), sinon « (même tenue le 12/11) »,
+   avec un bouton « Oui ».
 4. **Découpe et recadrage** (codé le 12/11 en version simple, `framing.py` : réglage du club
    **Plan large** / **Moyen** / **Serré** ; le cadre garde une taille fixe pendant le combat, assez
    grande 9 fois sur 10 pour les deux plus grands corps avec leur marge, et suit leur centre lissé
@@ -515,8 +551,12 @@ flèche ←.
   siens ; Seb 12/11) et
   « Tests de découpage vidéo » (l'ancien sous-onglet Labo, Seb 12/11 au soir). Une ligne de séance
   ou d'essai découpé est encadrée en vert dès un combat trouvé, en rouge si aucun (Seb, 12/11). Dans
-  une séance ouverte (Seb, 17/11) : « Vidéo de la séance », puis le volet « Combats découpés », puis
-  les signes, puis les cris. Un crayon à droite de chaque combat déplie les deux combattants et « C'est
+  une séance ouverte (Seb, 17/11) : « Vidéo de la séance », puis le volet « Qui est qui ? » (§5,
+  Identification : une ligne par personne repérée, avec sa petite image, « Personne 2 » ou son nom,
+  sa tenue et « Qui ? » ; toucher la ligne ouvre les présents, « Un autre membre… » et « Inconnu (pas
+  du club) » ; une proposition « C'est Karim B. ? » avec « Oui » ; en bas « 3 combats remplis sur
+  4 » ; « Repérage des combattants… » tant que le worker n'a pas fini), puis le volet « Combats
+  découpés », puis les signes, puis les cris. Un crayon à droite de chaque combat déplie les deux combattants et « C'est
   bon » (valide le combat s'il était à vérifier ; Seb, 12/11 ; ni Rouge, ni Bleu, ni Inverser depuis
   le 17/11, §6.4). Une
   séance de la caméra montre son état d'abord (« Envoi : X % » d'après les octets reçus des morceaux

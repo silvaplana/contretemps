@@ -1121,3 +1121,74 @@
   background: var(--surface, #fff);
   box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.15);
 }
+
+/* Qui est qui ? (Seb, 17/11) */
+.sc-qui {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.sc-qui__ligne {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 72px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card-bg);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sc-qui__ligne img,
+.sc-qui__image {
+  flex: none;
+  width: 44px;
+  height: 64px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: var(--border);
+}
+
+.sc-qui__texte {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.sc-qui__texte b {
+  font-size: 17px;
+}
+
+.sc-qui__action {
+  color: var(--accent);
+}
+
+.sc-qui__proposition {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-left: 12px;
+}
+
+.sc-qui__proposition > span {
+  flex: 1;
+}
+
+.sc-qui__proposition .btn {
+  min-width: 72px;
+  min-height: 48px;
+}
+
+.sc-qui__compte {
+  font-weight: 700;
+  color: var(--accent);
+}

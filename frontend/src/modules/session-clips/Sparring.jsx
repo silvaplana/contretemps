@@ -1033,6 +1033,9 @@ function DossierSeance({ seanceId, version, caches, choisis, basculer, onBack, o
             </button>
           </Deroulant>
         )}
+        {s && film.length > 0 && s.clips.length > 0 && (
+          <QuiEstQui seanceId={seanceId} version={version} montrer={montrer} rafraichir={rafraichir} />
+        )}
         {/* Sous la vidéo entière, les combats découpés, en volet (Seb, 17/11). */}
         {s?.clips.length > 0 && (
           <Deroulant titre="Combats découpés" ouvertAuDepart>
@@ -1129,6 +1132,94 @@ function DossierSeance({ seanceId, version, caches, choisis, basculer, onBack, o
   )
 }
 
+// Qui est qui ? (Seb, 17/11) : les personnes repérées dans les combats de la
+// séance (tenue, visage). Toucher une personne pour dire qui c'est : ses
+// combats reçoivent son nom, à valider ensuite sous le crayon.
+function QuiEstQui({ seanceId, version, montrer, rafraichir }) {
+  const [r, setR] = useState(null)
+  const [choix, setChoix] = useState(null) // la personne à nommer
+  useEffect(() => {
+    let minuteur
+    const lire = () =>
+      api.personnes(seanceId).then(
+        (x) => {
+          setR(x)
+          if (!x.ready) minuteur = setTimeout(lire, 10000)
+        },
+        () => {},
+      )
+    lire()
+    return () => clearTimeout(minuteur)
+  }, [seanceId, version])
+
+  async function nommer(p, who, nom) {
+    const avant = p.outsider ? INCONNU : p.member_id
+    try {
+      setR(await api.nommerPersonne(seanceId, p.n, who))
+      rafraichir()
+      montrer(`${nom} : ses combats sont remplis`, async () => {
+        setR(await api.nommerPersonne(seanceId, p.n, avant))
+        rafraichir()
+      })
+    } catch (e) {
+      montrer(e.message)
+    }
+  }
+
+  if (!r) return null
+  const remplis =
+    r.filled === 0 ? 'Aucun combat rempli pour l’instant' : `${r.filled} combat${r.filled > 1 ? 's' : ''} rempli${r.filled > 1 ? 's' : ''} sur ${r.total}`
+  const p = r.persons.find((x) => x.n === choix)
+  return (
+    <Deroulant titre="Qui est qui ?" ouvertAuDepart>
+      {!r.ready ? (
+        <p className="sc-meta">Repérage des combattants…</p>
+      ) : r.persons.length === 0 ? (
+        <p className="sc-meta">Personne n’a été repéré dans les combats.</p>
+      ) : (
+        <>
+          <p className="sc-meta">Touchez chaque personne et dites qui c’est : ses combats reçoivent son nom.</p>
+          {r.persons.map((x) => (
+            <div key={x.n} className="sc-qui">
+              <button type="button" className="sc-qui__ligne" onClick={() => setChoix(x.n)}>
+                {x.image ? <img src={x.image} alt="" /> : <span className="sc-qui__image" />}
+                <span className="sc-qui__texte">
+                  <b>{x.name ?? `Personne ${x.n}`}</b>
+                  <span className="sc-meta">
+                    {x.label} · {x.fights} combat{x.fights > 1 ? 's' : ''}
+                  </span>
+                </span>
+                <span className="sc-qui__action">{x.name ? 'Changer' : 'Qui ?'}</span>
+              </button>
+              {x.proposal && !x.name && (
+                <div className="sc-qui__proposition">
+                  <span>
+                    C’est {x.proposal.name} ? <span className="sc-meta">({x.proposal.reason})</span>
+                  </span>
+                  <button type="button" className="btn btn--secondary" onClick={() => nommer(x, x.proposal.member_id, x.proposal.name)}>
+                    Oui
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+          <p className="sc-qui__compte">{remplis}</p>
+        </>
+      )}
+      {p && (
+        <ChoixNom
+          seanceId={seanceId}
+          onClose={() => setChoix(null)}
+          onChoisir={(id, nom) => {
+            setChoix(null)
+            nommer(p, id, id === INCONNU ? 'Inconnu' : nom)
+          }}
+        />
+      )}
+    </Deroulant>
+  )
+}
+
 // Choisir un nom : les présents de la séance, puis « Un autre membre… ».
 // Les places d'un combat pour le serveur : l'id du membre, INCONNU ou null.
 const INCONNU = 'outsider'
@@ -1167,7 +1258,7 @@ function ChoixNom({ seanceId, onChoisir, onClose }) {
           <h3>Présents à la séance</h3>
         )}
         {liste.map((p) => (
-          <button key={p.id} type="button" onClick={() => onChoisir(p.id)}>
+          <button key={p.id} type="button" onClick={() => onChoisir(p.id, p.name)}>
             {p.name}
           </button>
         ))}

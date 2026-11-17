@@ -39,6 +39,37 @@ class ParticipantsUpdate(BaseModel):
     people: list[int | Literal["outsider"] | None]
 
 
+class PersonName(BaseModel):
+    """Qui est la personne repérée (Qui est qui ?, Seb 17/11) : un membre,
+    `"outsider"` (pas du club) ou `null` (retirer le nom)."""
+
+    who: int | Literal["outsider"] | None
+
+
+class Proposal(BaseModel):
+    member_id: int
+    name: str
+    reason: str
+
+
+class FoundPerson(BaseModel):
+    n: int
+    image: str | None
+    label: str
+    member_id: int | None
+    outsider: bool
+    name: str | None
+    fights: int
+    proposal: Proposal | None
+
+
+class PeopleOut(BaseModel):
+    ready: bool
+    persons: list[FoundPerson]
+    filled: int  # combats dont toutes les places sont nommées
+    total: int
+
+
 class MeOut(BaseModel):
     person_id: int
     is_coach: bool
