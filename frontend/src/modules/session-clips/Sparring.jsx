@@ -1138,6 +1138,7 @@ function DossierSeance({ seanceId, version, caches, choisis, basculer, onBack, o
 function QuiEstQui({ seanceId, version, montrer, rafraichir }) {
   const [r, setR] = useState(null)
   const [choix, setChoix] = useState(null) // la personne à nommer
+  const [grande, setGrande] = useState(null) // la personne dont on agrandit la photo
   useEffect(() => {
     let minuteur
     const lire = () =>
@@ -1181,16 +1182,25 @@ function QuiEstQui({ seanceId, version, montrer, rafraichir }) {
           <p className="sc-meta">Touchez chaque personne et dites qui c’est : ses combats reçoivent son nom.</p>
           {r.persons.map((x) => (
             <div key={x.n} className="sc-qui">
-              <button type="button" className="sc-qui__ligne" onClick={() => setChoix(x.n)}>
-                {x.image ? <img src={x.image} alt="" /> : <span className="sc-qui__image" />}
-                <span className="sc-qui__texte">
-                  <b>{x.name ?? `Personne ${x.n}`}</b>
-                  <span className="sc-meta">
-                    {x.label} · {x.fights} combat{x.fights > 1 ? 's' : ''}
+              <div className="sc-qui__ligne">
+                {/* La photo s'agrandit d'un appui, pour mieux reconnaître (Seb, 17/11). */}
+                {x.image ? (
+                  <button type="button" className="sc-qui__photo" onClick={() => setGrande(x)} aria-label="Agrandir la photo">
+                    <img src={x.image} alt="" />
+                  </button>
+                ) : (
+                  <span className="sc-qui__image" />
+                )}
+                <button type="button" className="sc-qui__nommer" onClick={() => setChoix(x.n)}>
+                  <span className="sc-qui__texte">
+                    <b>{x.name ?? `Personne ${x.n}`}</b>
+                    <span className="sc-meta">
+                      {x.label} · {x.fights} combat{x.fights > 1 ? 's' : ''}
+                    </span>
                   </span>
-                </span>
-                <span className="sc-qui__action">{x.name ? 'Changer' : 'Qui ?'}</span>
-              </button>
+                  <span className="sc-qui__action">{x.name ? 'Changer' : 'Qui ?'}</span>
+                </button>
+              </div>
               {x.proposal && !x.name && (
                 <div className="sc-qui__proposition">
                   <span>
@@ -1205,6 +1215,23 @@ function QuiEstQui({ seanceId, version, montrer, rafraichir }) {
           ))}
           <p className="sc-qui__compte">{remplis}</p>
         </>
+      )}
+      {grande && (
+        <div className="sc-feuille-fond" onClick={() => setGrande(null)}>
+          <div className="sc-feuille sc-qui__grande" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+            <img src={grande.image} alt={grande.name ?? `Personne ${grande.n}`} />
+            <button
+              type="button"
+              className="btn btn--primary"
+              onClick={() => {
+                setGrande(null)
+                setChoix(grande.n)
+              }}
+            >
+              {grande.name ? `Changer (${grande.name})` : 'Dire qui c’est'}
+            </button>
+          </div>
+        </div>
       )}
       {p && (
         <ChoixNom

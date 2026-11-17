@@ -172,3 +172,14 @@ def test_tenue_lue_sur_une_image():
     assert len(hist) == 144 and abs(sum(hist) - 2) < 1e-6
     assert colour_name(haut) == "rouge" and colour_name(bas) == "noir"
     assert cv2 is not None
+
+
+def test_choix_de_la_photo():
+    """Seb, 17/11 : pas de photo de dos ni collée à l'autre combattant."""
+    from session_clips.people import _overlap, photo_score
+
+    assert _overlap((0, 0, 10, 10), (5, 0, 20, 10)) == 0.5 and _overlap((0, 0, 10, 10), (20, 0, 30, 10)) == 0
+    de_face_seul = photo_score(face=0.9, overlap=0.0, height=0.5)
+    de_dos_grand = photo_score(face=0.0, overlap=0.0, height=0.9)
+    de_face_colle = photo_score(face=0.9, overlap=0.5, height=0.6)
+    assert de_face_seul > de_face_colle > de_dos_grand

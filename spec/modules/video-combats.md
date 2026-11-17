@@ -473,7 +473,10 @@ d'un bloc, de nuit, en connaissant toute la vidéo à l'avance.
    - son **visage**, quand on le voit : YuNet repère le visage autour de la tête, SFace en tire une
      empreinte de 128 nombres (modèles d'OpenCV, téléchargés une fois par le worker dans
      `<VIDEOS_DIR>/../models/faces/`, sans changer l'image Docker) ; jusqu'à 8 visages par combattant ;
-   - une petite image de lui en entier (jpeg en data URL, comme les images de la frise).
+   - une photo de lui en entier (jpeg en data URL, 480 px de haut, qu'un appui agrandit), choisie
+     (Seb, 17/11 : « de dos ou pas terribles ») d'abord quand on voit son visage, puis quand il est
+     seul dans son cadre (sans l'autre combattant), puis quand il est grand. Quand la façon de lire
+     change, les séances sont relues (`VERSION` du fichier), les noms donnés restent.
 
    Les combattants de tous les combats sont ensuite **regroupés par personne** : deux combattants
    sont la même personne si leur distance est sous 0,35, jamais deux combattants d'un même combat.
