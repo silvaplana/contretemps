@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { familleDuNom, familleDuSlogan, mettreAJour, POLICES, POLICES_NOM, urlFichier, urlLogo, urlNomImage } from '../../api/apparence.js'
+import { ENSEIGNES, familleDuNom, familleDuSlogan, mettreAJour, POLICES, POLICES_NOM, urlFichier, urlLogo, urlNomImage, useApparence } from '../../api/apparence.js'
 import * as personnalisationApi from '../../api/personnalisation.js'
 import { enEuros } from '../../utils/euros.js'
 import Icon from '../../components/Icon.jsx'
@@ -133,6 +133,14 @@ export default function PersonnalisationSection({ ecole, activeUser, modules, on
       if (adresseChangee) vue = await personnalisationApi.changerAdresse(ecole.id, adresse)
       appliquer(vue)
       setMessage('Personnalisation enregistrée.')
+    })
+  }
+
+  function changerNature(enseigne) {
+    if (!window.confirm(`Passer l’école sur ${enseigne.domaine} ? Les ${mots().eleves} devront réinstaller l’appli.`)) return
+    tenter(async () => {
+      appliquer(await personnalisationApi.changerNature(ecole.id, enseigne.nature))
+      setMessage('Nature enregistrée.')
     })
   }
 
@@ -282,7 +290,7 @@ export default function PersonnalisationSection({ ecole, activeUser, modules, on
               disabled={!peutChangerAdresse}
               onChange={(e) => setAdresse(normaliserAdresse(e.target.value))}
             />
-            <span>.{DOMAINE_ECOLES}</span>
+            <span>.{enPlace.domaine ?? DOMAINE_ECOLES}</span>
           </div>
           {adresseChangee && dispo && (
             <p className={dispo.disponible ? 'perso__statut perso__statut--ok' : 'perso__statut perso__statut--ko'}>
@@ -314,6 +322,29 @@ export default function PersonnalisationSection({ ecole, activeUser, modules, on
               ? 'Lettres minuscules, chiffres et tirets. C’est l’adresse mise dans les mails d’invitation.'
               : 'Seul un administrateur principal peut changer l’adresse.'}
           </p>
+
+          {isSuperuser(activeUser) && (
+            <>
+              <p className="perso__label">Nature de l’école</p>
+              <div className="perso__natures">
+                {Object.entries(ENSEIGNES).map(([cle, enseigne]) => (
+                  <button
+                    key={cle}
+                    type="button"
+                    className={enPlace.nature === enseigne.nature ? 'btn btn--primary' : 'btn btn--secondary'}
+                    disabled={enCours || enPlace.nature === enseigne.nature}
+                    onClick={() => changerNature(enseigne)}
+                  >
+                    {enseigne.libelle}
+                  </button>
+                ))}
+              </div>
+              <p className="muted perso__aide">
+                La nature choisit l’adresse ({enPlace.domaine}) et l’apparence par défaut. L’ancienne adresse renvoie vers la
+                nouvelle.
+              </p>
+            </>
+          )}
 
           <label htmlFor="perso-nom-appli" className="perso__label">
             Nom sous l’icône du téléphone
@@ -622,6 +653,7 @@ function ChoixPolice({ id, libelle, options, valeur, texte, titre = false, famil
 // place ; la poubelle supprime celles dont on ne veut plus (jamais celle en
 // place). Rien d'affiché tant qu'il n'y a qu'une image ou aucune.
 function Historique({ ecoleId, type, version, desactive, onReprendre }) {
+  const apparence = useApparence()
   const [images, setImages] = useState([])
   const [erreur, setErreur] = useState('')
 
@@ -662,12 +694,12 @@ function Historique({ ecoleId, type, version, desactive, onReprendre }) {
               title={image.actuelle ? 'En place' : 'Remettre cette image'}
               aria-label={image.actuelle ? 'Image en place' : 'Remettre cette image'}
             >
-              <img src={image.defaut ? urlLogo({}) : urlFichier(ecoleId, image.fichier)} alt="" />
+              <img src={image.defaut ? urlLogo({ enseigne: apparence.enseigne }) : urlFichier(ecoleId, image.fichier)} alt="" />
             </button>
             {image.actuelle ? (
               <small>En place</small>
             ) : image.defaut ? (
-              <small>Contretemps</small>
+              <small>{ENSEIGNES[apparence.enseigne]?.nom ?? 'Contretemps'}</small>
             ) : (
               <button
                 type="button"

@@ -3861,6 +3861,12 @@ a.btn {
   font-size: 12px;
 }
 
+.perso__natures {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .perso__adresse {
   display: flex;
   align-items: center;

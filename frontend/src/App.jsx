@@ -1075,7 +1075,7 @@ function App() {
       <div className="login-screen">
         <div className="login-screen__brand">
           <Logo size={110} />
-          <h1>Contretemps</h1>
+          <h1>{apparenceApi.ENSEIGNES[apparenceApi.apparenceActuelle().enseigne]?.nom ?? 'Contretemps'}</h1>
         </div>
       </div>
     )

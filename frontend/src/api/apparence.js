@@ -39,8 +39,16 @@ export function familleDuSlogan(apparence) {
   return police?.famille ?? undefined
 }
 
+// Les enseignes (backend/src/personnalisation/brands.py, Seb 17/11/2026) :
+// une par domaine, chacune avec son logo par défaut (public/images/).
+export const ENSEIGNES = {
+  contretemps: { nom: 'Contretemps', nature: 'danse', libelle: 'Danse', domaine: 'contretemps.silvaplana.cloud' },
+  assofight: { nom: 'Assofight', nature: 'combat', libelle: 'Combat', domaine: 'assofight.silvaplana.cloud' },
+}
+
 export const DEFAUT = {
   ecoleId: null,
+  enseigne: 'contretemps',
   nom: 'Contretemps',
   nomAppli: 'Contretemps',
   nomMode: 'texte',
@@ -67,6 +75,9 @@ export const DEFAUT = {
 export function versEcran(v) {
   return {
     ecoleId: v.ecole_id,
+    enseigne: v.enseigne ?? 'contretemps',
+    nature: v.nature,
+    domaine: v.domaine,
     nom: v.nom,
     nomAppli: v.nom_appli,
     nomMode: v.nom_mode,
@@ -99,7 +110,10 @@ export function urlFichier(ecoleId, fichier, version) {
 }
 
 export function urlLogo(apparence) {
-  if (!apparence.logoPersonnalise || !apparence.ecoleId) return `${import.meta.env.BASE_URL}images/logo-contretemps.png`
+  if (!apparence.logoPersonnalise || !apparence.ecoleId) {
+    const enseigne = ENSEIGNES[apparence.enseigne] ? apparence.enseigne : 'contretemps'
+    return `${import.meta.env.BASE_URL}images/logo-${enseigne}.png`
+  }
   return urlFichier(apparence.ecoleId, 'logo.png', apparence.version)
 }
 
@@ -208,7 +222,8 @@ export async function chargerParAdresse() {
     const reponse = await fetch(`${BASE_URL}/par-host/personnalisation`)
     if (!reponse.ok) return null
     const apparence = versEcran(await reponse.json())
-    if (apparence.ecoleId) definir(apparence)
+    // Adresse générique d'une autre enseigne (app.assofight…) : ses couleurs.
+    if (apparence.ecoleId || apparence.enseigne !== 'contretemps') definir(apparence)
     return apparence
   } catch {
     return null

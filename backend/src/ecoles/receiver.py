@@ -8,7 +8,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from comptes import Compte, Comptes, rbac
-from fastapi import Depends, FastAPI, HTTPException, Response, UploadFile
+from fastapi import Depends, FastAPI, HTTPException, Request, Response, UploadFile
 from sqlalchemy.orm import Session
 
 from db import get_db
@@ -25,6 +25,13 @@ from .schemas import (
     SauvegardeProgrammeeModification,
 )
 from .stockage import dossier_ecole
+
+
+def _enseigne_visitee(request: Request):
+    from personnalisation import brands
+
+    return brands.of_host(request.headers.get("x-forwarded-host") or request.headers.get("host"))
+
 
 MEDIA_TYPE_XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
@@ -102,8 +109,11 @@ class EcolesReceiver:
     def _superuser(self, appelant: Compte = Depends(rbac.compte_appelant)) -> None:
         rbac.require_superuser(appelant)
 
-    def lister(self, db: Session = Depends(get_db)):
-        return self.client.list(db)
+    def lister(self, request: Request, db: Session = Depends(get_db)):
+        """Sur le domaine d'une enseigne, ses écoles seulement (Seb
+        17/11/2026 : Assofight n'affiche que les écoles de combat)."""
+        brand = _enseigne_visitee(request)
+        return [e for e in self.client.list(db) if brand is None or e.nature == brand.nature]
 
     def obtenir(self, ecole_id: int, db: Session = Depends(get_db)):
         ecole = self.client.get(db, ecole_id)
@@ -111,7 +121,7 @@ class EcolesReceiver:
             raise HTTPException(status_code=404, detail="École introuvable")
         return ecole
 
-    def creer(self, donnees: EcoleCreation, db: Session = Depends(get_db)):
+    def creer(self, donnees: EcoleCreation, request: Request, db: Session = Depends(get_db)):
         """Voir spec §2.3 : crée l'école. La création du premier compte
         admin associé est faite par le module comptes (appelée depuis le
         même endpoint côté frontend, pas ici — ecoles ne connaît pas
@@ -123,7 +133,9 @@ class EcolesReceiver:
                 detail="Une école avec ce nom et ce code postal existe déjà",
             )
         try:
-            return self.client.create(db, **donnees.model_dump())
+            # Créée depuis le domaine d'Assofight : une école de combat.
+            brand = _enseigne_visitee(request)
+            return self.client.create(db, **donnees.model_dump(), nature=brand.nature if brand else None)
         except ValueError as erreur:
             raise HTTPException(status_code=400, detail=str(erreur)) from erreur
 

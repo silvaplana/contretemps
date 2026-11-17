@@ -66,7 +66,12 @@ class Ecole(Base):
     police_titres: Mapped[str | None] = mapped_column(String(30), nullable=True)
     # Pareil pour le slogan.
     police_slogan: Mapped[str | None] = mapped_column(String(30), nullable=True)
-    # Adresse web : https://<sous_domaine>.contretemps.silvaplana.cloud
+    # Nature de l'école (Seb 17/11/2026) : la rattache à une enseigne
+    # (personnalisation/brands.py) : « danse » = Contretemps, « combat » =
+    # Assofight. Elle choisit le domaine de l'adresse et les couleurs, le
+    # logo et l'expéditeur par défaut.
+    nature: Mapped[str] = mapped_column(String(20), nullable=False, default="danse", server_default="danse")
+    # Adresse web : https://<sous_domaine>.<domaine de l'enseigne>
     # (voir personnalisation/adresse.py). L'ancienne redirige 6 mois.
     sous_domaine: Mapped[str] = mapped_column(String(40), nullable=False, unique=True)
     nom_appli: Mapped[str | None] = mapped_column(String(30), nullable=True)

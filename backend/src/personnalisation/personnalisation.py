@@ -22,21 +22,15 @@ from pathlib import Path
 from ecoles.models import Ecole
 from sqlalchemy.orm import Session
 
-from . import images
+from . import brands, images
 from .adresse import GENERIQUE
 
 DOSSIER_PERSONNALISATION = Path(os.environ.get("PERSONNALISATION_DIR", "./data/personnalisation"))
-DOSSIER_DEFAUT = Path(__file__).resolve().parent / "defaut"
 
-# Domaine des adresses d'école : https://<adresse>.<DOMAINE_ECOLES>.
-DOMAINE_ECOLES = os.environ.get("DOMAINE_ECOLES", "contretemps.silvaplana.cloud")
-
-DEFAUTS = {
-    "slogan": "Gestion d'école de danse du cours au gala",
-    "couleur_fond": "#FDECD8",
-    "couleur_texte": "#3A2410",
-    "couleur_accent": "#D8722A",
-}
+# Domaine des adresses d'école de Contretemps : https://<adresse>.<DOMAINE_ECOLES>.
+# Chaque enseigne a le sien (brands.py, Seb 17/11/2026).
+DOMAINE_ECOLES = brands.CONTRETEMPS.domain
+_DOMAINES = (*(b.domain for b in brands.BRANDS), "localhost")
 # Polices hébergées (frontend/public/fonts, licence SIL OFL) ; vide = système.
 # Vocabulaire (Seb, 24 octobre) : mot affiché par défaut, que l'école peut
 # remplacer (ecoles/models.py : mot_ecole...).
@@ -61,12 +55,20 @@ _IMAGE_GARDEE = re.compile(r"^(logo|nom)-(\d+)(-original)?\.png$")
 # 2 (2026-10-15) : fond transparent pour l'ordinateur.
 FORMAT_ICONES = 2
 
+def _enseigne(ecole: Ecole | None, brand: brands.Brand | None) -> brands.Brand:
+    """L'enseigne de l'école ; sans école, celle de l'adresse visitée."""
+    if ecole is not None:
+        return brands.of_nature(ecole.nature)
+    return brand or brands.CONTRETEMPS
+
+
 class PersonnalisationRefusee(ValueError):
     """Le message est montrable."""
 
 
 def adresse_de_l_ecole(ecole: Ecole) -> str:
-    return f"https://{ecole.sous_domaine}.{DOMAINE_ECOLES}"
+    """Sur le domaine de l'enseigne de sa nature (brands.py)."""
+    return f"https://{ecole.sous_domaine}.{brands.of_nature(ecole.nature).domain}"
 
 
 def page_du_host(host: str | None) -> tuple[str, str] | None:
@@ -74,7 +76,7 @@ def page_du_host(host: str | None) -> tuple[str, str] | None:
     (« inscription », « le-beausset ») : page en ligne d'un fichier de l'école
     (documents.md §5.5). Aussi « <page>.<adresse>.localhost ». None sinon."""
     hote = (host or "").split(":")[0].strip().lower().rstrip(".")
-    for domaine in (DOMAINE_ECOLES, "localhost"):
+    for domaine in _DOMAINES:
         suffixe = f".{domaine}"
         if hote.endswith(suffixe):
             morceaux = hote[: -len(suffixe)].split(".")
@@ -88,7 +90,7 @@ def etiquette_du_host(host: str | None) -> str | None:
     Accepte aussi « <adresse>.localhost » pour le développement. None pour
     toute autre adresse (dont l'adresse générique)."""
     hote = (host or "").split(":")[0].strip().lower().rstrip(".")
-    for domaine in (DOMAINE_ECOLES, "localhost"):
+    for domaine in _DOMAINES:
         suffixe = f".{domaine}"
         if hote.endswith(suffixe):
             etiquette = hote[: -len(suffixe)]
@@ -119,27 +121,34 @@ class Personnalisation:
     def detourages_disponibles(self) -> list[str]:
         return [d for d in DETOURAGES if d != "ia" or self.detourage_ia is not None]
 
-    def vue(self, ecole: Ecole | None) -> dict:
-        """Ce que l'appli applique ; `ecole=None` : l'adresse générique."""
+    def vue(self, ecole: Ecole | None, brand: brands.Brand | None = None) -> dict:
+        """Ce que l'appli applique ; `ecole=None` : l'adresse générique de
+        l'enseigne `brand` (Contretemps par défaut). Champ vide : la valeur
+        de l'enseigne de l'école."""
+        brand = _enseigne(ecole, brand)
         if ecole is None:
             return {
-                "ecole_id": None, "sous_domaine": GENERIQUE, "nom": "Contretemps", "nom_appli": "Contretemps",
-                "nom_mode": "texte", "slogan": DEFAUTS["slogan"], "couleur_fond": DEFAUTS["couleur_fond"],
-                "couleur_texte": DEFAUTS["couleur_texte"], "couleur_accent": DEFAUTS["couleur_accent"],
+                "ecole_id": None, "sous_domaine": GENERIQUE, "nom": brand.name, "nom_appli": brand.name,
+                "nom_mode": "texte", "slogan": brand.slogan, "couleur_fond": brand.background,
+                "couleur_texte": brand.text, "couleur_accent": brand.accent,
                 "police": None, "police_titres": None, "police_nom": None, "police_slogan": None, "logo_personnalise": False, "nom_image": False, "version": 0,
-                "adresse": f"https://{GENERIQUE}.{DOMAINE_ECOLES}",
+                "adresse": f"https://{GENERIQUE}.{brand.domain}", "enseigne": brand.key,
+                "nature": brand.nature, "domaine": brand.domain,
                 **MOTS,
             }
         return {
             "ecole_id": ecole.id,
+            "enseigne": brand.key,
+            "nature": ecole.nature,
+            "domaine": brand.domain,
             "sous_domaine": ecole.sous_domaine,
             "nom": ecole.nom,
             "nom_appli": ecole.nom_appli or ecole.nom,
             "nom_mode": ecole.nom_mode if ecole.nom_image else "texte",
-            "slogan": ecole.slogan or DEFAUTS["slogan"],
-            "couleur_fond": ecole.couleur_fond or DEFAUTS["couleur_fond"],
-            "couleur_texte": ecole.couleur_texte or DEFAUTS["couleur_texte"],
-            "couleur_accent": ecole.couleur_accent or DEFAUTS["couleur_accent"],
+            "slogan": ecole.slogan or brand.slogan,
+            "couleur_fond": ecole.couleur_fond or brand.background,
+            "couleur_texte": ecole.couleur_texte or brand.text,
+            "couleur_accent": ecole.couleur_accent or brand.accent,
             "police": ecole.police,
             "police_titres": ecole.police_titres,
             "police_nom": ecole.police_nom,
@@ -152,12 +161,19 @@ class Personnalisation:
         }
 
     def ecole_du_host(self, db: Session, host: str | None) -> tuple[Ecole | None, bool]:
-        """(école, adresse ancienne ?) de l'adresse visitée."""
+        """(école, adresse ancienne ?) de l'adresse visitée. Une école
+        visitée sur le domaine d'une autre enseigne (ex. ASC La Ciotat sur
+        contretemps.silvaplana.cloud après son passage à Assofight) :
+        ancienne adresse, l'appli renvoie vers la bonne."""
         page = page_du_host(host)
         etiquette = page[1] if page else etiquette_du_host(host)
         if etiquette is None or etiquette == GENERIQUE:
             return None, False
-        return self.ecoles.par_adresse(db, etiquette)
+        ecole, ancienne = self.ecoles.par_adresse(db, etiquette)
+        visitee = brands.of_host(host)
+        if ecole is not None and visitee is not None and visitee != brands.of_nature(ecole.nature):
+            return ecole, True
+        return ecole, ancienne
 
     def existe(self, db: Session, domaine: str | None) -> bool:
         """Caddy demande s'il peut créer un certificat pour `domaine` (spec
@@ -404,7 +420,10 @@ class Personnalisation:
         """Fichier servi publiquement : le logo, le nom en image, ou un
         brouillon (nom tiré au hasard)."""
         if nom == "logo.png":
-            return self._dossier(ecole.id) / ecole.logo if ecole.logo else DOSSIER_DEFAUT / "logo-contretemps.png"
+            if ecole.logo:
+                return self._dossier(ecole.id) / ecole.logo
+            brand = brands.of_nature(ecole.nature)
+            return brand.defaults_dir / brand.logo_file
         if nom == "nom.png":
             return self._dossier(ecole.id) / ecole.nom_image if ecole.nom_image else None
         if _BROUILLON.match(nom) or _IMAGE_GARDEE.match(nom):
@@ -414,21 +433,21 @@ class Personnalisation:
 
     # --- Ce que lit le téléphone à l'installation (spec §2.7) ---
 
-    def _version_icones(self, ecole: Ecole | None) -> str:
+    def _version_icones(self, ecole: Ecole | None, brand: brands.Brand | None = None) -> str:
         """Dans l'adresse des icônes : change à chaque nouveau logo (le
         navigateur reprend alors l'icône au lieu de garder l'ancienne), et
         avec FORMAT_ICONES quand la façon de les fabriquer change."""
-        return f"{self.vue(ecole)['version']}.{FORMAT_ICONES}"
+        return f"{self.vue(ecole, brand)['version']}.{FORMAT_ICONES}"
 
-    def manifest(self, ecole: Ecole | None) -> dict:
-        vue = self.vue(ecole)
-        v = f"?v={self._version_icones(ecole)}"
+    def manifest(self, ecole: Ecole | None, brand: brands.Brand | None = None) -> dict:
+        vue = self.vue(ecole, brand)
+        v = f"?v={self._version_icones(ecole, brand)}"
         icones = [
             {"src": f"/icons/icon-{taille}{suffixe}.png{v}", "sizes": f"{taille}x{taille}", "type": "image/png", "purpose": but}
             for taille in (192, 512)
             for suffixe, but in (("", "any"), ("-maskable", "maskable"))
         ]
-        fond = self._couleur_appli(ecole)
+        fond = self._couleur_appli(ecole, brand)
         return {
             "name": vue["nom_appli"],
             "short_name": vue["nom_appli"],
@@ -450,15 +469,15 @@ class Personnalisation:
             },
         }
 
-    def _couleur_appli(self, ecole: Ecole | None) -> str:
+    def _couleur_appli(self, ecole: Ecole | None, brand: brands.Brand | None = None) -> str:
         """Couleur de la barre et de l'écran de lancement de l'appli
         installée : celle de l'école si elle a personnalisé son logo ou son
         fond, sinon l'orange des icônes d'aujourd'hui."""
         if ecole is not None and (ecole.logo or ecole.couleur_fond):
             return self.vue(ecole)["couleur_fond"]
-        return "#F46E19"
+        return _enseigne(ecole, brand).app_colour
 
-    def icone(self, ecole: Ecole | None, nom: str) -> bytes | None:
+    def icone(self, ecole: Ecole | None, nom: str, brand: brands.Brand | None = None) -> bytes | None:
         """`nom` : icon-192.png, icon-512-maskable.png, favicon.png,
         apple-touch-icon.png. Sans logo ni couleur de fond personnalisés,
         les icônes d'aujourd'hui ; sinon fabriquées et gardées sur disque."""
@@ -474,7 +493,7 @@ class Personnalisation:
         if nom not in tailles:
             return None
         if ecole is None or not (ecole.logo or ecole.couleur_fond):
-            return (DOSSIER_DEFAUT / nom).read_bytes()
+            return (_enseigne(ecole, brand).defaults_dir / nom).read_bytes()
         taille, maskable, plein = tailles[nom]
         version = f"{ecole.personnalisation_version or 1}.{FORMAT_ICONES}"
         cache = self._dossier(ecole.id) / "icones" / f"v{version}-{nom}"
@@ -487,18 +506,18 @@ class Personnalisation:
             cache.write_bytes(images.icone(logo, fond, taille, maskable))
         return cache.read_bytes()
 
-    def entete_html(self, ecole: Ecole | None) -> str:
+    def entete_html(self, ecole: Ecole | None, brand: brands.Brand | None = None) -> str:
         """Les balises que l'iPhone lit à l'installation, avant que
         l'appli ne démarre (injectées dans index.html, voir frontend/Caddyfile)."""
         from html import escape
 
-        vue = self.vue(ecole)
+        vue = self.vue(ecole, brand)
         nom = escape(vue["nom_appli"])
-        v = self._version_icones(ecole)
+        v = self._version_icones(ecole, brand)
         return (
             f'<link rel="icon" type="image/png" href="/favicon.png?v={v}" />\n'
             f'    <link rel="apple-touch-icon" href="/apple-touch-icon.png?v={v}" />\n'
             f"    <title>{nom}</title>\n"
             f'    <meta name="apple-mobile-web-app-title" content="{nom}" />\n'
-            f'    <meta name="theme-color" content="{escape(self._couleur_appli(ecole))}" />'
+            f'    <meta name="theme-color" content="{escape(self._couleur_appli(ecole, brand))}" />'
         )

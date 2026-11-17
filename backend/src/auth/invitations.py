@@ -74,11 +74,12 @@ class Invitations:
                 # école : « votre mot de passe habituel », sans nommer
                 # l'autre école (vécu le 2026-11-12, Sambo).
                 self.mails.rappel(
-                    email, ecole.nom, nom, prenoms, sous_domaine=ecole.sous_domaine, nouvelle_ecole=nouvelle_ecole
+                    email, ecole.nom, nom, prenoms, sous_domaine=ecole.sous_domaine, nouvelle_ecole=nouvelle_ecole,
+                    nature=ecole.nature,
                 )
             else:
                 jeton = self.acces.creer_lien(db, acces_email, INVITATION, ecole.id)
-                self.mails.invitation(email, ecole.nom, nom, prenoms, jeton, sous_domaine=ecole.sous_domaine)
+                self.mails.invitation(email, ecole.nom, nom, prenoms, jeton, sous_domaine=ecole.sous_domaine, nature=ecole.nature)
         except MailsIndisponibles:
             raise  # réglage du serveur, pas un problème de cette adresse
         except Exception as erreur:

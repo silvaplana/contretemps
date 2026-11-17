@@ -55,6 +55,11 @@ export async function changerAdresse(ecoleId, adresse) {
   )
 }
 
+// Super User seulement : Danse (Contretemps) ou Combat (Assofight).
+export async function changerNature(ecoleId, nature) {
+  return versEcran(await requete(`/ecoles/${ecoleId}/nature`, { method: 'PATCH', body: JSON.stringify({ nature }) }))
+}
+
 // { adresse, disponible, raison: 'invalide' | 'reserve' | 'pris' | null, proposition }
 export async function disponibilite(adresse, ecoleId) {
   return requete(`/sous-domaines/${encodeURIComponent(adresse)}/disponible?ecole_id=${ecoleId}`)

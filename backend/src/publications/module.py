@@ -29,7 +29,7 @@ def _org_url(db, org_id):
     from ecoles.models import Ecole
 
     ecole = db.get(Ecole, org_id) if org_id is not None else None
-    return MailsAcces().appli(ecole.sous_domaine if ecole is not None else None)
+    return MailsAcces().appli(*((ecole.sous_domaine, ecole.nature) if ecole is not None else ()))
 
 
 MODULE = Module(
