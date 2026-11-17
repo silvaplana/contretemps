@@ -34,7 +34,8 @@ Admin › École
   Toucher la case Groupes : Bureau (Président·e, Vice-président·e, Secrétaire, Trésorier·e), Profs,
   groupes de l'école, 🔒 Accès au Financier, 🔒 Publier les actualités, « + Nouveau groupe… ». Crayon et poubelle :
   administrateur principal, jamais sur sa propre ligne.
-- Personnalisation de l'application : Apparence visuelle (aperçus, adresse web de l'appli, nom sous
+- Personnalisation de l'application : Apparence visuelle (aperçus, adresse web de l'appli, « Nature de l'école » Danse ou Combat pour le
+  Super User seulement, nom sous
   l'icône, logo, nom de l'école en texte ou image, slogan, polices, couleurs ; Enregistrer ;
   « Revenir à l'apparence par défaut »), Fonctionnalités (une case par module), Vocabulaire.
 - Usage des ressources : Mémoire (disque, les plus grosses vidéos, poubelle) ; dépenses de
