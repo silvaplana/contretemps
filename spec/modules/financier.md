@@ -336,15 +336,24 @@ Maquette validée : https://claude.ai/artifact/Cpa2e2G1aFAKXB8hGppBEG. Le tablea
 le lecteur** : chaque chiffre de la courbe se retrouve sur une ligne, et chaque ligne dit sur quoi
 elle repose.
 
-- **Ce que rend la formule** : `prevoir(donnees, p)` renvoie une liste d'opérations
+- **Ce que rend la formule** : `prevoir(donnees, p)` renvoie la liste des opérations hypothétiques
   `{"date", "libelle", "categorie", "montant", "hypothese"}` entre le lendemain de la date de
   départ et la fin de la saison (recettes positives, dépenses négatives, virements internes exclus).
-  `hypothese` vaut `null` pour une ligne **sûre**, sinon le code d'une hypothèse déclarée (`"H1"`…).
+  `hypothese` est le code d'une hypothèse déclarée (`"H1"`…).
   L'appli refuse (et renvoie une fois au modèle) une date hors période, un montant non numérique ou
   un code d'hypothèse non déclaré.
 - **Sûr** : seulement les montants que l'appli connaît déjà, c'est-à-dire les **échéances HelloAsso
-  à venir** (`donnees["echeancesAVenir"]` : `[{"date", "montant", "libelle"}]`). Tout le reste est une
-  hypothèse, même un loyer qui revient chaque mois (« H5 : loyer identique aux 12 derniers mois »).
+  à venir**. **L'appli écrit elle-même ces lignes** (une par date d'échéance : « Échéances HelloAsso
+  du 05/12 (9 adhérents) »), le modèle ne peut ni les changer ni les compter deux fois : il les voit
+  dans `donnees["echeancesAVenir"]` (`[{"date", "montant", "adherents"}]`) et ses opérations n'en
+  contiennent pas. Tout le reste est une hypothèse, même un loyer qui revient chaque mois (« H5 :
+  loyer identique aux 12 derniers mois »).
+- **Ce qui vient de HelloAsso est expliqué** (Seb, 18/11), texte écrit par l'appli, pas par le
+  modèle : la campagne et la date de la dernière relecture, le nombre d'adhérents qui paient en
+  plusieurs fois, le nombre d'échéances pas encore encaissées, leur total et leur période ; ce qui
+  n'est **pas** compté (impayés avec leur montant, adhésions résiliées) ; et que ce qui est déjà
+  encaissé est dans le solde de départ. Sans HelloAsso : « Aucune ligne sûre : HelloAsso n'est pas
+  relié ».
 - **Hypothèses** : déclarées par le modèle dans le même appel que la formule (pas d'appel en plus) :
   `[{"code": "H1", "texte": "…"}]`, une phrase simple chacune. Une hypothèse qui dépend d'un curseur
   écrit sa valeur entre accolades (`"Salaire du prof : {salaire} € par mois"`) : l'appli la remplace
@@ -355,7 +364,7 @@ elle repose.
   (le prévisionnel ne sait pas sur quel compte tombe une opération). Première ligne : « Solde réel
   à la date de départ » ; la dernière tombe sur le « Solde prévu » des trois chiffres. Étiquette
   verte **Sûr** ou orange **H1**, **H2**… Sous le tableau, « Sur quoi reposent ces opérations » :
-  la définition de Sûr puis une ligne par hypothèse. Bouger un curseur met à jour graphique,
+  l'explication de ce qui vient de HelloAsso, puis une ligne par hypothèse. Bouger un curseur met à jour graphique,
   tableau et hypothèses ensemble.
 - **Prévisionnels déjà produits** : ils n'ont qu'un solde par semaine ; le tableau affiche « Produire
   à nouveau le prévisionnel pour voir ses opérations ».
