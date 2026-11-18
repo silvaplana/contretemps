@@ -24,7 +24,7 @@ const LIBELLE_DETOURAGE = { aucun: 'Aucun', simple: 'Simple', ia: 'Par IA' }
 // précède), « Fonctionnalités » (les modules de l'école, voir
 // FonctionnalitesSection.jsx) et, en dernier, « Vocabulaire »
 // (VocabulaireSection.jsx).
-export default function PersonnalisationSection({ ecole, activeUser, modules, onModulesChange }) {
+export default function PersonnalisationSection({ ecole, activeUser, modules, onModulesChange, barre }) {
   const [chapitreOuvert, setChapitreOuvert] = useState(false)
   const [vocabulaireOuvert, setVocabulaireOuvert] = useState(false)
   const [fonctionnalitesOuvertes, setFonctionnalitesOuvertes] = useState(false)
@@ -583,6 +583,7 @@ export default function PersonnalisationSection({ ecole, activeUser, modules, on
           activeUser={activeUser}
           modules={modules}
           onModulesChange={onModulesChange}
+          barre={barre}
         />
       )}
 

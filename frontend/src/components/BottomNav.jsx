@@ -19,10 +19,11 @@ import Icon from './Icon.jsx'
 // `eteints` : les modules éteints dans l'école (spec/core.md §9 bis.3), dont
 // les onglets sont cachés. `tabs` : les onglets, avec ceux calculés pour
 // l'école (data/nav.js : ongletsAvec).
-export default function BottomNav({ active, onChange, profil, eteints = new Set(), alertes = {}, tabs = TABS }) {
+// `ordre` : l'ordre des onglets choisi pour l'école (Fonctionnalités).
+export default function BottomNav({ active, onChange, profil, eteints = new Set(), alertes = {}, tabs = TABS, ordre = [] }) {
   // Un profil à plusieurs rôles voit l'union de leurs onglets (spec §3),
-  // dans l'ordre qu'il a choisi (Profil › Ma barre du bas).
-  const visibles = ongletsVisibles(profil, eteints, tabs)
+  // dans l'ordre de l'école.
+  const visibles = ongletsVisibles(profil, eteints, tabs, ordre)
   const navRef = useRef(null)
   const [place, setPlace] = useState(visibles.length)
   const [menuOuvert, setMenuOuvert] = useState(false)

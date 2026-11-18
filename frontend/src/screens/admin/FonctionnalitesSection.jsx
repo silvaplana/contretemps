@@ -1,14 +1,17 @@
 import { useState } from 'react'
 import * as modulesApi from '../../api/modules.js'
 import { MODULES } from '../../app/modules.js'
+import { ongletsVisibles } from '../../data/nav.js'
 import { isOwner, isSuperuser } from '../../data/roles.js'
+import OrdreBarreDuBas from './OrdreBarreDuBas.jsx'
 
 // « Fonctionnalités » (Admin > École > Personnalisation de l'application ;
 // Seb, 24 octobre) : une case par module (spec/core.md §9 bis.3). Décocher
 // cache l'onglet et les actions de l'assistant, sans rien effacer. Seuls
 // l'Administrateur principal et le Super User changent les cases et voient
 // les réglages qu'un module déclare (`settings` dans son module.js).
-export default function FonctionnalitesSection({ ecole, activeUser, modules, onModulesChange }) {
+// `barre` : { tabs, ordre, onRanger }, l'ordre de la barre du bas (sous les cases).
+export default function FonctionnalitesSection({ ecole, activeUser, modules, onModulesChange, barre }) {
   const [erreur, setErreur] = useState(null)
   const peutChanger = isOwner(activeUser) || isSuperuser(activeUser)
 
@@ -48,6 +51,19 @@ export default function FonctionnalitesSection({ ecole, activeUser, modules, onM
         )
       })}
       {erreur && <p className="login-screen__erreur">{erreur}</p>}
+      {peutChanger && barre && (
+        <OrdreBarreDuBas
+          // Tous les onglets des modules allumés, quels que soient les rôles
+          // (Supervision, propre au Super User, à part).
+          onglets={ongletsVisibles(
+            { roles: ['admin', 'owner', 'tresorier', 'professeur', 'eleve'] },
+            new Set(modules.filter((m) => !m.enabled).map((m) => m.key)),
+            barre.tabs,
+            barre.ordre,
+          )}
+          onRanger={barre.onRanger}
+        />
+      )}
     </div>
   )
 }

@@ -317,11 +317,17 @@ function App() {
     setCompteReel((u) => ({ ...u, ...patch }))
   }
 
-  // Profil › Ma barre du bas : la barre suit tout de suite, le serveur garde
-  // l'ordre sur la fiche ([] ou null = l'ordre de l'école).
-  async function rangerOnglets(tabOrder) {
-    setCompteReel((u) => ({ ...u, tabOrder: tabOrder?.length ? tabOrder : null }))
-    await comptesApi.rangerOnglets(activeUser.id, tabOrder ?? [])
+  // Admin › École › Fonctionnalités : la barre suit tout de suite, le
+  // serveur garde l'ordre pour l'école.
+  async function rangerOnglets(ordre) {
+    const avant = ordreOnglets
+    setOrdreOnglets(ordre)
+    try {
+      setOrdreOnglets(await modulesApi.rangerOnglets(ecole.id, ordre))
+    } catch (e) {
+      setOrdreOnglets(avant)
+      throw e
+    }
   }
 
   function logout() {
@@ -386,9 +392,12 @@ function App() {
   // est caché. Ils s'allument ou s'éteignent dans Admin > École >
   // Personnalisation de l'application > Fonctionnalités.
   const [modules, setModules] = useState([])
+  // Ordre de la barre du bas pour toute l'école (Fonctionnalités, §10.4).
+  const [ordreOnglets, setOrdreOnglets] = useState([])
   useEffect(() => {
     if (!ecole.id) return
     modulesApi.lister(ecole.id).then(setModules).catch(() => setModules([]))
+    modulesApi.ordreOnglets(ecole.id).then(setOrdreOnglets).catch(() => setOrdreOnglets([]))
   }, [ecole.id])
   // Les blogs du module Publications (spec/modules/actualites.md §12) : un
   // onglet par blog que ce profil lit ; relus quand Fonctionnalités les
@@ -1280,6 +1289,7 @@ function App() {
             onSaisonSupprimee={surSaisonSupprimee}
             modules={modules}
             onModulesChange={setModules}
+            barre={{ tabs, ordre: ordreOnglets, onRanger: rangerOnglets }}
             onMonRoleTresorier={(oui) =>
               setCompteReel((u) => ({
                 ...u,
@@ -1383,9 +1393,6 @@ function App() {
             onOpenMesHeures={() => openHeures(activeUser.id, 'profil')}
             onOpenNotesFrais={() => setActiveTab('notes-frais')}
             onUpdateUser={mettreAJourActiveUser}
-            onglets={tabs}
-            ongletsEteints={modulesEteints}
-            onRangerOnglets={rangerOnglets}
             onChangerEcole={isSuperuser(activeUser) ? changerEcole : undefined}
           />
         )}
@@ -1407,6 +1414,7 @@ function App() {
         eteints={modulesEteints}
         alertes={{ messagerie: totalNonLus + mailNonLus, sparring: nouveauxCombats }}
         tabs={tabs}
+        ordre={ordreOnglets}
       />
     </div>
   )

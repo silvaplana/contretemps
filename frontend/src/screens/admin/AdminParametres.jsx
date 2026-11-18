@@ -53,6 +53,7 @@ export default function AdminParametres({
   onMonRoleTresorier,
   modules,
   onModulesChange,
+  barre,
 }) {
   const [creationAdminOuverte, setCreationAdminOuverte] = useState(false)
   const [coordonneesOuvertes, setCoordonneesOuvertes] = useState(false)
@@ -244,6 +245,7 @@ export default function AdminParametres({
         activeUser={activeUser}
         modules={modules}
         onModulesChange={onModulesChange}
+        barre={barre}
       />
 
       {/* Identifiants des modules (HelloAsso, FFST, Mail, banque ; spec/core.md,
