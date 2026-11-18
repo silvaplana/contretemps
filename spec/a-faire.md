@@ -15,7 +15,9 @@ module. Rayer ce qui est fait.
   documents 2025-26 produits par l'appli.
 - Socle par saison (`core.md` §13) : groupes, droits, cours = groupes, champs des membres, famille
   par l'email du payeur, création de saison en un écran, tarifs, HelloAsso (`modules/helloasso.md`),
-  formulaire d'inscription de l'appli (à concevoir).
+  formulaire d'inscription de l'appli (à concevoir : celui de Contretemps est à rendre propre à chaque
+  association, étude à part). HelloAsso par saison : « HelloAsso fait tout » ou « L'appli fait tout,
+  HelloAsso encaisse », paiement par carte avec les clés de l'école (`modules/helloasso.md` §8).
 - Reprise de Sambo Admin dans Assofight pour ASC La Ciotat (Seb, 18 novembre) : adhérents entièrement
   imposés par HelloAsso, tableau, impayés, contact, résiliation (`modules/helloasso.md` §7) et module
   FFST (`modules/ffst.md`). À spécifier ensuite, chacun dans son fil : module Essai et client mail de
