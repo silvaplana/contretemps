@@ -18,6 +18,8 @@ from .connection import Connection
 from .models import OrgHelloAsso, SeasonHelloAsso
 
 SOURCE = "helloasso"
+# Le choix de la saison (spec §8.1).
+MASTER, PAYMENT = "master", "payment"
 
 
 class Campaigns:
@@ -40,8 +42,15 @@ class Campaigns:
         return connection.client_id, secret, connection.org_slug
 
     @staticmethod
-    def current(db: Session, season_id: int) -> SeasonHelloAsso | None:
+    def row(db: Session, season_id: int) -> SeasonHelloAsso | None:
+        """Le choix de la saison, quel qu'il soit (None : sans HelloAsso)."""
         return db.scalar(select(SeasonHelloAsso).where(SeasonHelloAsso.season_id == season_id))
+
+    @classmethod
+    def current(cls, db: Session, season_id: int) -> SeasonHelloAsso | None:
+        """La campagne de la saison : seulement au choix « HelloAsso fait tout »."""
+        row = cls.row(db, season_id)
+        return row if row is not None and row.mode == MASTER else None
 
     def list_forms(self, db: Session, org_id: int) -> list[api.Form]:
         connection = Connection.row(db, org_id)
@@ -60,7 +69,8 @@ class Campaigns:
         if form is None:
             raise api.HelloAssoError("Cette campagne n’existe plus sur HelloAsso.")
         member_fields.set_external(db, org_id, season_id, SOURCE, self.form_fields(*keys, form_type, form_slug))
-        row = self.current(db, season_id) or SeasonHelloAsso(org_id=org_id, season_id=season_id)
+        row = self.row(db, season_id) or SeasonHelloAsso(org_id=org_id, season_id=season_id)
+        row.mode = MASTER
         row.form_type, row.form_slug, row.form_name = form.form_type, form.form_slug, form.name
         db.add(row)
         db.flush()
@@ -72,6 +82,19 @@ class Campaigns:
         member_fields.set_external(db, org_id, season_id, SOURCE, [])
         row = self.current(db, season_id)
         if row is not None:
+            db.delete(row)
+        db.flush()
+
+    def set_payment(self, db: Session, org_id: int, season_id: int, on: bool) -> None:
+        """« L'appli fait tout, HelloAsso encaisse » (on) ou « Sans HelloAsso »
+        (off) : la campagne éventuelle est retirée comme par « Nos champs »
+        (réponses gardées) ; sans commit."""
+        self.clear(db, org_id, season_id)
+        row = self.row(db, season_id)
+        if on and row is None:
+            db.add(SeasonHelloAsso(org_id=org_id, season_id=season_id, mode=PAYMENT, form_type="", form_slug="",
+                                   form_name=""))
+        elif not on and row is not None:
             db.delete(row)
         db.flush()
 

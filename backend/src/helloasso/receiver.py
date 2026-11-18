@@ -4,11 +4,12 @@ réservées à l'Administrateur principal et au Super User de l'école."""
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 
 from comptes import Compte, rbac
 from fastapi import Depends, FastAPI, HTTPException, Query, Response
 from pydantic import BaseModel, Field
-from saisons import saison_courante_id
+from saisons import Saison, saison_courante_id
 from saisons.portee import saison_demandee
 from sqlalchemy.orm import Session
 
@@ -17,7 +18,7 @@ from db import get_db
 from . import api
 from . import members as imposed_members
 from .api import HelloAssoError, Organization
-from .campaign import Campaigns
+from .campaign import MASTER, Campaigns
 from .connection import Connection
 from .sync import Sync
 
@@ -139,6 +140,24 @@ class MemberCardOut(BaseModel):
     payments: list[dict]
 
 
+class SeasonOut(BaseModel):
+    """Le choix de la saison affichée (spec §8.1)."""
+
+    connected: bool
+    # `master` « HelloAsso fait tout », `payment` « L'appli fait tout,
+    # HelloAsso encaisse », `none` « Sans HelloAsso ».
+    mode: str = "none"
+    season_name: str | None = None
+    # Administrateur principal et Super User, saison en cours.
+    can_change: bool = False
+    form: FormOut | None = None
+
+
+class SeasonIn(BaseModel):
+    # « HelloAsso fait tout » se choisit avec sa campagne (PUT …/campagne).
+    mode: Literal["payment", "none"]
+
+
 class CampaignIn(BaseModel):
     form_type: str = Field(min_length=1, max_length=30)
     form_slug: str = Field(min_length=1, max_length=255)
@@ -169,6 +188,10 @@ class HelloAssoReceiver:
             self.choisir
         )
         app.delete("/ecoles/{ecole_id}/helloasso/campagne", status_code=204, dependencies=owner)(self.nos_champs)
+        app.get("/ecoles/{ecole_id}/helloasso/saison", response_model=SeasonOut)(self.saison)
+        app.put("/ecoles/{ecole_id}/helloasso/saison", response_model=SeasonOut, dependencies=owner)(
+            self.choisir_saison
+        )
         app.get("/ecoles/{ecole_id}/helloasso", response_model=StatusOut, dependencies=owner)(self.etat)
         app.post("/ecoles/{ecole_id}/helloasso/tester", response_model=OrganizationOut, dependencies=owner)(
             self.tester
@@ -276,6 +299,42 @@ class HelloAssoReceiver:
         self.campaigns.clear(db, ecole_id, self._courante(db, ecole_id))
         db.commit()
         return Response(status_code=204)
+
+    def saison(self, ecole_id: int, db: Session = Depends(get_db), appelant: Compte = Depends(rbac.compte_appelant)):
+        """Comment la saison affichée utilise HelloAsso (tout admin le lit)."""
+        rbac.require_admin(appelant, ecole_id)
+        if self.client.current(db, ecole_id) is None:
+            return SeasonOut(connected=False)
+        season_id = saison_demandee() or saison_courante_id(db, ecole_id)
+        row = self.campaigns.row(db, season_id) if season_id else None
+        season = db.get(Saison, season_id) if season_id else None
+        try:
+            rbac.require_owner(appelant, ecole_id)
+            can_change = season_id is not None and season_id == saison_courante_id(db, ecole_id)
+        except HTTPException:
+            can_change = False
+        return SeasonOut(
+            connected=True,
+            mode=row.mode if row is not None else "none",
+            season_name=season.nom if season else None,
+            can_change=can_change,
+            form=FormOut(form_type=row.form_type, form_slug=row.form_slug, name=row.form_name)
+            if row is not None and row.mode == MASTER
+            else None,
+        )
+
+    def choisir_saison(
+        self, ecole_id: int, data: SeasonIn, db: Session = Depends(get_db),
+        appelant: Compte = Depends(rbac.compte_appelant),
+    ):
+        """« L'appli fait tout, HelloAsso encaisse » ou « Sans HelloAsso »
+        pour la saison en cours ; la campagne éventuelle est retirée."""
+        season_id = self._courante(db, ecole_id)
+        if self.client.current(db, ecole_id) is None:
+            raise HTTPException(status_code=422, detail="HelloAsso n’est pas connecté")
+        self.campaigns.set_payment(db, ecole_id, season_id, data.mode == "payment")
+        db.commit()
+        return self.saison(ecole_id, db, appelant)
 
     def synchroniser(
         self, ecole_id: int, db: Session = Depends(get_db), appelant: Compte = Depends(rbac.compte_appelant)

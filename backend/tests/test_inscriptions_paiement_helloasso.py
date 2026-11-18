@@ -75,8 +75,7 @@ def _helloasso_actif(monkeypatch):
     monkeypatch.setattr(ha, "client_secret", "secret-test")
     monkeypatch.setattr(ha, "organization_slug", "asso-test")
     monkeypatch.setattr(ha, "actif", True)
-    monkeypatch.setattr(ha, "_access_token", None)
-    monkeypatch.setattr(ha, "_expire_a", 0.0)
+    monkeypatch.setattr(ha, "_jetons", {})
     monkeypatch.setattr(
         helloasso_module.requests,
         "post",
@@ -382,3 +381,58 @@ def test_webhook_helloasso_declenche_la_verification(
 def test_webhook_helloasso_corps_inconnu_ne_plante_pas(client, db_session):
     reponse = client.post("/inscriptions/paiement/helloasso/notification", json={"foo": "bar"})
     assert reponse.status_code == 204
+
+
+def test_paiement_avec_les_cles_de_l_ecole(client, db_session, _nettoyage_dossier, _helloasso_actif, monkeypatch):
+    """Saison « L'appli fait tout, HelloAsso encaisse » (helloasso.md §8.2) :
+    le paiement et sa vérification passent par les clés de l'école, pas
+    par celles du serveur. Une saison sans ce choix garde celles du serveur."""
+    from app.main import core
+    from helloasso import OrgHelloAsso
+    from saisons import saison_courante_id
+    from securite.chiffrement import chiffrer
+
+    ecole, cours = _creer_ecole_avec_cours(db_session)
+    _nettoyage_dossier.append(DOSSIER_INSCRIPTIONS / str(ecole.id))
+    jetons, appels = [], []
+    monkeypatch.setattr(
+        helloasso_module.requests,
+        "post",
+        lambda url, data, **k: jetons.append(data["client_id"]) or _FausseReponse(
+            {"access_token": f"tok-{data['client_id']}", "expires_in": 1799}
+        ),
+    )
+
+    def request(methode, url, headers, **k):
+        appels.append((url, headers["Authorization"]))
+        if methode == "POST":
+            return _FausseReponse({"id": 77, "redirectUrl": "https://x/pay"})
+        return _FausseReponse({"order": {"payments": [{"state": "Authorized"}]}})
+
+    monkeypatch.setattr(helloasso_module.requests, "request", request)
+
+    def payer():
+        token = client.post(
+            "/inscriptions", params={"ecole_id": ecole.id}, json=_donnees_formulaire([cours["Éveil"].id])
+        ).json()["token_public"]
+        assert client.post(
+            f"/inscriptions/{token}/paiement/helloasso", json={"retour_url": "https://exemple.fr"}
+        ).status_code == 200
+        client.post(f"/inscriptions/{token}/paiement/helloasso/verifier")
+
+    # Sans choix : les clés du serveur, comme avant.
+    payer()
+    assert jetons == ["id-test"] and all("/organizations/asso-test/" in url for url, _ in appels)
+
+    db_session.add(OrgHelloAsso(org_id=ecole.id, client_id="cle-ecole", secret_encrypted=chiffrer("s"),
+                                org_name="Alliance", org_slug="alliance-ecole"))
+    db_session.commit()
+    core.helloasso_campaigns.set_payment(db_session, ecole.id, saison_courante_id(db_session, ecole.id), True)
+    db_session.commit()
+    jetons.clear()
+    appels.clear()
+    payer()
+    assert jetons == ["cle-ecole"]
+    assert len(appels) == 2 and all(
+        "/organizations/alliance-ecole/checkout-intents" in url and auth == "Bearer tok-cle-ecole" for url, auth in appels
+    )

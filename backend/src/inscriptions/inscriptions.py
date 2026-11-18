@@ -403,6 +403,8 @@ class Inscriptions:
                 "email": inscription.eleve_email or "",
             },
             metadata={"inscription_token": inscription.token_public},
+            # La saison paie peut-être avec les clés de l'école (helloasso.md §8.2).
+            cles=self.helloasso.cles(db, inscription.ecole_id, inscription.saison_id),
         )
         inscription.helloasso_checkout_intent_id = resultat["id"]
         db.commit()
@@ -420,7 +422,8 @@ class Inscriptions:
             return inscription
         try:
             resultat = self.helloasso.recuperer_checkout_intent(
-                inscription.helloasso_checkout_intent_id
+                inscription.helloasso_checkout_intent_id,
+                self.helloasso.cles(db, inscription.ecole_id, inscription.saison_id),
             )
             paiements = resultat.get("order", {}).get("payments", [])
             # "Authorized" = payé (carte, immédiat). SEPA/échéances

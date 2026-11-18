@@ -39,6 +39,11 @@ class SeasonHelloAsso(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     org_id: Mapped[int] = mapped_column(ForeignKey("ecoles.id"), nullable=False)
     season_id: Mapped[int] = mapped_column(ForeignKey("saisons.id"), nullable=False, unique=True)
+    # Le choix de la saison (spec/modules/helloasso.md §8) : `master`
+    # « HelloAsso fait tout » (la campagne ci-dessous), `payment` « L'appli
+    # fait tout, HelloAsso encaisse » (pas de campagne : formulaire vide).
+    # Pas de ligne = sans HelloAsso.
+    mode: Mapped[str] = mapped_column(String(20), nullable=False, default="master")
     # Nature HelloAsso (`Membership`, `Event`...) et identifiant du formulaire.
     form_type: Mapped[str] = mapped_column(String(30), nullable=False)
     form_slug: Mapped[str] = mapped_column(String(255), nullable=False)

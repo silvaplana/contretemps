@@ -4537,6 +4537,80 @@ a.btn {
   padding-left: 20px;
 }
 
+/* Choix de la saison (HelloAssoSaison.jsx, maquette « réglages HelloAsso ») :
+   trois cartes, une seule cochée ; le détail de la carte cochée dessous. */
+.helloasso__saison {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+}
+
+.helloasso__carte {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  min-height: 48px;
+  margin: 8px 0 0;
+  padding: 12px 14px;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 17px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.helloasso__carte[aria-checked='true'] {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+}
+
+.helloasso__carte-titre {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+}
+
+.helloasso__carte-texte {
+  color: var(--text-muted, inherit);
+}
+
+.helloasso__radio {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--border);
+  border-radius: 50%;
+}
+
+.helloasso__carte[aria-checked='true'] .helloasso__radio {
+  border: 6px solid var(--accent);
+}
+
+.helloasso__detail {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 14px 4px;
+}
+
+.helloasso__liste {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.helloasso__saison .btn,
+.helloasso__detail .btn {
+  min-height: 48px;
+  font-size: 17px;
+}
+
 /* Vocabulaire (VocabulaireSection.jsx) : où le mot s'affiche, sous son champ. */
 .vocabulaire__ou {
   margin: 4px 0 0;

@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import Icon from '../../components/Icon.jsx'
+import HelloAssoSaison, { resumeSaison } from './HelloAssoSaison.jsx'
 import * as api from './api.js'
-import { mots } from '../../api/mots.js'
 
 // La connexion HelloAsso de l'école (spec/modules/helloasso.md §2, maquette
 // « Connexion HelloAsso »), sur la ligne HelloAsso de Fonctionnalités : une
@@ -12,6 +12,8 @@ import { mots } from '../../api/mots.js'
 // case, un clic dedans la cocherait.
 
 const ANNULER_MS = 10000
+
+const TITRES = { cles: 'Connecter HelloAsso', saison: 'Cette saison' }
 
 const date = (iso) => new Date(iso).toLocaleDateString('fr-FR')
 
@@ -131,9 +133,10 @@ function Cles({ ecoleId, onEnregistre }) {
   )
 }
 
-function Connecte({ ecoleId, etat, onChangerCles, onDeconnecter }) {
+function Connecte({ ecoleId, etat, onChangerCles, onDeconnecter, onSaison }) {
   const [formulaires, setFormulaires] = useState(null)
   const [test, setTest] = useState(null)
+  const [saison, setSaison] = useState(null)
 
   async function retester(premier) {
     setTest('run')
@@ -148,6 +151,10 @@ function Connecte({ ecoleId, etat, onChangerCles, onDeconnecter }) {
 
   useEffect(() => {
     retester(true)
+    api
+      .saison(ecoleId)
+      .then(setSaison)
+      .catch(() => null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -162,6 +169,18 @@ function Connecte({ ecoleId, etat, onChangerCles, onDeconnecter }) {
           <dd>{date(etat.connected_at)}</dd>
         </dl>
       </div>
+      {/* Le choix de la saison (spec §8.1) : la connexion vaut pour l'association. */}
+      {saison && (
+        <div className="helloasso__saison">
+          <p className="helloasso__titre">Saison {saison.season_name}</p>
+          <p>{resumeSaison(saison)}</p>
+          {saison.can_change && (
+            <button type="button" className="btn btn--secondary btn--block" onClick={onSaison}>
+              Choisir pour cette saison
+            </button>
+          )}
+        </div>
+      )}
       {formulaires && (
         <>
           <p className="helloasso__titre">Formulaires d’adhésion trouvés</p>
@@ -170,9 +189,6 @@ function Connecte({ ecoleId, etat, onChangerCles, onDeconnecter }) {
               <li key={f}>{f}</li>
             ))}
           </ul>
-          <p className="creer-saison__note">
-            Le formulaire de chaque saison se choisit en créant la saison, à l’étape des {mots().eleves}.
-          </p>
         </>
       )}
       <button
@@ -206,7 +222,7 @@ function Connecte({ ecoleId, etat, onChangerCles, onDeconnecter }) {
 
 export default function HelloAssoReglages({ ecole, enabled, onEnabledChange }) {
   const [etat, setEtat] = useState(null)
-  const [ecran, setEcran] = useState(null) // null | 'cles' | 'connecte'
+  const [ecran, setEcran] = useState(null) // null | 'cles' | 'connecte' | 'saison'
   const [toast, setToast] = useState(null)
   const minuteur = useRef(null)
   const avant = useRef(enabled)
@@ -290,7 +306,7 @@ export default function HelloAssoReglages({ ecole, enabled, onEnabledChange }) {
           <div
             className="creer-saison"
             role="dialog"
-            aria-label={ecran === 'cles' ? 'Connecter HelloAsso' : 'HelloAsso'}
+            aria-label={TITRES[ecran] ?? 'HelloAsso'}
           >
             <div className="thread-screen__header">
               <button
@@ -298,22 +314,26 @@ export default function HelloAssoReglages({ ecole, enabled, onEnabledChange }) {
                 className="icon-btn"
                 onClick={(e) => {
                   e.preventDefault()
-                  setEcran(null)
+                  // ← revient là où on était : la saison revient à « Connecté ».
+                  setEcran(ecran === 'saison' ? 'connecte' : null)
                 }}
                 aria-label="Retour"
               >
                 <Icon name="chevronLeft" size={22} />
               </button>
-              <h2 className="creer-saison__titre">{ecran === 'cles' ? 'Connecter HelloAsso' : 'HelloAsso'}</h2>
+              <h2 className="creer-saison__titre">{TITRES[ecran] ?? 'HelloAsso'}</h2>
             </div>
             <div className="creer-saison__corps">
               {ecran === 'cles' ? (
                 <Cles ecoleId={ecole.id} onEnregistre={enregistre} />
+              ) : ecran === 'saison' ? (
+                <HelloAssoSaison ecoleId={ecole.id} onToast={montrerToast} />
               ) : (
                 <Connecte
                   ecoleId={ecole.id}
                   etat={etat}
                   onChangerCles={() => setEcran('cles')}
+                  onSaison={() => setEcran('saison')}
                   onDeconnecter={() => deconnecter().catch(() => null)}
                 />
               )}

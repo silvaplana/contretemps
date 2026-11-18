@@ -1,6 +1,6 @@
 # AppBase — Module `helloasso`
 
-Version 1.2 du 18 novembre 2026 (§8 : deux façons d'utiliser HelloAsso par saison, paiement par carte avec les clés de l'école ; §7 : adhérents entièrement imposés par HelloAsso, tableau repris de Sambo Admin, impayés, vérification, contact, résiliation). Décisions de Seb des 23, 26 et 27 octobre et du 18 novembre 2026. Repris de Sambo Admin
+Version 1.3 du 18 novembre 2026 (§8.5 : étape 11 faite ; §8 : deux façons d'utiliser HelloAsso par saison, paiement par carte avec les clés de l'école ; §7 : adhérents entièrement imposés par HelloAsso, tableau repris de Sambo Admin, impayés, vérification, contact, résiliation). Décisions de Seb des 23, 26 et 27 octobre et du 18 novembre 2026. Repris de Sambo Admin
 (`silvaplana/test-python`, `backend/src/helloasso/`), qui lit HelloAsso en direct sans base ; ici on
 recopie en base et on synchronise. Maquette de la connexion :
 https://claude.ai/artifact/FhTWcRKXpVfdf9toaTSeXS. Socle : `spec/core.md` §4.3 et §9.3.
@@ -376,3 +376,20 @@ où ce parcours d'inscription existe.
 ### 8.5 Étape (une PR, sur le « vas-y » de Seb)
 
 11. Choix de la saison (écran de la maquette) et paiement par carte avec les clés de l'école.
+
+**Fait (étape 11, 18 novembre 2026)** :
+- `season_helloasso.mode` (`master` / `payment`, migration `c1b18c1cfaa9`, les lignes existantes
+  passent à `master`). `Campaigns.current` ne rend une campagne qu'au choix 1 : le verrou (§7), les
+  tarifs et la synchronisation ignorent une saison au choix 2. `Campaigns.set_payment` passe une
+  saison au choix 2 (la campagne est retirée, les réponses restent) ou la retire (choix 3).
+- Routes `GET /ecoles/{id}/helloasso/saison` (admin : choix, nom de la saison, campagne) et `PUT`
+  (`payment` ou `none`, Administrateur principal et Super User, saison en cours, connexion requise) ;
+  le choix 1 se fait en choisissant la campagne (route existante).
+- Paiement par carte : `inscriptions/helloasso.py` garde un jeton par identifiant client et prend
+  des clés optionnelles (`SchoolKeys`) ; `HelloAsso.school_keys` est une liste de fonctions que le
+  module remplit au montage (`helloasso/payment.py` : clés de `org_helloasso` si la saison est au
+  choix 2), sans que `inscriptions` connaisse le module. Sans réponse : variables du serveur, comme
+  avant (Contretemps et Le Beausset inchangés).
+- Écran : Fonctionnalités > HelloAsso > Voir, bloc « Saison <nom> » et « Choisir pour cette
+  saison » → écran « Cette saison » (`HelloAssoSaison.jsx`), trois cartes de la maquette ; au
+  choix 1, la campagne se choisit dans la carte, puis « Synchroniser maintenant ».
