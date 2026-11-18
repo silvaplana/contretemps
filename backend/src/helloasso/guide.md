@@ -70,6 +70,20 @@ Contacter ou résilier un adhérent : Admin › Élèves, saison imposée par He
   les échéances annulées. Définitif. Le remboursement se fait dans l'espace HelloAsso du club.
 - Dans la fiche : rubrique Messages envoyés.
 
+Vérifier les dossiers des adhérents (saison imposée par HelloAsso)
+- À allumer d'abord : Admin › Personnalisation › Fonctionnalités › HelloAsso › Voir, bloc
+  « Nouveaux adhérents » (Administrateur principal) : « Prévenir les administrateurs à chaque nouvel
+  adhérent » et « Vérifier le dossier de chaque adhérent ». Éteints au départ.
+- Colonne Vérification d'Admin › Élèves : « OK » ou « À vérifier ». « À vérifier » montre les raisons
+  et les documents ; « Écrire à l'adhérent » ouvre le mail ; « Valider le dossier » le compte OK
+  (Annuler pendant 10 s).
+- La fiche a aussi une rubrique « Vérification du dossier » avec « Valider le dossier ».
+- Menu ⋮ › « Vérifier les adhérents » (Accès au Financier) : relance la vérification de tous les
+  dossiers pas encore OK ; le rapport arrive par mail à l'adresse de l'école ; le coût cumulé est
+  affiché.
+- Un nouvel adhérent est vérifié tout seul ; s'il y a un problème, l'école reçoit un mail.
+- Les documents sont lus sur HelloAsso pour la vérification, jamais gardés.
+
 Impayés HelloAsso : Admin › Impayés HelloAsso (sous-onglet après Cours, module allumé, tout admin)
 - « Impayés HelloAsso (n) » et « Rafraîchir » (recopie depuis HelloAsso puis relit).
 - Les adhésions de la saison avec au moins une échéance refusée ou en échec ; une échéance à venir

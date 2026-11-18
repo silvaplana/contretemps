@@ -100,6 +100,10 @@ class Sync:
         # remplaçable dans les tests (pas d'appel réseau).
         self.add_member = add_member
         self.orders = orders
+        # Called after the commit with the memberships seen for the first
+        # time, not cancelled: on_new(db, org_id, [registrations]) (spec
+        # §7.5, check of the files and « Nouvel adhérent »).
+        self.on_new: list[Callable[[Session, int, list[HelloAssoRegistration]], None]] = []
 
     @staticmethod
     def _season_members(db: Session, org_id: int, season_id: int) -> list[Compte]:
@@ -152,7 +156,7 @@ class Sync:
             r.item_id: r
             for r in db.scalars(select(HelloAssoRegistration).where(HelloAssoRegistration.season_id == season_id))
         }
-        result, now, seen = Result(), _now(), set()
+        result, now, seen, new = Result(), _now(), set(), []
         for item in items:
             if not (item["first_name"] or item["last_name"]):
                 continue
@@ -167,9 +171,10 @@ class Sync:
                     result.completed += 1
             else:
                 result.updated += 1
-            registration = registration or HelloAssoRegistration(
-                org_id=org_id, season_id=season_id, item_id=item["item_id"]
-            )
+            if registration is None:
+                registration = HelloAssoRegistration(org_id=org_id, season_id=season_id, item_id=item["item_id"])
+                if not is_cancelled(item["state"]):
+                    new.append(registration)
             registration.member_id = member.id
             for key in ("order_id", "first_name", "last_name", "payer_email", "tier_name", "amount",
                         "discount_code", "state", "order_date", "payments"):
@@ -202,6 +207,12 @@ class Sync:
         # Famille = même email du payeur (spec/core.md §4.4).
         Comptes().recalculer_familles(db, org_id)
         db.commit()
+        for on_new in self.on_new if new else ():
+            try:
+                on_new(db, org_id, new)
+            except Exception as erreur:  # noqa: BLE001 (the sync is done all the same)
+                db.rollback()
+                print(f"HelloAsso, nouveaux adhérents de l'école {org_id} : {erreur}")
         return result
 
 

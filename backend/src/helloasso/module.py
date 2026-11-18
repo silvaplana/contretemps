@@ -9,6 +9,7 @@ from .campaign import Campaigns
 from .connection import Connection
 from .receiver import HelloAssoReceiver
 from .sync import Sync
+from .verification import Checker, ChecksReceiver
 
 
 def add_member(eleves):
@@ -37,6 +38,16 @@ def mount(app, core) -> None:
     )
     # Mail à un adhérent (spec §7.6) : le service email du core.
     core.helloasso_receiver.send_mail = getattr(core, "mail_ecole", None)
+    # Vérification des dossiers et « Nouvel adhérent » (spec §7.5), éteints
+    # par défaut : réglages de la connexion.
+    notifications = getattr(core, "notifications_client", None)
+    core.helloasso_checker = Checker(
+        send_mail=core.helloasso_receiver.send_mail,
+        push=notifications.envoyer_a_compte if notifications else None,
+        eur_per_usd=getattr(core, "eur_per_usd", lambda: 0.9),
+    )
+    core.helloasso_sync.on_new.append(core.helloasso_checker.on_new)
+    ChecksReceiver(app, core.helloasso_checker, core.helloasso_receiver._registration)
 
 
 MODULE = Module(

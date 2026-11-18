@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import Modal from '../../components/Modal.jsx'
 import * as api from './api.js'
 import { CelluleAdhesion, CelluleContact } from './Contact.jsx'
+import { CelluleVerification, RubriqueVerification, ouvrirVerification } from './Dossier.jsx'
 
 // Adhérents entièrement imposés par HelloAsso (spec/modules/helloasso.md §7,
 // maquette https://claude.ai/artifact/4tizDZ6Br2WxGL5MYwSQfy) : ce que le
@@ -131,6 +132,14 @@ const COLONNES = [
     label: 'Statut HelloAsso',
     texte: (l) => (l ? statut(l) : ''),
   },
+  {
+    // Seulement quand l'école a allumé la vérification des dossiers (spec §7.5).
+    key: 'helloasso_check',
+    label: 'Vérification',
+    texte: (l) => (l?.check ? (l.check.ok ? 'OK' : 'À vérifier') : ''),
+    cellule: (props) => <CelluleVerification {...props} />,
+    cachee: () => !verificationAllumee,
+  },
 ]
   .map((c) => ({ ...c, nature: 'Calculé', detail: 'HelloAsso' }))
   .concat(
@@ -154,11 +163,17 @@ const COLONNES = [
 // detail, texte(ligne), cellule?({ ecoleId, eleve, ligne, relire }),
 // cachee?() }.
 
+// Le dernier tableau lu : la colonne Vérification et le menu ⋮ en dépendent.
+let verificationAllumee = false
+let ecoleLue = null
+
 // → null (rien ne change) ou { members, can_refresh, form_name }.
 async function charger(ecoleId) {
   try {
     const lu = await api.adherents(ecoleId)
     if (!lu.imposed) return null
+    verificationAllumee = lu.checks_on
+    ecoleLue = ecoleId
     // « Résilier » demande l'Accès au Financier (spec §7.7) : sur chaque ligne.
     for (const ligne of Object.values(lu.members)) ligne.can_cancel = lu.can_cancel
     return lu
@@ -182,6 +197,9 @@ export const memberList = {
   // « Rafraîchir » : synchronise maintenant (la saison en cours).
   rafraichir: (ecoleId) => api.synchroniser(ecoleId),
   menu: (redessiner) => [
+    ...(verificationAllumee
+      ? [{ label: 'Vérifier les adhérents', icon: 'check', onClick: () => ouvrirVerification(ecoleLue) }]
+      : []),
     {
       label: photosAffichees() ? 'Masquer les photos' : 'Afficher les photos',
       icon: 'camera',
@@ -200,9 +218,10 @@ export const memberList = {
 function Fiche({ ecoleId, eleve }) {
   const [fiche, setFiche] = useState(null)
   const [erreur, setErreur] = useState('')
+  const [lecture, setLecture] = useState(0)
   useEffect(() => {
     api.adherent(ecoleId, eleve.id).then(setFiche).catch(() => setFiche(null))
-  }, [ecoleId, eleve.id])
+  }, [ecoleId, eleve.id, lecture])
   if (!fiche) return null
 
   async function ouvrir(index) {
@@ -232,6 +251,13 @@ function Fiche({ ecoleId, eleve }) {
         <Ligne libelle="Code promo" valeur={fiche.discount_code} />
         <Ligne libelle="Statut HelloAsso" valeur={statut(fiche)} />
       </Rubrique>
+      <RubriqueVerification
+        ecoleId={ecoleId}
+        eleve={eleve}
+        check={fiche.check}
+        onChange={() => setLecture((n) => n + 1)}
+        Rubrique={Rubrique}
+      />
       {fiche.files.length > 0 && (
         <Rubrique titre="Documents déposés sur HelloAsso">
           <div className="adherents__documents">

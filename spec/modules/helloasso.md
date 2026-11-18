@@ -1,6 +1,6 @@
 # AppBase — Module `helloasso`
 
-Version 1.6 du 18 novembre 2026 (§7.11 : étapes 6, 7 et 8 faites ; §8.5 : étape 11 faite ; §8 : deux façons d'utiliser HelloAsso par saison, paiement par carte avec les clés de l'école ; §7 : adhérents entièrement imposés par HelloAsso, tableau repris de Sambo Admin, impayés, vérification, contact, résiliation). Décisions de Seb des 23, 26 et 27 octobre et du 18 novembre 2026. Repris de Sambo Admin
+Version 1.7 du 18 novembre 2026 (§7.11 : étapes 6 à 9 faites ; §8.5 : étape 11 faite ; §8 : deux façons d'utiliser HelloAsso par saison, paiement par carte avec les clés de l'école ; §7 : adhérents entièrement imposés par HelloAsso, tableau repris de Sambo Admin, impayés, vérification, contact, résiliation). Décisions de Seb des 23, 26 et 27 octobre et du 18 novembre 2026. Repris de Sambo Admin
 (`silvaplana/test-python`, `backend/src/helloasso/`), qui lit HelloAsso en direct sans base ; ici on
 recopie en base et on synchronise. Maquette de la connexion :
 https://claude.ai/artifact/FhTWcRKXpVfdf9toaTSeXS. Socle : `spec/core.md` §4.3 et §9.3.
@@ -378,6 +378,41 @@ après Statut HelloAsso, sur les lignes qui ont une adhésion.
   `helloasso_sms`, `helloasso_templates` (§7.9), rangées sous l'identifiant HelloAsso de l'adhésion
   pour survivre à une fusion de fiches. La reprise du journal de Sambo Admin reste à faire
   (commande sur le VPS).
+
+**Fait (étape 9, 18 novembre 2026)** : vérification des dossiers et « Nouvel adhérent », repris de
+`helloasso/verification.py` de Sambo Admin.
+- **Réglages** (Fonctionnalités > HelloAsso > Voir, bloc « Nouveaux adhérents », Administrateur
+  principal), deux cases éteintes par défaut (§7.10) : « Prévenir les administrateurs à chaque
+  nouvel adhérent » et « Vérifier le dossier de chaque adhérent : photo, certificat médical,
+  autorisation parentale ». Colonnes `check_files` et `notify_new` de `org_helloasso`.
+- **Nouvel adhérent** : une adhésion vue pour la première fois par la synchronisation (worker toutes
+  les 5 minutes ou « Rafraîchir »), pas résiliée. Notification push « Nouvel adhérent » (« n nouveaux
+  adhérents ») aux admins de l'école, avec les noms ; dossier vérifié (en arrière-plan dans l'appli,
+  directement dans le worker) ; s'il n'est pas OK, mail à l'adresse de l'école « Nouvel adhérent à
+  vérifier : Prénom Nom » avec les raisons. Branché par `Sync.on_new`.
+- **Vérification d'un dossier** : contrôles sans modèle (date de naissance absente ou illisible,
+  photo ou certificat manquant, autorisation parentale manquante pour un mineur, fichier illisible ou
+  indisponible), puis un seul appel au modèle (Sonnet 5.5, consignes de Sambo Admin sans le nom du
+  club en dur) avec les documents en images (2 pages au plus d'un PDF) et les réponses. Résultat
+  dans `helloasso_checks` (par organisation et identifiant HelloAsso de l'adhésion) : ok, problem
+  (raisons) ou error (l'appel a échoué), coût cumulé en dollars. Rien des documents n'est gardé.
+- **Colonne Vérification** (seulement quand la vérification est allumée), après Statut HelloAsso :
+  « OK » en vert ou « À vérifier » (lien), vide si jamais vérifié. « À vérifier » ouvre « Dossier de
+  Prénom Nom » : les raisons, les documents déposés, « Écrire à l'adhérent » (l'écran Mail) et
+  **Valider le dossier**. Valider : « Dossier validé » avec Annuler 10 s ; le dossier compte OK et
+  n'est plus revérifié, les raisons restent pour l'Annuler.
+- **Fiche** : rubrique « Vérification du dossier » après Adhésion (OK, ou les raisons et « Valider
+  le dossier »).
+- **⋮ > Vérifier les adhérents** (vérification allumée) : « n dossiers à vérifier. Les dossiers déjà
+  OK ne sont pas revérifiés. », « Coût cumulé des vérifications de dossiers : x € », Annuler /
+  **Relancer la vérification** (Accès au Financier). Les dossiers pas OK de la saison en cours
+  (résiliées exclues) sont revérifiés en arrière-plan, puis le rapport part par mail à l'adresse de
+  l'école. « Vérification relancée, le rapport arrive par mail ».
+- Routes : `GET|PUT /ecoles/{id}/helloasso/reglages` (Administrateur principal),
+  `GET|POST /ecoles/{id}/helloasso/verification`, `POST|DELETE …/adherents/{fiche}/valider`
+  (tout admin). Le tableau gagne `checks_on` et, par ligne, `check` {ok, issues} ; la fiche, `check`.
+- Pas encore fait : la pastille sur l'onglet (un module ne peut pas encore ajouter de pastille à un
+  onglet du core : point de branchement à proposer).
 
 ## 8. Deux façons d'utiliser HelloAsso, par saison (Seb, 18 novembre 2026)
 

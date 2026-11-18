@@ -3,7 +3,7 @@ ligne au plus). La clé secrète est chiffrée (securite/chiffrement.py)."""
 
 from datetime import datetime, timezone
 
-from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from db import Base
@@ -28,6 +28,10 @@ class OrgHelloAsso(Base):
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     last_test_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     last_test_ok: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    # Spec §7.5 and §7.10, both off by default (Sambo Admin does it while it
+    # runs): check the files of each new member, and tell the admins.
+    check_files: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
+    notify_new: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
 
 
 class SeasonHelloAsso(Base):
@@ -143,3 +147,26 @@ class HelloAssoTemplate(Base):
     subject: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     body: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)
+
+
+class HelloAssoCheck(Base):
+    """The check of a member's files (spec §7.5, Sambo Admin `member_checks`):
+    `status` « ok », « problem » or « error » (the call failed), the reasons,
+    and the cumulated cost of the calls (dollars). « Valider le dossier »
+    sets `manual`: the file counts as OK and is not checked again; undoing it
+    gives back the reasons. Nothing of the documents is kept."""
+
+    __tablename__ = "helloasso_checks"
+    __table_args__ = (UniqueConstraint("org_id", "item_id"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    org_id: Mapped[int] = mapped_column(ForeignKey("ecoles.id"), nullable=False, index=True)
+    item_id: Mapped[str] = mapped_column(String(40), nullable=False)
+    first_name: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    last_name: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    status: Mapped[str] = mapped_column(String(20), nullable=False)
+    issues: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    manual: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    model: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    cost: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    checked_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)

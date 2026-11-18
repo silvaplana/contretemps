@@ -133,6 +133,58 @@ function Cles({ ecoleId, onEnregistre }) {
   )
 }
 
+// Nouveaux adhérents (spec §7.5) : deux réglages éteints par défaut.
+function NouveauxAdherents({ ecoleId }) {
+  const [reglages, setReglages] = useState(null)
+  const [erreur, setErreur] = useState('')
+  useEffect(() => {
+    api
+      .reglages(ecoleId)
+      .then(setReglages)
+      .catch(() => null)
+  }, [ecoleId])
+  if (!reglages) return null
+
+  async function changer(cle, valeur) {
+    const nouveaux = { ...reglages, [cle]: valeur }
+    setErreur('')
+    try {
+      setReglages(await api.regler(ecoleId, nouveaux.check_files, nouveaux.notify_new))
+    } catch (e) {
+      setErreur(e.message)
+    }
+  }
+
+  return (
+    <div className="helloasso__saison">
+      <p className="helloasso__titre">Nouveaux adhérents</p>
+      <label className="helloasso__case">
+        <input
+          type="checkbox"
+          checked={reglages.notify_new}
+          onChange={(e) => changer('notify_new', e.target.checked)}
+        />
+        Prévenir les administrateurs à chaque nouvel adhérent
+      </label>
+      <label className="helloasso__case">
+        <input
+          type="checkbox"
+          checked={reglages.check_files}
+          onChange={(e) => changer('check_files', e.target.checked)}
+        />
+        Vérifier le dossier de chaque adhérent : photo, certificat médical, autorisation parentale
+      </label>
+      {reglages.check_files && (
+        <p className="muted">
+          Les documents sont lus sur HelloAsso pour la vérification, jamais gardés. Un problème est envoyé par mail à
+          l’adresse de l’école.
+        </p>
+      )}
+      {erreur && <p className="login-screen__erreur">{erreur}</p>}
+    </div>
+  )
+}
+
 function Connecte({ ecoleId, etat, onChangerCles, onDeconnecter, onSaison }) {
   const [formulaires, setFormulaires] = useState(null)
   const [test, setTest] = useState(null)
@@ -181,6 +233,7 @@ function Connecte({ ecoleId, etat, onChangerCles, onDeconnecter, onSaison }) {
           )}
         </div>
       )}
+      <NouveauxAdherents ecoleId={ecoleId} />
       {formulaires && (
         <>
           <p className="helloasso__titre">Formulaires d’adhésion trouvés</p>
