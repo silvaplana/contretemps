@@ -84,7 +84,7 @@ function Preenregistres({ ecoleId, kind, liste, setListe, choisi, onChoisir, suj
   )
 }
 
-function MailModal({ ecoleId, eleve, ligne, onClose, onEnvoye }) {
+export function MailModal({ ecoleId, eleve, ligne, onClose, onEnvoye }) {
   const [liste, setListe] = useMessages(ecoleId, 'mail')
   const [choisi, setChoisi] = useState('')
   const [sujet, setSujet] = useState('')
@@ -308,29 +308,41 @@ function ResilierModal({ ecoleId, eleve, onClose, onEnvoye }) {
   )
 }
 
-// Le petit message du bas après un envoi, 4 s.
-function useToast() {
-  const [texte, setTexte] = useState(null)
+// Le petit message du bas après un envoi, 4 s ; avec « Annuler », 10 s.
+export function useToast() {
+  const [toast, setToast] = useState(null)
   const minuteur = useRef(null)
   useEffect(() => () => clearTimeout(minuteur.current), [])
-  const montrer = (t) => {
+  const montrer = (texte, annuler) => {
     clearTimeout(minuteur.current)
-    setTexte(t)
-    minuteur.current = setTimeout(() => setTexte(null), 4000)
+    setToast({ texte, annuler })
+    minuteur.current = setTimeout(() => setToast(null), annuler ? 10000 : 4000)
   }
-  const toast =
-    texte &&
+  const element =
+    toast &&
     createPortal(
       <div className="admin-groupes__toast" role="status">
-        <span>{texte}</span>
+        <span>{toast.texte}</span>
+        {toast.annuler && (
+          <button
+            type="button"
+            onClick={() => {
+              clearTimeout(minuteur.current)
+              setToast(null)
+              toast.annuler()
+            }}
+          >
+            Annuler
+          </button>
+        )}
       </div>,
       document.body,
     )
-  return [toast, montrer]
+  return [element, montrer]
 }
 
 // Les écrans hors du tableau (portail) : un clic dedans n'ouvre pas la fiche.
-const dehors = (ecran) => createPortal(ecran, document.body)
+export const dehors = (ecran) => createPortal(ecran, document.body)
 
 // Colonne « Contact » : ✉ Mail et 💬 SMS avec leur compteur.
 export function CelluleContact({ ecoleId, eleve, ligne, relire }) {

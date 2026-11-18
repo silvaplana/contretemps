@@ -85,3 +85,15 @@ export const garderMessage = (ecoleId, kind, subject, body) =>
   requete(`/ecoles/${ecoleId}/helloasso/messages`, json('POST', { kind, subject, body }))
 export const retirerMessage = (ecoleId, kind, id) =>
   requete(`/ecoles/${ecoleId}/helloasso/messages/${id}?kind=${kind}`, { method: 'DELETE' })
+
+// Vérification des dossiers et « Nouvel adhérent » (spec §7.5).
+export const reglages = (ecoleId) => requete(`/ecoles/${ecoleId}/helloasso/reglages`)
+export const regler = (ecoleId, checkFiles, notifyNew) =>
+  requete(`/ecoles/${ecoleId}/helloasso/reglages`, json('PUT', { check_files: checkFiles, notify_new: notifyNew }))
+// → { on, running, to_check, cost (dollars), can_run }.
+export const verification = (ecoleId) => requete(`/ecoles/${ecoleId}/helloasso/verification`)
+export const verifier = (ecoleId) => requete(`/ecoles/${ecoleId}/helloasso/verification`, { method: 'POST' })
+export const validerDossier = (ecoleId, ficheId) =>
+  requete(`/ecoles/${ecoleId}/helloasso/adherents/${ficheId}/valider`, { method: 'POST' })
+export const devaliderDossier = (ecoleId, ficheId) =>
+  requete(`/ecoles/${ecoleId}/helloasso/adherents/${ficheId}/valider`, { method: 'DELETE' })

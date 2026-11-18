@@ -258,6 +258,8 @@ core = SimpleNamespace(
     mail_ecole=mail_ecole.envoyer,
     # Envoi des mails (relais SMTP Brevo), pour les modules qui écrivent.
     email_envoi=EmailEnvoi(),
+    # Les coûts d'IA sont en dollars, affichés en euros (change/taux.py).
+    eur_per_usd=lambda: taux_change_client.taux()["eur_par_usd"],
 )
 registry.mount_all(app, MODULES, core)
 
