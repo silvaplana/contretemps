@@ -2,11 +2,11 @@ import { useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import MenuEntete from '../../components/MenuEntete.jsx'
 import * as api from './api.js'
+import Boite from './Boite.jsx'
 import './mail.css'
 
-// Messages › Mail (spec/modules/mail.md §4) : connecter la boîte Gmail du
-// club (Administrateur principal), puis la boîte. Étape 1 : la connexion ;
-// la liste des mails vient à l'étape 2.
+// Messages › Mail (spec/modules/mail.md §4 à §6) : connecter la boîte Gmail
+// du club (Administrateur principal), puis la boîte (Boite.jsx).
 
 // Page Google des mots de passe des applications (le compte doit avoir la
 // validation en deux étapes ; Google interdit de créer le code à notre place).
@@ -181,26 +181,20 @@ export default function MailScreen({ ecoleId, etat, onEtat }) {
         <p className="mail__discret">Seul l'Administrateur principal peut la connecter.</p>
       </div>
     )
-  } else {
+  } else if (etat.cut) {
     corps = (
       <div className="mail__pile">
-        {etat.cut && (
-          <div className="mail__alerte" role="alert">
-            <strong>La boîte mail n'est plus connectée</strong>
-            Google a coupé l'accès, souvent après un changement du mot de passe du compte.
-            {etat.can_connect ? (
-              <button type="button" className="btn btn--primary" onClick={() => setReconnecter(true)}>
-                Reconnecter
-              </button>
-            ) : (
-              ' L’Administrateur principal doit la reconnecter.'
-            )}
-          </div>
-        )}
-        <p>
-          Boîte connectée : <strong>{etat.address}</strong>
-        </p>
-        <p className="mail__discret">Les mails du club s'afficheront ici.</p>
+        <div className="mail__alerte" role="alert">
+          <strong>La boîte mail n'est plus connectée</strong>
+          Google a coupé l'accès, souvent après un changement du mot de passe du compte.
+          {etat.can_connect ? (
+            <button type="button" className="btn btn--primary" onClick={() => setReconnecter(true)}>
+              Reconnecter
+            </button>
+          ) : (
+            ' L’Administrateur principal doit la reconnecter.'
+          )}
+        </div>
       </div>
     )
   }
@@ -212,10 +206,14 @@ export default function MailScreen({ ecoleId, etat, onEtat }) {
       ]
     : null
 
+  const menuBoite = menu && <MenuEntete label="Plus d'actions" actions={menu} />
+  // Google a coupé l'accès pendant la lecture : relire l'état (bandeau).
+  const coupee = () => api.etat(ecoleId).then(onEtat, () => null)
+
   return (
     <div className="mail">
-      {menu && <MenuEntete label="Plus d'actions" actions={menu} />}
-      {corps}
+      {corps ?? <Boite ecoleId={ecoleId} etat={etat} menuBoite={menuBoite} onCoupee={coupee} />}
+      {corps && menuBoite}
       {toast &&
         createPortal(
           <div className="admin-groupes__toast" role="status">

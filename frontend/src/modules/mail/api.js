@@ -36,3 +36,47 @@ export async function etatOuRien(ecoleId) {
     throw e
   }
 }
+
+// --- Lire et ranger (spec §5, §6) ------------------------------------------
+
+const base = (ecoleId) => `/ecoles/${ecoleId}/mail`
+const json = (method, corps) => ({ method, body: JSON.stringify(corps) })
+
+// → { address, folders: [{ key, label }], unread }
+export const dossiers = (ecoleId) => requete(`${base(ecoleId)}/folders`)
+// → { unread } (0 si la boîte n'est pas lisible)
+export const nonLus = (ecoleId) => requete(`${base(ecoleId)}/unread`)
+// → { folder, messages: [{ uid, subject, from, to, date, seen, starred, hasAttachments, snippet }], hasMore }
+export function lister(ecoleId, dossier, { avant = null, recherche = '' } = {}) {
+  const p = new URLSearchParams({ folder: dossier })
+  if (avant != null) p.set('before', avant)
+  if (recherche) p.set('q', recherche)
+  return requete(`${base(ecoleId)}/messages?${p}`)
+}
+// → { subject, from, to, cc, date, html, text, attachments: [{ index, filename, size }], starred } ; le marque lu.
+export const lire = (ecoleId, dossier, uid) => requete(`${base(ecoleId)}/messages/${dossier}/${uid}`)
+export const drapeaux = (ecoleId, dossier, uid, changes) =>
+  requete(`${base(ecoleId)}/messages/${dossier}/${uid}/flags`, json('PUT', changes))
+// action : trash, archive, spam, inbox, delete, read, unread.
+export const cocher = (ecoleId, dossier, uids, action) =>
+  requete(`${base(ecoleId)}/bulk`, json('POST', { folder: dossier, uids, action }))
+
+// Pièce jointe : téléchargée (jamais ouverte sur le domaine de l'appli).
+export async function telecharger(ecoleId, dossier, uid, piece) {
+  const reponse = await fetch(`${BASE_URL}${base(ecoleId)}/messages/${dossier}/${uid}/attachments/${piece.index}`)
+  if (!reponse.ok) {
+    const corps = await reponse.json().catch(() => null)
+    throw new Error(typeof corps?.detail === 'string' ? corps.detail : `Requête échouée (${reponse.status})`)
+  }
+  const url = URL.createObjectURL(await reponse.blob())
+  const lien = document.createElement('a')
+  lien.href = url
+  lien.download = piece.filename
+  document.body.appendChild(lien)
+  lien.click()
+  lien.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 10000)
+}
+
+// Pastille des non lus à relire tout de suite (un mail lu ou remis non lu).
+export const signalerNonLus = () => window.dispatchEvent(new Event('mail:non-lus'))

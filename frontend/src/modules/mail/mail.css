@@ -129,3 +129,233 @@
   font-size: 15px;
   color: var(--text-muted);
 }
+
+/* La boîte (§5) et un mail (§6). */
+.mail__pastille {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 11px;
+  background: var(--danger, #d64545);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+}
+.mail__outils {
+  display: flex;
+  gap: 8px;
+  padding: 8px 0;
+}
+.mail__outils select,
+.mail__outils input {
+  min-height: 52px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--card-bg);
+  color: inherit;
+  font: inherit;
+  padding: 0 16px;
+  min-width: 0;
+}
+.mail__outils select {
+  flex: none;
+  max-width: 48%;
+}
+.mail__outils input {
+  flex: 1;
+}
+.mail__selection,
+.mail__barre {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 56px;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--bg);
+}
+.mail__selection strong {
+  flex: 1;
+  font-size: 20px;
+}
+.mail__espace {
+  flex: 1;
+}
+.mail__liste {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.mail__ligne-mail {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.mail__rond {
+  width: 48px;
+  height: 48px;
+  flex: none;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent-bg);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+}
+.mail__ligne-mail--coche .mail__rond {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+.mail__resume {
+  flex: 1;
+  min-width: 0;
+  min-height: 48px;
+  border: 0;
+  padding: 2px 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  cursor: pointer;
+}
+.mail__l1 {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+.mail__qui,
+.mail__objet,
+.mail__apercu {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mail__qui {
+  flex: 1;
+  min-width: 0;
+}
+.mail__objet {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+.mail__date,
+.mail__apercu {
+  color: var(--text-muted);
+  font-size: 15px;
+}
+.mail__date {
+  flex: none;
+}
+.mail__ligne-mail--non-lu .mail__qui,
+.mail__ligne-mail--non-lu .mail__objet {
+  font-weight: 700;
+}
+.mail__ligne-mail--non-lu .mail__date {
+  color: var(--accent);
+  font-weight: 600;
+}
+.mail__etoile {
+  width: 48px;
+  height: 48px;
+  flex: none;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  display: grid;
+  place-items: center;
+}
+.mail__etoile--oui {
+  color: var(--accent);
+}
+.mail__etoile--oui svg {
+  fill: currentColor;
+}
+.mail__plus {
+  width: 100%;
+  min-height: 48px;
+  margin: 12px 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+}
+.mail__vide {
+  color: var(--text-muted);
+  text-align: center;
+  padding: 40px 0;
+}
+.mail__sujet {
+  font-size: 22px;
+  margin: 8px 0 12px;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+.mail__entete {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.mail__de {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-wrap: anywhere;
+}
+.mail__de .mail__discret {
+  font-size: 15px;
+}
+.mail__texte {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: inherit;
+  margin: 16px 0;
+}
+.mail__html {
+  display: block;
+  width: 100%;
+  min-height: 120px;
+  margin: 12px 0;
+  border: 0;
+  border-radius: 12px;
+  background: #fff;
+}
+.mail__pieces {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 0 16px;
+}
+.mail__piece {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card-bg);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+.mail__piece small {
+  display: block;
+  color: var(--text-muted);
+  font-size: 14px;
+}

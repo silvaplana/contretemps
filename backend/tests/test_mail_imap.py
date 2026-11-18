@@ -1,0 +1,139 @@
+"""Lecture des mails (spec/modules/mail.md §5-6) : tests repris de Sambo Admin
+(tests/test_webmail.py), sans réseau."""
+
+from email import message_from_bytes, policy
+from email.message import EmailMessage
+
+import pytest
+
+from mail.imap import Webmail, WebmailError, WebmailNotFoundError
+from mail.imap import attachment_from, build_message, parse_fetch, parse_folders, parse_message, snippet
+
+
+def rich_message() -> bytes:
+    message = EmailMessage()
+    message["From"] = "Président Fédé <president@ffst.fr>"
+    message["To"] = "club@example.org"
+    message["Subject"] = "Réunion à 18h"
+    message["Message-ID"] = "<abc@ffst.fr>"
+    message.set_content("Bonjour,\nLa réunion est à 18h.")
+    message.add_alternative('<p>Bonjour</p><img src="cid:logo1">', subtype="html")
+    message.get_payload()[1].add_related(b"PNGDATA", maintype="image", subtype="png", cid="<logo1>")
+    message.add_attachment("Ordre du jour : élection".encode(), maintype="text", subtype="plain", filename="ordre é.txt")
+    return message.as_bytes()
+
+
+def test_gmail_folders_found_by_role_whatever_the_language():
+    lines = [
+        b'(\\HasNoChildren) "/" "INBOX"',
+        b'(\\HasChildren \\Noselect) "/" "[Gmail]"',
+        b'(\\All \\HasNoChildren) "/" "[Gmail]/Tous les messages"',
+        b'(\\HasNoChildren \\Sent) "/" "[Gmail]/Messages envoy&AOk-s"',
+        b'(\\HasNoChildren \\Trash) "/" "[Gmail]/Corbeille"',
+        b'(\\Flagged \\HasNoChildren) "/" "[Gmail]/Suivis"',
+        b'(\\HasNoChildren \\Junk) "/" "[Gmail]/Spam"',
+    ]
+    assert parse_folders(lines) == {
+        "inbox": "INBOX",
+        "starred": "[Gmail]/Suivis",
+        "sent": "[Gmail]/Messages envoy&AOk-s",
+        "spam": "[Gmail]/Spam",
+        "trash": "[Gmail]/Corbeille",
+        "all": "[Gmail]/Tous les messages",
+    }
+
+
+def test_folders_by_name_without_special_use():
+    lines = [b'(\\HasNoChildren) "/" INBOX', b'(\\HasNoChildren) "/" Sent', b'(\\HasNoChildren) "/" Trash']
+    assert parse_folders(lines) == {"inbox": "INBOX", "sent": "Sent", "trash": "Trash"}
+
+
+def test_fetch_response_with_uid_after_the_literal():
+    data = [
+        (b'1 (FLAGS (\\Seen \\Flagged) INTERNALDATE "08-Oct-2026 10:00:00 +0200" RFC822.SIZE 12 BODY[]<0> {5}', b"Hello"),
+        b" UID 42)",
+        (b"2 (UID 43 FLAGS () BODY[]<0> {3}", b"Bye"),
+        b")",
+        b"3 (FLAGS (\\Seen))",  # notification spontanee, sans UID : ignoree
+    ]
+    items = parse_fetch(data)
+    assert [(item["uid"], item["flags"], item["literal"]) for item in items] == [
+        (42, ["\\Seen", "\\Flagged"], b"Hello"),
+        (43, [], b"Bye"),
+    ]
+    assert items[0]["internaldate"] == "2026-10-08T08:00:00+00:00"
+    assert items[0]["size"] == 12
+
+
+def test_message_body_inline_image_and_attachment():
+    detail = parse_message(rich_message())
+    assert detail["subject"] == "Réunion à 18h"
+    assert detail["from"] == [{"name": "Président Fédé", "address": "president@ffst.fr"}]
+    assert detail["text"].startswith("Bonjour,\nLa réunion")
+    # Image integree remplacee dans le HTML, donc pas listee en piece jointe.
+    assert "data:image/png;base64,UE5HREFUQQ==" in detail["html"]
+    assert detail["attachments"] == [{"index": 3, "filename": "ordre é.txt", "contentType": "text/plain", "size": 25}]
+    data, name, _type = attachment_from(rich_message(), 3)
+    assert (data.decode(), name) == ("Ordre du jour : élection", "ordre é.txt")
+    with pytest.raises(WebmailNotFoundError):
+        attachment_from(rich_message(), 0)  # le corps n'est pas une piece jointe
+
+
+def test_snippet_from_a_truncated_message():
+    raw = rich_message()
+    message = message_from_bytes(raw[: len(raw) // 2], policy=policy.default)
+    assert snippet(message).startswith("Bonjour, La réunion est à 18h.")
+
+
+def test_build_message_reply_and_header_injection():
+    message, recipients = build_message(
+        "club@example.org",
+        "Alliance Sambo",
+        "Président <president@ffst.fr>, autre@ex.fr",
+        cc="copie@ex.fr",
+        subject="Re: Réunion",
+        body="Merci",
+        in_reply_to="<abc@ffst.fr>",
+        references="<old@ffst.fr>",
+        attachments=[("liste.csv", "text/csv", b"a;b")],
+    )
+    assert recipients == ["president@ffst.fr", "autre@ex.fr", "copie@ex.fr"]
+    assert message["In-Reply-To"] == "<abc@ffst.fr>"
+    assert message["References"] == "<old@ffst.fr> <abc@ffst.fr>"
+    assert message["From"] == "Alliance Sambo <club@example.org>"
+    assert [part.get_filename() for part in message.iter_attachments()] == ["liste.csv"]
+    with pytest.raises(WebmailError):
+        build_message("club@example.org", "", "a@b.fr", subject="x\nBcc: pirate@x.fr")
+    with pytest.raises(WebmailError):
+        build_message("club@example.org", "", "pas-une-adresse")
+    with pytest.raises(WebmailError):
+        build_message("club@example.org", "", "")
+
+
+def test_bulk_actions_on_checked_mails():
+    calls = []
+
+    class Recorder(Webmail):
+        def move(self, folder, uid, to):
+            calls.append(("move", folder, self._uid_set(uid), to))
+
+        def delete(self, folder, uid):
+            calls.append(("delete", folder, self._uid_set(uid)))
+
+        def set_flags(self, folder, uid, seen=None, starred=None):
+            calls.append(("flags", folder, self._uid_set(uid), seen))
+
+    webmail = Recorder("club@example.org", "secret")
+    webmail.bulk("inbox", [5, 7, 5], "trash")  # doublon retire
+    webmail.bulk("trash", [9], "delete")
+    webmail.bulk("inbox", [1, 2], "unread")
+    assert calls == [("move", "inbox", "5,7", "trash"), ("delete", "trash", "9"), ("flags", "inbox", "1,2", False)]
+    with pytest.raises(WebmailError):
+        webmail.bulk("inbox", [1], "autre")
+    with pytest.raises(WebmailError):
+        Webmail._uid_set([])
+    with pytest.raises(WebmailError):
+        Webmail._uid_set(list(range(501)))
+    # Suppression definitive refusee hors corbeille et spam, avant toute connexion.
+    with pytest.raises(WebmailError):
+        Webmail("club@example.org", "secret").bulk("inbox", [1], "delete")
