@@ -11,6 +11,7 @@ import { LARGEUR_ONGLET } from '../../data/nav.js'
 export default function OrdreBarreDuBas({ onglets, onRanger }) {
   const [glisse, setGlisse] = useState(null) // { cles, index } pendant un glisser
   const [erreur, setErreur] = useState('')
+  const [ouvert, setOuvert] = useState(false) // déroulant, fermé au départ (Seb, 18/11)
   const liste = useRef(null)
   const cles = glisse?.cles ?? onglets.map((t) => t.key)
   const parCle = Object.fromEntries(onglets.map((t) => [t.key, t]))
@@ -51,33 +52,47 @@ export default function OrdreBarreDuBas({ onglets, onRanger }) {
 
   return (
     <div className="ordre-barre">
-      <p className="ordre-barre__titre">Ordre de la barre du bas</p>
-      <p className="muted ordre-barre__aide">
-        Faites glisser un onglet par sa poignée. Le même ordre pour tout le monde ; chacun ne voit que ses onglets.
-      </p>
-      <div className="ordre-barre__liste" ref={liste}>
-        {cles.map((cle, index) => (
-          <div key={cle}>
-            {index === dansLaBarre && <p className="ordre-barre__plus">Sous « Plus »</p>}
-            <div className={`ordre-barre__ligne${glisse?.index === index ? ' ordre-barre__ligne--glisse' : ''}`}>
-              <button
-                type="button"
-                className="ordre-barre__poignee"
-                aria-label={`Déplacer ${parCle[cle].label}`}
-                onPointerDown={(e) => commencer(e, index)}
-                onPointerMove={deplacer}
-                onPointerUp={lacher}
-                onPointerCancel={lacher}
-              >
-                <Icon name="grip" size={22} />
-              </button>
-              <Icon name={parCle[cle].icon} size={22} />
-              <span>{parCle[cle].label}</span>
-            </div>
+      <h4 className="section-label perso__sous-partie">
+        <button
+          type="button"
+          className="section-label__depliant"
+          aria-expanded={ouvert}
+          onClick={() => setOuvert((o) => !o)}
+        >
+          <Icon name={ouvert ? 'chevronDown' : 'chevronRight'} size={14} />
+          Ordre des onglets dans la barre d'outils du bas
+        </button>
+      </h4>
+      {ouvert && (
+        <>
+          <p className="muted ordre-barre__aide">
+            Faites glisser un onglet par sa poignée. Le même ordre pour tout le monde ; chacun ne voit que ses onglets.
+          </p>
+          <div className="ordre-barre__liste" ref={liste}>
+            {cles.map((cle, index) => (
+              <div key={cle}>
+                {index === dansLaBarre && <p className="ordre-barre__plus">Sous « Plus »</p>}
+                <div className={`ordre-barre__ligne${glisse?.index === index ? ' ordre-barre__ligne--glisse' : ''}`}>
+                  <button
+                    type="button"
+                    className="ordre-barre__poignee"
+                    aria-label={`Déplacer ${parCle[cle].label}`}
+                    onPointerDown={(e) => commencer(e, index)}
+                    onPointerMove={deplacer}
+                    onPointerUp={lacher}
+                    onPointerCancel={lacher}
+                  >
+                    <Icon name="grip" size={22} />
+                  </button>
+                  <Icon name={parCle[cle].icon} size={22} />
+                  <span>{parCle[cle].label}</span>
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
-      {erreur && <p className="login-screen__erreur">{erreur}</p>}
+          {erreur && <p className="login-screen__erreur">{erreur}</p>}
+        </>
+      )}
     </div>
   )
 }
