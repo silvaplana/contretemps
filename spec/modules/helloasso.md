@@ -17,7 +17,7 @@ Une organisation qui encaisse ses adhésions sur HelloAsso branche l'appli dessu
 Le module ne crée rien sur HelloAsso : les membres s'inscrivent et paient sur HelloAsso, on
 récupère ce que HelloAsso a fait. Seule exception : la résiliation d'une adhésion (§7.7).
 
-## 2. La connexion (Admin > École > Fonctionnalités)
+## 2. La connexion (Admin › École › Connexions depuis le 18 novembre, `core.md` ; avant, Fonctionnalités)
 
 - Case **HelloAsso** dans Personnalisation > Fonctionnalités ; cochée, la ligne montre « Connecter ».
 - Écran **Connecter** : trois lignes de guide (ouvrir HelloAsso > Mon association > Intégrations et

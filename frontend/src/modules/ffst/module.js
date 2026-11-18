@@ -5,7 +5,8 @@ import * as api from './api.js'
 
 // Déclaration du module FFST (spec/core.md §9 bis, spec/modules/ffst.md) :
 // l'onglet FFST des admins (les listes lues sur le site de la fédération),
-// sa ligne de Fonctionnalités (les identifiants du club, `settings`) et sa
+// sa ligne d'Admin › École › Connexions (les identifiants du club,
+// `connection`) et ses
 // colonnes « Statut FFST » et « Actions FFST » dans le tableau des adhérents
 // (`memberColumns`).
 
@@ -22,7 +23,11 @@ async function charger(ecoleId) {
 export default {
   key: 'ffst',
   tabs: [{ key: 'ffst', label: 'FFST', icon: 'fileCheck', roles: ['admin'] }],
-  settings: FfstReglages,
+  connection: {
+    label: 'Site de la FFST',
+    Reglages: FfstReglages,
+    connecte: (ecoleId) => api.etat(ecoleId).then((e) => Boolean(e?.connected)),
+  },
   memberColumns: {
     charger,
     colonnes: [

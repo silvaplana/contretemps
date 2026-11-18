@@ -1,3 +1,4 @@
+import { ouvrirConnexions } from '../../app/connexions.js'
 import MenuEntete from '../../components/MenuEntete.jsx'
 import * as api from './api.js'
 import Boite from './Boite.jsx'
@@ -5,10 +6,8 @@ import { FOURNISSEURS } from './fournisseurs.js'
 import './mail.css'
 
 // Messages › Mail (spec/modules/mail.md §4 à §6) : la boîte du club
-// (Boite.jsx). Elle se connecte dans Admin › Fonctionnalités, ligne Mail
-// (MailReglages.jsx ; Seb, 18 novembre).
-
-const OU = 'Admin › École › Personnalisation › Fonctionnalités, ligne Mail'
+// (Boite.jsx). Elle se connecte dans Admin › École › Connexions
+// (MailReglages.jsx ; Seb, 18 novembre ; spec/core.md, « Connexions »).
 
 export default function MailScreen({ ecoleId, etat, onEtat }) {
   let corps = null
@@ -16,9 +15,13 @@ export default function MailScreen({ ecoleId, etat, onEtat }) {
     corps = (
       <div className="mail__pile">
         <p>La boîte mail du club n'est pas encore connectée.</p>
-        <p className="mail__discret">
-          {etat.can_connect ? `Connectez-la dans ${OU}.` : 'Seul l’Administrateur principal peut la connecter.'}
-        </p>
+        {etat.can_connect ? (
+          <button type="button" className="btn btn--primary btn--block" onClick={ouvrirConnexions}>
+            Connecter la boîte mail
+          </button>
+        ) : (
+          <p className="mail__discret">Seul l’Administrateur principal peut la connecter.</p>
+        )}
       </div>
     )
   } else if (etat.cut) {
@@ -28,8 +31,13 @@ export default function MailScreen({ ecoleId, etat, onEtat }) {
           <strong>La boîte mail n'est plus connectée</strong>
           {FOURNISSEURS[etat.provider]?.nom ?? 'Le fournisseur'} a coupé l'accès, souvent après un changement du mot
           de passe du compte.{' '}
-          {etat.can_connect ? `Reconnectez-la dans ${OU}.` : 'L’Administrateur principal doit la reconnecter.'}
+          {etat.can_connect ? '' : 'L’Administrateur principal doit la reconnecter.'}
         </div>
+        {etat.can_connect && (
+          <button type="button" className="btn btn--primary btn--block" onClick={ouvrirConnexions}>
+            Reconnecter la boîte mail
+          </button>
+        )}
       </div>
     )
   }

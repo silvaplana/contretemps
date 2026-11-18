@@ -128,6 +128,17 @@ nouveau, toute table nouvelle est en anglais.
   n'a pas encore les notifications push). Le mail « Appli Android » garde « Activer mon accès »,
   puis ajoute « Télécharger l'appli Android » (lien du fichier dans la release) et comment
   l'installer. Sans appli prête, « Inviter » envoie directement le mail de l'appli normale.
+- **Connexions** (Seb 18 novembre, maquette https://claude.ai/artifact/KcVhuSbXUJwP1C6FaPQK7p) :
+  volet d'Admin › École, sous Personnalisation, qui réunit les connexions à identifiants des
+  modules allumés, une ligne chacune : HelloAsso, Site de la FFST, Boîte mail du club (l'écran de
+  chaque module, `connection` de son `module.js`, §11.1) et Comptes en banque. Super User et
+  Administrateur principal seulement ; la ligne Comptes en banque, seulement s'ils ont aussi
+  l'Accès au Financier (Seb) : son « Voir » / « Connecter » ouvre Financier › Comptes, volet de la
+  banque (le trésorier y connecte aussi la banque). Une pastille compte les modules allumés pas
+  encore connectés. Fonctionnalités ne garde que les cases (et les réglages qui ne sont pas des
+  connexions : Financier, Publications). Un module pas connecté y renvoie : « Connecter le site de
+  la FFST » (onglet FFST), « Connecter la boîte mail » (Messages › Mail), pour l'Administrateur
+  principal ; les autres lisent que c'est à lui de le faire.
 - **Personnalisation de l'application** (Admin > École), trois parties dans cet ordre :
   **Apparence visuelle** (logo, nom, slogan, couleurs, polices, adresse), **Fonctionnalités** (une
   case par module, §11.3) et **Vocabulaire** (§2). Apparence et Vocabulaire : tout admin ;
@@ -734,7 +745,9 @@ MODULE = Module(
   (`{ value, label, Ecran }`), montrés quand le module est allumé (ex. « Impayés HelloAsso »,
   `modules/helloasso.md` §7.4). De même `HelloAsso.school_keys` des
   inscriptions en ligne (les clés de paiement de l'école, `modules/helloasso.md` §8.2). Un module
-  sans onglet a `tabs: []`.
+  sans onglet a `tabs: []`. `connection` (18 novembre 2026) : `{ label, Reglages, connecte(ecole) }`,
+  sa ligne d'Admin › École › Connexions (§3) ; `settings` reste pour les réglages de sa ligne de
+  Fonctionnalités qui ne sont pas des connexions.
 
 **Codé (Seb, 12 novembre 2026 ; spec/modules/actualites.md §12.8)** : pour le module Publications, où
 l'on crée des blogs à l'écran, un module pourra aussi déclarer des droits **par organisation**
