@@ -57,6 +57,14 @@ campagne est choisie
   jamais gardés), Réponses au formulaire (« Modifiable sur HelloAsso. »), Payeur, Paiements.
 - Revenir à « Nos champs » ou éteindre le module rend le tableau habituel.
 
+Impayés HelloAsso : Admin › Impayés HelloAsso (sous-onglet après Cours, module allumé, tout admin)
+- « Impayés HelloAsso (n) » et « Rafraîchir » (recopie depuis HelloAsso puis relit).
+- Les adhésions de la saison avec au moins une échéance refusée ou en échec ; une échéance à venir
+  d'un paiement en plusieurs fois ne compte pas.
+- Colonnes : Nom, Prénom, Email (du payeur), Total (l'adhésion), Impayé (les échéances refusées),
+  Échéances refusées (leurs dates).
+- « Aucun impayé. » ; sans campagne pour la saison : « Pas de campagne HelloAsso pour cette saison. »
+
 Où voir les paiements
 - Saison imposée par HelloAsso : dans la fiche de l'adhérent, rubrique Paiements. Sinon, sur
   HelloAsso.

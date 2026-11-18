@@ -568,3 +568,32 @@ def test_choix_de_la_saison(client, db_session, ecole, campagnes, monkeypatch):
     assert client.get(url).json()["mode"] == "master"
     assert client.put(url, json={"mode": "none"}).json()["mode"] == "none"
     assert client.put(url, json={"mode": "autre"}).status_code == 422
+
+
+def test_impayes_helloasso(client, db_session, ecole, campagnes, monkeypatch):
+    """Admin > Impayés HelloAsso (spec §7.4) : les adhésions avec au moins
+    une échéance refusée ou en échec ; une échéance à venir ne compte pas."""
+    def echeance(montant, etat, date):
+        return {"amount": montant, "date": date, "state": etat, "means": "Card", "installment": 1}
+
+    payee = _inscrit("1", "Léa", "Martin", "p@test.fr")
+    refusee = {**_inscrit("2", "Tom", "Benali", "t@test.fr", montant=24000), "payments": [
+        echeance(8000, "Authorized", "2026-09-02T10:00:00"),
+        echeance(8000, "Refused", "2026-10-02T10:00:00"),
+        echeance(8000, "Error", "2026-11-02T10:00:00"),
+    ]}
+    a_venir = {**_inscrit("3", "Inès", "Navarro", "i@test.fr", montant=24000), "payments": [
+        echeance(8000, "Authorized", "2026-09-02T10:00:00"),
+        echeance(8000, "Pending", "2026-12-02T10:00:00"),
+    ]}
+    url = f"/ecoles/{ecole.id}/helloasso/impayes"
+    assert client.get(url).json() == {"campaign": False, "members": []}
+    _saison_imposee(client, ecole, monkeypatch, [payee, refusee, a_venir])
+
+    impayes = client.get(url).json()
+    assert impayes["campaign"] is True
+    assert [(m["last_name"], m["first_name"], m["email"], m["total"], m["unpaid"]) for m in impayes["members"]] == [
+        ("Benali", "Tom", "t@test.fr", 24000, 16000),
+    ]
+    assert [p["date"][:10] for p in impayes["members"][0]["refused"]] == ["2026-10-02", "2026-11-02"]
+    assert impayes["members"][0]["member_id"] is not None

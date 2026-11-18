@@ -10,8 +10,9 @@
 // ses colonnes, le verrou de création, sa part de la fiche ; voir
 // AdminEleves.jsx et listeImposee ci-dessous), et ses colonnes et boutons
 // dans le tableau des membres (`memberColumns`, voir colonnesModules
-// ci-dessous). Les onglets du core (Admin, Supervision, Profil) sont dans
-// data/nav.js.
+// ci-dessous), et des sous-onglets d'Admin (`adminTabs` : { value, label,
+// Ecran }, après Cours, module allumé ; voir AdminScreen.jsx). Les onglets
+// du core (Admin, Supervision, Profil) sont dans data/nav.js.
 import choregraphies from '../modules/choregraphies/module.js'
 import documents from '../modules/documents/module.js'
 import finances from '../modules/finances/module.js'

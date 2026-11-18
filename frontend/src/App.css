@@ -5588,3 +5588,9 @@ tr.is-resiliee td button {
 tr.is-resiliee td.data-table__name button {
   text-decoration: line-through;
 }
+
+/* Admin > Impayés HelloAsso (modules/helloasso/Impayes.jsx). */
+.impayes__montant {
+  color: var(--danger-text);
+  font-weight: 700;
+}
