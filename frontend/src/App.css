@@ -5777,3 +5777,28 @@ tr.is-resiliee td.data-table__name button {
   background: var(--danger-bg, #fdecea);
   color: var(--danger-text);
 }
+
+/* Vérification des dossiers HelloAsso (modules/helloasso/Dossier.jsx). */
+.dossier__ok {
+  margin: 0;
+  color: var(--success-text, #2e7d32);
+  font-weight: 700;
+}
+
+.dossier__a-verifier {
+  color: var(--warning-text, #b45309);
+  font-weight: 700;
+}
+
+.helloasso__case {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+}
+
+.helloasso__case input {
+  width: 22px;
+  height: 22px;
+  flex: none;
+}

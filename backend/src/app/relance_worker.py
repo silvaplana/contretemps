@@ -40,6 +40,7 @@ from cours import CoursService
 from db import SessionLocal
 from documents import assembly
 from documents_contretemps import AnnuaireContretemps, AssociationContretemps, MessagerieContretemps
+from ecoles import mail_ecole
 from eleves import Eleves
 from finances import Finances
 from finances.bank import Bank
@@ -47,6 +48,7 @@ from finances_contretemps.adapter import prevenir_tresoriers
 from finances_contretemps.module import _client_bancaire
 from helloasso.module import add_member
 from helloasso.sync import Sync, sync_all
+from helloasso.verification import Checker
 from messagerie import Conversations, Messages
 from publications.instagram import InstagramApp, InstagramRelay
 from publications.publications import Publications
@@ -70,6 +72,11 @@ def run() -> None:
     # La copie des rappels pour l'adresse de contact de l'association.
     association = AssociationContretemps()
     helloasso = Sync(add_member=add_member(Eleves(comptes=Comptes())))
+    # Nouvel adhérent : notification et vérification du dossier, si l'école
+    # les a allumées (spec/modules/helloasso.md §7.5).
+    helloasso.on_new.append(
+        Checker(send_mail=mail_ecole.envoyer, push=Notifications().envoyer_a_compte, background=False).on_new
+    )
     # Pas de notification pour un post relayé : `notifications` inutile ici.
     instagram = InstagramRelay(
         Publications(notifications=None, storage=publications_storage(), videos=Videos()), app=InstagramApp.from_env()

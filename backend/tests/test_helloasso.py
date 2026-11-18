@@ -462,7 +462,8 @@ def test_ecole_sans_helloasso_inchangee(client, db_session, ecole, campagnes):
     assert creee.status_code == 201
     assert client.delete(f"/eleves/{creee.json()['id']}").status_code == 204
     assert client.get(f"/ecoles/{ecole.id}/helloasso/adherents").json() == {
-        "imposed": False, "form_name": None, "can_refresh": False, "can_cancel": False, "members": {},
+        "imposed": False, "form_name": None, "can_refresh": False, "can_cancel": False, "checks_on": False,
+        "members": {},
     }
 
 
@@ -502,7 +503,8 @@ def test_tableau_et_fiche_des_adherents(client, db_session, ecole, campagnes, mo
     assert tableau["imposed"] is True and tableau["can_refresh"] is True
     lignes = {db_session.get(Compte, int(i)).prenom: ligne for i, ligne in tableau["members"].items()}
     assert lignes["Léa"] == {"amount": 16000, "discount_code": "FRATRIE", "state": "Processed",
-                             "cancelled": False, "photo": True, "mails": 0, "sms": 0, "has_phone": False}
+                             "cancelled": False, "photo": True, "mails": 0, "sms": 0, "has_phone": False,
+                             "check": None}
     assert lignes["Inès"]["cancelled"] is True and lignes["Inès"]["photo"] is False
 
     lea_id = next(int(i) for i, ligne in tableau["members"].items() if ligne["photo"])
@@ -712,3 +714,157 @@ def test_resilier_une_commande(client, db_session, ecole, campagnes, monkeypatch
     assert lignes[str(fiches["Lina"])]["cancelled"] is True and lignes[str(fiches["Hugo"])]["cancelled"] is False
     assert client.post(f"{url}/resilier").status_code == 409
     assert len(appels) == 1
+
+
+class _Inspecteur:
+    """Le modèle remplacé : rend `verdicts` et note ce qu'il a reçu."""
+
+    def __init__(self, **verdicts):
+        self.verdicts, self.appels = verdicts, []
+
+    def inspect(self, club, answers, documents, today):
+        from helloasso.checks import Verdict
+
+        self.appels.append((club, answers["prenom"], sorted(documents)))
+        resultats = {k: {"ok": True, "raison": ""} for k in ("photo", "certificat", "autorisation", "donnees")}
+        resultats.update({k: {"ok": False, "raison": v} for k, v in self.verdicts.items()})
+        return Verdict(results=resultats, cost=0.01)
+
+
+def _dossier(naissance, certificat=True, autorisation=False):
+    reponses = [
+        {"id": "12", "name": "Date de naissance", "type": "Date", "answer": naissance},
+        {"id": "20", "name": "photo d'identité", "type": "File", "answer": PHOTO_URL},
+    ]
+    if certificat:
+        reponses.append({"id": "21", "name": "Certificat médical", "type": "File", "answer": CERTIFICAT_URL})
+    if autorisation:
+        reponses.append({"id": "23", "name": "Autorisation parentale", "type": "File", "answer": CERTIFICAT_URL})
+    return reponses
+
+
+@pytest.fixture()
+def verificateur(monkeypatch):
+    """Le vérificateur du module, sans fil d'exécution ni réseau."""
+    from app import main
+
+    checker = main.core.helloasso_checker
+    monkeypatch.setattr(checker, "background", False)
+    monkeypatch.setattr(checker.runs, "background", False)
+    monkeypatch.setattr(checker, "fetch_file", lambda client_id, secret, url: (_image(), "image/png"))
+    pousses, mails = [], []
+    monkeypatch.setattr(checker, "push", lambda db, compte_id, titre, corps: pousses.append((compte_id, titre, corps)))
+    monkeypatch.setattr(checker, "send_mail", lambda db, org_id, a, sujet, texte, html: mails.append((a, sujet, texte)))
+    return checker, pousses, mails
+
+
+def test_verification_d_un_dossier(db_session, ecole):
+    """Contrôles sans modèle, puis un seul appel avec les documents (spec
+    §7.5) ; l'autorisation parentale d'un majeur n'est pas regardée."""
+    from datetime import date
+
+    from helloasso import checks
+    from helloasso.models import HelloAssoRegistration
+
+    def inscription(item_id, reponses):
+        r = HelloAssoRegistration(org_id=ecole.id, season_id=1, item_id=item_id, order_id="c", first_name="Léa",
+                                  last_name="Martin", state="Processed", answers=reponses, payments=[])
+        return r
+
+    jour = date(2026, 11, 18)
+    lire = lambda url: _image()  # noqa: E731
+    bon = _Inspecteur()
+    ok = checks.check(db_session, inscription("1", _dossier("14/03/1990", autorisation=True)), lire, bon, "Club", jour)
+    assert (ok.status, ok.issues, ok.model) == ("ok", [], checks.MODEL)
+    assert bon.appels == [("Club", "Léa", ["certificat", "photo"])]
+
+    mineur = checks.check(db_session, inscription("2", _dossier("2016-01-09", certificat=False)), lire, bon, "Club", jour)
+    assert mineur.status == "problem" and mineur.issues == [
+        "Certificat médical manquant", "Autorisation parentale manquante (adhérent mineur)"]
+
+    refus = _Inspecteur(certificat="Le certificat date de plus d'un an.")
+    vieux = checks.check(db_session, inscription("3", _dossier("14/03/1990")), lire, refus, "Club", jour)
+    assert vieux.issues == ["Certificat médical : Le certificat date de plus d'un an."]
+
+    def illisible(url):
+        return b"pas une image"
+
+    sans = checks.check(db_session, inscription("4", _dossier("??")), illisible, bon, "Club", jour)
+    assert sans.issues == ["Date de naissance absente ou illisible", "Photo d'identité : fichier illisible",
+                           "Certificat médical : fichier illisible"]
+    # Aucun document lisible : le modèle n'est pas appelé.
+    assert len(bon.appels) == 2 and sans.cost == 0 and sans.model is None
+
+
+def test_nouvel_adherent_verifie_et_signale(client, db_session, ecole, campagnes, monkeypatch, verificateur):
+    """Éteints par défaut (spec §7.10) ; allumés : notification aux admins,
+    dossier vérifié, mail à l'école s'il y a un problème."""
+    from comptes import Comptes, roles
+    from helloasso.models import HelloAssoCheck
+
+    checker, pousses, mails = verificateur
+    checker.inspector = _Inspecteur(photo="La photo ne montre personne.")
+    monkeypatch.setattr(roles, "is_admin", lambda c: c.prenom == "Admin")
+    ecole.email_contact = "contact@club.fr"
+    admin = Comptes().create(db_session, ecole_id=ecole.id, role="admin", nom="Club", prenom="Admin")
+    db_session.commit()
+    inscrits = [_inscrit("1", "Léa", "Martin", "p@test.fr", _dossier("14/03/1990"))]
+    _saison_imposee(client, ecole, monkeypatch, inscrits)
+    assert pousses == [] and mails == [] and db_session.query(HelloAssoCheck).count() == 0
+
+    reglages = f"/ecoles/{ecole.id}/helloasso/reglages"
+    assert client.get(reglages).json() == {"check_files": False, "notify_new": False}
+    client.put(reglages, json={"check_files": True, "notify_new": True})
+    inscrits.append(_inscrit("2", "Noé", "Lefèvre", "n@test.fr", _dossier("11/10/2007")))
+    client.post(f"/ecoles/{ecole.id}/helloasso/synchroniser")
+    assert pousses == [(admin.id, "Nouvel adhérent", "Noé Lefèvre")]
+    assert [(a, s) for a, s, _ in mails] == [("contact@club.fr", "Nouvel adhérent à vérifier : Noé Lefèvre")]
+    assert "La photo ne montre personne." in mails[0][2]
+    # Léa n'est pas nouvelle : ni vérifiée ni annoncée.
+    assert [c.first_name for c in db_session.query(HelloAssoCheck)] == ["Noé"]
+
+
+def test_verifier_les_adherents_et_valider(client, db_session, ecole, campagnes, monkeypatch, verificateur):
+    """« Vérifier les adhérents » (Accès au Financier) relance ceux qui ne
+    sont pas OK et envoie le rapport ; « Valider le dossier » et son
+    Annuler ; colonne Vérification et fiche."""
+    from comptes import Compte, roles
+
+    checker, _, mails = verificateur
+    ecole.email_contact = "contact@club.fr"
+    db_session.commit()
+    _saison_imposee(client, ecole, monkeypatch, [
+        _inscrit("1", "Léa", "Martin", "p@test.fr", _dossier("14/03/1990")),
+        _inscrit("2", "Noé", "Lefèvre", "n@test.fr", _dossier("11/10/2007", certificat=False)),
+    ])
+    url = f"/ecoles/{ecole.id}/helloasso/verification"
+    assert client.post(url).status_code == 422  # éteinte
+    client.put(f"/ecoles/{ecole.id}/helloasso/reglages", json={"check_files": True, "notify_new": False})
+    assert client.get(url).json() == {"on": True, "running": False, "to_check": 2, "cost": 0.0, "can_run": True}
+
+    checker.inspector = _Inspecteur()
+    etat = client.post(url).json()
+    assert (etat["to_check"], etat["running"], round(etat["cost"], 2)) == (1, False, 0.02)
+    sujet, texte = mails[-1][1], mails[-1][2]
+    assert sujet == "Sambo La Ciotat : vérification des dossiers" and "1 OK, 1 à regarder" in texte
+    assert "Certificat médical manquant" in texte
+
+    # Deuxième passage : Léa (OK) n'est plus revérifiée.
+    checker.inspector = _Inspecteur()
+    client.post(url)
+    assert [a[1] for a in checker.inspector.appels] == ["Noé"]
+
+    lignes = client.get(f"/ecoles/{ecole.id}/helloasso/adherents").json()
+    assert lignes["checks_on"] is True
+    par_prenom = {db_session.get(Compte, int(i)).prenom: (int(i), l["check"]) for i, l in lignes["members"].items()}
+    noe, verdict = par_prenom["Noé"]
+    assert verdict == {"ok": False, "issues": ["Certificat médical manquant"]}
+    assert par_prenom["Léa"][1] == {"ok": True, "issues": []}
+    adherent = f"/ecoles/{ecole.id}/helloasso/adherents/{noe}"
+    assert client.post(f"{adherent}/valider").json() == {"ok": True, "issues": []}
+    assert client.get(adherent).json()["check"] == {"ok": True, "issues": []}
+    assert client.get(url).json()["to_check"] == 0
+    assert client.delete(f"{adherent}/valider").json() == {"ok": False, "issues": ["Certificat médical manquant"]}
+
+    monkeypatch.setattr(roles, "has_right", lambda compte, droit: False)
+    assert client.post(url).status_code == 403

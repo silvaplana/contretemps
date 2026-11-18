@@ -108,6 +108,8 @@ class MemberRowOut(BaseModel):
     mails: int = 0
     sms: int = 0
     has_phone: bool = False
+    # Vérification du dossier (spec §7.5) : {ok, issues}, None si jamais vérifié.
+    check: dict | None = None
 
 
 class RefusedOut(BaseModel):
@@ -141,6 +143,8 @@ class MembersOut(BaseModel):
     can_refresh: bool = False
     # « Résilier » (spec §7.7) : droit Accès au Financier.
     can_cancel: bool = False
+    # Vérification des dossiers allumée pour l'école (spec §7.5).
+    checks_on: bool = False
     # {fiche: colonnes HelloAsso}.
     members: dict[int, MemberRowOut] = {}
 
@@ -169,6 +173,7 @@ class MemberCardOut(BaseModel):
     payer_email: str | None = None
     payments: list[dict]
     messages: list[dict] = []
+    check: dict | None = None
 
 
 class MailIn(BaseModel):
@@ -448,9 +453,11 @@ class HelloAssoReceiver:
         current = self.campaigns.current(db, season_id) if season_id else None
         if current is None:
             return MembersOut(imposed=False)
+        connection = self.client.current(db, ecole_id)
         return MembersOut(
             imposed=True,
             can_cancel=roles.has_right(appelant, roles.DROIT_FINANCIER),
+            checks_on=bool(connection and connection.check_files),
             form_name=current.form_name,
             can_refresh=season_id == saison_courante_id(db, ecole_id),
             members=imposed_members.table(db, ecole_id, season_id),
