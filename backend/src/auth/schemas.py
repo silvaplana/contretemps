@@ -96,6 +96,9 @@ class Invitation(BaseModel):
     compte_ids: list[int]
     # Une seule adresse de la fiche (plusieurs emails, §2.1) ; toutes sinon.
     email: str | None = None
+    # Administrateur invité sur l'appli Android de l'école (Seb 18/11/2026) :
+    # le mail ajoute le lien pour la télécharger.
+    appli_android: bool = False
 
 
 class InvitationSortie(BaseModel):

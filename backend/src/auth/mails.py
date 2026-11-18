@@ -68,7 +68,7 @@ class MailsAcces:
 
     def invitation(
         self, email: str, ecole_nom: str, destinataire: str, prenoms: list[str], jeton: str,
-        sous_domaine: str | None = None, nature: str | None = None,
+        sous_domaine: str | None = None, nature: str | None = None, apk: tuple[str, str] | None = None,
     ) -> None:
         paragraphes = [
             f"L'école {ecole_nom} utilise une application pour ses élèves, leurs familles et ses "
@@ -92,11 +92,12 @@ class MailsAcces:
                 "Si vous ne la connaissez pas, vous pouvez l'ignorer.",
             ],
             nature=nature,
+            apk=apk,
         )
 
     def rappel(
         self, email: str, ecole_nom: str, destinataire: str, prenoms: list[str], sous_domaine: str | None = None,
-        nouvelle_ecole: bool = False, nature: str | None = None,
+        nouvelle_ecole: bool = False, nature: str | None = None, apk: tuple[str, str] | None = None,
     ) -> None:
         """Réinvitation d'une personne qui a DÉJÀ créé son mot de passe
         (demande utilisateur du 2026-10-02) : pas de lien pour en choisir
@@ -128,6 +129,7 @@ class MailsAcces:
                 "Si vous ne la connaissez pas, vous pouvez l'ignorer.",
             ],
             nature=nature,
+            apk=apk,
         )
 
     def reinitialisation(
@@ -164,10 +166,32 @@ class MailsAcces:
         lien: str,
         fin: list[str],
         nature: str | None = None,
+        apk: tuple[str, str] | None = None,
     ) -> None:
         """Les deux versions du même message, texte et mise en forme, avec le
-        lien écrit en clair dans les deux."""
-        texte = "\n\n".join([f"Bonjour {destinataire},", *paragraphes, f"{bouton} :\n{lien}", *fin]) + "\n"
+        lien écrit en clair dans les deux. `apk` : (nom, lien) de l'appli
+        Android de l'école, ajoutée après le lien quand l'admin a choisi
+        « Appli Android » à l'invitation (Seb 18/11/2026)."""
+        installer = (
+            [
+                f"Ensuite, sur votre téléphone Android, installez l'appli « {apk[0]} », qui sert à filmer dans Fights.",
+                "Télécharger l'appli Android",
+                apk[1],
+                "Ouvrez le fichier téléchargé, autorisez Chrome à installer des applis si le téléphone le demande, "
+                "puis touchez Installer. Connectez-vous avec votre email et votre mot de passe.",
+            ]
+            if apk
+            else []
+        )
+        texte = "\n\n".join(
+            [
+                f"Bonjour {destinataire},",
+                *paragraphes,
+                f"{bouton} :\n{lien}",
+                *([installer[0], f"{installer[1]} :\n{installer[2]}", installer[3]] if apk else []),
+                *fin,
+            ]
+        ) + "\n"
         p = '<p style="margin:0 0 16px">{}</p>'
         html = (
             '<div style="font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.5;color:#3a2410;'
@@ -180,6 +204,14 @@ class MailsAcces:
             # réécrite, et les messageries la rendent cliquable.
             + f'<p style="margin:24px 0 4px;font-weight:bold">{escape(bouton)} :</p>'
             + f'<p style="margin:0 0 24px;word-break:break-all">{escape(lien)}</p>'
+            + (
+                p.format(escape(installer[0]))
+                + f'<p style="margin:0 0 4px;font-weight:bold">{escape(installer[1])} :</p>'
+                + f'<p style="margin:0 0 16px;word-break:break-all">{escape(installer[2])}</p>'
+                + '<p style="margin:0 0 24px">{}</p>'.format(escape(installer[3]))
+                if apk
+                else ""
+            )
             + "".join('<p style="margin:0 0 8px;font-size:13px;color:#8a6a4a">{}</p>'.format(escape(x)) for x in fin)
             + "</div>"
         )

@@ -33,7 +33,9 @@ Admin › École
 - Administrateurs : tableau Nom, Prénom, Email, Administrateur principal, Groupes, Inviter, Statut.
   Toucher la case Groupes : Bureau (Président·e, Vice-président·e, Secrétaire, Trésorier·e), Profs,
   groupes de l'école, 🔒 Accès au Financier, 🔒 Publier les actualités, « + Nouveau groupe… ». Crayon et poubelle :
-  administrateur principal, jamais sur sa propre ligne.
+  administrateur principal, jamais sur sa propre ligne. Quand l'appli Android de l'école est prête,
+  « Inviter » demande « Sur quelle appli ? » : Appli normale ou Appli Android (pour filmer dans
+  Fights avec la télécommande), Annuler.
 - Personnalisation de l'application : Apparence visuelle (aperçus, adresse web de l'appli, « Nature de l'école » Danse ou Combat pour le
   Super User seulement, puis « Appli Android » Non ou Oui pour le Super User quand Fights est allumé, nom sous
   l'icône, logo, nom de l'école en texte ou image, slogan, polices, couleurs ; Enregistrer ;

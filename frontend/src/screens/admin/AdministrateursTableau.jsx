@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import * as administrateursApi from '../../api/administrateurs.js'
 import * as modulesApi from '../../api/modules.js'
+import * as personnalisationApi from '../../api/personnalisation.js'
 import Badge from '../../components/Badge.jsx'
 import Icon from '../../components/Icon.jsx'
 import ListeEmails from '../../components/ListeEmails.jsx'
@@ -69,6 +70,8 @@ export default function AdministrateursTableau({
   const [groupesDe, setGroupesDe] = useState(null)
   const [groupesEcole, setGroupesEcole] = useState([])
   const [droits, setDroits] = useState([])
+  // Appli Android de l'école prête : « Inviter » demande sur quelle appli.
+  const [appliAndroid, setAppliAndroid] = useState(false)
   const [toast, setToast] = useState(null)
   const minuteurToast = useRef(null)
   const [erreur, setErreur] = useState(null)
@@ -94,6 +97,12 @@ export default function AdministrateursTableau({
       .droits(ecoleId)
       .then((liste) => {
         if (!annule) setDroits(liste)
+      })
+      .catch(() => {})
+    personnalisationApi
+      .appliAndroid(ecoleId)
+      .then((etat) => {
+        if (!annule) setAppliAndroid(etat.prete)
       })
       .catch(() => {})
     return () => {
@@ -241,7 +250,7 @@ export default function AdministrateursTableau({
                       </button>
                     </td>
                     <td>
-                      <BoutonInviter acces={acces} compteId={a.id} prenom={a.prenom} />
+                      <BoutonInviter acces={acces} compteId={a.id} prenom={a.prenom} appliAndroid={appliAndroid} />
                     </td>
                     <td>
                       <StatutAcces acces={acces} compteId={a.id} />

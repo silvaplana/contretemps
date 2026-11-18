@@ -290,11 +290,18 @@ class AuthReceiver:
         emails = [e for e in emails if e not in invalides]
         if not emails:
             raise HTTPException(status_code=422, detail=f"Adresse email mal saisie : {', '.join(invalides)}")
+        apk = None
+        if donnees.appli_android:
+            from personnalisation import appli_android
+
+            apk = appli_android.telechargement(ecole)
+            if apk is None:
+                raise HTTPException(status_code=409, detail="L'appli Android de l'école n'est pas prête")
         if len(emails) == 1:
             # Une seule adresse : envoi immédiat, l'admin voit tout de
             # suite si le mail est parti.
             try:
-                self.invitations.inviter(db, ecole, emails[0], donnees.compte_ids)
+                self.invitations.inviter(db, ecole, emails[0], donnees.compte_ids, apk)
             except MailsIndisponibles as erreur:
                 raise HTTPException(status_code=503, detail=str(erreur)) from erreur
             except Exception as erreur:  # noqa: BLE001
@@ -306,15 +313,17 @@ class AuthReceiver:
         # « Inviter tous les non-invités » : des dizaines de mails, envoyés
         # après la réponse. Sa propre session de base : celle de la requête
         # est déjà refermée à ce moment-là.
-        taches.add_task(self._inviter_en_tache_de_fond, db.get_bind(), ecole_id, emails, donnees.compte_ids)
+        taches.add_task(self._inviter_en_tache_de_fond, db.get_bind(), ecole_id, emails, donnees.compte_ids, apk)
         return InvitationSortie(emails=len(emails), en_cours=True, adresses=emails)
 
-    def _inviter_en_tache_de_fond(self, moteur, ecole_id: int, emails: list[str], compte_ids: list[int]) -> None:
+    def _inviter_en_tache_de_fond(
+        self, moteur, ecole_id: int, emails: list[str], compte_ids: list[int], apk: tuple[str, str] | None = None
+    ) -> None:
         with Session(moteur) as db:
             ecole = db.get(Ecole, ecole_id)
             for email in emails:
                 try:
-                    self.invitations.inviter(db, ecole, email, compte_ids)
+                    self.invitations.inviter(db, ecole, email, compte_ids, apk)
                 except Exception:  # noqa: BLE001 — une adresse en échec n'arrête pas les autres
                     db.rollback()
                     logger.exception("Invitation non envoyée à une adresse")

@@ -78,3 +78,39 @@ def test_eteindre_fights_retire_l_appli_de_la_liste(client, db_session, asc, git
     set_enabled(db_session, asc.id, MODULES, "session_clips", False)
     assert client.get("/applis-android").json() == []
     assert client.get(f"/ecoles/{asc.id}/appli-android").json()["disponible"] is False
+
+
+def test_inviter_un_administrateur_sur_l_appli_android(client, db_session, asc, github, mails):
+    """Le mail garde « Activer mon accès », puis ajoute le lien de l'appli
+    Android et comment l'installer (Seb 18/11/2026)."""
+    from comptes import Comptes
+
+    admin = Comptes().create(db_session, ecole_id=asc.id, role="eleve", nom="Dupont", prenom="Léo", email="leo@x.fr")
+    route = f"/ecoles/{asc.id}/invitations"
+    # Appli pas encore publiée : refusé, rien ne part.
+    client.put(f"/ecoles/{asc.id}/appli-android", json={"actif": True})
+    assert client.post(route, json={"compte_ids": [admin.id], "appli_android": True}).status_code == 409
+    assert mails == []
+
+    apk = f"{RELEASE}/tournage-{ASC}.apk"
+    github["version"] = {"build": 40, "date": "18/11", "apk": {ASC: apk}}
+    assert client.post(route, json={"compte_ids": [admin.id], "appli_android": True}).status_code == 200
+    _, _, texte, html = mails[-1]
+    assert "Activer mon accès :\nhttps://" in texte
+    assert "installez l'appli « Tournage ASC La Ciotat »" in texte
+    assert f"Télécharger l'appli Android :\n{apk}" in texte and apk in html
+    assert texte.index("Activer mon accès") < texte.index("Télécharger")
+
+    # « Appli normale » : le mail de toujours, sans l'appli Android.
+    client.post(route, json={"compte_ids": [admin.id]})
+    assert "Télécharger" not in mails[-1][2] and "Activer mon accès" in mails[-1][2]
+
+
+def test_le_beausset_ne_peut_pas_inviter_sur_l_appli_android(client, db_session, beausset, github, mails):
+    from comptes import Comptes
+
+    admin = Comptes().create(db_session, ecole_id=beausset.id, role="eleve", nom="Roux", prenom="Ana", email="ana@x.fr")
+    route = f"/ecoles/{beausset.id}/invitations"
+    assert client.post(route, json={"compte_ids": [admin.id], "appli_android": True}).status_code == 409
+    assert client.post(route, json={"compte_ids": [admin.id]}).status_code == 200
+    assert "Télécharger" not in mails[-1][2]

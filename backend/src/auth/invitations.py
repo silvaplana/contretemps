@@ -46,13 +46,16 @@ class Invitations:
             emails &= {normaliser_email(email)}
         return sorted(emails)
 
-    def inviter(self, db: Session, ecole, email: str, compte_ids: list[int] | None = None) -> None:
+    def inviter(
+        self, db: Session, ecole, email: str, compte_ids: list[int] | None = None, apk: tuple[str, str] | None = None
+    ) -> None:
         """Envoie le mail (nouveau lien, qui annule le précédent), puis note
         « Invité le… ». Lève une exception si le mail ne part pas.
         `compte_ids` : les fiches sur lesquelles l'admin a cliqué ; le mail
         salue l'une d'elles, pas un autre profil qui partage l'adresse (vécu
         le 2026-10-15 : « Inviter » sur un élève saluait la professeure qui
-        avait la même adresse, de plus haut rang)."""
+        avait la même adresse, de plus haut rang). `apk` : (nom, lien) de
+        l'appli Android, pour un administrateur invité sur elle."""
         profils = list(
             db.scalars(
                 select(Compte)
@@ -75,11 +78,13 @@ class Invitations:
                 # l'autre école (vécu le 2026-11-12, Sambo).
                 self.mails.rappel(
                     email, ecole.nom, nom, prenoms, sous_domaine=ecole.sous_domaine, nouvelle_ecole=nouvelle_ecole,
-                    nature=ecole.nature,
+                    nature=ecole.nature, apk=apk,
                 )
             else:
                 jeton = self.acces.creer_lien(db, acces_email, INVITATION, ecole.id)
-                self.mails.invitation(email, ecole.nom, nom, prenoms, jeton, sous_domaine=ecole.sous_domaine, nature=ecole.nature)
+                self.mails.invitation(
+                    email, ecole.nom, nom, prenoms, jeton, sous_domaine=ecole.sous_domaine, nature=ecole.nature, apk=apk
+                )
         except MailsIndisponibles:
             raise  # réglage du serveur, pas un problème de cette adresse
         except Exception as erreur:
