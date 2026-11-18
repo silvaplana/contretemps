@@ -41,7 +41,8 @@ function ongletGarde() {
   }
 }
 
-export default function Sparring({ ecoleId, cours }) {
+// `appli` : le nom de l'appli Android de l'école, « Tournage ASC La Ciotat » (Seb, 18/11).
+export default function Sparring({ ecoleId, cours, appli }) {
   const [me, setMe] = useState(null)
   const [onglet, setOnglet] = useState('mes')
   const [ouvert, setOuvert] = useState(null) // { seanceId } | { clipId, retour }
@@ -223,7 +224,7 @@ export default function Sparring({ ecoleId, cours }) {
           {onglet === 'tournage' && (
             <>
               <Deroulant titre="Tournage" ouvertAuDepart>
-                <Tournage montrer={montrer} rafraichir={rafraichir} />
+                <Tournage montrer={montrer} rafraichir={rafraichir} appli={appli} />
               </Deroulant>
               <Deroulant titre="Montage" ouvertAuDepart>
                 <Seances {...contexte} onOpen={(id) => setOuvert({ seanceId: id })} />

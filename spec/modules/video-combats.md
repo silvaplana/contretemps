@@ -673,8 +673,9 @@ sont retirés de l'écran ; les routes de jumelage restent pour l'appli caméra 
   « Vidéo en attente d'envoi (pas de réseau) ». Jamais le mot « morceau » à l'écran (Seb, 12/11 :
   ça n'intéresse pas l'utilisateur). Un envoi coupé est repris toutes les 5 s, même après l'arrêt du
   film (`RecorderService.tick`) ; avant, il attendait le morceau suivant. Dans Chrome : « Pour
-  filmer, ce téléphone doit ouvrir Contretemps dans l'appli Tournage » et « Installer l'appli
-  Tournage ». Éteint ou Télécommande arrête le service ; si une vidéo reste à envoyer, il ne filme
+  filmer, ouvrez l'appli « Tournage ASC La Ciotat » sur ce téléphone » (le nom de l'appli de l'école,
+  `Tournage <nom de l'appli ou de l'école>`, Seb 18/11) et « Installer l'appli Tournage », dans une
+  colonne de 640 px au plus pour rester lisible sur grand écran. Éteint ou Télécommande arrête le service ; si une vidéo reste à envoyer, il ne filme
   plus mais finit l'envoi avant de s'arrêter, et « Envoi de la vidéo : X % » reste affiché sous le
   sélecteur (Seb, 12/11 : l'envoi continue quand on part).
 - **Télécommande** : « ● Caméra de la salle prête · 86 % », « ● La caméra filme · 00:12:34 » ou
