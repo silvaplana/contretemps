@@ -58,3 +58,10 @@ export const urlPhoto = (ecoleId, ficheId, taille) =>
   blob(`/ecoles/${ecoleId}/helloasso/adherents/${ficheId}/photo?size=${taille}`)
 export const urlFichier = (ecoleId, ficheId, index) =>
   blob(`/ecoles/${ecoleId}/helloasso/adherents/${ficheId}/fichiers/${index}`)
+
+// Comment la saison affichée utilise HelloAsso (spec §8.1).
+// → { connected, mode: 'master' | 'payment' | 'none', season_name, can_change, form }
+export const saison = (ecoleId) => requete(`/ecoles/${ecoleId}/helloasso/saison`)
+// « L'appli fait tout, HelloAsso encaisse » ('payment') ou « Sans HelloAsso » ('none') ;
+// « HelloAsso fait tout » se choisit avec sa campagne (choisirCampagne).
+export const choisirSaison = (ecoleId, mode) => requete(`/ecoles/${ecoleId}/helloasso/saison`, json('PUT', { mode }))

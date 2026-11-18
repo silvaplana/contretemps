@@ -19,8 +19,11 @@ import logging
 import os
 import re
 import time
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import requests
+from sqlalchemy.orm import Session
 
 from .tarifs import Echeance
 
@@ -60,6 +63,22 @@ class HelloAssoError(Exception):
         self.messages_api = messages_api or []
 
 
+@dataclass(frozen=True)
+class SchoolKeys:
+    """The keys of the school's own HelloAsso connection (spec/modules/
+    helloasso.md §8.2), used instead of the server's variables."""
+
+    client_id: str
+    client_secret: str
+    organization_slug: str
+    base_url: str
+
+
+# school_keys(db, ecole_id, saison_id) -> (client_id, secret, slug, base URL),
+# or None (server keys).
+KeysProvider = Callable[[Session, int, int], "tuple[str, str, str, str] | None"]
+
+
 class HelloAsso:
     def __init__(self) -> None:
         self.base_url = os.environ.get("HELLOASSO_API_BASE", BASE_URL_DEFAUT)
@@ -67,41 +86,60 @@ class HelloAsso:
         self.client_secret = os.environ.get("HELLOASSO_CLIENT_SECRET")
         self.organization_slug = os.environ.get("HELLOASSO_ORGANIZATION_SLUG")
         self.actif = bool(self.client_id and self.client_secret and self.organization_slug)
-        self._access_token: str | None = None
-        self._expire_a: float = 0.0
+        # Jetons par identifiant client (celui du serveur, ceux des écoles).
+        self._jetons: dict[str, tuple[str, float]] = {}
+        # Filled by the HelloAsso module when it mounts: a season set to
+        # « L'appli fait tout, HelloAsso encaisse » pays with its school's
+        # keys. Empty, or no answer: the server's variables, as before.
+        self.school_keys: list[KeysProvider] = []
 
-    def _obtenir_token(self) -> str:
+    def cles(self, db: Session, ecole_id: int, saison_id: int) -> SchoolKeys | None:
+        """Les clés de l'école pour cette saison, sinon None (serveur)."""
+        for provider in self.school_keys:
+            keys = provider(db, ecole_id, saison_id)
+            if keys is not None:
+                return SchoolKeys(*keys)
+        return None
+
+    def _cles(self, cles: SchoolKeys | None) -> SchoolKeys:
+        if cles is not None:
+            return cles
+        if not self.actif:
+            raise HelloAssoError("HelloAsso non configuré (identifiants manquants)")
+        return SchoolKeys(self.client_id, self.client_secret, self.organization_slug, self.base_url)
+
+    def _obtenir_token(self, cles: SchoolKeys | None = None) -> str:
         """Voir dev.helloasso.com/docs/getting-started — un access_token
         dure 30 min ; on le garde en mémoire process (pas en base : un
         redémarrage du backend en redemande juste un nouveau, coût
         négligeable) plutôt que d'en redemander un à chaque appel."""
-        if not self.actif:
-            raise HelloAssoError("HelloAsso non configuré (identifiants manquants)")
-        if self._access_token and time.monotonic() < self._expire_a:
-            return self._access_token
+        cles = self._cles(cles)
+        jeton, expire_a = self._jetons.get(cles.client_id, (None, 0.0))
+        if jeton and time.monotonic() < expire_a:
+            return jeton
         reponse = requests.post(
-            f"{self.base_url}/oauth2/token",
+            f"{cles.base_url}/oauth2/token",
             data={
                 "grant_type": "client_credentials",
-                "client_id": self.client_id,
-                "client_secret": self.client_secret,
+                "client_id": cles.client_id,
+                "client_secret": cles.client_secret,
             },
             timeout=10,
         )
         if not reponse.ok:
             raise HelloAssoError(f"Authentification HelloAsso échouée ({reponse.status_code})")
         corps = reponse.json()
-        self._access_token = corps["access_token"]
         # Marge de 60s avant l'expiration réelle, pour ne jamais utiliser
         # un token périmé pile au moment de l'appel suivant.
-        self._expire_a = time.monotonic() + corps["expires_in"] - 60
-        return self._access_token
+        self._jetons[cles.client_id] = (corps["access_token"], time.monotonic() + corps["expires_in"] - 60)
+        return corps["access_token"]
 
-    def _appel(self, methode: str, chemin: str, **kwargs) -> dict:
-        token = self._obtenir_token()
+    def _appel(self, methode: str, chemin: str, cles: SchoolKeys | None = None, **kwargs) -> dict:
+        cles = self._cles(cles)
+        token = self._obtenir_token(cles)
         reponse = requests.request(
             methode,
-            f"{self.base_url}/v5/organizations/{self.organization_slug}{chemin}",
+            f"{cles.base_url}/v5/organizations/{cles.organization_slug}{chemin}",
             headers={"Authorization": f"Bearer {token}"},
             timeout=15,
             **kwargs,
@@ -129,6 +167,7 @@ class HelloAsso:
         return_url: str,
         payer: dict | None = None,
         metadata: dict | None = None,
+        cles: SchoolKeys | None = None,
     ) -> dict:
         """Crée l'intention de paiement — `echeances` : voir
         tarifs.py:calculer_echeances_helloasso (1 ou 3 échéances, la 1ʳᵉ
@@ -154,12 +193,12 @@ class HelloAsso:
             corps["payer"] = payer
         if metadata:
             corps["metadata"] = metadata
-        resultat = self._appel("POST", "/checkout-intents", json=corps)
+        resultat = self._appel("POST", "/checkout-intents", cles, json=corps)
         return {"id": resultat["id"], "redirect_url": resultat["redirectUrl"]}
 
-    def recuperer_checkout_intent(self, checkout_intent_id: int) -> dict:
+    def recuperer_checkout_intent(self, checkout_intent_id: int, cles: SchoolKeys | None = None) -> dict:
         """Source de vérité sur l'état d'un paiement — voir docstring du
         module. Renvoie le JSON brut de l'API (voir dev.helloasso.com/
         reference : order.payments[].state, "Authorized" = payé par
         carte ; SEPA/chèque restent "Pending"/"Registered" un temps)."""
-        return self._appel("GET", f"/checkout-intents/{checkout_intent_id}")
+        return self._appel("GET", f"/checkout-intents/{checkout_intent_id}", cles)

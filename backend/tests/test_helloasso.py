@@ -532,3 +532,39 @@ def test_vignette_d_un_pdf():
     assert not is_file_url("https://docs.helloasso.com/autre/1")
     assert photo_index([{"name": "Photo d’identité", "answer": PHOTO_URL}]) == 0
     assert photo_index([{"name": "Certificat", "answer": PHOTO_URL}]) is None
+
+
+# --- Étape 11 : le choix de la saison (spec §8) ---
+
+
+def test_choix_de_la_saison(client, db_session, ecole, campagnes, monkeypatch):
+    """HelloAsso fait tout (la campagne) / L'appli fait tout, HelloAsso
+    encaisse / Sans HelloAsso. Le choix 2 n'impose rien : fiches libres."""
+    url = f"/ecoles/{ecole.id}/helloasso/saison"
+    assert client.get(url).json()["connected"] is False
+    client.put(f"/ecoles/{ecole.id}/helloasso", json=CLES)
+    lu = client.get(url).json()
+    assert (lu["mode"], lu["can_change"], lu["form"]) == ("none", True, None)
+
+    _saison_imposee(client, ecole, monkeypatch, [_inscrit("1", "Léa", "Martin", "p@test.fr")])
+    lu = client.get(url).json()
+    assert lu["mode"] == "master" and lu["form"]["name"] == "Adhésion 2026-2027"
+    assert len([c for c in _champs(client, ecole).values() if c["source"] == "helloasso"]) > 0
+
+    lu = client.put(url, json={"mode": "payment"}).json()
+    assert lu["mode"] == "payment" and lu["form"] is None
+    # La campagne est retirée : ses champs quittent la fiche, plus de verrou.
+    assert not [c for c in _champs(client, ecole).values() if c["source"] == "helloasso"]
+    assert client.get(f"/ecoles/{ecole.id}/helloasso/adherents").json()["imposed"] is False
+    assert client.get(f"/ecoles/{ecole.id}/helloasso/campagne").json()["form"] is None
+    assert client.post("/eleves", params={"ecole_id": ecole.id}, json={"nom": "A", "prenom": "B"}).status_code == 201
+    # « Nos champs » ne touche pas au choix 2 ; la synchronisation non plus.
+    client.delete(f"/ecoles/{ecole.id}/helloasso/campagne")
+    assert client.get(url).json()["mode"] == "payment"
+    assert client.post(f"/ecoles/{ecole.id}/helloasso/synchroniser").status_code == 422
+
+    # Rechoisir une campagne repasse en « HelloAsso fait tout ».
+    client.put(f"/ecoles/{ecole.id}/helloasso/campagne", json={"form_type": "Membership", "form_slug": "adhesion"})
+    assert client.get(url).json()["mode"] == "master"
+    assert client.put(url, json={"mode": "none"}).json()["mode"] == "none"
+    assert client.put(url, json={"mode": "autre"}).status_code == 422

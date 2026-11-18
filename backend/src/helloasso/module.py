@@ -4,7 +4,7 @@ spec/modules/helloasso.md). Éteint dans les écoles existantes (migration du
 
 from registry import Module, guide_file
 
-from . import members
+from . import members, payment
 from .campaign import Campaigns
 from .connection import Connection
 from .receiver import HelloAssoReceiver
@@ -24,6 +24,11 @@ def mount(app, core) -> None:
     # Saison imposée par une campagne : plus de fiche d'élève créée,
     # importée ou supprimée à la main (spec/modules/helloasso.md §7.1).
     core.eleves_client.locks.append(members.lock)
+    # « L'appli fait tout, HelloAsso encaisse » : le paiement en ligne de
+    # l'inscription prend les clés de l'école (helloasso.md §8.2).
+    registration = getattr(core, "inscriptions_client", None)
+    if registration is not None:
+        registration.helloasso.school_keys.append(payment.school_keys)
     core.helloasso_connection = Connection()
     core.helloasso_campaigns = Campaigns()
     core.helloasso_sync = Sync(add_member=add_member(core.eleves_client))

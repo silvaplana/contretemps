@@ -702,7 +702,9 @@ MODULE = Module(
   du tableau d'Admin > Élèves (aussi dans « Affichage dans Admin ») et leur ordre par défaut, le
   verrou (ni « + », ni import, ni poubelle), les filtres par âge, « Rafraîchir », la ligne grisée
   d'une adhésion résiliée et son bloc dans la fiche. Côté serveur, le verrou passe par
-  `Eleves.locks`, que le module remplit dans `mount`. Un module sans onglet a `tabs: []`.
+  `Eleves.locks`, que le module remplit dans `mount` ; de même `HelloAsso.school_keys` des
+  inscriptions en ligne (les clés de paiement de l'école, `modules/helloasso.md` §8.2). Un module
+  sans onglet a `tabs: []`.
 
 **Codé (Seb, 12 novembre 2026 ; spec/modules/actualites.md §12.8)** : pour le module Publications, où
 l'on crée des blogs à l'écran, un module pourra aussi déclarer des droits **par organisation**
