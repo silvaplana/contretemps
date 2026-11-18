@@ -40,6 +40,9 @@ Admin › École
   Super User seulement, puis « Appli Android » Non ou Oui pour le Super User quand Fights est allumé, nom sous
   l'icône, logo, nom de l'école en texte ou image, slogan, polices, couleurs ; Enregistrer ;
   « Revenir à l'apparence par défaut »), Fonctionnalités (une case par module), Vocabulaire.
+- Connexions (Administrateur principal et Super User) : une ligne par module allumé qui demande des
+  identifiants (Boîte mail du club, HelloAsso, Site de la FFST ; Comptes en banque avec l'Accès au
+  Financier en plus), « Connecter » ou « Voir » ; pastille du nombre à connecter.
 - Usage des ressources : Mémoire (disque, les plus grosses vidéos, poubelle) ; dépenses de
   l'assistant, avec « Changer le plafond mensuel ».
 

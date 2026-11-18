@@ -2,10 +2,10 @@ HelloAsso : pas d'onglet. Pour une école dont les adhésions se font et se paie
 l'appli s'y connecte, reprend les champs et les tarifs d'une campagne, et recopie les inscrits. Rien
 n'est jamais créé ni changé sur HelloAsso depuis l'appli.
 
-Réglages : Admin › École › Personnalisation › Fonctionnalités, ligne HelloAsso
-- Seuls l'administrateur principal et le super user cochent la case et voient les réglages.
+Case : Admin › École › Personnalisation › Fonctionnalités. Connexion : Admin › École › Connexions, ligne HelloAsso
+- Seuls l'administrateur principal et le super user cochent la case et voient la connexion.
 - Sous le nom : « Pas encore connecté » ou « Connecté à <association> », et un lien « Connecter » ou
-  « Voir ». Cocher la case sans connexion ouvre tout de suite l'écran des clés.
+  « Voir ».
 - Connecter HelloAsso : « Ouvrir mon espace HelloAsso », menu Mon compte › Intégrations et API,
   copier les deux clés dans « Mon clientId » et « Mon clientSecret » (l'œil affiche la clé).
 - « Tester la connexion » : « Connexion réussie » avec l'association et le nombre de formulaires, ou

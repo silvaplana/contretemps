@@ -4493,6 +4493,32 @@ a.btn {
 
 /* Connexion HelloAsso (modules/helloasso/HelloAssoReglages.jsx, maquette
    « Connexion HelloAsso »). */
+.connexions__liste {
+  display: flex;
+  flex-direction: column;
+}
+
+.connexions__ligne {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 17px;
+}
+
+.connexions__aide {
+  margin: 4px 0 8px;
+  font-size: 15px;
+}
+
+.connexions__pastille {
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-size: 14px;
+  font-weight: 700;
+}
+
 .helloasso__etat {
   flex-basis: 100%;
   order: 2;

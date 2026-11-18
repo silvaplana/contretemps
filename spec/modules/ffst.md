@@ -18,7 +18,7 @@ date de naissance, l'adresse, le téléphone et l'email du formulaire).
 L'appli ne fait que **mettre une demande dans le panier** du site, ou l'en retirer. Valider le
 panier et payer la fédération restent faits à la main sur le site.
 
-## 2. La connexion (Fonctionnalités, ligne FFST)
+## 2. La connexion (Admin › École › Connexions depuis le 18 novembre, `core.md` ; avant, Fonctionnalités, ligne FFST)
 
 Comme HelloAsso (`modules/helloasso.md` §2) : l'identifiant du club en trois parties et le mot de
 passe, bouton **Tester la connexion**, **Enregistrer**. Mot de passe chiffré en base, jamais
