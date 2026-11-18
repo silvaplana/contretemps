@@ -430,6 +430,8 @@ def test_saison_imposee_sans_fiche_a_la_main(client, db_session, ecole, campagne
     with pytest.raises(ValueError, match="HelloAsso"):
         main.core.eleves_client.create(db_session, ecole.id, nom="Perrin", prenom="Léon")
 
+    # FFST a besoin de HelloAsso : on l'éteint d'abord.
+    activation.set_enabled(db_session, ecole.id, main.MODULES, "ffst", False)
     activation.set_enabled(db_session, ecole.id, main.MODULES, "helloasso", False)
     assert client.post("/eleves", params=params, json={"nom": "Perrin", "prenom": "Léon"}).status_code == 201
     activation.set_enabled(db_session, ecole.id, main.MODULES, "helloasso", True)

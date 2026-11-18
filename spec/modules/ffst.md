@@ -3,7 +3,7 @@
 Version 0.1 du 18 novembre 2026. Décisions de Seb du 18 novembre 2026. Repris de Sambo Admin
 (`silvaplana/test-python`, `backend/src/ffst/`, onglet Licences), à fonctions identiques. Étude :
 https://claude.ai/artifact/7HPSBAeGZ5YrE4jahT213a. Maquette validée par Seb le 18 novembre :
-https://claude.ai/artifact/4tizDZ6Br2WxGL5MYwSQfy. Rien n'est codé.
+https://claude.ai/artifact/4tizDZ6Br2WxGL5MYwSQfy. Étape 1 codée (§10).
 
 ## 1. Ce que fait le module
 
@@ -110,3 +110,29 @@ Colonne et boutons déclarés côté écran, `memberColumns` du `module.js` (`co
 
 1. Connexion du club, lecture des trois listes, onglet FFST, colonne Statut FFST.
 2. Demandes Pratiquant et Autre rôle, suppression d'un brouillon, choix du genre.
+
+**Fait (étape 1, 18 novembre 2026)** :
+- *Connexion* : ligne FFST de Fonctionnalités (`FfstReglages.jsx`), comme HelloAsso : identifiant en
+  trois cases et mot de passe (l'œil l'affiche), **Tester la connexion** (« Connexion réussie » et le
+  nombre de licenciés), **Enregistrer** (reteste, chiffre le mot de passe, puis lit tout de suite les
+  trois listes) ; « Voir » : identifiant, depuis quand, Tester la connexion, Changer les identifiants.
+  Pas de « Déconnecter » : décocher la case éteint le module. Routes `GET/PUT /ecoles/{id}/ffst`,
+  `POST …/ffst/tester`, `POST …/ffst/retester` (Administrateur principal et Super User).
+- *Lecture* (`backend/src/ffst/site.py`) : mêmes requêtes que Sambo Admin, par httpx (pas de
+  navigateur) : une connexion par liste, une à la fois (verrou), quelques secondes, faite pendant la
+  demande et non par le worker (le navigateur de l'étape 2 ira au worker). Si le site ne répond pas ou
+  a changé, rien n'est remplacé : la dernière lecture reste, avec le message et un lien vers le site.
+  `GET …/ffst/listes` (la copie), `POST …/ffst/lire` (Rafraîchir), tout admin.
+- *Copie* : `ffst_snapshots`, une ligne par liste, remplacées ensemble ; `ffst_connections` (migration
+  `d3f5a7c9e1b2`, module éteint dans les écoles existantes, comme HelloAsso). Les réglages de l'école
+  (discipline, commune de naissance par défaut, droit à l'image) viennent avec l'étape 2, qui s'en sert.
+- *Onglet FFST* (`FfstOnglet.jsx`), admins : Brouillons (n) | Validées (n) | Licenciés (n), « Lu sur le
+  site de la FFST à 10 h 52 » (la date si ce n'est pas aujourd'hui), Rafraîchir, colonnes du §6 ; la
+  Nature est le texte du site.
+- *Statut FFST* : colonne du tableau d'Admin > Élèves (`memberColumns`), pour toute fiche de l'école,
+  dès que le site est connecté (saison imposée ou non) ; `GET …/ffst/adherents`. Rapprochement : sans
+  accent, majuscule, apostrophe ni espace en trop, « Nom Prénom » de la fiche contre « Nom et Prénom »
+  du site. « Rafraîchir » du tableau relit aussi le site.
+- *À savoir* : comme pour tout module, une école **créée** après la migration a le module allumé
+  (pas de ligne = allumé, `core.md` §9 bis.3) : l'onglet FFST y apparaît pour les admins, avec
+  « pas encore connecté ». Non corrigé ici (ce serait un réglage du core).
