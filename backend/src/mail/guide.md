@@ -11,6 +11,9 @@ Connecter la boîte (Admin › École › Connexions, ligne « Boîte mail du cl
 Mail, « Connecter la boîte mail » y mène)
 - Seul l'Administrateur principal la connecte, même sans être dans « Boîte mail du club ». La
   ligne dit « Connectée : adresse » ou « Pas encore connectée », avec « Connecter » ou « Voir ».
+- Sous la ligne : seuls les administrateurs cochés dans « Boîte mail du club » voient les mails.
+  Celui qui connecte n'est pas coché d'office : il se coche dans Administrateurs pour voir les
+  puces Chat | Mail.
 - Seules les boîtes Gmail et Infomaniak peuvent être connectées pour l'instant. « Connecter » :
   choisir Gmail ou Infomaniak, taper l'adresse du club, puis « Ouvrir Google » ou « Ouvrir
   Infomaniak ».
@@ -20,7 +23,7 @@ Mail, « Connecter la boîte mail » y mène)
   Ajouter un appareil, choisir IMAP / SMTP, copier le mot de passe. Autre adresse Infomaniak :
   Manager › Service Mail › le domaine › l'adresse › Appareils › Ajouter un appareil.
 - Revenir, « Coller », puis « Connecter ». « Code refusé » : recoller en entier ou en créer un nouveau.
-- « Voir » : adresse, Gmail ou Infomaniak, date ; « Connecter une autre boîte » ; « Déconnecter la
+- « Voir » : adresse, Gmail ou Infomaniak, date ; « Remplacer par une autre boîte » ; « Déconnecter la
   boîte » (Annuler pendant 10 s).
 - Dans Messages › Mail, une boîte pas connectée affiche où la connecter.
 
@@ -40,8 +43,9 @@ Un mail (toucher la ligne)
 - En bas : « Répondre » (bouton principal) et « Transférer » ; « Répondre à tous » est dans ⋮.
 
 Écrire (bouton « Nouveau message » en bas à droite de la boîte, ou Répondre / Transférer)
-- « De : » l'adresse du club (le nom de l'école apparaît chez le destinataire), « À », lien
-  « Cc / Cci » qui ouvre les deux lignes, « Objet », le message.
+- « De : » l'adresse du club (le nom de l'école apparaît chez le destinataire), « À », « Cc »,
+  « Cci », « Objet », le message. Dès 2 lettres tapées dans À, Cc ou Cci, les adhérents, profs,
+  administrateurs et adresses déjà échangées qui correspondent s'affichent : un toucher ajoute l'adresse.
 - « Joindre un fichier » (18 Mo au total au plus), croix pour retirer. Transférer garde les pièces
   jointes du mail.
 - « Envoyer » : l'écran se ferme et « Mail envoyé » s'affiche avec « Annuler » pendant 10 secondes ;

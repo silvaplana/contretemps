@@ -438,6 +438,9 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
+  /* Une colonne de téléphone, même sur un grand écran : en pleine largeur,
+     le texte centré des boutons tombait hors de la vue (Seb, 18/11). */
+  max-width: 640px;
   font-size: 17px;
 }
 

@@ -52,7 +52,9 @@ club » (connecter ne montre aucun mail ; lire en demande toujours le droit). La
 « Connectée : adresse », « adresse : à reconnecter » ou « Pas encore connectée. Seules les boîtes
 Gmail et Infomaniak peuvent être connectées pour l'instant. », avec le bouton **Connecter** ou **Voir**, toujours affiché
 (entouré comme les autres boutons de réglage, Seb 18 novembre ; s'il ne peut pas lire l'état, le
-bouton le relit et la ligne dit pourquoi).
+bouton le relit et la ligne dit pourquoi). Toujours sous la ligne (Seb, 18 novembre) : « Seuls les
+administrateurs cochés dans « Boîte mail du club » (Administrateurs) voient les mails. » La
+personne qui connecte la boîte n'est pas cochée d'office (Seb, 18 novembre).
 Cocher Mail sans boîte ouvre directement le choix du fournisseur. Dans Messages › Mail, une boîte
 pas connectée affiche : « La boîte mail du club n'est pas encore connectée. » et, pour
 l'Administrateur principal, où la connecter.
@@ -78,7 +80,7 @@ les boîtes Gmail et Infomaniak peuvent être connectées pour l'instant. »
 4. **Boîte connectée** (toast) ou **Code refusé** (lien « Recoller le code », bouton **Rouvrir…**).
 
 Le code est chiffré en base (`securite/chiffrement.py`), jamais réaffiché. **Voir** : adresse,
-fournisseur, date de connexion, lien **Connecter une autre boîte**, bouton **Déconnecter la
+fournisseur, date de connexion, lien **Remplacer par une autre boîte**, bouton **Déconnecter la
 boîte** (efface le code ; Annuler 10 s). Menu ⋮ de la boîte dans Messages : l'adresse connectée.
 
 **Le fournisseur coupe l'accès** (changement du mot de passe du compte, code révoqué) : bandeau en
@@ -112,7 +114,11 @@ principal) et **Transférer**.
 
 ## 7. Écrire
 
-Écran plein : « De : adresse du club », **À**, lien **Cc / Cci** qui ouvre les deux lignes,
+Écran plein : « De : adresse du club », **À**, **Cc** et **Cci** toujours affichés (Seb, 18 novembre : le lien « Cc / Cci » passait inaperçu), avec
+suggestions d'adresses (Seb, 18 novembre) : dès 2 lettres, jusqu'à 6 lignes nom et adresse, tirées
+des fiches de l'école (saison affichée) puis des adresses de la dernière page de la réception et des
+envoyés (route `GET …/mail/contacts`, droit `mail.read`, rien gardé en base) ; un toucher ajoute
+l'adresse,
 **Objet**, message, pièces jointes (**Joindre un fichier**, croix pour retirer ; 18 Mo au plus),
 bouton principal **Envoyer**. Répondre met « Re: » et le texte cité ; Transférer met « Fwd: » et
 garde les pièces jointes. Sans destinataire : « Indiquez à qui envoyer le mail ».

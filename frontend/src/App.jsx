@@ -1380,7 +1380,7 @@ function App() {
 
         {blogActif && <Blog key={`${activeUser.id}-${blogActif.id}`} ecoleId={ecole.id} blog={blogActif} prenom={activeUser.prenom} />}
 
-        {activeTab === 'sparring' && <Sparring key={activeUser.id} ecoleId={ecole.id} cours={cours} />}
+        {activeTab === 'sparring' && <Sparring key={activeUser.id} ecoleId={ecole.id} cours={cours} appli={`Tournage ${apparenceApi.apparenceActuelle().nomAppli || ecole.nom}`} />}
 
         {/* FFST (spec/modules/ffst.md §6) : les listes du site de la fédération, admins. */}
         {activeTab === 'ffst' && <FfstOnglet ecoleId={ecole.id} peutConnecter={isOwner(activeUser)} />}

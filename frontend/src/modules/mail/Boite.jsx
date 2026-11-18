@@ -198,6 +198,7 @@ export default function Boite({ ecoleId, etat, menuBoite, onCoupee }) {
 
   const ecran = ecrire && (
     <Ecrire
+      ecoleId={ecoleId}
       brouillon={ecrire.brouillon}
       fichiersInitiaux={ecrire.fichiers}
       de={etat.address}

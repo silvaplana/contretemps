@@ -145,7 +145,10 @@ class FakeWebmail:
 
     def list(self, folder, before, query):
         self._note("list", folder, before, query)
-        return {"folder": folder, "messages": [{"uid": 7, "subject": "Cours d'essai"}], "hasMore": False}
+        personne = {"name": "Un parent", "address": "Parent@ex.fr"}
+        club = {"name": "", "address": "club.sambo@gmail.com"}
+        mail = {"uid": 7, "subject": "Cours d'essai", "from": [personne], "to": [club, {"name": "", "address": "parent@ex.fr"}]}
+        return {"folder": folder, "messages": [mail], "hasMore": False}
 
     def get(self, folder, uid):
         self._note("get", folder, uid)
@@ -298,3 +301,18 @@ def test_envoyer_repondre_transferer(client, ecole, boite):
     gros = b"x" * (18 * 1024 * 1024 + 1)
     reponse = client.post(url, data={"to": "a@b.fr"}, files=[("files", ("gros.bin", gros, "application/octet-stream"))])
     assert reponse.status_code == 400 and "18 Mo" in reponse.json()["detail"]
+
+
+def test_suggestions_d_adresses(client, db_session, ecole, boite):
+    """« À », Cc, Cci (Seb, 18 novembre) : les gens de l'école puis les
+    adresses déjà échangées dans la boîte, sans doublon ni la boîte."""
+    lina = Comptes().create(db_session, ecole_id=ecole.id, role="eleve", nom="Roux", prenom="Lina")
+    Comptes().update(db_session, lina.id, emails=["lina@ex.fr"])
+    autre = Ecoles().create(db_session, nom="Le Beausset", code_postal="83330")
+    Comptes().create(db_session, ecole_id=autre.id, role="eleve", nom="Ailleurs", prenom="Zoé")
+    contacts = client.get(f"/ecoles/{ecole.id}/mail/contacts").json()["contacts"]
+    adresses = [c["address"] for c in contacts]
+    assert contacts[0] == {"name": "Lina Roux", "address": "lina@ex.fr"}
+    assert "Parent@ex.fr" in adresses and "club.sambo@gmail.com" not in adresses
+    assert len(adresses) == len({a.lower() for a in adresses})
+    assert not any("Ailleurs" in c["name"] for c in contacts)

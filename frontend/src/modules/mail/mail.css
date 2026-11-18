@@ -429,3 +429,38 @@
   justify-content: center;
   gap: 8px;
 }
+/* Suggestions d'adresses sous À, Cc, Cci */
+.mail__adresses {
+  position: relative;
+}
+.mail__suggestions {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  z-index: 5;
+  margin: 0;
+  padding: 4px 0;
+  list-style: none;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card-bg);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+.mail__suggestions button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  min-height: 52px;
+  padding: 6px 14px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+.mail__suggestions small {
+  color: var(--text-muted);
+  font-size: 17px;
+}
