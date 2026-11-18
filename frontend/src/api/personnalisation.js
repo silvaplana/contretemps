@@ -60,6 +60,16 @@ export async function changerNature(ecoleId, nature) {
   return versEcran(await requete(`/ecoles/${ecoleId}/nature`, { method: 'PATCH', body: JSON.stringify({ nature }) }))
 }
 
+// Appli Android (spec/core.md, « Appli Android ») : { disponible (Fights
+// allumé), actif, prete, url, date }. Changer : Super User seulement.
+export async function appliAndroid(ecoleId) {
+  return requete(`/ecoles/${ecoleId}/appli-android`)
+}
+
+export async function changerAppliAndroid(ecoleId, actif) {
+  return requete(`/ecoles/${ecoleId}/appli-android`, { method: 'PUT', body: JSON.stringify({ actif }) })
+}
+
 // { adresse, disponible, raison: 'invalide' | 'reserve' | 'pris' | null, proposition }
 export async function disponibilite(adresse, ecoleId) {
   return requete(`/sous-domaines/${encodeURIComponent(adresse)}/disponible?ecole_id=${ecoleId}`)

@@ -105,6 +105,9 @@ ROUTES_PUBLIQUES = {
     ("PUT", "/session-clips/recorder/image"),
     # Fights, en lecture seule, pour un fil Claude : clé X-Diag-Key (app/diagnostic_fights.py).
     ("GET", "/diagnostic/fights"),
+    # La liste des applis Android à fabriquer, lue par l'action GitHub
+    # (personnalisation/appli_android.py) : noms et adresses, déjà publics.
+    ("GET", "/applis-android"),
     ("GET", "/par-host/personnalisation"),
     ("GET", "/par-host/entete.html"),
     ("GET", "/par-host/site.webmanifest"),

@@ -113,6 +113,9 @@ class Personnalisation:
         # page_existe(db, ecole_id, page) : branché par app/main.py sur le
         # module documents (pages en ligne, documents.md §5.5).
         self.page_existe: Callable[[Session, int, str], bool] | None = None
+        # fights_allume(db, ecole_id) : branché par app/main.py ; l'appli
+        # Android ne sert qu'à filmer (appli_android.py).
+        self.fights_allume: Callable[[Session, int], bool] = lambda db, ecole_id: False
         self.detourage_ia = detourage_ia
         self.noter_cout = noter_cout
 

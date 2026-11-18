@@ -75,6 +75,10 @@ class Ecole(Base):
     # (voir personnalisation/adresse.py). L'ancienne redirige 6 mois.
     sous_domaine: Mapped[str] = mapped_column(String(40), nullable=False, unique=True)
     nom_appli: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    # Appli Android (personnalisation/appli_android.py) : allumée ou non, et
+    # son nom dans la release (tournage-<apk_cle>.apk), fixé au premier « Oui ».
+    appli_android: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("0"))
+    apk_cle: Mapped[str | None] = mapped_column(String(40), nullable=True)
     # Vocabulaire (Seb, 24 octobre) : les mots affichés à la place de
     # « École », « Élèves », « Profs » et « Cours ». Vide = ces mots-là.
     mot_ecole: Mapped[str | None] = mapped_column(String(30), nullable=True)

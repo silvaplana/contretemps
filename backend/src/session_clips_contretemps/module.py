@@ -4,6 +4,7 @@ ici aux fiches de Contretemps. Éteint dans les écoles existantes (migration
 du 27 octobre 2026) : on le met au point pour un club de combat."""
 
 from registry import Module, guide_file
+from registry.activation import disabled
 from session_clips import SessionClips, SessionClipsReceiver
 
 from documents_contretemps.adapter import NotifieurDocuments
@@ -18,6 +19,9 @@ def mount(app, core) -> None:
         notifier=NotifieurDocuments(core.notifications_client),
     )
     SessionClipsReceiver(client=core.session_clips_client, app=app, current_member=membre_appelant)
+    # L'appli Android ne sert qu'à filmer : réglable seulement là où Fights
+    # est allumé (personnalisation/appli_android.py).
+    core.personnalisation_client.fights_allume = lambda db, ecole_id: "session_clips" not in disabled(db, ecole_id)
 
 
 MODULE = Module(key="session_clips", label="Fights", mount=mount, requires=("videos",), guide=guide_file(__file__))

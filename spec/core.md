@@ -113,6 +113,16 @@ nouveau, toute table nouvelle est en anglais.
   une enseigne : une entrée dans `backend/src/personnalisation/brands.py` (et
   `frontend/src/api/apparence.js`), ses icônes dans `defaut-<enseigne>/`, son domaine dans le DNS
   et le gateway (DEPLOY.md).
+- **Appli Android** (§2.7 ter, Seb 18 novembre, maquette
+  https://claude.ai/artifact/D1ebpynBsJdPyGj8qpui93) : pour filmer avec la télécommande (Fights),
+  le téléphone ne doit pas se mettre en veille, ce que seule l'appli Android « Tournage <école> »
+  permet (ANDROID.md). Dans Personnalisation, sous l'adresse, le Super User choisit « Appli
+  Android » Non / Oui ; le réglage n'apparaît que si Fights est allumé. « Oui » fait fabriquer
+  l'appli par l'action GitHub (quelques minutes, état « Fabrication… » puis « Prête » avec la date
+  de la version) ; « Non » ne la retire pas des téléphones. Colonnes `ecoles.appli_android` et
+  `ecoles.apk_cle` (nom de l'appli dans la release, fixé au premier « Oui » pour que les applis
+  installées se mettent à jour). Ensuite (étape suivante) : les adhérents qui arrivent par leur
+  invitation sur Android reçoivent l'appli au lieu de l'installation dans Chrome ; iPhone inchangé.
 - **Personnalisation de l'application** (Admin > École), trois parties dans cet ordre :
   **Apparence visuelle** (logo, nom, slogan, couleurs, polices, adresse), **Fonctionnalités** (une
   case par module, §11.3) et **Vocabulaire** (§2). Apparence et Vocabulaire : tout admin ;
