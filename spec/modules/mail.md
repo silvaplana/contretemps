@@ -43,7 +43,7 @@ personnes cochées les voient. »
 Le droit donne tout : lire, envoyer au nom du club, ranger, supprimer. L'Assistant n'a **aucun
 outil** sur les mails (il ne les lit pas) ; il sait seulement guider vers l'écran.
 
-## 4. Connecter la boîte (Fonctionnalités, ligne Mail)
+## 4. Connecter la boîte (Admin › École › Connexions depuis le 18 novembre ; avant, Fonctionnalités, ligne Mail)
 
 Seb, 18 novembre : la connexion se fait dans **Admin › École › Personnalisation ›
 Fonctionnalités**, sur la ligne Mail (comme HelloAsso et FFST), et non plus dans Messages. Réservé

@@ -31,7 +31,7 @@ import BottomNav from './components/BottomNav.jsx'
 import Header from './components/Header.jsx'
 import Logo from './components/Logo.jsx'
 import { ongletCalcule, ongletsAvec, TABS } from './data/nav.js'
-import { aUnDesRoles, isAdmin, isEleve, isProf, isSuperuser, isTresorier } from './data/roles.js'
+import { aUnDesRoles, isAdmin, isEleve, isOwner, isProf, isSuperuser, isTresorier } from './data/roles.js'
 import AdminScreen from './screens/admin/AdminScreen.jsx'
 import ChoixEcoleScreen from './screens/ChoixEcoleScreen.jsx'
 import ChoregraphieScreen from './screens/ChoregraphieScreen.jsx'
@@ -151,11 +151,15 @@ function App() {
       if (ongletRetour.current) setActiveTab(ongletRetour.current)
       ongletRetour.current = null
     }
+    // Un autre onglet demandé (Admin › École › Connexions, app/connexions.js).
+    const ouvrirOnglet = (e) => setActiveTab(e.detail)
     window.addEventListener('app-ouvrir-docs', ouvrir)
     window.addEventListener('app-retour', revenir)
+    window.addEventListener('app-ouvrir-onglet', ouvrirOnglet)
     return () => {
       window.removeEventListener('app-ouvrir-docs', ouvrir)
       window.removeEventListener('app-retour', revenir)
+      window.removeEventListener('app-ouvrir-onglet', ouvrirOnglet)
     }
   }, [])
   useEffect(() => {
@@ -1369,7 +1373,7 @@ function App() {
         {activeTab === 'sparring' && <Sparring key={activeUser.id} ecoleId={ecole.id} cours={cours} />}
 
         {/* FFST (spec/modules/ffst.md §6) : les listes du site de la fédération, admins. */}
-        {activeTab === 'ffst' && <FfstOnglet ecoleId={ecole.id} />}
+        {activeTab === 'ffst' && <FfstOnglet ecoleId={ecole.id} peutConnecter={isOwner(activeUser)} />}
 
         {activeTab === 'profil' && (
           <ProfilScreen

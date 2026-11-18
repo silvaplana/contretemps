@@ -9,6 +9,7 @@ import * as api from "./api.js";
 import { BalanceChart } from "./BalanceChart.jsx";
 import BanquePanel from "./BanquePanel.jsx";
 import FicheCompte from "./FicheCompte.jsx";
+import { prendreDemandeBanque } from "./navigation.js";
 import RevueReleves from "./RevueReleves.jsx";
 import RelevesGrille, { RELEVES_EVENT } from "./RelevesGrille.jsx";
 import Caisse from "./compta/Caisse.jsx";
@@ -382,7 +383,7 @@ export default function Comptes({ onChange }) {
   // Volet « Se connecter aux comptes en banque », et message du retour de la banque.
   const [retourBanque] = useState(lireRetourBanque);
   const [banqueOuverte, setBanqueOuverte] = useState(
-    () => retourBanque === RETOURS.ok,
+    () => prendreDemandeBanque() || retourBanque === RETOURS.ok,
   );
   // Compte dont la fiche est ouverte (« Voir le compte »), par son id.
   const [fiche, setFiche] = useState(null);

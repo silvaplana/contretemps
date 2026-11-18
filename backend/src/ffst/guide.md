@@ -2,8 +2,8 @@ FFST : onglet FFST dans la barre du bas, pour les admins. Pour une école affili
 FFST : l'appli lit le site des licences de la FFST avec le compte du club et y met des demandes de
 licence dans le panier. Elle n'y valide rien et n'y paie rien : valider le panier et payer les licences se fait sur le site de la FFST.
 
-Réglages : Admin › École › Personnalisation › Fonctionnalités, ligne FFST
-- Seuls l'administrateur principal et le super user cochent la case et voient les réglages. Le
+Case : Admin › École › Personnalisation › Fonctionnalités. Connexion : Admin › École › Connexions, ligne « Site de la FFST »
+- Seuls l'administrateur principal et le super user cochent la case et voient la connexion. Le
   module a besoin de HelloAsso (il est coché avec lui). Éteint tant que l'école ne l'a pas coché.
 - Sous le nom : « Pas encore connecté » ou « Connecté, identifiant 21 / 13 / 1230 », et un lien
   « Connecter » ou « Voir ».

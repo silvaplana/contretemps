@@ -7,9 +7,10 @@ Qui le voit
   Groupes). Les autres voient Messages comme avant, sans puce.
 - Je ne lis pas les mails du club : je peux seulement dire où aller.
 
-Connecter la boîte (Admin › École › Personnalisation › Fonctionnalités, ligne Mail)
+Connecter la boîte (Admin › École › Connexions, ligne « Boîte mail du club » ; dans Messages ›
+Mail, « Connecter la boîte mail » y mène)
 - Seul l'Administrateur principal la connecte, même sans être dans « Boîte mail du club ». La
-  ligne Mail dit « Connectée : adresse » ou « Pas encore connectée », avec « Connecter » ou « Voir ».
+  ligne dit « Connectée : adresse » ou « Pas encore connectée », avec « Connecter » ou « Voir ».
 - Seules les boîtes Gmail et Infomaniak peuvent être connectées pour l'instant. « Connecter » :
   choisir Gmail ou Infomaniak, taper l'adresse du club, puis « Ouvrir Google » ou « Ouvrir
   Infomaniak ».
@@ -46,4 +47,4 @@ Un mail (toucher la ligne)
 - « Envoyer » : l'écran se ferme et « Mail envoyé » s'affiche avec « Annuler » pendant 10 secondes ;
   Annuler rouvre le mail tel quel. Sans destinataire : « Indiquez à qui envoyer le mail ».
 - « La boîte mail n'est plus connectée » : Google ou Infomaniak a coupé l'accès ; l'Administrateur
-  principal touche « Reconnecter » sur la ligne Mail de Fonctionnalités (« Voir »).
+  principal touche « Reconnecter la boîte mail » (ou « Voir » sur sa ligne d'Admin › École › Connexions).

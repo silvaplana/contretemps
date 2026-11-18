@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { ouvrirConnexions } from '../../app/connexions.js'
 import * as api from './api.js'
 
 // Onglet FFST (spec/modules/ffst.md §6, maquette
@@ -27,7 +28,7 @@ function heureLecture(iso) {
   return `${jour}à ${heure}`
 }
 
-export default function FfstOnglet({ ecoleId }) {
+export default function FfstOnglet({ ecoleId, peutConnecter = false }) {
   const [lu, setLu] = useState(null)
   const [liste, setListe] = useState('drafts')
   const [lecture, setLecture] = useState(false)
@@ -56,10 +57,15 @@ export default function FfstOnglet({ ecoleId }) {
   if (!lu.connected) {
     return (
       <div className="ffst">
-        <p className="ffst__vide">
-          Le site de la FFST n’est pas encore connecté : Admin › École › Personnalisation › Fonctionnalités, ligne
-          FFST.
-        </p>
+        <p className="ffst__vide">Le site de la FFST n’est pas encore connecté.</p>
+        {/* Raccourci vers Admin › École › Connexions (spec/core.md, « Connexions »). */}
+        {peutConnecter ? (
+          <button type="button" className="btn btn--primary btn--block" onClick={ouvrirConnexions}>
+            Connecter le site de la FFST
+          </button>
+        ) : (
+          <p className="ffst__vide">L’Administrateur principal peut le connecter dans Admin › École › Connexions.</p>
+        )}
       </div>
     )
   }

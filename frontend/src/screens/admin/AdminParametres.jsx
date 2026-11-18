@@ -9,6 +9,7 @@ import SaisonsSection from './SaisonsSection.jsx'
 import Tarifs from './Tarifs.jsx'
 import SauvegardeEcoleMenu from './SauvegardeEcoleMenu.jsx'
 import PersonnalisationSection from './PersonnalisationSection.jsx'
+import ConnexionsSection from './ConnexionsSection.jsx'
 import UsageVideoSection from './UsageVideoSection.jsx'
 import { mots } from '../../api/mots.js'
 
@@ -244,6 +245,10 @@ export default function AdminParametres({
         modules={modules}
         onModulesChange={onModulesChange}
       />
+
+      {/* Identifiants des modules (HelloAsso, FFST, Mail, banque ; spec/core.md,
+          « Connexions ») : Super User et Administrateur principal. */}
+      <ConnexionsSection ecole={ecole} activeUser={activeUser} modules={modules} onModulesChange={onModulesChange} />
 
       {/* `key` : recalculé quand la saison affichée change (spec §2.6). */}
       <UsageVideoSection key={saisonConsultee?.id ?? 'courante'} ecoleId={ecole.id}
