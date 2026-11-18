@@ -41,8 +41,6 @@ module. Rayer ce qui est fait.
 
 - Mot pour « membre + compte de connexion ».
 - SMS : prestataire (Brevo proposé). Certificat médical : jamais enregistré.
-- Vérification des dossiers HelloAsso : elle envoie le certificat médical au modèle
-  (`modules/helloasso.md` §7.5).
 - Conversations de l'assistant en base (aujourd'hui en mémoire du serveur).
 
 ## Rappels pour qui reprend

@@ -235,9 +235,11 @@ dossier OK n'est plus revérifié.
   coût cumulé affiché, rapport par mail.
 - « Valider le dossier » à la main, dans la fiche.
 
-**À décider par Seb avant de coder** : cette vérification envoie le certificat médical au modèle,
-alors que la règle de l'appli est que l'assistant ne voit jamais la santé des membres. Le
-certificat n'est pas enregistré. Possibilité : vérification éteinte par défaut, allumée par école.
+**Décision de Seb (18 novembre 2026)** : comme Sambo Admin, le certificat médical est envoyé au
+modèle pour être contrôlé, et rien n'est enregistré. C'est la seule exception à la règle « l'assistant
+ne voit jamais la santé des membres » : elle ne vaut que pour cette vérification, jamais pour
+l'assistant. La vérification est **éteinte par défaut** ; chaque école l'allume (réglage du module,
+Administrateur principal).
 
 ### 7.6 Contact
 
@@ -286,6 +288,6 @@ inchangé » à chaque PR.
 6. Colonnes et boutons déclarés par les modules (`core.md` §11.1).
 7. Impayés HelloAsso.
 8. Contact (mail, SMS, messages préenregistrés) et Résilier.
-9. Vérification des dossiers, notification « Nouvel adhérent » (après la décision du §7.5).
+9. Vérification des dossiers, notification « Nouvel adhérent ».
 10. Statistiques de la saison.
 Le module FFST (`modules/ffst.md`) s'intercale après l'étape 6.
