@@ -83,3 +83,28 @@ export async function telecharger(ecoleId, dossier, uid, piece) {
 
 // Pastille des non lus à relire tout de suite (un mail lu ou remis non lu).
 export const signalerNonLus = () => window.dispatchEvent(new Event('mail:non-lus'))
+
+// Écrire (spec §7) : formulaire multipart (pièces jointes), comme Sambo Admin.
+export async function envoyer(ecoleId, b, fichiers) {
+  const form = new FormData()
+  for (const cle of ['to', 'cc', 'bcc', 'subject', 'body']) form.set(cle, b[cle] ?? '')
+  if (b.inReplyTo) form.set('inReplyTo', b.inReplyTo)
+  if (b.references) form.set('references', b.references)
+  if (b.answered) {
+    form.set('answeredFolder', b.answered.folder)
+    form.set('answeredUid', b.answered.uid)
+  }
+  if (b.forward) {
+    form.set('forwardFolder', b.forward.folder)
+    form.set('forwardUid', b.forward.uid)
+  }
+  fichiers.forEach((f) => form.append('files', f))
+  const reponse = await fetch(`${BASE_URL}${base(ecoleId)}/send`, { method: 'POST', body: form })
+  if (!reponse.ok) {
+    const corps = await reponse.json().catch(() => null)
+    const erreur = new Error(typeof corps?.detail === 'string' ? corps.detail : `Requête échouée (${reponse.status})`)
+    erreur.status = reponse.status
+    throw erreur
+  }
+  return reponse.json()
+}
