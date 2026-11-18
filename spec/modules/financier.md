@@ -286,9 +286,9 @@ l'organisation, semaine par semaine, d'une date de départ jusqu'à la fin de la
   dernier jour connu des comptes, au plus aujourd'hui ; saison terminée : une date est obligatoire,
   pour tester le prévisionnel sur le passé), solde au début de la saison, semaines jusqu'à la fin
   de saison (avec les mois qui commencent), ce qui est déjà passé sur le mois en cours, les 12 mois
-  précédents par catégorie et leur moyenne mensuelle. **Échéances HelloAsso à venir** (§6.4) :
+  précédents par catégorie, leur moyenne mensuelle et la liste brute de leurs opérations. **Échéances HelloAsso à venir** (§6.4) :
   quand le module HelloAsso est allumé, les paiements en plusieurs fois pas encore encaissés de la
-  saison et ce qui attend chez HelloAsso, ramenés aux dates des virements vers le compte, passés par
+  saison et ce qui attend chez HelloAsso (§6.4, des faits, sans règle déduite), passés par
   le port de l'appli hôte (`finances_contretemps/`) ; sinon rien, le modèle fait sans. Pas
   d'inscrits.
 - **Produire le prévisionnel** : le modèle de langage (jamais nommé « IA » à l'écran) n'écrit
@@ -343,31 +343,32 @@ elle repose.
   `hypothese` est le code d'une hypothèse déclarée (`"H1"`…).
   L'appli refuse (et renvoie une fois au modèle) une date hors période, un montant non numérique ou
   un code d'hypothèse non déclaré.
-- **Sûr** : seulement l'argent que l'appli sait déjà venir de **HelloAsso**. Deux fonctionnements
-  à suivre (Seb, 18/11) :
-  1. **Licences en une ou trois fois** : en trois fois, la 1re échéance tombe à l'adhésion, puis
-     deux **dates fixes** que l'appli retrouve dans les paiements à venir de HelloAsso (dates les
-     plus fréquentes des 2e et 3e échéances).
-  2. **Virements de HelloAsso vers le compte** : l'argent encaissé par HelloAsso n'arrive pas tout
-     de suite à la banque ; HelloAsso vire chaque mois à **date fixe** (réglage fait dans HelloAsso).
-     L'appli retrouve ce jour dans les relevés : jour du mois le plus fréquent des derniers virements
-     HelloAsso reçus (libellé contenant « HELLOASSO », montant positif ; même repérage que Sambo
-     Admin `bank_cash_outs`). Moins de 3 virements trouvés : pas de jour fixe, chaque échéance
-     arrive à sa date et l'explication le dit.
-  **L'appli écrit elle-même les lignes sûres**, une par virement prévu : ce que HelloAsso aura
-  encaissé avant ce virement (« Virement HelloAsso : 2e échéance du 05/12 (9 adhérents × 90 €) »),
-  plus, au premier virement, ce qui est déjà encaissé chez HelloAsso et pas encore versé (état
-  `cashOutState` des paiements, à ajouter à la synchronisation HelloAsso : `cashOutState`,
-  `cashOutDate`). Le modèle voit ces lignes dans `donnees["virementsHelloAsso"]`
-  (`[{"date", "montant", "libelle"}]`), ne peut ni les changer ni les compter deux fois, et ses
-  opérations n'en contiennent pas. Tout le reste est une hypothèse, même un loyer qui revient
-  chaque mois (« H5 : loyer identique aux 12 derniers mois »).
-- **Ce qui vient de HelloAsso est expliqué** (Seb, 18/11), texte écrit par l'appli, pas par le
-  modèle : la campagne et la date de la dernière relecture ; combien ont payé en une fois, en
-  trois fois, et les deux dates fixes ; le jour du virement mensuel et sur combien de virements
-  des relevés il a été retrouvé (une échéance arrive au virement suivant, pas le jour du paiement) ;
-  ce qui est encaissé chez HelloAsso et pas encore versé ; ce qui n'est **pas** compté (impayés
-  avec leur montant, adhésions résiliées). Sans HelloAsso : « Aucune ligne sûre : HelloAsso n'est
+- **Partage des rôles (Seb, 18/11)** : **l'appli donne des faits, le modèle en tire les règles,
+  l'appli vérifie les totaux.** Chaque association a ses propres rythmes (dates d'échéances, jour du
+  virement de la plateforme de paiement…) : l'appli n'en déduit aucun, le modèle les trouve au cas
+  par cas.
+  - **Faits donnés par l'appli** : `donnees["helloAsso"]` (null sans HelloAsso) = paiements à venir
+    `[{"date", "montant", "adherents", "echeance"}]`, montant encaissé par HelloAsso et pas encore
+    versé, total sûr, impayés et résiliés (non comptés) ; et `donnees["operations12Mois"]` : la
+    liste brute des opérations des 12 mois avant le départ `[{"date", "libelle", "montant"}]`
+    (virements internes exclus), en plus des totaux par catégorie.
+  - **Ce que le modèle cherche** (liste dans ses consignes) : le calendrier des échéances (paiements
+    en une ou trois fois : 1re à l'adhésion puis dates fixes), le jour des versements de la
+    plateforme vers le compte (HelloAsso vire chaque mois à date fixe, réglage propre à chaque
+    association : l'argent n'arrive pas le jour du paiement), les dépenses fixes, la saison des
+    inscriptions. **Chaque hypothèse cite sa preuve** (« H2 : HelloAsso vire le 10 de chaque mois,
+    vu sur les 6 derniers virements des relevés »).
+  - **Lignes sûres** : une opération dont l'argent vient des faits HelloAsso porte `"sur": true`
+    et l'hypothèse qui fixe sa date ; étiquette **« Sûr · H2 »** (le montant est sûr, la date vient
+    de H2). **L'appli vérifie** que la somme des lignes sûres est égale au total sûr de HelloAsso, au
+    centime : sinon la formule est renvoyée une fois au modèle (ni invention ni double compte).
+    Tout le reste est une hypothèse, même un loyer qui revient chaque mois.
+- **Ce qui vient de HelloAsso est expliqué** (Seb, 18/11). Les faits sont écrits par l'appli : la
+  campagne et la date de la dernière relecture, combien ont payé en une fois ou en plusieurs, le
+  total sûr, ce qui est encaissé chez HelloAsso et pas encore versé, ce qui n'est **pas** compté
+  (impayés avec leur montant, adhésions résiliées). Les règles trouvées (dates fixes, jour du
+  virement) sont les hypothèses du modèle, avec leur preuve. Il faut ajouter à la synchronisation
+  HelloAsso l'état de versement des paiements (`cashOutState`, `cashOutDate`). Sans HelloAsso : « Aucune ligne sûre : HelloAsso n'est
   pas relié ».
 - **Hypothèses** : déclarées par le modèle dans le même appel que la formule (pas d'appel en plus) :
   `[{"code": "H1", "texte": "…"}]`, une phrase simple chacune. Une hypothèse qui dépend d'un curseur
