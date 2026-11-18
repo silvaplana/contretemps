@@ -5,13 +5,16 @@ import Boite from './Boite.jsx'
 import { FOURNISSEURS } from './fournisseurs.js'
 import './mail.css'
 
-// Messages › Mail (spec/modules/mail.md §4 à §6) : la boîte du club
-// (Boite.jsx). Elle se connecte dans Admin › École › Connexions
-// (MailReglages.jsx ; Seb, 18 novembre ; spec/core.md, « Connexions »).
+// Messages › Mail (spec/modules/mail.md §4 à §6) : une boîte du club
+// (Boite.jsx), celle de la puce choisie (§4 bis : une puce par boîte). Elles
+// se connectent dans Admin › École › Connexions (MailReglages.jsx ; Seb,
+// 18 novembre ; spec/core.md, « Connexions »).
 
-export default function MailScreen({ ecoleId, etat, onEtat }) {
+export default function MailScreen({ ecoleId, etat, boiteId, onEtat }) {
+  const boites = etat.boxes ?? []
+  const boite = boites.find((b) => b.id === boiteId) ?? boites[0]
   let corps = null
-  if (!etat.connected) {
+  if (!boite) {
     corps = (
       <div className="mail__pile">
         <p>La boîte mail du club n'est pas encore connectée.</p>
@@ -24,12 +27,12 @@ export default function MailScreen({ ecoleId, etat, onEtat }) {
         )}
       </div>
     )
-  } else if (etat.cut) {
+  } else if (boite.cut) {
     corps = (
       <div className="mail__pile">
         <div className="mail__alerte" role="alert">
           <strong>La boîte mail n'est plus connectée</strong>
-          {FOURNISSEURS[etat.provider]?.nom ?? 'Le fournisseur'} a coupé l'accès, souvent après un changement du mot
+          {FOURNISSEURS[boite.provider]?.nom ?? 'Le fournisseur'} a coupé l'accès, souvent après un changement du mot
           de passe du compte.{' '}
           {etat.can_connect ? '' : 'L’Administrateur principal doit la reconnecter.'}
         </div>
@@ -42,15 +45,24 @@ export default function MailScreen({ ecoleId, etat, onEtat }) {
     )
   }
 
-  const menuBoite = etat.connected && (
-    <MenuEntete label="Plus d'actions" actions={[{ label: etat.address, icon: 'mail', onClick: () => {} }]} />
+  const menuBoite = boite && (
+    <MenuEntete label="Plus d'actions" actions={[{ label: boite.address, icon: 'mail', onClick: () => {} }]} />
   )
   // Accès coupé pendant la lecture : relire l'état (bandeau).
   const coupee = () => api.etat(ecoleId).then(onEtat, () => null)
 
   return (
     <div className="mail">
-      {corps ?? <Boite ecoleId={ecoleId} etat={etat} menuBoite={menuBoite} onCoupee={coupee} />}
+      {corps ?? (
+        <Boite
+          key={boite.id}
+          ecoleId={ecoleId}
+          boite={boite}
+          boites={boites.filter((b) => !b.cut)}
+          menuBoite={menuBoite}
+          onCoupee={coupee}
+        />
+      )}
       {corps && menuBoite}
     </div>
   )

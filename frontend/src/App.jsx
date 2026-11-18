@@ -440,7 +440,7 @@ function App() {
   // Fights : combats validés pas encore ouverts (Seb, 17/11).
   const nouveauxCombats = useNouveaux(Boolean(compteReel) && !modulesEteints.has('session_clips'), `${ecole.id}|${activeUser.id}|${activeTab}`)
   // Non lus de la boîte mail du club (spec/modules/mail.md §2), ajoutés à la pastille de Messages.
-  const mailNonLus = useMailNonLus(Boolean(compteReel) && !modulesEteints.has('mail'), ecole.id)
+  const { total: mailNonLus, parBoite: mailNonLusParBoite } = useMailNonLus(Boolean(compteReel) && !modulesEteints.has('mail'), ecole.id)
   useEffect(() => {
     const onglets = ongletsAvec({ publications: blogs ?? [] })
     const eteint = (t) => modules.some((m) => m.key === t.module && !m.enabled)
@@ -1344,6 +1344,7 @@ function App() {
             viewerRole={activeUser.type}
             ecoleId={ecole.id}
             mailNonLus={mailNonLus}
+            mailNonLusParBoite={mailNonLusParBoite}
             admins={admins}
             professeurs={professeurs}
             eleves={eleves}

@@ -20,12 +20,23 @@ async function requete(chemin, options = {}) {
   return reponse.status === 204 ? null : reponse.json()
 }
 
-// → { connected, address, provider, connected_at, cut, can_connect, can_read }
+// Plusieurs boîtes par école (spec §4 bis) : `boite` est le numéro d'une
+// boîte (`boxes[].id`) ; toutes les routes de lecture la prennent.
+const avecBoite = (boite) => (boite != null ? `box=${boite}` : '')
+
+// → { connected, can_connect, can_read, boxes: [{ id, name, address, provider, connected_at, cut }] }
 export const etat = (ecoleId) => requete(`/ecoles/${ecoleId}/mail`)
-// → l'état, une fois que Google a accepté le code.
-export const connecter = (ecoleId, address, code, provider) =>
-  requete(`/ecoles/${ecoleId}/mail`, { method: 'PUT', body: JSON.stringify({ address, code, provider }) })
-export const deconnecter = (ecoleId) => requete(`/ecoles/${ecoleId}/mail`, { method: 'DELETE' })
+// → l'état, une fois que le fournisseur a accepté le code. Sans `boite` :
+// ajoute une boîte (nommée `name`) ; avec : la reconnecte ou la remplace.
+export const connecter = (ecoleId, { boite, name, address, code, provider }) =>
+  requete(`/ecoles/${ecoleId}/mail?${avecBoite(boite)}`, {
+    method: 'PUT',
+    body: JSON.stringify({ address, code, provider, name: name ?? '' }),
+  })
+export const renommer = (ecoleId, boite, name) =>
+  requete(`/ecoles/${ecoleId}/mail?${avecBoite(boite)}`, { method: 'PATCH', body: JSON.stringify({ name }) })
+export const deconnecter = (ecoleId, boite) =>
+  requete(`/ecoles/${ecoleId}/mail?${avecBoite(boite)}`, { method: 'DELETE' })
 
 // L'état, ou null quand la personne ne voit pas la puce Mail (sous-module
 // éteint : 404 ; pas le droit : 403).
@@ -46,27 +57,30 @@ const base = (ecoleId) => `/ecoles/${ecoleId}/mail`
 const json = (method, corps) => ({ method, body: JSON.stringify(corps) })
 
 // → { address, folders: [{ key, label }], unread }
-export const dossiers = (ecoleId) => requete(`${base(ecoleId)}/folders`)
-// → { unread } (0 si la boîte n'est pas lisible)
+export const dossiers = (ecoleId, boite) => requete(`${base(ecoleId)}/folders?${avecBoite(boite)}`)
+// → { unread, boxes: [{ id, unread }] } : le total et chaque boîte (0 si pas lisible)
 export const nonLus = (ecoleId) => requete(`${base(ecoleId)}/unread`)
 // → { folder, messages: [{ uid, subject, from, to, date, seen, starred, hasAttachments, snippet }], hasMore }
-export function lister(ecoleId, dossier, { avant = null, recherche = '' } = {}) {
-  const p = new URLSearchParams({ folder: dossier })
+export function lister(ecoleId, boite, dossier, { avant = null, recherche = '' } = {}) {
+  const p = new URLSearchParams({ folder: dossier, box: boite })
   if (avant != null) p.set('before', avant)
   if (recherche) p.set('q', recherche)
   return requete(`${base(ecoleId)}/messages?${p}`)
 }
 // → { subject, from, to, cc, date, html, text, attachments: [{ index, filename, size }], starred } ; le marque lu.
-export const lire = (ecoleId, dossier, uid) => requete(`${base(ecoleId)}/messages/${dossier}/${uid}`)
-export const drapeaux = (ecoleId, dossier, uid, changes) =>
-  requete(`${base(ecoleId)}/messages/${dossier}/${uid}/flags`, json('PUT', changes))
+export const lire = (ecoleId, boite, dossier, uid) =>
+  requete(`${base(ecoleId)}/messages/${dossier}/${uid}?${avecBoite(boite)}`)
+export const drapeaux = (ecoleId, boite, dossier, uid, changes) =>
+  requete(`${base(ecoleId)}/messages/${dossier}/${uid}/flags?${avecBoite(boite)}`, json('PUT', changes))
 // action : trash, archive, spam, inbox, delete, read, unread.
-export const cocher = (ecoleId, dossier, uids, action) =>
-  requete(`${base(ecoleId)}/bulk`, json('POST', { folder: dossier, uids, action }))
+export const cocher = (ecoleId, boite, dossier, uids, action) =>
+  requete(`${base(ecoleId)}/bulk?${avecBoite(boite)}`, json('POST', { folder: dossier, uids, action }))
 
 // Pièce jointe : téléchargée (jamais ouverte sur le domaine de l'appli).
-export async function telecharger(ecoleId, dossier, uid, piece) {
-  const reponse = await fetch(`${BASE_URL}${base(ecoleId)}/messages/${dossier}/${uid}/attachments/${piece.index}`)
+export async function telecharger(ecoleId, boite, dossier, uid, piece) {
+  const reponse = await fetch(
+    `${BASE_URL}${base(ecoleId)}/messages/${dossier}/${uid}/attachments/${piece.index}?${avecBoite(boite)}`,
+  )
   if (!reponse.ok) {
     const corps = await reponse.json().catch(() => null)
     throw new Error(typeof corps?.detail === 'string' ? corps.detail : `Requête échouée (${reponse.status})`)
@@ -85,7 +99,7 @@ export async function telecharger(ecoleId, dossier, uid, piece) {
 export const signalerNonLus = () => window.dispatchEvent(new Event('mail:non-lus'))
 
 // Écrire (spec §7) : formulaire multipart (pièces jointes), comme Sambo Admin.
-export async function envoyer(ecoleId, b, fichiers) {
+export async function envoyer(ecoleId, boite, b, fichiers) {
   const form = new FormData()
   for (const cle of ['to', 'cc', 'bcc', 'subject', 'body']) form.set(cle, b[cle] ?? '')
   if (b.inReplyTo) form.set('inReplyTo', b.inReplyTo)
@@ -99,7 +113,7 @@ export async function envoyer(ecoleId, b, fichiers) {
     form.set('forwardUid', b.forward.uid)
   }
   fichiers.forEach((f) => form.append('files', f))
-  const reponse = await fetch(`${BASE_URL}${base(ecoleId)}/send`, { method: 'POST', body: form })
+  const reponse = await fetch(`${BASE_URL}${base(ecoleId)}/send?${avecBoite(boite)}`, { method: 'POST', body: form })
   if (!reponse.ok) {
     const corps = await reponse.json().catch(() => null)
     const erreur = new Error(typeof corps?.detail === 'string' ? corps.detail : `Requête échouée (${reponse.status})`)
@@ -110,4 +124,4 @@ export async function envoyer(ecoleId, b, fichiers) {
 }
 
 // Suggestions pour À, Cc, Cci : gens de l'école et adresses déjà échangées.
-export const contacts = (ecoleId) => requete(`${base(ecoleId)}/contacts`)
+export const contacts = (ecoleId, boite) => requete(`${base(ecoleId)}/contacts?${avecBoite(boite)}`)

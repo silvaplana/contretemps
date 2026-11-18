@@ -203,7 +203,7 @@ def boite(client, ecole, gmail, monkeypatch):
 def test_lire_et_ranger_les_mails(client, ecole, boite):
     url = f"/ecoles/{ecole.id}/mail"
     assert client.get(f"{url}/folders").json()["unread"] == 2
-    assert client.get(f"{url}/unread").json() == {"unread": 2}
+    assert client.get(f"{url}/unread").json()["unread"] == 2
     assert client.get(f"{url}/messages", params={"folder": "inbox", "q": "essai"}).json()["messages"][0]["uid"] == 7
     assert client.get(f"{url}/messages/inbox/7").json()["subject"] == "Cours d'essai"
     assert client.get(f"{url}/messages/inbox/404").status_code == 404
@@ -236,7 +236,7 @@ def test_google_coupe_l_acces(client, ecole, boite):
     assert reponse.status_code == 409 and reponse.json()["detail"] == "La boîte mail n'est plus connectée"
     assert client.get(url).json()["cut"] is True
     # Plus de connexion à Gmail tant que la boîte est coupée ; pastille à 0.
-    assert client.get(f"{url}/unread").json() == {"unread": 0}
+    assert client.get(f"{url}/unread").json()["unread"] == 0
     assert client.get(f"{url}/folders").status_code == 409
     # Reconnecter efface le bandeau.
     client.put(url, json=CONNEXION)
@@ -246,7 +246,7 @@ def test_google_coupe_l_acces(client, ecole, boite):
 
 def test_pas_de_boite_pas_de_mails(client, ecole):
     assert client.get(f"/ecoles/{ecole.id}/mail/messages").status_code == 409
-    assert client.get(f"/ecoles/{ecole.id}/mail/unread").json() == {"unread": 0}
+    assert client.get(f"/ecoles/{ecole.id}/mail/unread").json() == {"unread": 0, "boxes": []}
 
 
 def test_boite_infomaniak(client, db_session, ecole, gmail, monkeypatch):
@@ -270,8 +270,9 @@ def test_boite_infomaniak(client, db_session, ecole, gmail, monkeypatch):
     assert clients == [("club@ik.me", "MotPasseInfomaniak16+", "infomaniak")]
     assert PROVIDERS["infomaniak"].imap_host == PROVIDERS["infomaniak"].smtp_host == "mail.infomaniak.com"
     assert client.put(url, json={**infomaniak, "provider": "orange"}).status_code == 422
-    # Sans fournisseur : Gmail, comme avant.
-    assert client.put(url, json=CONNEXION).json()["provider"] == "gmail"
+    # Remplacée par une boîte Gmail (sans fournisseur : Gmail, comme avant).
+    box = etat["boxes"][0]["id"]
+    assert client.put(url, params={"box": box}, json=CONNEXION).json()["provider"] == "gmail"
 
 
 def test_envoyer_repondre_transferer(client, ecole, boite):
@@ -316,3 +317,51 @@ def test_suggestions_d_adresses(client, db_session, ecole, boite):
     assert "Parent@ex.fr" in adresses and "club.sambo@gmail.com" not in adresses
     assert len(adresses) == len({a.lower() for a in adresses})
     assert not any("Ailleurs" in c["name"] for c in contacts)
+
+
+def test_plusieurs_boites(client, db_session, ecole, boite):
+    """Seb, 18 novembre (§4 bis) : plusieurs boîtes par école, chacune son
+    nom ; un seul droit pour toutes ; « De » au choix pour écrire."""
+    url = f"/ecoles/{ecole.id}/mail"
+    club = client.get(url).json()["boxes"]
+    assert [(b["name"], b["address"]) for b in club] == [("Club", "club.sambo@gmail.com")]
+
+    tresorerie = {"address": "tres.asc@gmail.com", "code": "abcdefghijklmnop", "name": " Trésorerie "}
+    etat = client.put(url, json=tresorerie).json()
+    assert [(b["name"], b["address"]) for b in etat["boxes"]] == [
+        ("Club", "club.sambo@gmail.com"), ("Trésorerie", "tres.asc@gmail.com"),
+    ]
+    assert etat["address"] == "club.sambo@gmail.com"  # la première, comme avant
+    id_club, id_tres = (b["id"] for b in etat["boxes"])
+
+    # Reconnecter la même adresse ne crée pas de doublon.
+    assert len(client.put(url, json={**tresorerie, "name": ""}).json()["boxes"]) == 2
+
+    # Chaque boîte a son client ; sans `box`, la première.
+    client.get(f"{url}/messages", params={"box": id_tres})
+    client.get(f"{url}/messages")
+    par_adresse = {b.address: b for b in boite}
+    assert par_adresse["tres.asc@gmail.com"].calls[-1][0] == "list"
+    assert par_adresse["club.sambo@gmail.com"].calls[-1][0] == "list"
+    client.post(f"{url}/send", params={"box": id_tres}, data={"to": "a@b.fr"})
+    assert par_adresse["tres.asc@gmail.com"].calls[-1][0] == "send"
+
+    # Pastilles : chaque boîte et le total.
+    non_lus = client.get(f"{url}/unread").json()
+    assert non_lus == {"unread": 4, "boxes": [{"id": id_club, "unread": 2}, {"id": id_tres, "unread": 2}]}
+
+    # Aucune des boîtes dans les suggestions.
+    adresses = [c["address"].lower() for c in client.get(f"{url}/contacts").json()["contacts"]]
+    assert "club.sambo@gmail.com" not in adresses and "tres.asc@gmail.com" not in adresses
+
+    # Renommer, déconnecter une seule boîte.
+    renomme = client.patch(url, params={"box": id_tres}, json={"name": "Trésor"}).json()
+    assert renomme["boxes"][1]["name"] == "Trésor"
+    assert client.patch(url, params={"box": id_tres}, json={"name": ""}).status_code == 422
+    assert client.delete(url, params={"box": id_club}).status_code == 204
+    assert [b["name"] for b in client.get(url).json()["boxes"]] == ["Trésor"]
+
+    # Une autre école ne touche pas à ces boîtes.
+    autre = Ecoles().create(db_session, nom="Le Beausset", code_postal="83330")
+    assert client.get(f"/ecoles/{autre.id}/mail/messages", params={"box": id_tres}).status_code == 409
+    assert client.patch(f"/ecoles/{autre.id}/mail", params={"box": id_tres}, json={"name": "X"}).status_code == 404

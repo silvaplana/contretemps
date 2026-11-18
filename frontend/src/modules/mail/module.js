@@ -12,6 +12,7 @@ export default {
   connection: {
     label: 'Boîte mail du club',
     Reglages: MailReglages,
-    connecte: (ecoleId) => api.etat(ecoleId).then((e) => Boolean(e?.connected && !e.cut)),
+    // Une boîte coupée compte « à connecter » (§4 bis : toutes les boîtes).
+    connecte: (ecoleId) => api.etat(ecoleId).then((e) => Boolean(e?.connected && !e.boxes?.some((b) => b.cut))),
   },
 }

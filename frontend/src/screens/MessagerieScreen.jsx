@@ -5,6 +5,7 @@ import Icon from '../components/Icon.jsx'
 import SegmentedTabs from '../components/SegmentedTabs.jsx'
 import * as mailApi from '../modules/mail/api.js'
 import MailScreen from '../modules/mail/MailScreen.jsx'
+import { pucesMail } from '../modules/mail/puces.jsx'
 import { envoyerAvecReprise } from '../utils/messageOutbox.js'
 import { initialiserPresence } from '../utils/presenceEnLigne.js'
 import ConversationListScreen from './messagerie/ConversationListScreen.jsx'
@@ -39,6 +40,8 @@ export default function MessagerieScreen({
   ecoleId,
   // Non lus de la boîte du club (pastille de la puce Mail, voir App.jsx).
   mailNonLus = 0,
+  // Non lus de chaque boîte (puce de la boîte quand il y en a plusieurs).
+  mailNonLusParBoite = {},
   admins,
   professeurs,
   eleves,
@@ -62,6 +65,8 @@ export default function MessagerieScreen({
   const [selectedId, setSelectedId] = useState(null)
   // Puces Chat | Mail (spec/modules/mail.md §2) : seulement si le sous-module
   // Mail est allumé et que la personne a le droit « Boîte mail du club ».
+  // Plusieurs boîtes : une puce par boîte, à son nom (§4 bis ; Seb,
+  // 18 novembre) ; `puce` vaut alors le numéro de la boîte.
   const [mailEtat, setMailEtat] = useState(null)
   const [puce, setPuce] = useState('chat')
   useEffect(() => {
@@ -185,10 +190,10 @@ export default function MessagerieScreen({
   // Un seul `return` : la modale "Nouveau groupe" ci-dessous s'affiche
   // PAR-DESSUS l'écran Nouvelle discussion, et le bouton + par-dessus la
   // liste.
-  const voirMail = mailEtat && puce === 'mail'
+  const voirMail = mailEtat && puce !== 'chat'
   let corps
   if (voirMail) {
-    corps = <MailScreen ecoleId={ecoleId} etat={mailEtat} onEtat={setMailEtat} />
+    corps = <MailScreen ecoleId={ecoleId} etat={mailEtat} boiteId={puce} onEtat={setMailEtat} />
   } else if (selected) {
     corps = (
       <ConversationThreadScreen
@@ -273,17 +278,7 @@ export default function MessagerieScreen({
       {mailEtat && (voirMail || surLaListe) && (
         <SegmentedTabs
           className="messagerie-puces"
-          options={[
-            { value: 'chat', label: 'Chat' },
-            {
-              value: 'mail',
-              label: (
-                <>
-                  Mail{mailNonLus > 0 && <span className="mail__pastille">{mailNonLus}</span>}
-                </>
-              ),
-            },
-          ]}
+          options={[{ value: 'chat', label: 'Chat' }, ...pucesMail(mailEtat, mailNonLus, mailNonLusParBoite)]}
           value={puce}
           onChange={setPuce}
         />

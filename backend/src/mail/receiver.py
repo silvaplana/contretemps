@@ -32,6 +32,21 @@ class ConnectIn(BaseModel):
     address: str = Field(min_length=3, max_length=255, pattern=r"^\s*[^@\s]+@[^@\s]+\.[^@\s]+\s*$")
     code: str = Field(min_length=1, max_length=100)
     provider: Literal["gmail", "infomaniak"] = "gmail"
+    # Nom court (Club, Trésorerie…) : sa puce dans Messages (§4 bis).
+    name: str = Field("", max_length=30)
+
+
+class RenameIn(BaseModel):
+    name: str = Field(min_length=1, max_length=30)
+
+
+class BoxOut(BaseModel):
+    id: int
+    name: str
+    address: str
+    provider: str
+    connected_at: datetime
+    cut: bool
 
 
 class StatusOut(BaseModel):
@@ -45,6 +60,9 @@ class StatusOut(BaseModel):
     can_connect: bool = False
     # Droit « Boîte mail du club » : puce Mail dans Messages.
     can_read: bool = False
+    # Toutes les boîtes de l'école (§4 bis) ; les champs ci-dessus décrivent
+    # la première.
+    boxes: list[BoxOut] = []
 
 
 class FlagsIn(BaseModel):
@@ -102,6 +120,7 @@ class MailReceiver:
         app.get("/ecoles/{ecole_id}/mail", response_model=StatusOut, dependencies=[Depends(_reader_or_owner)])(self.status)
         owner = [Depends(_owner)]
         app.put("/ecoles/{ecole_id}/mail", response_model=StatusOut, dependencies=owner)(self.connect)
+        app.patch("/ecoles/{ecole_id}/mail", response_model=StatusOut, dependencies=owner)(self.rename)
         app.delete("/ecoles/{ecole_id}/mail", status_code=204, dependencies=owner)(self.disconnect)
         reader = [Depends(_reader)]
         base = "/ecoles/{ecole_id}/mail"
@@ -118,73 +137,100 @@ class MailReceiver:
         app.get(f"{base}/contacts", dependencies=reader)(self.contacts)
 
     def _status(self, db: Session, ecole_id: int, appelant: Compte | None) -> StatusOut:
-        account = self.connection.account(db, ecole_id)
-        if account is None:
+        accounts = self.connection.accounts(db, ecole_id)
+        if not accounts:
             return StatusOut(connected=False, can_connect=_can_connect(appelant), can_read=_can_read(appelant))
+        boxes = [
+            BoxOut(id=a.id, name=a.name, address=a.address, provider=a.provider, connected_at=a.connected_at,
+                   cut=a.cut_at is not None)
+            for a in accounts
+        ]
+        first = boxes[0]
         return StatusOut(
-            connected=True, address=account.address, provider=account.provider, connected_at=account.connected_at,
-            cut=account.cut_at is not None, can_connect=_can_connect(appelant), can_read=_can_read(appelant),
+            connected=True, address=first.address, provider=first.provider, connected_at=first.connected_at,
+            cut=first.cut, can_connect=_can_connect(appelant), can_read=_can_read(appelant), boxes=boxes,
         )
 
     def status(self, ecole_id: int, db: Session = Depends(get_db), appelant: Compte | None = Depends(rbac.compte_appelant)):
         return self._status(db, ecole_id, appelant)
 
     def connect(
-        self, ecole_id: int, data: ConnectIn, db: Session = Depends(get_db),
+        self, ecole_id: int, data: ConnectIn, box: int | None = None, db: Session = Depends(get_db),
         appelant: Compte | None = Depends(rbac.compte_appelant),
     ):
+        """Sans `box` : ajoute une boîte (§4 bis) ; avec : la reconnecte ou la
+        remplace."""
         try:
-            self.connection.connect(db, ecole_id, data.address, data.code, data.provider)
+            self.connection.connect(db, ecole_id, data.address, data.code, data.provider, box, data.name)
+        except NotConnected:
+            raise HTTPException(status_code=404, detail="Boîte introuvable") from None
         except MailRefused as erreur:
             raise HTTPException(status_code=422, detail=str(erreur)) from None
         except MailError as erreur:
             raise HTTPException(status_code=502, detail=str(erreur)) from None
         return self._status(db, ecole_id, appelant)
 
-    def disconnect(self, ecole_id: int, db: Session = Depends(get_db)):
-        self.connection.disconnect(db, ecole_id)
+    def rename(
+        self, ecole_id: int, box: int, data: RenameIn, db: Session = Depends(get_db),
+        appelant: Compte | None = Depends(rbac.compte_appelant),
+    ):
+        try:
+            self.connection.rename(db, ecole_id, box, data.name)
+        except NotConnected:
+            raise HTTPException(status_code=404, detail="Boîte introuvable") from None
+        return self._status(db, ecole_id, appelant)
+
+    def disconnect(self, ecole_id: int, box: int | None = None, db: Session = Depends(get_db)):
+        self.connection.disconnect(db, ecole_id, box)
 
     # --- Lire et ranger (§5, §6) ------------------------------------------
 
-    def _call(self, db: Session, ecole_id: int, action: Callable[[Webmail], object]):
+    def _call(self, db: Session, ecole_id: int, box: int | None, action: Callable[[Webmail], object]):
         try:
-            return action(self.connection.client(db, ecole_id))
+            return action(self.connection.client(db, ecole_id, box))
         except NotConnected:
             raise HTTPException(status_code=409, detail="La boîte mail du club n'est pas connectée") from None
         except WebmailRefusedError as erreur:
-            self.connection.mark_cut(db, ecole_id)
+            self.connection.mark_cut(db, ecole_id, box)
             raise HTTPException(status_code=409, detail=str(erreur)) from None
         except WebmailError as erreur:
             raise HTTPException(status_code=400, detail=str(erreur)) from None
         except WebmailNotFoundError:
             raise HTTPException(status_code=404, detail="Mail introuvable (déplacé ou supprimé ?)") from None
 
-    def folders(self, ecole_id: int, db: Session = Depends(get_db)):
+    def folders(self, ecole_id: int, box: int | None = None, db: Session = Depends(get_db)):
         """Dossiers de la boîte et non lus de la réception."""
-        return self._call(db, ecole_id, lambda w: w.folders())
+        return self._call(db, ecole_id, box, lambda w: w.folders())
 
     def unread(self, ecole_id: int, db: Session = Depends(get_db)):
-        """Pastille des non lus : 0 si la boîte n'est pas lisible."""
-        try:
-            return {"unread": self._call(db, ecole_id, lambda w: w.unread())}
-        except HTTPException:
-            return {"unread": 0}
+        """Pastilles des non lus : le total (onglet Messages) et chaque boîte
+        (sa puce) ; 0 pour une boîte qui n'est pas lisible."""
+        boxes = []
+        for account in self.connection.accounts(db, ecole_id):
+            try:
+                n = self._call(db, ecole_id, account.id, lambda w: w.unread())
+            except HTTPException:
+                n = 0
+            boxes.append({"id": account.id, "unread": n})
+        return {"unread": sum(b["unread"] for b in boxes), "boxes": boxes}
 
     def messages(
         self, ecole_id: int, folder: str = "inbox", before: int | None = None, q: str = "",
-        db: Session = Depends(get_db),
+        box: int | None = None, db: Session = Depends(get_db),
     ):
         """Une page de 40 mails (q : recherche, mots-clés de Gmail)."""
-        return self._call(db, ecole_id, lambda w: w.list(folder, before, q))
+        return self._call(db, ecole_id, box, lambda w: w.list(folder, before, q))
 
-    def message(self, ecole_id: int, folder: str, uid: int, db: Session = Depends(get_db)):
+    def message(self, ecole_id: int, folder: str, uid: int, box: int | None = None, db: Session = Depends(get_db)):
         """Un mail complet ; le marque comme lu."""
-        return self._call(db, ecole_id, lambda w: w.get(folder, uid))
+        return self._call(db, ecole_id, box, lambda w: w.get(folder, uid))
 
-    def attachment(self, ecole_id: int, folder: str, uid: int, index: int, db: Session = Depends(get_db)):
+    def attachment(
+        self, ecole_id: int, folder: str, uid: int, index: int, box: int | None = None, db: Session = Depends(get_db),
+    ):
         """Pièce jointe, toujours en téléchargement (jamais affichée par le
         navigateur sur le domaine de l'appli)."""
-        data, filename, _content_type = self._call(db, ecole_id, lambda w: w.attachment(folder, uid, index))
+        data, filename, _content_type = self._call(db, ecole_id, box, lambda w: w.attachment(folder, uid, index))
         ascii_name = filename.encode("ascii", "replace").decode("ascii").replace('"', "_").replace("?", "_")
         return Response(
             data,
@@ -196,18 +242,24 @@ class MailReceiver:
             },
         )
 
-    def flags(self, ecole_id: int, folder: str, uid: int, data: FlagsIn, db: Session = Depends(get_db)):
-        return self._call(db, ecole_id, lambda w: w.set_flags(folder, uid, data.seen, data.starred))
+    def flags(
+        self, ecole_id: int, folder: str, uid: int, data: FlagsIn, box: int | None = None,
+        db: Session = Depends(get_db),
+    ):
+        return self._call(db, ecole_id, box, lambda w: w.set_flags(folder, uid, data.seen, data.starred))
 
-    def move(self, ecole_id: int, folder: str, uid: int, data: MoveIn, db: Session = Depends(get_db)):
-        return self._call(db, ecole_id, lambda w: w.move(folder, uid, data.to))
+    def move(
+        self, ecole_id: int, folder: str, uid: int, data: MoveIn, box: int | None = None,
+        db: Session = Depends(get_db),
+    ):
+        return self._call(db, ecole_id, box, lambda w: w.move(folder, uid, data.to))
 
-    def delete(self, ecole_id: int, folder: str, uid: int, db: Session = Depends(get_db)):
+    def delete(self, ecole_id: int, folder: str, uid: int, box: int | None = None, db: Session = Depends(get_db)):
         """Suppression définitive (corbeille ou spam seulement)."""
-        return self._call(db, ecole_id, lambda w: w.delete(folder, uid))
+        return self._call(db, ecole_id, box, lambda w: w.delete(folder, uid))
 
-    def bulk(self, ecole_id: int, data: BulkIn, db: Session = Depends(get_db)):
-        return self._call(db, ecole_id, lambda w: w.bulk(data.folder, data.uids, data.action))
+    def bulk(self, ecole_id: int, data: BulkIn, box: int | None = None, db: Session = Depends(get_db)):
+        return self._call(db, ecole_id, box, lambda w: w.bulk(data.folder, data.uids, data.action))
 
     # --- Écrire (§7) --------------------------------------------------------
 
@@ -226,6 +278,7 @@ class MailReceiver:
         forwardFolder: str = Form(""),
         forwardUid: int | None = Form(None),
         files: list[UploadFile] | None = None,
+        box: int | None = None,
         db: Session = Depends(get_db),
     ):
         """Envoie au nom du club (formulaire multipart, comme Sambo Admin).
@@ -250,17 +303,15 @@ class MailReceiver:
                 answered=(answeredFolder, answeredUid) if answeredFolder and answeredUid is not None else None,
             )
 
-        return self._call(db, ecole_id, envoyer)
+        return self._call(db, ecole_id, box, envoyer)
 
-    def contacts(self, ecole_id: int, db: Session = Depends(get_db)):
+    def contacts(self, ecole_id: int, box: int | None = None, db: Session = Depends(get_db)):
         """Suggestions pour À, Cc, Cci (Seb, 18 novembre) : les fiches de
         l'école (saison affichée, saisons/portee.py), puis les adresses de la
         dernière page de la réception et des envoyés. Le tri par lettres tapées
         se fait à l'écran."""
         vus, contacts = set(), []
-        account = self.connection.account(db, ecole_id)
-        if account is not None:
-            vus.add(account.address.lower())
+        vus.update(a.address.lower() for a in self.connection.accounts(db, ecole_id))
 
         def ajouter(name: str, address: str) -> None:
             if address and address.lower() not in vus:
@@ -272,7 +323,7 @@ class MailReceiver:
             for address in fiche.emails:
                 ajouter(f"{fiche.prenom} {fiche.nom}".strip(), address)
         try:
-            pages = self._call(db, ecole_id, lambda w: [w.list("inbox", None, ""), w.list("sent", None, "")])
+            pages = self._call(db, ecole_id, box, lambda w: [w.list("inbox", None, ""), w.list("sent", None, "")])
         except HTTPException:
             pages = []  # boîte coupée ou injoignable : les gens de l'école suffisent
         for page in pages:

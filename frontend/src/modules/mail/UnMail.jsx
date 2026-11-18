@@ -10,13 +10,13 @@ import { adresse, dateComplete, initiales, nom, taille } from './format.js'
 // le marque lu. En bas : Répondre (bouton principal) et Transférer ; ⋮ :
 // Répondre à tous (§7).
 
-export default function UnMail({ ecoleId, dossier, uid, adresseBoite, onRetour, onRanger, onNonLu, onSuivi, onErreur, onEcrire }) {
+export default function UnMail({ ecoleId, boite, dossier, uid, adresseBoite, onRetour, onRanger, onNonLu, onSuivi, onErreur, onEcrire }) {
   const [mail, setMail] = useState(null)
   const [erreur, setErreur] = useState(null)
 
   useEffect(() => {
     let actif = true
-    api.lire(ecoleId, dossier, uid).then(
+    api.lire(ecoleId, boite, dossier, uid).then(
       (m) => {
         if (!actif) return
         setMail(m)
@@ -33,14 +33,14 @@ export default function UnMail({ ecoleId, dossier, uid, adresseBoite, onRetour, 
     }
     // onErreur change à chaque rendu du parent : seul le mail compte.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ecoleId, dossier, uid])
+  }, [ecoleId, boite, dossier, uid])
 
   async function suivre() {
     const starred = !mail.starred
     setMail({ ...mail, starred })
     onSuivi(starred)
     try {
-      await api.drapeaux(ecoleId, dossier, uid, { starred })
+      await api.drapeaux(ecoleId, boite, dossier, uid, { starred })
     } catch (e) {
       setMail({ ...mail, starred: !starred })
       onSuivi(!starred)
@@ -50,7 +50,7 @@ export default function UnMail({ ecoleId, dossier, uid, adresseBoite, onRetour, 
 
   async function nonLu() {
     try {
-      await api.drapeaux(ecoleId, dossier, uid, { seen: false })
+      await api.drapeaux(ecoleId, boite, dossier, uid, { seen: false })
       api.signalerNonLus()
       onNonLu()
     } catch (e) {
@@ -60,7 +60,7 @@ export default function UnMail({ ecoleId, dossier, uid, adresseBoite, onRetour, 
 
   async function piece(p) {
     try {
-      await api.telecharger(ecoleId, dossier, uid, p)
+      await api.telecharger(ecoleId, boite, dossier, uid, p)
     } catch (e) {
       onErreur(e)
     }
