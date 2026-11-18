@@ -590,7 +590,7 @@ function ForecastPanel({ forecastId, season, seasonsData, ledger, options, onClo
               </div>
             )}
           </div>
-          <ForecastResult result={result} season={season} seasonsData={seasonsData} ledger={ledger} onDownload={download} />
+          <ForecastResult result={result} season={season} seasonsData={seasonsData} ledger={ledger} params={params} onDownload={download} />
         </>
       )}
     </section>
@@ -620,7 +620,7 @@ function realPoints(series, from, to) {
 
 // Chiffres clés et graphique : saisons superposées (comme « Saisons » dans
 // Comptes), réel puis prévision, autres saisons au choix.
-function ForecastResult({ result, season, seasonsData, ledger, onDownload }) {
+function ForecastResult({ result, season, seasonsData, ledger, params, onDownload }) {
   const seasons = seasonsData.seasons
   const others = seasons.filter((s) => s.id !== season.id && s.startDate < season.startDate)
   const previous = others[others.length - 1]
@@ -694,6 +694,131 @@ function ForecastResult({ result, season, seasonsData, ledger, onDownload }) {
         Saisons superposées du début à la fin de saison. Prévision : un point par semaine ; bouger un curseur la recalcule sans
         rappeler le modèle.
       </p>
+      <ForecastOperations result={result} params={params} />
+    </div>
+  )
+}
+
+// Hypothèse qui dépend d'un curseur : {nom} remplacé par sa position.
+function hypothesisText(text, parameters, params) {
+  return text.replace(/\{(\w+)\}/g, (all, name) => {
+    const p = parameters.find((q) => q.name === name)
+    return p ? Number(params[name] ?? p.default).toLocaleString('fr-FR', { maximumFractionDigits: 2 }) : all
+  })
+}
+
+const plural = (n, word) => `${n} ${word}${n > 1 ? 's' : ''}`
+
+// Ce qui vient de HelloAsso (spec §6.4) : des faits écrits par l'appli.
+function HelloAssoFacts({ facts }) {
+  if (!facts) return <p>Aucune ligne sûre : HelloAsso n’est pas relié.</p>
+  const lines = facts.echeancesAVenir
+  const upcoming = lines.reduce((sum, l) => sum + l.montant, 0)
+  const dates = lines.map((l) => l.date).filter(Boolean).sort()
+  return (
+    <div className="forecasts-facts">
+      <p>
+        <span className="forecasts-tag forecasts-tag--sure">Sûr</span> pris dans HelloAsso, campagne « {facts.campagne} »
+        {facts.relueLe ? `, relue le ${dateFr(facts.relueLe)}` : ''}.
+      </p>
+      <p>
+        {plural(facts.adherentsEnUneFois, 'adhérent')} en une fois, {facts.adherentsEnPlusieursFois} en plusieurs fois
+        {lines.length > 0
+          ? ` : ${plural(lines.reduce((n, l) => n + l.adherents, 0), 'échéance')} à venir, ${euros(upcoming)}, du ${dateFr(dates[0])} au ${dateFr(dates[dates.length - 1])}.`
+          : ' : aucune échéance à venir.'}
+      </p>
+      <p>Déjà encaissé par HelloAsso, pas encore versé : {euros(facts.encaisseNonVerse)}.</p>
+      <p>
+        Total sûr : {euros(facts.totalSur)}, vérifié par l’appli sur les lignes « Sûr ». Pas comptés : impayés{' '}
+        {euros(facts.nonComptes.impayes)}, {plural(facts.nonComptes.resilies, 'adhésion résiliée')}
+.
+      </p>
+      {facts.aResynchroniser && (
+        <p>Synchronisez HelloAsso pour compter aussi ce qu’il a encaissé sans l’avoir encore versé.</p>
+      )}
+    </div>
+  )
+}
+
+// « Opérations prévues » (spec §6.4) : le tableau dépliable sous le
+// graphique, fermé par défaut, pour vérifier chaque chiffre de la courbe.
+function ForecastOperations({ result, params }) {
+  const [open, setOpen] = useState(false)
+  const operations = result.operations
+  // Solde prévu après chaque opération, en centimes pour ne pas dériver.
+  const balances = []
+  let cents = Math.round(result.data.soldeDepart * 100)
+  for (const op of operations ?? []) {
+    cents += Math.round(op.montant * 100)
+    balances.push(cents / 100)
+  }
+  return (
+    <div className="forecasts-operations">
+      <button type="button" className="forecasts-operations-toggle" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <svg width="18" height="18" viewBox="0 0 16 16" aria-hidden="true" className={open ? 'forecasts-chevron-open' : undefined}>
+          <path d="M5 3l5 5-5 5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        Opérations prévues{operations ? ` (${operations.length})` : ''}
+      </button>
+      {open &&
+        (!operations ? (
+          <p className="muted">Produire à nouveau le prévisionnel pour voir ses opérations.</p>
+        ) : (
+          <>
+            <div className="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Libellé</th>
+                    <th className="amount-cell">Montant</th>
+                    <th className="amount-cell">Solde prévu</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>{dateFr(result.data.dateDepart)}</td>
+                    <td>Solde réel à la date de départ</td>
+                    <td />
+                    <td className="amount-cell">
+                      <b>{euros(result.data.soldeDepart)}</b>
+                    </td>
+                  </tr>
+                  {operations.map((op, i) => {
+                    return (
+                      <tr key={i}>
+                        <td>{dateFr(op.date)}</td>
+                        <td>
+                          {op.libelle}
+                          <span className="forecasts-operation-sub">
+                            {op.categorie}
+                            <span className={`forecasts-tag${op.sur ? ' forecasts-tag--sure' : ''}`}>
+                              {op.sur ? `Sûr · ${op.hypothese}` : op.hypothese}
+                            </span>
+                          </span>
+                        </td>
+                        <td className={`amount-cell ${op.montant < 0 ? 'unpaid-amount' : 'success-state'}`}>
+                          {op.montant > 0 ? '+' : ''}
+                          {euros(op.montant)}
+                        </td>
+                        <td className="amount-cell">{euros(balances[i])}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <div className="forecasts-hypotheses">
+              <h4>Sur quoi reposent ces opérations</h4>
+              <HelloAssoFacts facts={result.data.helloAsso} />
+              {result.hypotheses.map((h) => (
+                <p key={h.code}>
+                  <span className="forecasts-tag">{h.code}</span> {hypothesisText(h.text, result.parameters, params)}
+                </p>
+              ))}
+            </div>
+          </>
+        ))}
     </div>
   )
 }

@@ -34,6 +34,7 @@ from .forecast_ai import Coder, Formula, defaults
 from .models import STATES, FinForecast
 from .ports import Member, Season
 from .sandbox import FormulaError
+from .sandbox import execute as execute_formula
 from .sandbox import run as run_formula
 
 # Calcul « en cours » depuis plus longtemps : le serveur a redémarré entre-temps.
@@ -72,12 +73,15 @@ class Forecasts:
         today: Callable[[], date] = date.today,
         coder: Coder | None = None,
         background: bool = True,
+        helloasso: Callable[[Session, int, int, str], dict | None] | None = None,
     ) -> None:
         """ledger(db, member) : historique des comptes (Finances.get_ledger) ;
         seasons(db, org_id) : les saisons, la plus ancienne en premier ;
         session_factory : session de base pour le calcul en arrière-plan ;
         note_cost(db, org_id, dollars, detail) : coût noté à l'organisation.
-        background=False : calcul exécuté directement (tests)."""
+        background=False : calcul exécuté directement (tests) ;
+        helloasso(db, org_id, season_id, start) : l'argent HelloAsso qui
+        arrivera après start (spec §6.4), ou None (sans HelloAsso)."""
         self.ledger = ledger
         self.seasons = seasons
         self.session_factory = session_factory
@@ -85,6 +89,7 @@ class Forecasts:
         self.today = today
         self.coder = coder or Coder()
         self.background = background
+        self.helloasso = helloasso
 
     # ----- lecture -----
 
@@ -253,9 +258,10 @@ class Forecasts:
             season = self._season(db, member.org_id, row.season_id)
             ledger = self.ledger(db, member)
             start = self.start_date(ledger, season, row.start_date)
-            # Pas d'inscrits ni d'échéances de paiement : l'appli hôte ne les
-            # fournit pas (adherents null, le modèle fait sans).
-            data = forecast_data.build(ledger, _season_dict(season), start, None)
+            # Pas d'inscrits (adherents null) ; l'argent HelloAsso à venir si
+            # l'école l'a relié (spec §6.4).
+            money = self.helloasso(db, member.org_id, season.id, start) if self.helloasso else None
+            data = forecast_data.build(ledger, _season_dict(season), start, None, money)
             if not data["semaines"]:
                 raise ForecastError("Rien à prévoir : la date de départ est le dernier jour de la saison")
             formula: Formula = self.coder.write(row.model, data, row.prompt)
@@ -267,13 +273,18 @@ class Forecasts:
                 p["name"]: min(p["max"], max(p["min"], float(saved[p["name"]]))) if p["name"] in saved else p["default"]
                 for p in formula.parameters
             }
-            balances = formula.balances if params == defaults(formula.parameters) else run_formula(formula.code, data, params)
+            operations = (
+                formula.operations if params == defaults(formula.parameters)
+                else self._operations(formula.code, data, params, formula.hypotheses)
+            )
             result = {
                 "code": formula.code,
                 "explanation": formula.explanation,
                 "parameters": formula.parameters,
+                "hypotheses": formula.hypotheses,
                 "data": data,
-                "points": self._points(data, balances),
+                "operations": operations,
+                "points": self._points(data, forecast_data.weekly(operations, data)),
                 "seasonName": season.name,
                 "model": formula.model,
                 "modelLabel": MODELS[formula.model]["label"],
@@ -293,6 +304,16 @@ class Forecasts:
         db.commit()
         if cost and self.note_cost is not None:
             self.note_cost(db, member.org_id, cost, f"Prévisionnel {row.name}")
+
+    @staticmethod
+    def _operations(code: str, data: dict, params: dict, hypotheses: list[dict]) -> list[dict]:
+        """Rejoue la formule : les opérations prévues, vérifiées (spec §6.4)."""
+        try:
+            return forecast_data.operations(execute_formula(code, data, params), data, {h["code"] for h in hypotheses})
+        except FormulaError:
+            raise
+        except ValueError as exc:
+            raise FormulaError(f"La formule a échoué : {exc}") from exc
 
     @staticmethod
     def _points(data: dict, balances: list[float]) -> list[dict]:
@@ -315,7 +336,12 @@ class Forecasts:
             if isinstance(value, bool) or not isinstance(value, (int, float)):
                 raise ForecastError(f"Valeur invalide pour {p['label']}")
             params[p["name"]] = min(p["max"], max(p["min"], float(value)))
-        balances = run_formula(result["code"], result["data"], params)
+        if "hypotheses" in result:
+            result["operations"] = self._operations(result["code"], result["data"], params, result["hypotheses"])
+            balances = forecast_data.weekly(result["operations"], result["data"])
+        else:
+            # Prévisionnel produit avant le tableau : un solde par semaine.
+            balances = run_formula(result["code"], result["data"], params)
         result["points"] = self._points(result["data"], balances)
         row.result, row.params, row.updated_at = json.dumps(result, ensure_ascii=False), json.dumps(params), _now()
         db.commit()

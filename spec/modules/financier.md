@@ -209,6 +209,9 @@ Tous | Brouillon | Validé | Officiel, liste des bilans (nom, état, modèle, co
 **Par catégorie** (avec écart) ou **Par mois** (le modèle du trésorier) ; téléchargement **Excel** et
 **PDF**. Un seul bilan Officiel par saison : passer un bilan en Officiel ramène l'ancien en Validé.
 
+Sous le graphique et ses boutons de téléchargement : la ligne dépliable **« Opérations prévues
+(N) »**, fermée par défaut (§6.4).
+
 Laissé de côté de Sambo Admin : réordonnancement des cartes, consignes enregistrées ; pas de fichier
 Docs (décision de Seb : les produits seront rangés dans Docs › Financier plus tard).
 
@@ -256,6 +259,9 @@ PowerPoint modifié**. Un seul PowerPoint officiel par saison.
 
 *(Contretemps)* L'image Docker n'a que LibreOffice Writer et Calc : ajouter
 `libreoffice-impress-nogui` au `backend/Dockerfile` pour les images des diapos (à faire par Seb).
+Sous le graphique et ses boutons de téléchargement : la ligne dépliable **« Opérations prévues
+(N) »**, fermée par défaut (§6.4).
+
 Laissé de côté de Sambo Admin : réordonnancement des cartes, consignes enregistrées.
 
 ### 5.3 Données et routes
@@ -280,12 +286,17 @@ l'organisation, semaine par semaine, d'une date de départ jusqu'à la fin de la
   dernier jour connu des comptes, au plus aujourd'hui ; saison terminée : une date est obligatoire,
   pour tester le prévisionnel sur le passé), solde au début de la saison, semaines jusqu'à la fin
   de saison (avec les mois qui commencent), ce qui est déjà passé sur le mois en cours, les 12 mois
-  précédents par catégorie et leur moyenne mensuelle. Pas d'inscrits ni d'échéances de paiement
-  (Sambo Admin les lisait dans HelloAsso) : le modèle fait sans.
+  précédents par catégorie, leur moyenne mensuelle et la liste brute de leurs opérations. **Échéances HelloAsso à venir** (§6.4) :
+  quand le module HelloAsso est allumé, les paiements en plusieurs fois pas encore encaissés de la
+  saison et ce qui attend chez HelloAsso (§6.4, des faits, sans règle déduite), passés par
+  le port de l'appli hôte (`finances_contretemps/`) ; sinon rien, le modèle fait sans. Pas
+  d'inscrits.
 - **Produire le prévisionnel** : le modèle de langage (jamais nommé « IA » à l'écran) n'écrit
   aucun chiffre : il écrit une **formule Python** `prevoir(donnees, p)` d'après les consignes du
-  trésorier et déclare ses **curseurs** (nom, libellé, min, max, défaut, pas, unité), avec une
-  explication en quelques phrases. **L'appli vérifie la formule** (une seule fonction, imports
+  trésorier et déclare ses **curseurs** (nom, libellé, min, max, défaut, pas, unité) et ses
+  **hypothèses** (§6.4), avec une explication en quelques phrases. La formule rend la **liste des
+  opérations futures** (§6.4) ; **l'appli en tire la courbe** (solde de départ + cumul, une valeur
+  par semaine), si bien que le graphique et le tableau ne peuvent pas se contredire. **L'appli vérifie la formule** (une seule fonction, imports
   limités à `math` et `datetime`, ni fichier, ni réseau, ni nom ou attribut commençant par `_`) et
   **l'exécute à part** (processus séparé, `python -I`, garde-fous d'audit, délai maximal). Une
   formule refusée ou en erreur est renvoyée une fois au modèle pour correction.
@@ -307,6 +318,9 @@ en pointillés, réel après le départ quand la date est passée, ligne d'équi
 saison), saisons précédentes superposées au choix (retenu sur l'appareil) ; téléchargement en
 **image** ou **PDF** avec les mêmes saisons.
 
+Sous le graphique et ses boutons de téléchargement : la ligne dépliable **« Opérations prévues
+(N) »**, fermée par défaut (§6.4).
+
 Laissé de côté de Sambo Admin : réordonnancement des cartes, consignes enregistrées, zones
 repliables mémorisées, inscrits HelloAsso.
 
@@ -316,6 +330,68 @@ Table `fin_forecasts` (mêmes colonnes que `fin_reports`, plus `start_date` et `
 position des curseurs ; résultat JSON : formule, explication, curseurs, données, courbe). Routes
 `GET|POST /finances/forecasts`, `GET|PUT|DELETE /finances/forecasts/{id}`, `POST …/{id}/run`,
 `PUT …/{id}/params`, `GET …/{id}/download?format=png|pdf&seasons=`.
+
+### 6.4 Opérations prévues et hypothèses (Seb, 18/11/2026)
+
+Maquette validée : https://claude.ai/artifact/Cpa2e2G1aFAKXB8hGppBEG. Le tableau sert à **rassurer
+le lecteur** : chaque chiffre de la courbe se retrouve sur une ligne, et chaque ligne dit sur quoi
+elle repose.
+
+- **Ce que rend la formule** : `prevoir(donnees, p)` renvoie la liste des opérations hypothétiques
+  `{"date", "libelle", "categorie", "montant", "hypothese"}` entre le lendemain de la date de
+  départ et la fin de la saison (recettes positives, dépenses négatives, virements internes exclus).
+  `hypothese` est le code d'une hypothèse déclarée (`"H1"`…).
+  L'appli refuse (et renvoie une fois au modèle) une date hors période, un montant non numérique ou
+  un code d'hypothèse non déclaré.
+- **Partage des rôles (Seb, 18/11)** : **l'appli donne des faits, le modèle en tire les règles,
+  l'appli vérifie les totaux.** Chaque association a ses propres rythmes (dates d'échéances, jour du
+  virement de la plateforme de paiement…) : l'appli n'en déduit aucun, le modèle les trouve au cas
+  par cas.
+  - **Faits donnés par l'appli** : `donnees["helloAsso"]` (null sans HelloAsso) = paiements à venir
+    `[{"date", "montant", "adherents", "echeance"}]`, montant encaissé par HelloAsso et pas encore
+    versé, total sûr, impayés et résiliés (non comptés) ; et `donnees["operations12Mois"]` : la
+    liste brute des opérations des 12 mois avant le départ `[{"date", "libelle", "montant"}]`
+    (virements internes exclus), en plus des totaux par catégorie.
+  - **Consignes fixes de l'appli, en deux parties** (Seb, 18/11 : le prévisionnel marche aussi sans
+    HelloAsso, par exemple à Contretemps) : une partie générale toujours envoyée, et un court
+    paragraphe HelloAsso **ajouté seulement quand l'école a HelloAsso relié** :
+    « HelloAsso : l'argent HelloAsso donné dans les données est sûr, compte-le en entier et une
+    seule fois. HelloAsso ne verse pas le jour du paiement : il vire une fois par mois, à un jour
+    que tu retrouves dans les opérations des 12 derniers mois. Les paiements en plusieurs fois
+    tombent à des dates fixes, à retrouver dans les échéances à venir. » Sans HelloAsso : ni ce
+    paragraphe, ni lignes sûres ; toutes les opérations sont des hypothèses.
+  - **Ce que le modèle cherche** (liste dans ses consignes) : le calendrier des échéances (paiements
+    en une ou trois fois : 1re à l'adhésion puis dates fixes), le jour des versements de la
+    plateforme vers le compte (HelloAsso vire chaque mois à date fixe, réglage propre à chaque
+    association : l'argent n'arrive pas le jour du paiement), les dépenses fixes, la saison des
+    inscriptions. **Chaque hypothèse cite sa preuve** (« H2 : HelloAsso vire le 10 de chaque mois,
+    vu sur les 6 derniers virements des relevés »).
+  - **Lignes sûres** : une opération dont l'argent vient des faits HelloAsso porte `"sur": true`
+    et l'hypothèse qui fixe sa date ; étiquette **« Sûr · H2 »** (le montant est sûr, la date vient
+    de H2). **L'appli vérifie** que la somme des lignes sûres est égale au total sûr de HelloAsso, au
+    centime : sinon la formule est renvoyée une fois au modèle (ni invention ni double compte).
+    Tout le reste est une hypothèse, même un loyer qui revient chaque mois.
+- **Ce qui vient de HelloAsso est expliqué** (Seb, 18/11). Les faits sont écrits par l'appli : la
+  campagne et la date de la dernière relecture, combien ont payé en une fois ou en plusieurs, le
+  total sûr, ce qui est encaissé chez HelloAsso et pas encore versé, ce qui n'est **pas** compté
+  (impayés avec leur montant, adhésions résiliées). Les règles trouvées (dates fixes, jour du
+  virement) sont les hypothèses du modèle, avec leur preuve. Il faut ajouter à la synchronisation
+  HelloAsso l'état de versement des paiements (`cashOutState`, `cashOutDate`). Sans HelloAsso : « Aucune ligne sûre : HelloAsso n'est
+  pas relié ».
+- **Hypothèses** : déclarées par le modèle dans le même appel que la formule (pas d'appel en plus) :
+  `[{"code": "H1", "texte": "…"}]`, une phrase simple chacune. Une hypothèse qui dépend d'un curseur
+  écrit sa valeur entre accolades (`"Salaire du prof : {salaire} € par mois"`) : l'appli la remplace
+  par la position du curseur, donc la phrase suit le curseur sans rappeler le modèle.
+- **L'écran** (Financier › Prévisionnel › un prévisionnel) : sous le graphique, bouton dépliable
+  « Opérations prévues (N) », fermé par défaut. Ouvert : tableau **Date | Libellé (catégorie et
+  étiquette dessous) | Montant | Solde prévu**, une seule colonne de solde, tous comptes ensemble
+  (le prévisionnel ne sait pas sur quel compte tombe une opération). Première ligne : « Solde réel
+  à la date de départ » ; la dernière tombe sur le « Solde prévu » des trois chiffres. Étiquette
+  verte **Sûr** ou orange **H1**, **H2**… Sous le tableau, « Sur quoi reposent ces opérations » :
+  l'explication de ce qui vient de HelloAsso, puis une ligne par hypothèse. Bouger un curseur met à jour graphique,
+  tableau et hypothèses ensemble.
+- **Prévisionnels déjà produits** : ils n'ont qu'un solde par semaine ; le tableau affiche « Produire
+  à nouveau le prévisionnel pour voir ses opérations ».
 
 ## 7. Actions de l'Assistant IA
 

@@ -1855,3 +1855,84 @@ button.fin-releves__case {
   margin: 0;
 }
 
+
+/* Opérations prévues sous le graphique (spec financier.md §6.4). */
+.fin-prev .forecasts-operations {
+  border-top: 1px solid var(--border, #e5e7eb);
+  margin-top: 0.5rem;
+  padding-top: 0.25rem;
+}
+
+.fin-prev .forecasts-operations-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  min-height: 48px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font-size: 1.1rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.fin-prev .forecasts-operations-toggle svg {
+  transition: transform 0.15s;
+}
+
+.fin-prev .forecasts-operations-toggle .forecasts-chevron-open {
+  transform: rotate(90deg);
+}
+
+.fin-prev .forecasts-operations td {
+  vertical-align: top;
+}
+
+.fin-prev .forecasts-operation-sub {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  opacity: 0.75;
+}
+
+.fin-prev .forecasts-tag {
+  display: inline-block;
+  padding: 0 0.5rem;
+  border: 1px solid #d8722a;
+  border-radius: 999px;
+  color: #b45309;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.fin-prev .forecasts-tag--sure {
+  border-color: #199e70;
+  color: #127a56;
+}
+
+.fin-prev .forecasts-hypotheses {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 1rem;
+}
+
+.fin-prev .forecasts-hypotheses h4 {
+  margin: 0;
+}
+
+.fin-prev .forecasts-hypotheses p,
+.fin-prev .forecasts-facts p {
+  margin: 0;
+}
+
+.fin-prev .forecasts-facts {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}

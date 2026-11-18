@@ -144,8 +144,15 @@ def check(code: str) -> None:
 
 
 def run(code: str, donnees: dict, params: dict) -> list[float]:
+    """Ancienne formule (un solde par semaine) : execute prevoir(donnees,
+    params) dans un processus separe et retourne le solde prevu a chaque
+    semaine de donnees["semaines"] (euros)."""
+    return _balances(execute(code, donnees, params), len(donnees["semaines"]))
+
+
+def execute(code: str, donnees: dict, params: dict):
     """Execute prevoir(donnees, params) dans un processus separe et retourne
-    le solde prevu a chaque semaine de donnees["semaines"] (euros)."""
+    ce qu'elle rend, tel quel (verifie ensuite par l'appelant)."""
     check(code)
     request = json.dumps({"code": code, "donnees": donnees, "params": params}, ensure_ascii=False)
     try:
@@ -165,7 +172,7 @@ def run(code: str, donnees: dict, params: dict) -> list[float]:
         raise FormulaError("La formule a été arrêtée (trop de calcul ou de mémoire)") from exc
     if not out.get("ok"):
         raise FormulaError(f"La formule a échoué : {out.get('error')}")
-    return _balances(out["points"], len(donnees["semaines"]))
+    return out["points"]
 
 
 def _balances(points, expected: int) -> list[float]:

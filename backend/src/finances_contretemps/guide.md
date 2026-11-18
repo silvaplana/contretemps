@@ -137,6 +137,7 @@ AG
 
 Prévisionnel
 - ⋯ › Nouveau prévisionnel ; curseurs pour rejouer la prévision du solde jusqu'à la fin de la saison.
+- Sous le graphique, « Opérations prévues (N) », fermé par défaut : une ligne par opération future (étiquette « Sûr » pour l'argent HelloAsso, « H1 », « H2 »… sinon), puis « Sur quoi reposent ces opérations ».
 
 Docs : chaque document produit est rangé dans Docs › Privé › Saison <saison> › Financier › AG.
 Niveau aussi réglable dans Admin › École › Personnalisation › Fonctionnalités, ligne Financier.

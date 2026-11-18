@@ -4,7 +4,7 @@ spec/modules/helloasso.md). Éteint par défaut (Seb, 18 novembre 2026) : une
 
 from registry import Module, guide_file
 
-from . import members, payment
+from . import members, money, payment
 from .campaign import Campaigns
 from .connection import Connection
 from .receiver import HelloAssoReceiver
@@ -32,6 +32,8 @@ def mount(app, core) -> None:
     if registration is not None:
         registration.helloasso.school_keys.append(payment.school_keys)
     core.helloasso_connection = Connection()
+    # Prévisionnel du Financier (financier.md §6.4) : l'argent HelloAsso à venir.
+    core.helloasso_money = money.to_come
     core.helloasso_campaigns = Campaigns()
     core.helloasso_sync = Sync(add_member=add_member(core.eleves_client))
     core.helloasso_receiver = HelloAssoReceiver(

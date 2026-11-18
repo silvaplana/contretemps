@@ -85,7 +85,8 @@ class HelloAssoRegistration(Base):
     # sync.py), gardée et grisée « Résilié » (spec §7.1).
     state: Mapped[str] = mapped_column(String(30), nullable=False, default="")
     order_date: Mapped[str | None] = mapped_column(String(40), nullable=True)
-    # [{amount (centimes), date, state, means, installment}] : payés ou à venir.
+    # [{amount (centimes), date, state, means, installment, cash_out_state,
+    # cash_out_date}] : payés ou à venir.
     payments: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     # Les réponses au formulaire telles que HelloAsso les donne
     # [{id, name, type, answer}] : pour un fichier (photo, certificat),

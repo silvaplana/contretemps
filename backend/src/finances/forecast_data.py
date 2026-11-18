@@ -92,12 +92,14 @@ def _net_by_category(rows: list[dict], start: str, end: str) -> dict[str, float]
     return {category: cents / 100 for category, cents in sorted(totals.items())}
 
 
-def build(ledger: dict, season: dict, start: str, members: dict | None) -> dict:
+def build(ledger: dict, season: dict, start: str, members: dict | None, helloasso: dict | None = None) -> dict:
     """Donnees de la formule pour la saison `season` (fiche de Seasons), a
     partir de la date de depart `start` (AAAA-MM-JJ).
 
     members : chiffres des adherents (port de l'appli hote), ou None
-    (indisponibles, ou date de depart passee)."""
+    (indisponibles, ou date de depart passee).
+    helloasso : l'argent HelloAsso qui arrivera apres start (port de l'appli
+    hote, spec financier.md §6.4), ou None (sans HelloAsso)."""
     rows = history(ledger)
     opening = balance_at(rows, start)
     if opening is None:
@@ -134,6 +136,14 @@ def build(ledger: dict, season: dict, start: str, members: dict | None) -> dict:
         "moisEnCours": {"mois": start[:7], "dejaPasseParCategorie": _net_by_category(rows, month_first, start)},
         "moyennesMensuelles": {c: round(v / count, 2) for c, v in sorted(averages.items())},
         "douzeDerniersMois": months,
+        # La liste brute, pour reperer les rythmes (jour d'un virement qui
+        # revient chaque mois...) que les totaux par categorie cachent.
+        "operations12Mois": [
+            {"date": r["date"], "libelle": r["label"], "categorie": r["category"], "montant": r["amount"]}
+            for r in rows
+            if year_before <= r["date"] <= start and not r["transfer"] and r["category"] != INTERNAL_TRANSFER
+        ],
+        "helloAsso": helloasso,
         "soldeDebutSaison": balance_at(rows, _iso(date.fromisoformat(season["startDate"]) - timedelta(days=1))),
         "adherents": None,
     }
@@ -149,3 +159,55 @@ def build(ledger: dict, season: dict, start: str, members: dict | None) -> dict:
             "impayes": members.get("unpaidTotal"),
         }
     return data
+
+
+def operations(raw, data: dict, codes: set[str]) -> list[dict]:
+    """Operations prevues rendues par la formule (spec financier.md §6.4),
+    verifiees : date apres le depart et au plus la fin de saison, montant,
+    hypothese declaree ; les lignes sures (`sur`) font, au centime, le total
+    sur de HelloAsso. Triees par date. ValueError (message pour le modele)
+    sinon."""
+    if not isinstance(raw, list):
+        raise ValueError("La formule doit renvoyer une liste d'opérations")
+    start, end = data["dateDepart"], data["finSaison"]
+    out = []
+    for op in raw:
+        if not isinstance(op, dict):
+            raise ValueError(f"Opération illisible : {op!r}")
+        day, amount, code = str(op.get("date", ""))[:10], op.get("montant"), op.get("hypothese")
+        if not (start < day <= end):
+            raise ValueError(f"Date hors de la période ({start} exclu au {end}) : {day!r}")
+        if isinstance(amount, bool) or not isinstance(amount, (int, float)) or amount != amount or abs(amount) == float("inf"):
+            raise ValueError(f"Montant invalide : {amount!r}")
+        if code not in codes:
+            raise ValueError(f"Hypothèse non déclarée : {code!r} (déclarées : {', '.join(sorted(codes))})")
+        out.append({
+            "date": day,
+            "libelle": str(op.get("libelle", "")).strip()[:200],
+            "categorie": str(op.get("categorie", "")).strip()[:100],
+            "montant": round(float(amount), 2),
+            "hypothese": code,
+            "sur": op.get("sur") is True,
+        })
+    sure = sum(round(op["montant"] * 100) for op in out if op["sur"])
+    facts = data.get("helloAsso")
+    expected = round(facts["totalSur"] * 100) if facts else 0
+    if sure != expected:
+        raise ValueError(
+            f"Les lignes sûres (sur: true) font {sure / 100:.2f} € ; elles doivent faire exactement "
+            f"{expected / 100:.2f} €, le total sûr de HelloAsso"
+        )
+    return sorted(out, key=lambda op: op["date"])
+
+
+def weekly(ops: list[dict], data: dict) -> list[float]:
+    """Solde prevu a chaque semaine de data["semaines"] : solde de depart
+    plus les operations jusqu'a cette date. La courbe vient ainsi des memes
+    lignes que le tableau."""
+    balances, cents, i = [], round(data["soldeDepart"] * 100), 0
+    for week in data["semaines"]:
+        while i < len(ops) and ops[i]["date"] <= week["date"]:
+            cents += round(ops[i]["montant"] * 100)
+            i += 1
+        balances.append(cents / 100)
+    return balances

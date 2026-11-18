@@ -19,25 +19,29 @@ from test_finances import (  # noqa: F401 - fixtures
 from finances import ForecastError, Forecasts, Member, forecast_data, forecast_exports
 from finances.ai import AnalysisError
 from finances.forecast_ai import Formula, defaults
-from finances.sandbox import FormulaError, check, run
+from finances.sandbox import FormulaError, check, execute, run
 from finances.service import Finances
 
 TODAY = date(2026, 10, 6)
 
 CODE = '''
-import math
+import datetime
 
 def prevoir(donnees, p):
-    """Salaire chaque mois, cotisations des nouveaux inscrits."""
-    solde = donnees["soldeDepart"]
-    points = []
-    for semaine in donnees["semaines"]:
-        for mois in semaine["mois_commences"]:
-            solde -= p["salaire"]
-            solde += p["nouveaux"] * 10
-        points.append({"date": semaine["date"], "solde": round(solde, 2)})
-    return points
+    """Le 1er de chaque mois : le salaire, les cotisations des nouveaux inscrits."""
+    depart = datetime.date.fromisoformat(donnees["dateDepart"])
+    fin = datetime.date.fromisoformat(donnees["finSaison"])
+    jour = datetime.date(depart.year + depart.month // 12, depart.month % 12 + 1, 1)
+    operations = []
+    while jour <= fin:
+        operations.append({"date": jour.isoformat(), "libelle": "Salaire", "categorie": "Salaires",
+                           "montant": -p["salaire"], "hypothese": "H1", "sur": False})
+        operations.append({"date": jour.isoformat(), "libelle": "Nouveaux inscrits", "categorie": "Cotisations",
+                           "montant": p["nouveaux"] * 10, "hypothese": "H2", "sur": False})
+        jour = datetime.date(jour.year + jour.month // 12, jour.month % 12 + 1, 1)
+    return operations
 '''
+HYPOTHESES = [{"code": "H1", "text": "Salaire de {salaire} € le 1er du mois"}, {"code": "H2", "text": "Nouveaux inscrits"}]
 PARAMETERS = [
     {"name": "salaire", "label": "Salaire mensuel", "min": 0, "max": 2000, "default": 1000, "step": 10, "unit": "€"},
     {"name": "nouveaux", "label": "Nouveaux inscrits", "min": 0, "max": 20, "default": 5, "step": 1, "unit": ""},
@@ -63,7 +67,8 @@ class FakeCoder:
             code=self.code,
             explanation="Salaire chaque mois.",
             parameters=PARAMETERS,
-            balances=run(self.code, data, defaults(PARAMETERS)),
+            hypotheses=HYPOTHESES,
+            operations=forecast_data.operations(execute(self.code, data, defaults(PARAMETERS)), data, {"H1", "H2"}),
             model=model,
             served_by="claude-sonnet-5-5",
             cost=0.05,
@@ -222,6 +227,11 @@ def test_run_writes_formula_and_points(ledger_db, finances, costs):
     assert done["endBalance"] == points[-1]["solde"]
     assert done["aiCostUsd"] == pytest.approx(0.05)
     assert costs == [(1, 0.05, "Prévisionnel Prudent")]
+    # Le tableau : les mêmes opérations que la courbe, triées par date.
+    operations = done["result"]["operations"]
+    assert len(operations) == 20 and operations[0]["date"] == "2026-09-01"
+    assert round(BALANCE + sum(op["montant"] for op in operations), 2) == points[-1]["solde"]
+    assert done["result"]["hypotheses"] == HYPOTHESES
 
 
 def test_sliders_replay_formula_and_are_kept(ledger_db, finances, costs):
@@ -232,6 +242,7 @@ def test_sliders_replay_formula_and_are_kept(ledger_db, finances, costs):
     # nouveaux ramené à son maximum (20).
     assert moved["params"] == {"salaire": 500.0, "nouveaux": 20.0}
     assert moved["result"]["points"][-1]["solde"] == round(BALANCE + 10 * (200 - 500), 2)
+    assert moved["result"]["operations"][0]["montant"] == -500.0
     # Nouveau calcul : les curseurs restent à leur position.
     again = forecasts.run(ledger_db, TRESORIER, fid, {})
     assert again["params"] == {"salaire": 500.0, "nouveaux": 20.0}
@@ -263,7 +274,7 @@ def test_error_is_shown_and_charged(ledger_db, finances, costs):
     # Formule qui échoue à l'exécution : erreur affichable, rien de facturé.
     broken = make_forecasts(finances, FakeCoder(code="def prevoir(d, p):\n    return [1 / 0] * len(d['semaines'])"), costs)
     with pytest.raises(FormulaError):
-        broken.coder.write("claude-haiku-5-5", {"soldeDepart": 0.0, "semaines": [{"date": "2026-10-13", "mois_commences": []}]}, "")
+        broken.coder.write("claude-haiku-5-5", {"soldeDepart": 0.0, "dateDepart": "2026-10-06", "finSaison": "2027-06-30", "semaines": [{"date": "2026-10-13", "mois_commences": []}]}, "")
 
 
 def test_validation_and_isolation_between_schools(db_session, finances, costs):
@@ -346,3 +357,94 @@ def test_forecast_routes_and_downloads(client, db_session, ecole, monkeypatch): 
     assert client.get(f"/finances/forecasts/{fid}", headers=entetes_session(ecole["admin"])).status_code == 403
     assert client.delete(f"/finances/forecasts/{fid}", headers=tresorier).status_code == 204
     assert client.get(f"/finances/forecasts/{fid}", headers=tresorier).status_code == 404
+
+
+# ----- opérations prévues et hypothèses (spec §6.4) -----
+
+DATA = {"dateDepart": "2026-10-06", "finSaison": "2027-06-30", "soldeDepart": 100.0, "helloAsso": None,
+        "semaines": [{"date": "2026-10-13", "mois_commences": []}, {"date": "2026-10-20", "mois_commences": []}]}
+
+
+def _op(day, amount, code="H1", sure=False):
+    return {"date": day, "libelle": "X", "categorie": "C", "montant": amount, "hypothese": code, "sur": sure}
+
+
+def test_operations_are_checked():
+    ops = forecast_data.operations([_op("2026-10-15", -30), _op("2026-10-07", 10.004)], DATA, {"H1"})
+    assert [op["date"] for op in ops] == ["2026-10-07", "2026-10-15"] and ops[0]["montant"] == 10.0
+    assert forecast_data.weekly(ops, DATA) == [110.0, 80.0]
+    for bad, message in (
+        (_op("2026-10-06", 1), "hors de la période"),
+        (_op("2027-07-01", 1), "hors de la période"),
+        (_op("2026-10-07", "1"), "Montant invalide"),
+        (_op("2026-10-07", 1, code="H9"), "non déclarée"),
+        (_op("2026-10-07", 1, sure=True), "lignes sûres"),
+    ):
+        with pytest.raises(ValueError, match=message):
+            forecast_data.operations([bad], DATA, {"H1"})
+
+
+def test_sure_lines_must_match_helloasso_total():
+    data = {**DATA, "helloAsso": {"totalSur": 1430.0}}
+    ok = [_op("2026-11-10", 620, "H2", True), _op("2026-12-10", 810, "H2", True), _op("2026-12-05", -580)]
+    assert len(forecast_data.operations(ok, data, {"H1", "H2"})) == 3
+    with pytest.raises(ValueError, match="1430.00 €"):
+        forecast_data.operations(ok[1:], data, {"H1", "H2"})
+    # Une ligne de HelloAsso comptée deux fois.
+    with pytest.raises(ValueError, match="2240.00 €"):
+        forecast_data.operations(ok + [_op("2027-01-10", 810, "H2", True)], data, {"H1", "H2"})
+
+
+def test_old_forecast_still_replays(ledger_db, finances, costs):
+    """Un prévisionnel produit avant le tableau (un solde par semaine) se
+    rejoue encore ; il n'a pas d'opérations."""
+    import json
+
+    from finances.models import FinForecast
+
+    forecasts = make_forecasts(finances, FakeCoder(), costs)
+    fid = forecasts.create(ledger_db, TRESORIER, {"seasonId": 3, "name": "Ancien"})["id"]
+    forecasts.run(ledger_db, TRESORIER, fid, {})
+    row = ledger_db.get(FinForecast, fid)
+    result = json.loads(row.result)
+    for key in ("hypotheses", "operations"):
+        del result[key]
+    result["code"] = "def prevoir(d, p):\n    return [d['soldeDepart'] - p['salaire'] for s in d['semaines']]"
+    row.result = json.dumps(result)
+    ledger_db.commit()
+    moved = forecasts.set_params(ledger_db, TRESORIER, fid, {"salaire": 300, "nouveaux": 0})
+    assert moved["result"]["points"][-1]["solde"] == round(BALANCE - 300, 2)
+    assert "operations" not in moved["result"]
+
+
+class _Reply:
+    def __init__(self, text):
+        self.content = [type("B", (), {"type": "text", "text": text})()]
+        self.stop_reason, self.model = "end_turn", "claude-haiku-5-5"
+        self.usage = type("U", (), {"input_tokens": 10, "output_tokens": 10, "cache_read_input_tokens": 0, "cache_creation_input_tokens": 0})()
+
+
+def test_helloasso_paragraph_only_with_helloasso(monkeypatch):
+    """Les consignes fixes ne parlent de HelloAsso que si l'école l'a relié ;
+    une formule qui oublie l'argent sûr est renvoyée une fois au modèle."""
+    import json
+
+    from finances.forecast_ai import HELLOASSO, Coder
+
+    def answer(code):
+        return json.dumps({"code": code, "explication": "x", "hypotheses": [{"code": "H1", "texte": "Virement le 10"}], "parametres": []})
+
+    wrong = answer("def prevoir(d, p):\n    return []")
+    right = answer("def prevoir(d, p):\n    return [{'date': '2026-11-10', 'libelle': 'HelloAsso', 'categorie': 'C', 'montant': 620, 'hypothese': 'H1', 'sur': True}]")
+    replies, systems = [wrong, right], []
+
+    def call(self, model, messages, system):
+        systems.append(system)
+        return _Reply(replies.pop(0))
+
+    monkeypatch.setattr(Coder, "_call", call)
+    formula = Coder().write("claude-haiku-5-5", {**DATA, "helloAsso": {"totalSur": 620.0}}, "")
+    assert formula.operations[0]["sur"] and HELLOASSO in systems[0]
+    replies.append(answer("def prevoir(d, p):\n    return []"))
+    Coder().write("claude-haiku-5-5", DATA, "")
+    assert HELLOASSO not in systems[-1]

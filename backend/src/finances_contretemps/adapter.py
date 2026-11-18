@@ -586,3 +586,19 @@ def preparer_dossiers_financier(documents):
             faits.add(cle)
 
     return preparer
+
+
+def argent_helloasso(core):
+    """Port du prévisionnel (financier.md §6.4) : l'argent HelloAsso qui
+    arrivera sur le compte après la date de départ, seulement si le module
+    HelloAsso est allumé dans l'école ; sinon None (le prévisionnel fait
+    sans). Lu à l'appel : HelloAsso peut être monté après le Financier."""
+    from registry.activation import disabled
+
+    def lire(db: Session, ecole_id: int, saison_id: int, depart: str) -> dict | None:
+        lecteur = getattr(core, "helloasso_money", None)
+        if lecteur is None or "helloasso" in disabled(db, ecole_id):
+            return None
+        return lecteur(db, ecole_id, saison_id, depart)
+
+    return lire
