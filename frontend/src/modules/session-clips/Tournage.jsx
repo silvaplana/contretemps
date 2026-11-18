@@ -144,7 +144,7 @@ function Image({ allumee }) {
   return <video ref={video} className="sc-image__video" autoPlay muted playsInline hidden={!allumee} />
 }
 
-export default function Tournage({ montrer, rafraichir }) {
+export default function Tournage({ montrer, rafraichir, appli = 'Tournage' }) {
   const [role, setRole] = useState(() => lire(ROLE) ?? 'off')
   const [camera, setCamera] = useCamera()
   const [enCours, setEnCours] = useState(false)
@@ -246,7 +246,7 @@ export default function Tournage({ montrer, rafraichir }) {
   } else if (role === 'cam' && !DANS_L_APPLI) {
     corps = (
       <>
-        <p>Pour filmer, ce téléphone doit ouvrir Contretemps dans l’appli « Tournage ».</p>
+        <p>Pour filmer, ouvrez l’appli « {appli} » sur ce téléphone.</p>
         <a className="btn btn--primary sc-tournage__bouton" href={APPLI} target="_blank" rel="noreferrer">
           Installer l’appli Tournage
         </a>
