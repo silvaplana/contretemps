@@ -35,6 +35,8 @@ def mount(app, core) -> None:
     core.helloasso_receiver = HelloAssoReceiver(
         client=core.helloasso_connection, app=app, campaigns=core.helloasso_campaigns, sync=core.helloasso_sync
     )
+    # Mail à un adhérent (spec §7.6) : le service email du core.
+    core.helloasso_receiver.send_mail = getattr(core, "mail_ecole", None)
 
 
 MODULE = Module(

@@ -96,11 +96,18 @@ def _by_member(db: Session, org_id: int, season_id: int) -> dict[int, list[Hello
 
 
 def table(db: Session, org_id: int, season_id: int) -> dict[int, dict]:
-    """{card: the HelloAsso columns of the members table} (spec §7.2)."""
+    """{card: the HelloAsso columns of the members table} (spec §7.2), the
+    counters of the Contact buttons included (§7.6)."""
+    from .contact import counts, phone
+
+    mails, sms = counts(db, org_id)
     out = {}
     for member_id, registrations in _by_member(db, org_id, season_id).items():
         r = _main(registrations)
         out[member_id] = {
+            "mails": mails.get(r.item_id, 0),
+            "sms": sms.get(r.item_id, 0),
+            "has_phone": phone(r) is not None,
             "amount": r.amount,
             "discount_code": r.discount_code,
             "state": r.state,
@@ -121,9 +128,11 @@ def registration(db: Session, org_id: int, season_id: int, member_id: int) -> He
     return _main(registrations) if registrations else None
 
 
-def card(r: HelloAssoRegistration) -> dict:
+def card(db: Session, r: HelloAssoRegistration) -> dict:
     """The HelloAsso part of a member's card (spec §7.3): membership, files,
-    answers (files apart), payer, payments."""
+    answers (files apart), payer, payments, messages sent."""
+    from .contact import messages
+
     file_indexes = {f["index"] for f in files(r.answers)}
     return {
         "tier_name": r.tier_name,
@@ -142,6 +151,7 @@ def card(r: HelloAssoRegistration) -> dict:
         "payer_name": r.payer_name,
         "payer_email": r.payer_email,
         "payments": r.payments or [],
+        "messages": messages(db, r.org_id, r.item_id),
     }
 
 

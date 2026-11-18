@@ -69,3 +69,19 @@ export const choisirSaison = (ecoleId, mode) => requete(`/ecoles/${ecoleId}/hell
 // Admin > Impayés HelloAsso (spec §7.4) → { campaign, members: [{ member_id,
 // first_name, last_name, email, total, unpaid, refused: [{ date, amount }] }] }.
 export const impayes = (ecoleId) => requete(`/ecoles/${ecoleId}/helloasso/impayes`)
+
+// Contact et résiliation (spec §7.6, §7.7).
+const adherentUrl = (ecoleId, ficheId) => `/ecoles/${ecoleId}/helloasso/adherents/${ficheId}`
+export const envoyerMail = (ecoleId, ficheId, subject, message) =>
+  requete(`${adherentUrl(ecoleId, ficheId)}/mail`, json('POST', { subject, message }))
+// → { phone } : l'écran ouvre l'appli SMS du téléphone.
+export const preparerSms = (ecoleId, ficheId, message) =>
+  requete(`${adherentUrl(ecoleId, ficheId)}/sms`, json('POST', { message }))
+export const resiliation = (ecoleId, ficheId) => requete(`${adherentUrl(ecoleId, ficheId)}/resiliation`)
+export const resilier = (ecoleId, ficheId) => requete(`${adherentUrl(ecoleId, ficheId)}/resilier`, { method: 'POST' })
+// Messages préenregistrés, `kind` 'mail' ou 'sms' → [{ id, subject, body }].
+export const messages = (ecoleId, kind) => requete(`/ecoles/${ecoleId}/helloasso/messages?kind=${kind}`)
+export const garderMessage = (ecoleId, kind, subject, body) =>
+  requete(`/ecoles/${ecoleId}/helloasso/messages`, json('POST', { kind, subject, body }))
+export const retirerMessage = (ecoleId, kind, id) =>
+  requete(`/ecoles/${ecoleId}/helloasso/messages/${id}?kind=${kind}`, { method: 'DELETE' })

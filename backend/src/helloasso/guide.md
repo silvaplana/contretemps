@@ -57,6 +57,19 @@ campagne est choisie
   jamais gardés), Réponses au formulaire (« Modifiable sur HelloAsso. »), Payeur, Paiements.
 - Revenir à « Nos champs » ou éteindre le module rend le tableau habituel.
 
+Contacter ou résilier un adhérent : Admin › Élèves, saison imposée par HelloAsso
+- Colonne Contact : « ✉ Mail » (le nombre déjà envoyé à côté) ouvre « Mail à … » : choisir un
+  message préenregistré ou écrire Objet et Message, puis Envoyer. Le mail part à l'email du payeur,
+  l'école est en copie et reçoit les réponses.
+- « 💬 SMS » (sur téléphone seulement, quand HelloAsso a donné un numéro) : écrire ou choisir le
+  message puis « Ouvrir mes SMS » ; le SMS part de l'appli SMS du téléphone.
+- « Garder ce message » enregistre le texte comme message préenregistré ; {prénom} et {nom} sont
+  remplacés ; « Retirer ce message préenregistré » l'enlève.
+- Colonne Adhésion : « Résilier » (droit Accès au Financier) montre toute la commande HelloAsso
+  (une fratrie entière est résiliée ensemble), ce qui est déjà encaissé et ne sera pas remboursé,
+  les échéances annulées. Définitif. Le remboursement se fait dans l'espace HelloAsso du club.
+- Dans la fiche : rubrique Messages envoyés.
+
 Impayés HelloAsso : Admin › Impayés HelloAsso (sous-onglet après Cours, module allumé, tout admin)
 - « Impayés HelloAsso (n) » et « Rafraîchir » (recopie depuis HelloAsso puis relit).
 - Les adhésions de la saison avec au moins une échéance refusée ou en échec ; une échéance à venir

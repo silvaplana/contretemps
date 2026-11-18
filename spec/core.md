@@ -692,7 +692,10 @@ MODULE = Module(
 
 - `mount` reçoit l'appli FastAPI et les services du core (fiche appelante, droits, email,
   notifications, saison, stockage) ; il range dans `core` ce qu'il construit. Un module n'importe
-  jamais un autre module : l'appli les relie dans `<module>_contretemps/`.
+  jamais un autre module : l'appli les relie dans `<module>_contretemps/`. Le service email est
+  `core.mail_ecole(db, ecole_id, a, sujet, texte, html)` (18 novembre 2026, `ecoles/mail_ecole.py`) :
+  un mail au nom de l'école, expéditeur de son enseigne, réponse et copie à l'adresse de contact de
+  l'école ; il rend cette copie, ou lève une erreur si le mail ne part pas.
 - `actions` : la liste de l'assistant, prise telle quelle dans `actions.py`
   (`spec/modules/assistant-ia.md` §3). Un bouton de l'écran = une action de l'assistant.
 - `rights`, `groups` *(cible, étude du 26 octobre)* : ce que le module apporte au core ; le core

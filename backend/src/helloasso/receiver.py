@@ -6,7 +6,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Literal
 
-from comptes import Compte, rbac
+from comptes import Compte, rbac, roles
 from fastapi import Depends, FastAPI, HTTPException, Query, Response
 from pydantic import BaseModel, Field
 from saisons import Saison, saison_courante_id
@@ -19,6 +19,8 @@ from . import api
 from . import members as imposed_members
 from .api import HelloAssoError, Organization
 from .campaign import MASTER, Campaigns
+from . import contact
+from .contact import ContactError, SendMail
 from .connection import Connection
 from .sync import Sync
 
@@ -102,6 +104,10 @@ class MemberRowOut(BaseModel):
     state: str
     cancelled: bool
     photo: bool
+    # Contact (spec §7.6) : mails envoyés, SMS préparés, numéro connu.
+    mails: int = 0
+    sms: int = 0
+    has_phone: bool = False
 
 
 class RefusedOut(BaseModel):
@@ -133,6 +139,8 @@ class MembersOut(BaseModel):
     form_name: str | None = None
     # « Rafraîchir » : la saison en cours seulement.
     can_refresh: bool = False
+    # « Résilier » (spec §7.7) : droit Accès au Financier.
+    can_cancel: bool = False
     # {fiche: colonnes HelloAsso}.
     members: dict[int, MemberRowOut] = {}
 
@@ -160,6 +168,38 @@ class MemberCardOut(BaseModel):
     payer_name: str | None = None
     payer_email: str | None = None
     payments: list[dict]
+    messages: list[dict] = []
+
+
+class MailIn(BaseModel):
+    subject: str = Field(max_length=255)
+    message: str = Field(max_length=20000)
+
+
+class SmsIn(BaseModel):
+    message: str = Field(max_length=2000)
+
+
+class TemplateIn(BaseModel):
+    kind: Literal["mail", "sms"]
+    subject: str = Field(default="", max_length=255)
+    body: str = Field(max_length=20000)
+
+
+class CancelMemberOut(BaseModel):
+    first_name: str
+    last_name: str
+    amount: int
+
+
+class CancellationOut(BaseModel):
+    """Ce que résilier la commande changerait (spec §7.7), en centimes."""
+
+    members: list[CancelMemberOut]
+    paid: int
+    scheduled: int
+    scheduled_count: int
+    cancelled: bool
 
 
 class SeasonOut(BaseModel):
@@ -198,6 +238,21 @@ class HelloAssoReceiver:
         self.sync = sync
         # Remplaçable dans les tests (pas d'appel réseau).
         self.fetch_file = api.file
+        self.cancel_order = api.cancel_order
+        # Le service email du core, au nom de l'école (module.py) ; None :
+        # pas d'envoi possible.
+        self.send_mail: SendMail | None = None
+        app.post("/ecoles/{ecole_id}/helloasso/adherents/{member_id}/mail")(self.mail)
+        app.post("/ecoles/{ecole_id}/helloasso/adherents/{member_id}/sms")(self.sms)
+        app.get("/ecoles/{ecole_id}/helloasso/adherents/{member_id}/resiliation", response_model=CancellationOut)(
+            self.resiliation
+        )
+        app.post("/ecoles/{ecole_id}/helloasso/adherents/{member_id}/resilier", response_model=CancellationOut)(
+            self.resilier
+        )
+        app.get("/ecoles/{ecole_id}/helloasso/messages")(self.messages_preenregistres)
+        app.post("/ecoles/{ecole_id}/helloasso/messages")(self.garder_message)
+        app.delete("/ecoles/{ecole_id}/helloasso/messages/{template_id}")(self.retirer_message)
         app.get("/ecoles/{ecole_id}/helloasso/adherents", response_model=MembersOut)(self.adherents)
         app.get("/ecoles/{ecole_id}/helloasso/impayes", response_model=UnpaidOut)(self.impayes)
         app.get("/ecoles/{ecole_id}/helloasso/adherents/{member_id}", response_model=MemberCardOut)(self.adherent)
@@ -395,6 +450,7 @@ class HelloAssoReceiver:
             return MembersOut(imposed=False)
         return MembersOut(
             imposed=True,
+            can_cancel=roles.has_right(appelant, roles.DROIT_FINANCIER),
             form_name=current.form_name,
             can_refresh=season_id == saison_courante_id(db, ecole_id),
             members=imposed_members.table(db, ecole_id, season_id),
@@ -422,7 +478,105 @@ class HelloAssoReceiver:
         self, ecole_id: int, member_id: int, db: Session = Depends(get_db),
         appelant: Compte = Depends(rbac.compte_appelant),
     ):
-        return imposed_members.card(self._registration(db, ecole_id, member_id, appelant))
+        return imposed_members.card(db, self._registration(db, ecole_id, member_id, appelant))
+
+    # --- Contact et résiliation (spec §7.6, §7.7) ---
+
+    def mail(
+        self, ecole_id: int, member_id: int, data: MailIn, db: Session = Depends(get_db),
+        appelant: Compte = Depends(rbac.compte_appelant),
+    ):
+        """Tout admin. Le destinataire est le payeur gardé de HelloAsso."""
+        registration = self._registration(db, ecole_id, member_id, appelant)
+        if self.send_mail is None:
+            raise HTTPException(status_code=503, detail="L’envoi de mails n’est pas configuré sur ce serveur")
+        try:
+            sent = contact.send_mail(db, self.send_mail, registration, data.subject, data.message)
+        except ContactError as erreur:
+            raise HTTPException(status_code=422, detail=str(erreur)) from None
+        db.commit()
+        if sent.error:
+            raise HTTPException(status_code=502, detail=f"Le mail n’est pas parti : {sent.error}")
+        return {"to": sent.to_email, "cc": sent.cc}
+
+    def sms(
+        self, ecole_id: int, member_id: int, data: SmsIn, db: Session = Depends(get_db),
+        appelant: Compte = Depends(rbac.compte_appelant),
+    ):
+        """Note le SMS préparé et rend le numéro : l'écran ouvre l'appli SMS."""
+        registration = self._registration(db, ecole_id, member_id, appelant)
+        try:
+            sms = contact.prepare_sms(db, registration, data.message)
+        except ContactError as erreur:
+            raise HTTPException(status_code=422, detail=str(erreur)) from None
+        db.commit()
+        return {"phone": sms.phone}
+
+    def _cancellable(self, db: Session, ecole_id: int, member_id: int, appelant: Compte):
+        if not roles.has_right(appelant, roles.DROIT_FINANCIER):
+            raise HTTPException(status_code=403, detail="Résilier demande l’accès au Financier")
+        registration = self._registration(db, ecole_id, member_id, appelant)
+        season_id = saison_demandee() or saison_courante_id(db, ecole_id)
+        return contact.order(db, ecole_id, season_id, registration.order_id)
+
+    def resiliation(
+        self, ecole_id: int, member_id: int, db: Session = Depends(get_db),
+        appelant: Compte = Depends(rbac.compte_appelant),
+    ):
+        return contact.cancellation(self._cancellable(db, ecole_id, member_id, appelant))
+
+    def resilier(
+        self, ecole_id: int, member_id: int, db: Session = Depends(get_db),
+        appelant: Compte = Depends(rbac.compte_appelant),
+    ):
+        """Résilie toute la commande chez HelloAsso : définitif, rien n'est
+        remboursé. L'état est noté tout de suite ; la synchronisation suivante
+        recopie celui de HelloAsso."""
+        registrations = self._cancellable(db, ecole_id, member_id, appelant)
+        if contact.cancellation(registrations)["cancelled"]:
+            raise HTTPException(status_code=409, detail="Cette adhésion est déjà résiliée")
+        connection = self.client.current(db, ecole_id)
+        if connection is None:
+            raise HTTPException(status_code=422, detail="HelloAsso n’est pas connecté")
+        try:
+            self.cancel_order(*Campaigns._keys(connection)[:2], registrations[0].order_id)
+        except HelloAssoError as erreur:
+            raise HTTPException(status_code=502, detail=str(erreur)) from None
+        for r in registrations:
+            r.state = "Canceled"
+        db.commit()
+        return contact.cancellation(registrations)
+
+    def messages_preenregistres(
+        self, ecole_id: int, kind: str, db: Session = Depends(get_db),
+        appelant: Compte = Depends(rbac.compte_appelant),
+    ):
+        rbac.require_admin(appelant, ecole_id)
+        try:
+            return contact.templates(db, ecole_id, kind)
+        except ContactError as erreur:
+            raise HTTPException(status_code=422, detail=str(erreur)) from None
+
+    def garder_message(
+        self, ecole_id: int, data: TemplateIn, db: Session = Depends(get_db),
+        appelant: Compte = Depends(rbac.compte_appelant),
+    ):
+        rbac.require_admin(appelant, ecole_id)
+        try:
+            out = contact.save_template(db, ecole_id, data.kind, data.subject, data.body)
+        except ContactError as erreur:
+            raise HTTPException(status_code=422, detail=str(erreur)) from None
+        db.commit()
+        return out
+
+    def retirer_message(
+        self, ecole_id: int, template_id: int, kind: str, db: Session = Depends(get_db),
+        appelant: Compte = Depends(rbac.compte_appelant),
+    ):
+        rbac.require_admin(appelant, ecole_id)
+        out = contact.delete_template(db, ecole_id, kind, template_id)
+        db.commit()
+        return out
 
     def _file(self, db: Session, ecole_id: int, url: str) -> tuple[bytes, str]:
         connection = self.client.current(db, ecole_id)

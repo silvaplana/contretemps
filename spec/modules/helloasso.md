@@ -1,6 +1,6 @@
 # AppBase — Module `helloasso`
 
-Version 1.5 du 18 novembre 2026 (§7.11 : étapes 6 et 7 faites ; §8.5 : étape 11 faite ; §8 : deux façons d'utiliser HelloAsso par saison, paiement par carte avec les clés de l'école ; §7 : adhérents entièrement imposés par HelloAsso, tableau repris de Sambo Admin, impayés, vérification, contact, résiliation). Décisions de Seb des 23, 26 et 27 octobre et du 18 novembre 2026. Repris de Sambo Admin
+Version 1.6 du 18 novembre 2026 (§7.11 : étapes 6, 7 et 8 faites ; §8.5 : étape 11 faite ; §8 : deux façons d'utiliser HelloAsso par saison, paiement par carte avec les clés de l'école ; §7 : adhérents entièrement imposés par HelloAsso, tableau repris de Sambo Admin, impayés, vérification, contact, résiliation). Décisions de Seb des 23, 26 et 27 octobre et du 18 novembre 2026. Repris de Sambo Admin
 (`silvaplana/test-python`, `backend/src/helloasso/`), qui lit HelloAsso en direct sans base ; ici on
 recopie en base et on synchronise. Maquette de la connexion :
 https://claude.ai/artifact/FhTWcRKXpVfdf9toaTSeXS. Socle : `spec/core.md` §4.3 et §9.3.
@@ -348,6 +348,36 @@ saison affichée (résiliées comprises) dont au moins un paiement est `Refused`
 `Abandoned`, `Deleted` ou `Inconsistent` ; Impayé = somme de ces paiements, Total = montant de
 l'adhésion. Route `GET /ecoles/{id}/helloasso/impayes` (tout admin), lue dans
 `helloasso_registrations.payments` : rien de plus en base.
+
+**Fait (étape 8, 18 novembre 2026)** : deux colonnes de nature Bouton dans le tableau (`memberColumns`),
+après Statut HelloAsso, sur les lignes qui ont une adhésion.
+- **Contact** : « ✉ Mail » et « 💬 SMS » avec le nombre déjà envoyé (ou préparé). « 💬 SMS » seulement
+  sur un écran tactile et si le formulaire HelloAsso a donné un téléphone (réponse de nature
+  téléphone, ou question dont le libellé contient « téléphone » / « phone »).
+  « Mail à Prénom Nom » : Message préenregistré (Aucun + la liste), Objet, Message, « n mails déjà
+  envoyés à cette personne. » ou « Premier mail à cette personne. », Annuler / **Envoyer**, puis
+  « Mail envoyé ». Le mail part à l'email du payeur par `core.mail_ecole` (`core.md` §11.1) :
+  expéditeur de l'enseigne au nom de l'école, l'école en copie et en réponse ; un échec est noté au
+  journal avec sa raison et affiché.
+  « SMS à Prénom Nom » : Message préenregistré, Message, Annuler / **Ouvrir mes SMS** (ouvre
+  `sms:<téléphone>?body=…`), puis « SMS préparé dans ton téléphone ».
+  Messages préenregistrés : « Garder ce message » (le texte tapé, avec `{prénom}` et `{nom}`
+  remplacés au choix) et « Retirer ce message préenregistré », par école et par nature (mail, SMS).
+- **Adhésion** : « Résilier » (rouge, droit Accès au Financier) ou « Résiliée ». Écran « Résilier
+  l'adhésion » : la commande entière (chaque adhérent et son montant), ce qui est déjà encaissé et ne
+  sera pas remboursé, les échéances à venir annulées, « Cette action est définitive » ; **Annuler**
+  est le bouton principal, « Résilier l'adhésion » / « Résilier les n adhésions » en rouge. Après
+  l'appel à HelloAsso, les adhésions de la commande passent à l'état résilié sans attendre la
+  synchronisation. Une clé sans le droit de remboursement : message qui demande de le cocher sur
+  HelloAsso.
+- La fiche gagne la rubrique **Messages envoyés** (date, mail ou SMS préparé, objet ; « Pas parti :
+  … » pour un échec).
+- Routes : `POST …/helloasso/adherents/{fiche}/mail`, `…/sms` (→ téléphone, noté au journal),
+  `GET …/resiliation` (aperçu), `POST …/resilier` (403 sans Accès au Financier, 409 déjà résiliée),
+  `GET|POST /ecoles/{id}/helloasso/messages`, `DELETE …/messages/{id}`. Tables `helloasso_mails`,
+  `helloasso_sms`, `helloasso_templates` (§7.9), rangées sous l'identifiant HelloAsso de l'adhésion
+  pour survivre à une fusion de fiches. La reprise du journal de Sambo Admin reste à faire
+  (commande sur le VPS).
 
 ## 8. Deux façons d'utiliser HelloAsso, par saison (Seb, 18 novembre 2026)
 
