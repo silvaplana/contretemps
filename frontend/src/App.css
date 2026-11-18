@@ -5388,11 +5388,8 @@ button[aria-label="Retour"] svg {
   margin-top: 20px;
 }
 
-.ordre-barre__titre {
-  margin: 0;
-  font-size: 17px;
-  font-weight: 700;
-  color: var(--text-h);
+.ordre-barre .section-label__depliant {
+  text-align: left;
 }
 
 .ordre-barre__aide {

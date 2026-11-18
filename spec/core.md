@@ -658,8 +658,8 @@ Identité de la personne connectée, autres profils de la famille (bascule, §6.
   Quand les onglets ne tiennent pas, les derniers passent sous « Plus » (⋯) en bas à droite, menu
   modal au-dessus de tout ; l'onglet actif caché allume « Plus », les pastilles s'y additionnent.
   **L'école range les onglets** (Seb, 18 novembre 2026, remplace « Ma barre du bas » du Profil du
-  12 novembre) : Admin › École › Personnalisation › Fonctionnalités, sous les cases, « Ordre de la
-  barre du bas », une ligne par onglet des modules allumés avec une poignée à faire glisser ; les
+  12 novembre) : Admin › École › Personnalisation › Fonctionnalités, sous les cases, le déroulant
+  « Ordre des onglets dans la barre d'outils du bas » (fermé au départ), une ligne par onglet des modules allumés avec une poignée à faire glisser ; les
   premiers vont dans la barre, la suite sous « Plus » (la liste montre où la barre s'arrête sur cet
   appareil). Enregistré au lâcher pour toute l'école (`ecoles.tab_order`) ; chacun ne voit que ses
   onglets, dans cet ordre. Administrateur principal et Super User. Sans choix, c'est l'ordre de la

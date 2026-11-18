@@ -39,8 +39,8 @@ Admin › École
 - Personnalisation de l'application : Apparence visuelle (aperçus, adresse web de l'appli, « Nature de l'école » Danse ou Combat pour le
   Super User seulement, puis « Appli Android » Non ou Oui pour le Super User quand Fights est allumé, nom sous
   l'icône, logo, nom de l'école en texte ou image, slogan, polices, couleurs ; Enregistrer ;
-  « Revenir à l'apparence par défaut »), Fonctionnalités (une case par module, puis « Ordre de la
-  barre du bas » : faire glisser un onglet par sa poignée, pour toute l'école), Vocabulaire.
+  « Revenir à l'apparence par défaut »), Fonctionnalités (une case par module, puis le déroulant « Ordre
+  des onglets dans la barre d'outils du bas » : faire glisser un onglet par sa poignée, pour toute l'école), Vocabulaire.
 - Connexions (Administrateur principal et Super User) : une ligne par module allumé qui demande des
   identifiants (Boîte mail du club, HelloAsso, Site de la FFST ; Comptes en banque avec l'Accès au
   Financier en plus), « Connecter » ou « Voir » ; pastille du nombre à connecter.
