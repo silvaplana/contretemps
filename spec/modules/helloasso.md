@@ -320,7 +320,7 @@ Le module FFST (`modules/ffst.md`) s'intercale après l'étape 6.
   anglais), proposées dans « Affichage dans Admin » (nature Calculé, HelloAsso) ; sans affichage
   enregistré, ordre de Sambo Admin : Adhérent, Email, Montant, Code promo, Photo, Statut HelloAsso,
   le reste masqué. Le tableau d'Admin > Élèves, quand la saison affichée a une campagne : titre
-  « Adhérents (n) » (résiliées non comptées), « Rafraîchir » (synchronise, saison en cours),
+  « Adhérents (n) » (adhésions HelloAsso non résiliées seulement : une fiche sans adhésion, un prof par exemple, est listée en dernier sans être comptée), « Rafraîchir » (synchronise, saison en cours),
   « Rechercher un adhérent... » (nom, prénom, email), ordre de Sambo Admin (celui de HelloAsso :
   la commande la plus récente d'abord, Seb 18 novembre 2026 ; `memberList.ordre`), filtres par âge, ligne résiliée grisée et nom
   barré, pas de « + », d'import, de poubelle ni d'Inscription OCR / web ; menu ⋮ « Masquer /
