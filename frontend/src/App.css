@@ -5713,6 +5713,15 @@ tr.is-resiliee td.data-table__name button {
   font-weight: 700;
 }
 
+/* Les écrans de connexion FFST et HelloAsso : une colonne de téléphone, même
+   sur un grand écran ; en pleine largeur, « Enregistrer », centré dans le
+   bouton, tombait hors de la vue (Seb, 18/11). La boîte mail l'a déjà. */
+.connexion-ecran {
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+}
+
 /* Module FFST, étape 2 : réglages d'une demande et colonne « Actions FFST ». */
 .ffst__case {
   display: flex;

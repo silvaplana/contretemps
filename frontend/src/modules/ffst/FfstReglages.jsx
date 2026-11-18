@@ -303,7 +303,7 @@ export default function FfstReglages({ ecole, enabled }) {
               </button>
               <h2 className="creer-saison__titre">{ecran === 'identifiants' ? 'Connecter le site de la FFST' : 'Site de la FFST'}</h2>
             </div>
-            <div className="creer-saison__corps">
+            <div className="creer-saison__corps connexion-ecran">
               {ecran === 'identifiants' ? (
                 <Identifiants ecoleId={ecole.id} onEnregistre={enregistre} />
               ) : (
