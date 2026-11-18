@@ -376,7 +376,7 @@ export default function HelloAssoReglages({ ecole, enabled, onEnabledChange }) {
               </button>
               <h2 className="creer-saison__titre">{TITRES[ecran] ?? 'HelloAsso'}</h2>
             </div>
-            <div className="creer-saison__corps">
+            <div className="creer-saison__corps connexion-ecran">
               {ecran === 'cles' ? (
                 <Cles ecoleId={ecole.id} onEnregistre={enregistre} />
               ) : ecran === 'saison' ? (

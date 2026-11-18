@@ -4613,7 +4613,9 @@ a.btn {
 
 .helloasso__resultat dl {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* Le nombre juste après son libellé : en 1fr 1fr, sur un écran large,
+     il partait au milieu de l'écran, hors de vue (Seb, 18/11). */
+  grid-template-columns: max-content 1fr;
   gap: 6px 12px;
   margin: 12px 0 0;
   font-size: 16px;
@@ -5709,6 +5711,15 @@ tr.is-resiliee td.data-table__name button {
 .impayes__montant {
   color: var(--danger-text);
   font-weight: 700;
+}
+
+/* Les écrans de connexion FFST et HelloAsso : une colonne de téléphone, même
+   sur un grand écran ; en pleine largeur, « Enregistrer », centré dans le
+   bouton, tombait hors de la vue (Seb, 18/11). La boîte mail l'a déjà. */
+.connexion-ecran {
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
 }
 
 /* Module FFST, étape 2 : réglages d'une demande et colonne « Actions FFST ». */
