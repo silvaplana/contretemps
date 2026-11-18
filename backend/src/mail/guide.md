@@ -36,5 +36,14 @@ Un mail (toucher la ligne)
 - ← retour, Archiver, Corbeille ; ⋮ : Marquer comme non lu, Spam (ou « Ce n'est pas du spam »).
 - Objet, expéditeur, « À : », date, étoile, texte, pièces jointes (toucher pour télécharger).
 - Ouvrir un mail le marque lu.
+- En bas : « Répondre » (bouton principal) et « Transférer » ; « Répondre à tous » est dans ⋮.
+
+Écrire (bouton « Nouveau message » en bas à droite de la boîte, ou Répondre / Transférer)
+- « De : » l'adresse du club (le nom de l'école apparaît chez le destinataire), « À », lien
+  « Cc / Cci » qui ouvre les deux lignes, « Objet », le message.
+- « Joindre un fichier » (18 Mo au total au plus), croix pour retirer. Transférer garde les pièces
+  jointes du mail.
+- « Envoyer » : l'écran se ferme et « Mail envoyé » s'affiche avec « Annuler » pendant 10 secondes ;
+  Annuler rouvre le mail tel quel. Sans destinataire : « Indiquez à qui envoyer le mail ».
 - « La boîte mail n'est plus connectée » : Google ou Infomaniak a coupé l'accès ; l'Administrateur
   principal touche « Reconnecter » sur la ligne Mail de Fonctionnalités (« Voir »).
