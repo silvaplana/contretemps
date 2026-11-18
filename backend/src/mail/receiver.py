@@ -12,7 +12,8 @@ from datetime import datetime
 from urllib.parse import quote
 
 from comptes import Compte, rbac, roles
-from fastapi import Depends, FastAPI, HTTPException, Response
+from ecoles.models import Ecole
+from fastapi import Depends, FastAPI, Form, HTTPException, Response, UploadFile
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -20,7 +21,7 @@ from db import get_db
 
 from .connection import Connection, NotConnected
 from .gmail import MailError, MailRefused
-from .imap import Webmail, WebmailError, WebmailNotFoundError, WebmailRefusedError
+from .imap import SEND_MAX_BYTES, Webmail, WebmailError, WebmailNotFoundError, WebmailRefusedError
 
 RIGHT = "mail.read"
 
@@ -111,6 +112,7 @@ class MailReceiver:
         app.post(f"{base}/messages/{{folder}}/{{uid}}/move", dependencies=reader)(self.move)
         app.delete(f"{base}/messages/{{folder}}/{{uid}}", dependencies=reader)(self.delete)
         app.post(f"{base}/bulk", dependencies=reader)(self.bulk)
+        app.post(f"{base}/send", dependencies=reader)(self.send)
 
     def _status(self, db: Session, ecole_id: int, appelant: Compte | None) -> StatusOut:
         account = self.connection.account(db, ecole_id)
@@ -203,3 +205,46 @@ class MailReceiver:
 
     def bulk(self, ecole_id: int, data: BulkIn, db: Session = Depends(get_db)):
         return self._call(db, ecole_id, lambda w: w.bulk(data.folder, data.uids, data.action))
+
+    # --- Écrire (§7) --------------------------------------------------------
+
+    def send(
+        self,
+        ecole_id: int,
+        to: str = Form(""),
+        cc: str = Form(""),
+        bcc: str = Form(""),
+        subject: str = Form(""),
+        body: str = Form(""),
+        inReplyTo: str = Form(""),
+        references: str = Form(""),
+        answeredFolder: str = Form(""),
+        answeredUid: int | None = Form(None),
+        forwardFolder: str = Form(""),
+        forwardUid: int | None = Form(None),
+        files: list[UploadFile] | None = None,
+        db: Session = Depends(get_db),
+    ):
+        """Envoie au nom du club (formulaire multipart, comme Sambo Admin).
+        Réponse : answered* (marqué « répondu ») ; transfert : forward*
+        (pièces jointes du mail reprises). L'Annuler de 10 s est à l'écran :
+        la demande part à la fin."""
+        attachments, total = [], 0
+        for upload in files or []:
+            data = upload.file.read()
+            total += len(data)
+            if total > SEND_MAX_BYTES:
+                raise HTTPException(status_code=400, detail="Pièces jointes trop lourdes (18 Mo au total au maximum)")
+            attachments.append((upload.filename or "piece-jointe", upload.content_type or "", data))
+        ecole = db.get(Ecole, ecole_id)
+
+        def envoyer(w: Webmail):
+            w.sender_name = ecole.nom if ecole else ""
+            return w.send(
+                to=to, cc=cc, bcc=bcc, subject=subject, body=body, in_reply_to=inReplyTo, references=references,
+                attachments=attachments,
+                forward=(forwardFolder, forwardUid) if forwardFolder and forwardUid is not None else None,
+                answered=(answeredFolder, answeredUid) if answeredFolder and answeredUid is not None else None,
+            )
+
+        return self._call(db, ecole_id, envoyer)

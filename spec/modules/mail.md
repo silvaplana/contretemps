@@ -4,7 +4,7 @@ Version 0.1 du 18 novembre 2026. Repris du client mail de Sambo Admin (`silvapla
 `backend/src/webmail/`, `frontend/src/Webmail.jsx`, onglet Messagerie > Mail), à fonctions
 identiques. Étude : https://claude.ai/artifact/7HPSBAeGZ5YrE4jahT213a (partie 7 ter). Méthode de
 connexion : étude Gmail du 22 octobre 2026. Maquette validée par Seb le 18 novembre :
-https://claude.ai/artifact/5wX9catY3i76qBEPo3fM4S. Étapes 1, 2 et 2 bis codées (§12).
+https://claude.ai/artifact/5wX9catY3i76qBEPo3fM4S. Étapes 1 à 3 codées (§12).
 
 ## 1. Ce que fait le sous-module
 
@@ -165,3 +165,8 @@ Messagerie. `guide.md` du module mis à jour dans la même PR que les écrans.
    connecte sans le droit de lecture. Infomaniak à essayer avec la boîte du club
    (alliancesambocombatprovence@ik.me) : dossiers et Archiver non vérifiés sur un vrai compte.
 3. Écrire, répondre, transférer, pièces jointes, Annuler 10 s (§7, §8).
+   **Fait (18 novembre 2026)** : envoi SMTP repris de Sambo Admin, route `POST …/mail/send`
+   (multipart, droit `mail.read`) ; « De : » nom de l'école et adresse de la boîte. « Envoyer »
+   ferme l'écran ; le mail part au bout des 10 s d'Annuler, Annuler rouvre l'écran avec le mail
+   (et ses pièces jointes) ; un envoi refusé rouvre aussi l'écran avec l'erreur. Pas de question
+   « Envoyer sans objet ? » de Sambo Admin (l'Annuler la remplace).
