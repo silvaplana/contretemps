@@ -61,10 +61,11 @@ function Cles({ ecoleId, onEnregistre }) {
         <input
           id="helloasso-id"
           className="field-input"
+          // Pas d'identifiant du navigateur ici : ce sont des clés HelloAsso.
           autoComplete="off"
           spellCheck="false"
           value={clientId}
-          placeholder="ex. 3f9c2a…"
+          placeholder="ex. 4b7e1c9d2f0a4e6b8c3d5f7a9e1b2c4d"
           onChange={(e) => {
             setClientId(e.target.value)
             setTest(null)
@@ -76,7 +77,10 @@ function Cles({ ecoleId, onEnregistre }) {
             id="helloasso-secret"
             className="field-input"
             type={voir ? 'text' : 'password'}
-            autoComplete="off"
+            // « new-password » : Chrome ne remplit pas un mot de passe
+            // enregistré (ni l'adresse mail dans le champ clientId).
+            autoComplete="new-password"
+            placeholder="Collez ici le clientSecret"
             spellCheck="false"
             value={secret}
             onChange={(e) => {
