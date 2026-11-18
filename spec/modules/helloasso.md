@@ -92,7 +92,7 @@ une PR sur le « vas-y » de Seb, après les groupes et les champs des membres (
 4. tarifs HelloAsso en lecture seule dans l'écran Tarifs.
 
 **Fait (étape 1, 27 octobre 2026)** : module `helloasso` (`backend/src/helloasso/`,
-`frontend/src/modules/helloasso/`), éteint dans les écoles existantes. Sur sa ligne de
+`frontend/src/modules/helloasso/`), éteint dans les écoles existantes, et éteint par défaut dans toute nouvelle école (Seb, 18 novembre 2026, `core.md` §11.3). Sur sa ligne de
 Fonctionnalités (`settings` du module.js, `core.md` §11.1) : « Pas encore connecté » / « Connecté à
 <association> », lien « Connecter » ou « Voir » ; cocher la case sans connexion ouvre l'écran des
 clés. Tester demande un jeton, lit `/v5/users/me/organizations` (l'association reliée aux clés) et

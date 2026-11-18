@@ -14,11 +14,17 @@ from db import get_db
 from .models import OrgModule
 
 
+# Les modules éteints tant que l'organisation ne les a pas allumés
+# (`Module.enabled_by_default=False`, rempli par le registre ; Seb, 18
+# novembre 2026 : HelloAsso, FFST).
+OFF_BY_DEFAULT: set[str] = set()
+
+
 def disabled(db: Session, org_id: int) -> set[str]:
-    """Les modules éteints dans cette organisation (tous allumés par défaut)."""
-    return set(
-        db.scalars(select(OrgModule.module_key).where(OrgModule.org_id == org_id, OrgModule.enabled.is_(False)))
-    )
+    """Les modules éteints dans cette organisation : ceux qu'elle a éteints,
+    et ceux éteints par défaut qu'elle n'a jamais allumés."""
+    choix = dict(db.execute(select(OrgModule.module_key, OrgModule.enabled).where(OrgModule.org_id == org_id)).all())
+    return {k for k, on in choix.items() if not on} | {k for k in OFF_BY_DEFAULT if k not in choix}
 
 
 def listing(db: Session, org_id: int, modules: list) -> list[dict]:

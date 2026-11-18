@@ -112,7 +112,67 @@ function Identifiants({ ecoleId, onEnregistre }) {
   )
 }
 
-function Connecte({ ecoleId, etat, onChangerIdentifiants }) {
+// Les réglages de l'école pour une demande (spec §2), écrits pour ASC dans
+// Sambo Admin : la discipline d'une nouvelle demande, la commune de naissance
+// quand celle de l'adhérent n'est pas trouvée, « Droit à l'image ».
+function Reglages({ ecoleId, etat, onEnregistre }) {
+  const [r, setR] = useState(etat.settings)
+  const [message, setMessage] = useState(null)
+  const changer = (cle, valeur) => {
+    setR((x) => ({ ...x, [cle]: valeur }))
+    setMessage(null)
+  }
+
+  async function enregistrer() {
+    try {
+      onEnregistre(await api.reglages(ecoleId, r))
+      setMessage({ ok: true, texte: '✓ Réglages enregistrés' })
+    } catch (e) {
+      setMessage({ ok: false, texte: e.message })
+    }
+  }
+
+  return (
+    <div className="helloasso__saison">
+      <p className="helloasso__titre">Pour les demandes de licence</p>
+      <div className="form-fields">
+        <label htmlFor="ffst-discipline">Discipline d’une nouvelle demande, comme sur le site</label>
+        <input
+          id="ffst-discipline"
+          className="field-input"
+          placeholder="ex. 0470-SAMBO"
+          value={r.discipline}
+          onChange={(e) => changer('discipline', e.target.value)}
+        />
+        <label htmlFor="ffst-commune">Commune de naissance si celle de l’adhérent n’est pas trouvée</label>
+        <input
+          id="ffst-commune"
+          className="field-input"
+          placeholder={etat.school_town ?? ''}
+          value={r.default_birth_town}
+          onChange={(e) => changer('default_birth_town', e.target.value)}
+        />
+        <label className="ffst__case">
+          <input type="checkbox" checked={r.image_rights} onChange={(e) => changer('image_rights', e.target.checked)} />
+          Cocher « Droit à l’image » sur une nouvelle demande
+        </label>
+      </div>
+      <button type="button" className="btn btn--secondary btn--block" onClick={enregistrer}>
+        Enregistrer les réglages
+      </button>
+      {message && (
+        <div
+          className={`helloasso__resultat ${message.ok ? 'helloasso__resultat--ok' : 'helloasso__resultat--erreur'}`}
+          role="status"
+        >
+          <strong>{message.texte}</strong>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function Connecte({ ecoleId, etat, onChangerIdentifiants, onEtat }) {
   const [test, setTest] = useState(null)
 
   async function retester() {
@@ -156,6 +216,7 @@ function Connecte({ ecoleId, etat, onChangerIdentifiants }) {
           <span>{test.message}</span>
         </div>
       )}
+      <Reglages ecoleId={ecoleId} etat={etat} onEnregistre={onEtat} />
       <button type="button" className="creer-saison__lien" onClick={onChangerIdentifiants}>
         Changer les identifiants
       </button>
@@ -243,7 +304,12 @@ export default function FfstReglages({ ecole, enabled }) {
               {ecran === 'identifiants' ? (
                 <Identifiants ecoleId={ecole.id} onEnregistre={enregistre} />
               ) : (
-                <Connecte ecoleId={ecole.id} etat={etat} onChangerIdentifiants={() => setEcran('identifiants')} />
+                <Connecte
+                  ecoleId={ecole.id}
+                  etat={etat}
+                  onEtat={setEtat}
+                  onChangerIdentifiants={() => setEcran('identifiants')}
+                />
               )}
             </div>
           </div>,

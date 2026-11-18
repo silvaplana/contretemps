@@ -33,3 +33,19 @@ export const listes = (ecoleId) => requete(`/ecoles/${ecoleId}/ffst/listes`)
 export const lire = (ecoleId) => requete(`/ecoles/${ecoleId}/ffst/lire`, { method: 'POST' })
 // Le statut FFST de chaque fiche (spec §4) → { connected, read_at, members: { [fiche]: { status } } }
 export const adherents = (ecoleId) => requete(`/ecoles/${ecoleId}/ffst/adherents`)
+
+// Les réglages de l'école (spec §2) : { discipline, default_birth_town, image_rights } → etat
+export const reglages = (ecoleId, r) => requete(`/ecoles/${ecoleId}/ffst/reglages`, json('PUT', r))
+// Les fonctions possibles d'une demande (« 005-PRATIQUANT »…).
+export const fonctions = (ecoleId) => requete(`/ecoles/${ecoleId}/ffst/fonctions`)
+// Une demande de licence dans le panier du site (spec §5), jusqu'à 30 secondes.
+// { fonction, gender? } → { warnings }
+export const demander = (ecoleId, ficheId, corps) =>
+  requete(`/ecoles/${ecoleId}/ffst/adherents/${ficheId}/demande`, json('POST', corps))
+export const retirer = async (ecoleId, ficheId) => {
+  const reponse = await fetch(`${BASE_URL}/ecoles/${ecoleId}/ffst/adherents/${ficheId}/demande`, { method: 'DELETE' })
+  if (!reponse.ok) {
+    const corps = await reponse.json().catch(() => null)
+    throw new Error(typeof corps?.detail === 'string' ? corps.detail : `Requête échouée (${reponse.status})`)
+  }
+}

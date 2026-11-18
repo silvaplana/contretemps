@@ -427,6 +427,11 @@ def test_paiement_avec_les_cles_de_l_ecole(client, db_session, _nettoyage_dossie
     db_session.add(OrgHelloAsso(org_id=ecole.id, client_id="cle-ecole", secret_encrypted=chiffrer("s"),
                                 org_name="Alliance", org_slug="alliance-ecole"))
     db_session.commit()
+    # HelloAsso est éteint par défaut (Seb, 18/11) : l'école l'allume.
+    from app.modules import MODULES
+    from registry.activation import set_enabled
+
+    set_enabled(db_session, ecole.id, MODULES, "helloasso", True)
     core.helloasso_campaigns.set_payment(db_session, ecole.id, saison_courante_id(db_session, ecole.id), True)
     db_session.commit()
     jetons.clear()

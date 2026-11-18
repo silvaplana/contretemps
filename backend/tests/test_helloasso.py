@@ -11,7 +11,13 @@ CLES = {"client_id": "3f9c2a", "client_secret": "le-secret"}
 
 @pytest.fixture()
 def ecole(db_session):
-    return Ecoles().create(db_session, nom="Sambo La Ciotat", code_postal="13600")
+    from app.modules import MODULES
+    from registry.activation import set_enabled
+
+    ecole = Ecoles().create(db_session, nom="Sambo La Ciotat", code_postal="13600")
+    # HelloAsso est éteint par défaut (Seb, 18/11) : l'école l'allume.
+    set_enabled(db_session, ecole.id, MODULES, "helloasso", True)
+    return ecole
 
 
 @pytest.fixture()
