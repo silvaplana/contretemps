@@ -216,7 +216,9 @@ donne sa première page en vignette.
 
 ### 7.4 Impayés HelloAsso
 
-Admin > **Impayés HelloAsso**, visible si le module est allumé. Les adhérents qui ont au moins une
+Admin > **Paiements HelloAsso** (ex-« Impayés HelloAsso », renommé par Seb le 18 novembre 2026 ;
+pastille rouge = nombre d'impayés, `badge` des `adminTabs`), visible si le module est allumé. En haut
+**Impayés (n)** : Les adhérents qui ont au moins une
 échéance refusée ou en échec (états `Refused`, `Error`, `Canceled`, `Abandoned`, `Deleted`,
 `Inconsistent`) ; les échéances à venir d'un paiement en plusieurs fois ne comptent pas. Colonnes :
 Nom, Prénom, Email, Total, Impayé, Échéances refusées. Lu dans `helloasso_registrations`

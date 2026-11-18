@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import * as api from './api.js'
 
-// Admin > Impayés HelloAsso (spec/modules/helloasso.md §7.4), repris de
+// Admin > Paiements HelloAsso (spec/modules/helloasso.md §7.4), repris de
 // Sambo Admin : les adhésions avec au moins une échéance refusée ou en
 // échec, puis les échéances à venir (Seb, 18 novembre 2026). Lu dans la
 // copie de la synchronisation ; « Rafraîchir » synchronise d'abord.
@@ -49,7 +49,7 @@ export default function Impayes({ ecoleId }) {
   return (
     <div className="admin-panel">
       <div className="adherents__entete">
-        <h2>Impayés HelloAsso{lu?.campaign ? ` (${lu.members.length})` : ''}</h2>
+        <h2>Impayés{lu?.campaign ? ` (${lu.members.length})` : ''}</h2>
         {lu?.campaign && (
           <button type="button" className="btn btn--secondary" onClick={rafraichir} disabled={enCours}>
             {enCours ? 'Rafraîchissement…' : 'Rafraîchir'}

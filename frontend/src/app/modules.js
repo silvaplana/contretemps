@@ -13,7 +13,8 @@
 // AdminEleves.jsx et listeImposee ci-dessous), et ses colonnes et boutons
 // dans le tableau des membres (`memberColumns`, voir colonnesModules
 // ci-dessous), et des sous-onglets d'Admin (`adminTabs` : { value, label,
-// Ecran }, après Cours, module allumé ; voir AdminScreen.jsx). Les onglets
+// Ecran, badge?(ecoleId) → nombre en pastille }, après Cours, module
+// allumé ; voir AdminScreen.jsx). Les onglets
 // du core (Admin, Supervision, Profil) sont dans data/nav.js.
 import choregraphies from '../modules/choregraphies/module.js'
 import documents from '../modules/documents/module.js'

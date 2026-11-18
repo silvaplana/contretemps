@@ -94,8 +94,9 @@ Statistiques de la saison (saison imposée par HelloAsso)
   saison (solde + reste à encaisser − salaires et cotisations − licences FFST encore à payer).
 - Les chiffres viennent de HelloAsso et des comptes du Financier ; rien n'est modifiable ici.
 
-Impayés HelloAsso : Admin › Impayés HelloAsso (sous-onglet après Cours, module allumé, tout admin)
-- « Impayés HelloAsso (n) » et « Rafraîchir » (recopie depuis HelloAsso puis relit).
+Paiements HelloAsso : Admin › Paiements HelloAsso (sous-onglet après Cours, module allumé, tout admin ;
+  pastille rouge = nombre d’impayés)
+- En haut « Impayés (n) » et « Rafraîchir » (recopie depuis HelloAsso puis relit).
 - Les adhésions de la saison avec au moins une échéance refusée ou en échec ; une échéance à venir
   d'un paiement en plusieurs fois ne compte pas.
 - Colonnes : Nom, Prénom, Email (du payeur), Total (l'adhésion), Impayé (les échéances refusées),
