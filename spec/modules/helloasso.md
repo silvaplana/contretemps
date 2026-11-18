@@ -1,6 +1,6 @@
 # AppBase — Module `helloasso`
 
-Version 1.0 du 27 octobre 2026. Décisions de Seb des 23, 26 et 27 octobre 2026. Repris de Sambo Admin
+Version 1.1 du 18 novembre 2026 (§7 : adhérents entièrement imposés par HelloAsso, tableau repris de Sambo Admin, impayés, vérification, contact, résiliation). Décisions de Seb des 23, 26 et 27 octobre et du 18 novembre 2026. Repris de Sambo Admin
 (`silvaplana/test-python`, `backend/src/helloasso/`), qui lit HelloAsso en direct sans base ; ici on
 recopie en base et on synchronise. Maquette de la connexion :
 https://claude.ai/artifact/FhTWcRKXpVfdf9toaTSeXS. Socle : `spec/core.md` §4.3 et §9.3.
@@ -15,7 +15,7 @@ Une organisation qui encaisse ses adhésions sur HelloAsso branche l'appli dessu
    leur formule, leurs options, leurs codes et leurs paiements.
 
 Le module ne crée rien sur HelloAsso : les membres s'inscrivent et paient sur HelloAsso, on
-récupère ce que HelloAsso a fait.
+récupère ce que HelloAsso a fait. Seule exception : la résiliation d'une adhésion (§7.7).
 
 ## 2. La connexion (Admin > École > Fonctionnalités)
 
@@ -144,3 +144,148 @@ module.js, `core.md` §11.1). HelloAsso ne donne pas ses codes promo par l'API :
 dans les commandes synchronisées, avec leur nombre d'utilisations. Rien n'est écrit vers HelloAsso :
 la maquette Tarifs (« publiés sur HelloAsso à la validation ») n'est pas suivie sur ce point,
 l'API HelloAsso ne permet pas d'écrire les formules.
+
+## 7. Adhérents entièrement imposés par HelloAsso (Seb, 18 novembre 2026)
+
+But : reprendre dans l'appli, pour Alliance Sambo Combat La Ciotat (enseigne Assofight), l'onglet
+Adhérents de Sambo Admin (`silvaplana/test-python`), **à fonctions identiques**, sauf l'Ancienneté
+et l'onglet Historique, qui ne sont pas repris. Le mode reste optionnel et vaut pour toute école,
+Contretemps comprise. Étude : https://claude.ai/artifact/7HPSBAeGZ5YrE4jahT213a. Maquette validée
+par Seb le 18 novembre : https://claude.ai/artifact/4tizDZ6Br2WxGL5MYwSQfy ; les écrans la suivent.
+
+Sambo Admin n'a aucune table d'adhérents : il relit HelloAsso à chaque ouverture. Ici la référence
+reste HelloAsso, mais on lit la copie en base faite par la synchronisation (§4) : l'écran s'ouvre
+tout de suite et l'adhérent a une fiche pour le reste de l'appli.
+
+### 7.1 Totalement esclave
+
+Une saison qui a une campagne « Imposés par HelloAsso » (§3) n'a pas d'autre source d'adhérents :
+- dans Admin > Élèves (« Adhérents » pour ASC), plus de bouton « + », d'import ni de suppression
+  d'une fiche d'élève ; le serveur refuse aussi la création ;
+- quelqu'un qui paie en espèces ou par chèque est ajouté par l'école **dans HelloAsso** (paiement
+  hors ligne) et arrive par la synchronisation ;
+- les profs et les administrateurs gardent leur fiche et leur invitation, même sans adhésion ;
+  les élèves à l'essai ne sont pas des adhérents ;
+- on ne supprime jamais : une adhésion résiliée ou remboursée reste dans le tableau, grisée,
+  « Résilié ». La synchronisation, qui ignore aujourd'hui ces lignes, les recopie avec leur état ;
+- l'école peut toujours ajouter ses propres champs à côté (§3).
+Une école sans le module HelloAsso, ou une saison « Nos champs », ne change en rien.
+
+### 7.2 Le tableau
+
+Admin > Élèves, pour une saison imposée par HelloAsso. Titre « Adhérents (n) » et bouton
+**Rafraîchir** (synchronise maintenant, et relit les listes FFST si le module FFST est allumé) ;
+recherche « Rechercher un adhérent... » ; filtres par âge : Tous, Juniors (moins de 18 ans),
+Seniors, -10, 10-20, 20-30, 30-40, 40-50, 50+. Colonnes, dans cet ordre par défaut :
+
+| Colonne | Contenu | Apportée par |
+|---|---|---|
+| Nom, Prénom, Email | l'email est celui du payeur | core |
+| Montant, Code promo | montant de l'adhésion, code appliqué | HelloAsso |
+| Photo | vignette de la photo d'identité, agrandie au toucher ; masquable par le menu ⋮ | HelloAsso |
+| Statut HelloAsso | « Validé HelloAsso » (état `Processed`), « Résilié » ; jamais le mot anglais | HelloAsso |
+| Vérification | « OK » ou « À vérifier » (§7.5) | HelloAsso |
+| Statut FFST, Actions FFST | `modules/ffst.md` | FFST |
+| Contact | « ✉ Mail », « 💬 SMS » avec le nombre déjà envoyé (§7.6) | HelloAsso |
+| Adhésion | « Résilier » ou « Résiliée » (§7.7) ; droit Accès au Financier | HelloAsso |
+
+Toucher une ligne ouvre la fiche (§7.3). Menu ⋮ : « Statistiques des adhérents de la saison »
+(§7.8), « Vérifier les adhérents », « Masquer / Afficher les photos ». L'école peut toujours
+masquer ou réordonner les colonnes (« Affichage dans Admin », `core.md` §4.3).
+
+Ces colonnes et boutons sont déclarés par les modules (`columns` et `buttons` de `module.py`,
+`core.md` §11.1, pas encore codé) : c'est la première étape de code.
+
+Écarts avec Sambo Admin, validés par Seb le 18 novembre : jamais « IA » à l'écran (« Vérification »,
+« Vérifier les adhérents ») ; « Processed » devient « Validé HelloAsso » ; texte ≥ 17 px et boutons
+≥ 48 px ; la navigation est celle de l'appli (Admin > Adhérents, onglet FFST en barre du bas,
+« Impayés HelloAsso » à côté d'Adhérents) ; les rôles remplacent les deux mots de passe (le mot de
+passe « comptes » = droit Accès au Financier).
+
+### 7.3 La fiche
+
+Identité et photo, adhésion (formule, montant, code promo, statut HelloAsso, statut FFST),
+vérification du dossier (raisons, « Valider le dossier »), documents déposés (photo d'origine,
+certificat médical, autorisation parentale), réponses au formulaire (« Modifiable sur HelloAsso »),
+payeur, paiements et échéances, mails envoyés et SMS préparés.
+
+La photo et les documents sont protégés par le jeton HelloAsso : le serveur les relaie. La
+vignette est gardée sur le disque (elle ne change pas) ; **les documents ne sont jamais
+enregistrés**, ils sont lus chez HelloAsso à la demande. Un PDF déposé à la place d'une photo
+donne sa première page en vignette.
+
+### 7.4 Impayés HelloAsso
+
+Admin > **Impayés HelloAsso**, visible si le module est allumé. Les adhérents qui ont au moins une
+échéance refusée ou en échec (états `Refused`, `Error`, `Canceled`, `Abandoned`, `Deleted`,
+`Inconsistent`) ; les échéances à venir d'un paiement en plusieurs fois ne comptent pas. Colonnes :
+Nom, Prénom, Email, Total, Impayé, Échéances refusées. Lu dans `helloasso_registrations`
+(paiements déjà recopiés), rien de plus en base.
+
+### 7.5 Vérification des dossiers
+
+Reprise de `helloasso/verification.py` de Sambo Admin. Pour chaque adhérent : contrôles sans
+modèle (document manquant, date de naissance illisible, fichier illisible), puis un seul appel au
+modèle avec la photo, le certificat médical, l'autorisation parentale (mineurs) et les réponses.
+Résultat gardé en base : OK, problème (raisons) ou erreur, validé à la main, coût cumulé. Un
+dossier OK n'est plus revérifié.
+- Un nouvel adhérent est vérifié dès sa détection par la synchronisation ; en cas de problème,
+  mail au contact de l'école. Notification push « Nouvel adhérent » et pastille sur l'onglet.
+- Menu « Vérifier les adhérents » (Accès au Financier) : relance pour ceux qui ne sont pas OK,
+  coût cumulé affiché, rapport par mail.
+- « Valider le dossier » à la main, dans la fiche.
+
+**À décider par Seb avant de coder** : cette vérification envoie le certificat médical au modèle,
+alors que la règle de l'appli est que l'assistant ne voit jamais la santé des membres. Le
+certificat n'est pas enregistré. Possibilité : vérification éteinte par défaut, allumée par école.
+
+### 7.6 Contact
+
+- **Mail** : destinataire (email du payeur), copie, objet, message, messages préenregistrés avec
+  `{prénom}` et `{nom}`, journal des mails envoyés (envoyé ou échec), compteur sur le bouton.
+- **SMS** : préparé dans l'appli SMS du téléphone ; l'appli sait qu'il a été préparé, pas qu'il est
+  parti. Messages préenregistrés, journal, compteur. Pas de bouton SMS sur ordinateur.
+L'envoi passe par le service email du core, avec réponse vers l'adresse de l'école.
+
+### 7.7 Résilier une adhésion
+
+Seule action qui écrit chez HelloAsso (`POST /v5/orders/{id}/cancel`, droit RefundManagement de
+la clé). Elle porte sur **toute la commande** (une fratrie entière), annule les échéances à venir,
+ne rembourse rien, et ne se défait pas. Écran repris de Sambo Admin : aperçu obligatoire (qui est
+dans la commande, ce qui est déjà encaissé et ne sera pas remboursé, combien d'échéances seront
+annulées), puis « Résilier l'adhésion » / « Résilier les n adhésions ». Ici la règle « Annuler
+plutôt que confirmer » ne s'applique pas : HelloAsso ne revient pas en arrière. Droit Accès au
+Financier.
+
+### 7.8 Statistiques de la saison
+
+Majeurs et mineurs, prix moyen, encaissements arrivés et à venir mois par mois, solde actuel,
+projection de fin de saison. Dépend des comptes de l'école dans le Financier (versements
+HelloAsso vus à la banque) : dernière étape.
+
+### 7.9 Données
+
+`helloasso_registrations` gagne l'état résilié. Nouvelles tables, toutes par organisation et
+rangées sous l'identifiant HelloAsso de l'adhésion : `helloasso_checks` (vérification),
+`helloasso_mails`, `helloasso_sms`, `helloasso_templates`. Reprise du journal de Sambo Admin par
+une commande `python -m app.<commande>` que Seb lance sur le VPS.
+
+### 7.10 Bascule et risques
+
+Sambo Admin reste en production pendant la reprise et s'arrête sur demande de Seb, une fois chaque
+fonction de l'inventaire (étude, partie 6) retrouvée sur ASC La Ciotat. Pendant ce temps :
+notifications et vérification automatique allumées dans l'appli seulement quand Sambo Admin les
+éteint (sinon tout est fait deux fois) ; première synchronisation d'ASC avec un compte rendu avant
+de l'appliquer (fiches déjà créées à la main, doublons à fusionner) ; tests « Le Beausset
+inchangé » à chaque PR.
+
+### 7.11 Étapes (chacune une PR, sur le « vas-y » de Seb)
+
+5. Totalement esclave : verrou de création, adhésions résiliées, colonnes Montant, Code promo,
+   Photo, Statut HelloAsso, filtres par âge, fiche.
+6. Colonnes et boutons déclarés par les modules (`core.md` §11.1).
+7. Impayés HelloAsso.
+8. Contact (mail, SMS, messages préenregistrés) et Résilier.
+9. Vérification des dossiers, notification « Nouvel adhérent » (après la décision du §7.5).
+10. Statistiques de la saison.
+Le module FFST (`modules/ffst.md`) s'intercale après l'étape 6.

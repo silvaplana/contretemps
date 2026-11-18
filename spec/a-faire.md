@@ -16,6 +16,10 @@ module. Rayer ce qui est fait.
 - Socle par saison (`core.md` §13) : groupes, droits, cours = groupes, champs des membres, famille
   par l'email du payeur, création de saison en un écran, tarifs, HelloAsso (`modules/helloasso.md`),
   formulaire d'inscription de l'appli (à concevoir).
+- Reprise de Sambo Admin dans Assofight pour ASC La Ciotat (Seb, 18 novembre) : adhérents entièrement
+  imposés par HelloAsso, tableau, impayés, contact, résiliation (`modules/helloasso.md` §7) et module
+  FFST (`modules/ffst.md`). À spécifier ensuite, chacun dans son fil : module Essai et client mail de
+  la Messagerie.
 - Saisons en module optionnel (fil du 24 octobre).
 - Signature de documents : retours de Seb après ses tests (`modules/signature-documents.md`).
 - `SPEC.md` à réduire à ce qui est propre à Contretemps.
@@ -37,6 +41,8 @@ module. Rayer ce qui est fait.
 
 - Mot pour « membre + compte de connexion ».
 - SMS : prestataire (Brevo proposé). Certificat médical : jamais enregistré.
+- Vérification des dossiers HelloAsso : elle envoie le certificat médical au modèle
+  (`modules/helloasso.md` §7.5).
 - Conversations de l'assistant en base (aujourd'hui en mémoire du serveur).
 
 ## Rappels pour qui reprend
