@@ -1,4 +1,5 @@
 import HelloAssoCampagne from './HelloAssoCampagne.jsx'
+import HelloAssoEditionSaison from './HelloAssoEditionSaison.jsx'
 import HelloAssoReglages from './HelloAssoReglages.jsx'
 import HelloAssoTarifs from './HelloAssoTarifs.jsx'
 import Impayes from './Impayes.jsx'
@@ -11,7 +12,8 @@ import * as api from './api.js'
 // campagne de la saison (`memberFields`) ; une saison imposée par la
 // campagne, le tableau des adhérents (`memberList`) et ses colonnes
 // (`memberColumns`, adherents.jsx) ; « Impayés HelloAsso » à côté des
-// adhérents (`adminTabs`).
+// adhérents (`adminTabs`) ; le choix de la saison dans « Éditer la saison »
+// (`seasonEditor`).
 export default {
   key: 'helloasso',
   tabs: [],
@@ -22,6 +24,7 @@ export default {
   },
   memberFields: HelloAssoCampagne,
   seasonPrices: HelloAssoTarifs,
+  seasonEditor: HelloAssoEditionSaison,
   memberList,
   memberColumns,
   adminTabs: [{ value: 'helloasso-impayes', label: 'Impayés HelloAsso', Ecran: Impayes }],

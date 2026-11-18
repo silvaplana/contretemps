@@ -4,11 +4,16 @@ import * as saisonsApi from '../../api/saisons.js'
 import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
 import CreerSaison from './CreerSaison.jsx'
+import { MODULES } from '../../app/modules.js'
+
+// Les blocs des modules sous les dates (`seasonEditor`, ex. la campagne
+// HelloAsso de la saison) : saison en cours seulement.
+const BLOCS = MODULES.filter((m) => m.seasonEditor)
 
 // Panneau "Éditer la saison" (spec §2.6 et §5.1.1) : nom et dates de la
 // saison affichée, courante ou ouverte aux modifications. La création est
 // un écran à part (CreerSaison.jsx).
-function PanneauSaison({ saison, onValider, onClose }) {
+function PanneauSaison({ ecoleId, saison, onValider, onClose }) {
   const [champs, setChamps] = useState({ nom: saison.nom, dateDebut: saison.dateDebut, dateFin: saison.dateFin })
   const [erreur, setErreur] = useState(null)
   const [enCours, setEnCours] = useState(false)
@@ -65,6 +70,7 @@ function PanneauSaison({ saison, onValider, onClose }) {
           onChange={(e) => setChamps((c) => ({ ...c, dateFin: e.target.value }))}
         />
       </div>
+      {saison.courante && BLOCS.map((m) => <m.seasonEditor key={m.key} ecoleId={ecoleId} />)}
 
       {erreur && <p className="login-screen__erreur">{erreur}</p>}
     </Modal>
@@ -302,7 +308,7 @@ export default function SaisonsSection({ ecoleId, documents, peutOuvrir, onSaiso
         />
       )}
       {panneau === 'edition' && modifiable && (
-        <PanneauSaison saison={affichee} onValider={editer} onClose={() => setPanneau(null)} />
+        <PanneauSaison ecoleId={ecoleId} saison={affichee} onValider={editer} onClose={() => setPanneau(null)} />
       )}
     </section>
   )

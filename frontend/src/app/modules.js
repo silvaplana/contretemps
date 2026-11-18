@@ -5,7 +5,9 @@
 // d'onglet (`tabs: []`) et porter des réglages (`settings` : composant
 // affiché sur sa ligne de Fonctionnalités) et un bloc en tête de la fiche
 // d'un membre (`memberFields`, voir ChampsMembres.jsx), et des tarifs
-// imposés qui remplacent les nôtres (`seasonPrices`, voir Tarifs.jsx), et
+// imposés qui remplacent les nôtres (`seasonPrices`, voir Tarifs.jsx), un
+// bloc sous les dates de « Éditer la saison » (`seasonEditor` : { ecoleId },
+// saison en cours, voir SaisonsSection.jsx), et
 // les membres de la saison quand c'est lui qui les apporte (`memberList` :
 // ses colonnes, le verrou de création, sa part de la fiche ; voir
 // AdminEleves.jsx et listeImposee ci-dessous), et ses colonnes et boutons
