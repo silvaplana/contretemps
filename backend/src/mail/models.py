@@ -1,4 +1,4 @@
-"""Table `mail_accounts` : la boîte Gmail d'une organisation (une ligne au
+"""Table `mail_accounts` : la boîte mail d'une organisation (une ligne au
 plus). Le mot de passe d'application est chiffré (securite/chiffrement.py).
 Aucun mail n'est gardé en base (spec/modules/mail.md §9)."""
 
@@ -20,6 +20,8 @@ class MailAccount(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     organization_id: Mapped[int] = mapped_column(ForeignKey("ecoles.id"), nullable=False, unique=True)
     address: Mapped[str] = mapped_column(String(255), nullable=False)
+    # « gmail » ou « infomaniak » (mail/gmail.py, PROVIDERS).
+    provider: Mapped[str] = mapped_column(String(20), nullable=False, default="gmail", server_default="gmail")
     app_password_encrypted: Mapped[str] = mapped_column(Text, nullable=False)
     connected_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)
     # Google a refusé le mot de passe (changé ou révoqué) : bandeau

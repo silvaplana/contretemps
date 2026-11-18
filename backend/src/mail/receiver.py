@@ -7,6 +7,7 @@ thread à part."""
 from __future__ import annotations
 
 from collections.abc import Callable
+from typing import Literal
 from datetime import datetime
 from urllib.parse import quote
 
@@ -27,16 +28,20 @@ RIGHT = "mail.read"
 class ConnectIn(BaseModel):
     address: str = Field(min_length=3, max_length=255, pattern=r"^\s*[^@\s]+@[^@\s]+\.[^@\s]+\s*$")
     code: str = Field(min_length=1, max_length=100)
+    provider: Literal["gmail", "infomaniak"] = "gmail"
 
 
 class StatusOut(BaseModel):
     connected: bool
     address: str | None = None
+    provider: str | None = None
     connected_at: datetime | None = None
     # Google a coupé l'accès : bandeau « Reconnecter ».
     cut: bool = False
     # Administrateur principal (ou Super User) : connecter, déconnecter.
     can_connect: bool = False
+    # Droit « Boîte mail du club » : puce Mail dans Messages.
+    can_read: bool = False
 
 
 class FlagsIn(BaseModel):
@@ -61,14 +66,27 @@ class BulkIn(BaseModel):
 
 def _reader(ecole_id: int, appelant: Compte | None = Depends(rbac.compte_appelant)) -> None:
     rbac.require_membre(appelant, ecole_id)
-    if appelant is not None and not roles.has_right(appelant, RIGHT):
+    if not _can_read(appelant):
         raise HTTPException(status_code=403, detail="Réservé aux personnes qui ont le droit « Boîte mail du club »")
 
 
 def _owner(ecole_id: int, appelant: Compte | None = Depends(rbac.compte_appelant)) -> None:
-    _reader(ecole_id, appelant)
-    if appelant is not None:
+    """Connecter, déconnecter : Admin › Fonctionnalités, ligne Mail (Seb,
+    18 novembre), sans avoir besoin du droit de lire les mails."""
+    rbac.require_membre(appelant, ecole_id)
+    if appelant is not None and not roles.is_superuser(appelant):
         rbac.require_owner(appelant, ecole_id)
+
+
+def _reader_or_owner(ecole_id: int, appelant: Compte | None = Depends(rbac.compte_appelant)) -> None:
+    if _can_connect(appelant):
+        rbac.require_membre(appelant, ecole_id)
+    else:
+        _reader(ecole_id, appelant)
+
+
+def _can_read(appelant: Compte | None) -> bool:
+    return appelant is None or roles.has_right(appelant, RIGHT)
 
 
 def _can_connect(appelant: Compte | None) -> bool:
@@ -78,7 +96,7 @@ def _can_connect(appelant: Compte | None) -> bool:
 class MailReceiver:
     def __init__(self, connection: Connection, app: FastAPI) -> None:
         self.connection = connection
-        app.get("/ecoles/{ecole_id}/mail", response_model=StatusOut, dependencies=[Depends(_reader)])(self.status)
+        app.get("/ecoles/{ecole_id}/mail", response_model=StatusOut, dependencies=[Depends(_reader_or_owner)])(self.status)
         owner = [Depends(_owner)]
         app.put("/ecoles/{ecole_id}/mail", response_model=StatusOut, dependencies=owner)(self.connect)
         app.delete("/ecoles/{ecole_id}/mail", status_code=204, dependencies=owner)(self.disconnect)
@@ -97,10 +115,10 @@ class MailReceiver:
     def _status(self, db: Session, ecole_id: int, appelant: Compte | None) -> StatusOut:
         account = self.connection.account(db, ecole_id)
         if account is None:
-            return StatusOut(connected=False, can_connect=_can_connect(appelant))
+            return StatusOut(connected=False, can_connect=_can_connect(appelant), can_read=_can_read(appelant))
         return StatusOut(
-            connected=True, address=account.address, connected_at=account.connected_at,
-            cut=account.cut_at is not None, can_connect=_can_connect(appelant),
+            connected=True, address=account.address, provider=account.provider, connected_at=account.connected_at,
+            cut=account.cut_at is not None, can_connect=_can_connect(appelant), can_read=_can_read(appelant),
         )
 
     def status(self, ecole_id: int, db: Session = Depends(get_db), appelant: Compte | None = Depends(rbac.compte_appelant)):
@@ -111,7 +129,7 @@ class MailReceiver:
         appelant: Compte | None = Depends(rbac.compte_appelant),
     ):
         try:
-            self.connection.connect(db, ecole_id, data.address, data.code)
+            self.connection.connect(db, ecole_id, data.address, data.code, data.provider)
         except MailRefused as erreur:
             raise HTTPException(status_code=422, detail=str(erreur)) from None
         except MailError as erreur:

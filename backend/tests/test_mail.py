@@ -23,9 +23,9 @@ def gmail(monkeypatch):
 
     appels = []
 
-    def check(address, password):
+    def check(address, password, provider="gmail"):
         appels.append((address, password))
-        if password != "abcdefghijklmnop":
+        if password not in ("abcdefghijklmnop", "MotPasseInfomaniak16+"):
             raise MailRefused(REFUSED)
 
     monkeypatch.setattr(main.core.mail_connection, "check", check)
@@ -95,10 +95,13 @@ def test_droit_boite_mail_du_club(client, db_session, ecole, gmail):
     assert client.get(url, headers=entetes_session(proprietaire)).status_code == 404
     activation.set_enabled(db_session, ecole.id, main.MODULES, "mail", True)
 
-    # Sans le droit, personne ne voit la boîte (pas même l'Administrateur principal).
-    for qui in (proprietaire, admin, eleve):
+    # Sans le droit, personne ne voit les mails (pas même l'Administrateur
+    # principal) ; lui connecte la boîte depuis Fonctionnalités sans le droit.
+    for qui in (admin, eleve):
         assert client.get(url, headers=entetes_session(qui)).status_code == 403
-    assert client.put(url, json=CONNEXION, headers=entetes_session(proprietaire)).status_code == 403
+    etat = client.get(url, headers=entetes_session(proprietaire)).json()
+    assert (etat["can_connect"], etat["can_read"]) == (True, False)  # pas de puce Mail
+    assert client.get(f"{url}/messages", headers=entetes_session(proprietaire)).status_code == 403
 
     for qui in (proprietaire, admin):
         rights.add(db_session, qui, "mail.read")
@@ -177,8 +180,9 @@ def boite(client, ecole, gmail, monkeypatch):
 
     boites = []
 
-    def webmail(address, password):
+    def webmail(address, password, provider="gmail"):
         boites.append(FakeWebmail(address, password))
+        boites[-1].provider = provider
         return boites[-1]
 
     monkeypatch.setattr(main.core.mail_connection, "webmail", webmail)
@@ -234,3 +238,28 @@ def test_google_coupe_l_acces(client, ecole, boite):
 def test_pas_de_boite_pas_de_mails(client, ecole):
     assert client.get(f"/ecoles/{ecole.id}/mail/messages").status_code == 409
     assert client.get(f"/ecoles/{ecole.id}/mail/unread").json() == {"unread": 0}
+
+
+def test_boite_infomaniak(client, db_session, ecole, gmail, monkeypatch):
+    """Seb, 18 novembre : une boîte Infomaniak (ik.me) se connecte aussi,
+    sur le serveur d'Infomaniak."""
+    from app import main
+    from mail import MailAccount
+    from mail.gmail import PROVIDERS
+
+    clients = []
+    monkeypatch.setattr(
+        main.core.mail_connection, "webmail", lambda a, p, provider: clients.append((a, p, provider)) or FakeWebmail(a, p)
+    )
+    url = f"/ecoles/{ecole.id}/mail"
+    infomaniak = {"address": "club@ik.me", "code": " MotPasseInfomaniak16+ ", "provider": "infomaniak"}
+    etat = client.put(url, json=infomaniak).json()
+    assert (etat["address"], etat["provider"]) == ("club@ik.me", "infomaniak")
+    assert gmail[-1] == ("club@ik.me", "MotPasseInfomaniak16+")
+    assert db_session.query(MailAccount).one().provider == "infomaniak"
+    client.get(f"{url}/unread")
+    assert clients == [("club@ik.me", "MotPasseInfomaniak16+", "infomaniak")]
+    assert PROVIDERS["infomaniak"].imap_host == PROVIDERS["infomaniak"].smtp_host == "mail.infomaniak.com"
+    assert client.put(url, json={**infomaniak, "provider": "orange"}).status_code == 422
+    # Sans fournisseur : Gmail, comme avant.
+    assert client.put(url, json=CONNEXION).json()["provider"] == "gmail"

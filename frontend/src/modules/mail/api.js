@@ -1,6 +1,7 @@
 // Sous-module Mail (spec/modules/mail.md) — voir backend/src/mail/. L'état
-// de la boîte : droit « Boîte mail du club » ; connecter et déconnecter :
-// l'Administrateur principal qui a ce droit. Vérifié par le serveur.
+// de la boîte : droit « Boîte mail du club », ou Administrateur principal ;
+// connecter et déconnecter (Fonctionnalités) : l'Administrateur principal.
+// Vérifié par le serveur.
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
@@ -19,18 +20,20 @@ async function requete(chemin, options = {}) {
   return reponse.status === 204 ? null : reponse.json()
 }
 
-// → { connected, address, connected_at, cut, can_connect }
+// → { connected, address, provider, connected_at, cut, can_connect, can_read }
 export const etat = (ecoleId) => requete(`/ecoles/${ecoleId}/mail`)
 // → l'état, une fois que Google a accepté le code.
-export const connecter = (ecoleId, address, code) =>
-  requete(`/ecoles/${ecoleId}/mail`, { method: 'PUT', body: JSON.stringify({ address, code }) })
+export const connecter = (ecoleId, address, code, provider) =>
+  requete(`/ecoles/${ecoleId}/mail`, { method: 'PUT', body: JSON.stringify({ address, code, provider }) })
 export const deconnecter = (ecoleId) => requete(`/ecoles/${ecoleId}/mail`, { method: 'DELETE' })
 
 // L'état, ou null quand la personne ne voit pas la puce Mail (sous-module
 // éteint : 404 ; pas le droit : 403).
 export async function etatOuRien(ecoleId) {
   try {
-    return await etat(ecoleId)
+    const lu = await etat(ecoleId)
+    // L'Administrateur principal lit l'état sans le droit (Fonctionnalités).
+    return lu.can_read ? lu : null
   } catch (e) {
     if (e.status === 403 || e.status === 404) return null
     throw e
