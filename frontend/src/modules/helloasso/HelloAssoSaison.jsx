@@ -37,6 +37,8 @@ export default function HelloAssoSaison({ ecoleId, onChange, onToast }) {
   const [mode, setMode] = useState(null)
   const [formulaires, setFormulaires] = useState(null)
   const [erreur, setErreur] = useState('')
+  // La liste des campagnes n'a pas pu être lue chez HelloAsso.
+  const [erreurListe, setErreurListe] = useState('')
   const [synchro, setSynchro] = useState('')
 
   async function relire() {
@@ -51,8 +53,14 @@ export default function HelloAssoSaison({ ecoleId, onChange, onToast }) {
     relire().catch((e) => setErreur(e.message))
     api
       .campagne(ecoleId)
-      .then((c) => setFormulaires(c.forms))
-      .catch(() => setFormulaires([]))
+      .then((c) => {
+        setFormulaires(c.can_change ? c.forms : null)
+        setErreurListe(c.error ?? '')
+      })
+      .catch((e) => {
+        setFormulaires([])
+        setErreurListe(e.message)
+      })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ecoleId])
 
@@ -129,6 +137,10 @@ export default function HelloAssoSaison({ ecoleId, onChange, onToast }) {
             </option>
           ))}
         </select>
+        {erreurListe && <p className="login-screen__erreur">{erreurListe}</p>}
+        {!erreurListe && formulaires?.length === 0 && (
+          <p className="muted">Aucune campagne d’adhésion ou d’événement trouvée sur HelloAsso.</p>
+        )}
         {lu.form && (
           <>
             <ul className="helloasso__liste">
