@@ -20,8 +20,9 @@ Aucun mail n'est copié en base.
 - **Admin › École › Personnalisation › Fonctionnalités** : ligne **Mail**, en retrait sous
   Messagerie, « La boîte Gmail du club, lue et envoyée depuis Messages ». Allumer Mail allume la
   Messagerie (`requires`).
-- **Admin › École › Administrateurs** : colonne **🔒 Boîte mail du club**, visible seulement si
-  Mail est allumé (§3).
+- **Admin › École › Administrateurs** : groupe **🔒 Boîte mail du club**, coché dans la colonne
+  Groupes comme « Accès au Financier » (le mécanisme existant des droits, à la place de la colonne
+  à part de la maquette), visible seulement si Mail est allumé (§3).
 - **Messages** : en haut, deux puces **Chat | Mail**, seulement pour qui a le droit. Les autres
   voient la Messagerie comme aujourd'hui, sans puce. Le mot reste « Chat » pour la messagerie
   instantanée, jamais « Discussions » (Seb, 18 novembre).
@@ -131,5 +132,9 @@ Messagerie. `guide.md` du module mis à jour dans la même PR que les écrans.
 ## 12. Étapes (chacune une PR, sur le « vas-y » de Seb)
 
 1. Module, case Fonctionnalités, droit, table `mail_accounts` et écran de connexion (§2 à §4, §9).
+   **Fait (18 novembre 2026)** : `Module(enabled_by_default=False)`, comme HelloAsso et FFST (pas de ligne `org_modules` =
+   éteint, aussi pour les écoles créées ensuite) ; la migration l'allume dans les écoles de nature
+   « combat » (ASC, Seb 18 novembre). Écran : la boîte connectée affiche son adresse, la liste vient
+   à l'étape 2.
 2. La boîte et un mail (§5, §6).
 3. Écrire, répondre, transférer, pièces jointes, Annuler 10 s (§7, §8).
