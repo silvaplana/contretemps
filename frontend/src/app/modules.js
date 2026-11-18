@@ -8,8 +8,10 @@
 // imposés qui remplacent les nôtres (`seasonPrices`, voir Tarifs.jsx), et
 // les membres de la saison quand c'est lui qui les apporte (`memberList` :
 // ses colonnes, le verrou de création, sa part de la fiche ; voir
-// AdminEleves.jsx et listeImposee ci-dessous). Les onglets du core (Admin,
-// Supervision, Profil) sont dans data/nav.js.
+// AdminEleves.jsx et listeImposee ci-dessous), et ses colonnes et boutons
+// dans le tableau des membres (`memberColumns`, voir colonnesModules
+// ci-dessous). Les onglets du core (Admin, Supervision, Profil) sont dans
+// data/nav.js.
 import choregraphies from '../modules/choregraphies/module.js'
 import documents from '../modules/documents/module.js'
 import finances from '../modules/finances/module.js'
@@ -23,12 +25,32 @@ import sessionClips from '../modules/session-clips/module.js'
 export const MODULES = [publications, presence, choregraphies, messagerie, documents, finances, sessionClips, helloasso]
 
 // Le module qui impose les membres de la saison affichée (HelloAsso,
-// spec/modules/helloasso.md §7) : { liste: son `memberList`, donnees }, ou
+// spec/modules/helloasso.md §7) : { module, liste: son `memberList`, donnees }, ou
 // null (le tableau de l'école, comme toujours).
 export async function listeImposee(ecoleId) {
   for (const m of MODULES.filter((x) => x.memberList)) {
     const donnees = await m.memberList.charger(ecoleId)
-    if (donnees) return { liste: m.memberList, donnees }
+    if (donnees) return { module: m.key, liste: m.memberList, donnees }
   }
   return null
+}
+
+// Les colonnes et boutons que les modules ajoutent au tableau d'Admin >
+// Élèves (spec/core.md §11.1) : chaque `memberColumns` lit ses données
+// (`charger` → { members: { [fiche]: ligne } }, ou null : rien à montrer,
+// module éteint compris) ; chaque colonne reçoit `ligne(ficheId)`.
+export async function colonnesModules(ecoleId) {
+  const lus = await Promise.all(
+    MODULES.filter((m) => m.memberColumns).map(async (m) => ({ m, donnees: await m.memberColumns.charger(ecoleId) })),
+  )
+  return lus
+    .filter(({ donnees }) => donnees)
+    .flatMap(({ m, donnees }) =>
+      m.memberColumns.colonnes.map((c) => ({ ...c, module: m.key, ligne: (ficheId) => donnees.members[ficheId] })),
+    )
+}
+
+// « Rafraîchir » relit aussi ce que les modules montrent (listes FFST…).
+export function rafraichirColonnes(ecoleId) {
+  return Promise.all(MODULES.filter((m) => m.memberColumns?.rafraichir).map((m) => m.memberColumns.rafraichir(ecoleId)))
 }

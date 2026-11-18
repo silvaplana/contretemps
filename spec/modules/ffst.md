@@ -104,7 +104,7 @@ table de licences à nous.
 
 Chromium est déjà dans l'image du backend (PDF). Playwright (Python) est à ajouter aux dépendances ;
 à vérifier qu'il utilise le Chromium installé sans toucher au Dockerfile, sinon demander à Seb.
-Colonne et boutons déclarés par `module.py` (`core.md` §11.1).
+Colonne et boutons déclarés côté écran, `memberColumns` du `module.js` (`core.md` §11.1, `modules/helloasso.md` étape 6).
 
 ## 10. Étapes (chacune une PR, sur le « vas-y » de Seb)
 
