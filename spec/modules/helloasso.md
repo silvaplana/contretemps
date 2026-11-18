@@ -1,6 +1,6 @@
 # AppBase — Module `helloasso`
 
-Version 1.3 du 18 novembre 2026 (§8.5 : étape 11 faite ; §8 : deux façons d'utiliser HelloAsso par saison, paiement par carte avec les clés de l'école ; §7 : adhérents entièrement imposés par HelloAsso, tableau repris de Sambo Admin, impayés, vérification, contact, résiliation). Décisions de Seb des 23, 26 et 27 octobre et du 18 novembre 2026. Repris de Sambo Admin
+Version 1.4 du 18 novembre 2026 (§7.11 : étape 6 faite ; §8.5 : étape 11 faite ; §8 : deux façons d'utiliser HelloAsso par saison, paiement par carte avec les clés de l'école ; §7 : adhérents entièrement imposés par HelloAsso, tableau repris de Sambo Admin, impayés, vérification, contact, résiliation). Décisions de Seb des 23, 26 et 27 octobre et du 18 novembre 2026. Repris de Sambo Admin
 (`silvaplana/test-python`, `backend/src/helloasso/`), qui lit HelloAsso en direct sans base ; ici on
 recopie en base et on synchronise. Maquette de la connexion :
 https://claude.ai/artifact/FhTWcRKXpVfdf9toaTSeXS. Socle : `spec/core.md` §4.3 et §9.3.
@@ -193,8 +193,8 @@ Toucher une ligne ouvre la fiche (§7.3). Menu ⋮ : « Statistiques des adhére
 (§7.8), « Vérifier les adhérents », « Masquer / Afficher les photos ». L'école peut toujours
 masquer ou réordonner les colonnes (« Affichage dans Admin », `core.md` §4.3).
 
-Ces colonnes et boutons sont déclarés par les modules (`columns` et `buttons` de `module.py`,
-`core.md` §11.1, pas encore codé) : c'est la première étape de code.
+Ces colonnes et boutons sont déclarés par les modules, côté écran (`memberColumns` de `module.js`,
+`core.md` §11.1 ; étape 6).
 
 Écarts avec Sambo Admin, validés par Seb le 18 novembre : jamais « IA » à l'écran (« Vérification »,
 « Vérifier les adhérents ») ; « Processed » devient « Validé HelloAsso » ; texte ≥ 17 px et boutons
@@ -325,7 +325,19 @@ Le module FFST (`modules/ffst.md`) s'intercale après l'étape 6.
 - *Écarts* : Nom et Prénom restent dans une seule colonne « Adhérent » (colonne du core) ; Vérification,
   Statut FFST, Actions FFST, Contact, Adhésion, les messages envoyés et le menu « Statistiques » /
   « Vérifier les adhérents » viennent avec les étapes 6 à 10. Le branchement `memberList` est le
-  début de l'étape 6 côté écran ; `columns` / `buttons` de `module.py` restent à faire.
+  début de l'étape 6 côté écran.
+
+**Fait (étape 6, 18 novembre 2026)** : les colonnes et boutons des modules dans le tableau d'Admin >
+Élèves (`core.md` §11.1). Décision : ils se déclarent côté écran, `memberColumns` du `module.js`
+(`charger`, `colonnes`, `rafraichir`), et non dans `module.py` : leurs valeurs viennent des routes
+du module, avec leurs droits ; le core n'a ni table ni route de plus. `app/modules.js`
+(`colonnesModules`, `rafraichirColonnes`) les rassemble pour le tableau, l'appui long et
+« Affichage dans Admin » ; une cellule de nature Bouton reçoit `relire` pour relire le tableau
+après son action ; « Rafraîchir » appelle aussi le `rafraichir` de chaque module. HelloAsso y
+range ses quatre colonnes (Montant, Code promo, Photo, Statut HelloAsso) ; `memberList` garde le
+verrou, le compte, les filtres, le menu et la fiche. Sans affichage enregistré d'une saison imposée,
+les colonnes d'un autre module (Statut FFST, Actions FFST) s'affichent après l'ordre de Sambo Admin.
+Rien ne change à l'écran tant qu'aucun autre module ne déclare de colonne.
 
 ## 8. Deux façons d'utiliser HelloAsso, par saison (Seb, 18 novembre 2026)
 

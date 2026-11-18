@@ -34,14 +34,16 @@ export const COLONNES = [
 
 // Toutes les colonnes, dans l'ordre choisi : celles enregistrées d'abord,
 // puis celles qui manquent (nouveau champ, saison jamais réglée), affichées.
-// `imposee` (listeImposee de app/modules.js) : les colonnes du module qui
-// apporte les membres ; saison jamais réglée, seules celles de son
-// `ordreParDefaut` sont affichées, dans cet ordre.
-export function ordonner(enregistrees, champs, imposee = null) {
+// `modules` (colonnesModules de app/modules.js) : les colonnes et boutons
+// des modules. `imposee` (listeImposee) : le module qui apporte les
+// membres ; saison jamais réglée, ses colonnes et celles du core sont
+// celles de son `ordreParDefaut`, dans cet ordre, puis celles des autres
+// modules (Statut FFST…), affichées.
+export function ordonner(enregistrees, champs, imposee = null, modules = []) {
   const colonneDe = (c) => ({ key: `field:${c.id}`, label: c.label, nature: 'Saisi', champ: c })
   const connues = [
     ...COLONNES.flatMap((c) => (c.champ ? champs.filter((f) => f.key === c.champ).map(colonneDe) : [c])),
-    ...(imposee?.liste.colonnes ?? []).map((c) => ({ ...c, module: true })),
+    ...modules,
     ...champs.filter((f) => !f.key).map(colonneDe),
   ]
   const parCle = new Map(connues.map((c) => [c.key, c]))
@@ -50,7 +52,9 @@ export function ordonner(enregistrees, champs, imposee = null) {
     imposee && enregistrees.length === 0
       ? [
           ...defaut.map((key) => ({ key, shown: true })),
-          ...connues.filter((c) => !defaut.includes(c.key)).map((c) => ({ key: c.key, shown: false })),
+          ...connues
+            .filter((c) => !defaut.includes(c.key) && (!c.module || c.module === imposee.module))
+            .map((c) => ({ key: c.key, shown: false })),
         ]
       : enregistrees
   const resultat = []
