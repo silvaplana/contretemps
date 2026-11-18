@@ -4,7 +4,7 @@ la logique (création avec ses codes par défaut, etc.) vit dans ecoles.py.
 
 from datetime import date, datetime, timezone
 
-from sqlalchemy import Boolean, Date, DateTime, Float, Integer, String, Text, UniqueConstraint, event, text
+from sqlalchemy import Boolean, Date, DateTime, Float, Integer, JSON, String, Text, UniqueConstraint, event, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from db import Base
@@ -79,6 +79,10 @@ class Ecole(Base):
     # son nom dans la release (tournage-<apk_cle>.apk), fixé au premier « Oui ».
     appli_android: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("0"))
     apk_cle: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    # Ordre des onglets de la barre du bas, le même pour tout le monde dans
+    # l'école (Admin › École › Fonctionnalités ; Seb, 18/11/2026). Null :
+    # l'ordre de la liste des modules.
+    tab_order: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
     # Vocabulaire (Seb, 24 octobre) : les mots affichés à la place de
     # « École », « Élèves », « Profs » et « Cours ». Vide = ces mots-là.
     mot_ecole: Mapped[str | None] = mapped_column(String(30), nullable=True)

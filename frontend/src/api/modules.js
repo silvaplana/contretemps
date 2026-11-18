@@ -26,6 +26,16 @@ export function droits(ecoleId) {
   return requete(`/ecoles/${ecoleId}/droits`)
 }
 
+// Ordre des onglets de la barre du bas pour toute l'école (spec/core.md
+// §10.4) : liste de clés, [] = l'ordre des modules.
+export async function ordreOnglets(ecoleId) {
+  return (await requete(`/ecoles/${ecoleId}/tab-order`)).tab_order
+}
+
+export async function rangerOnglets(ecoleId, ordre) {
+  return (await requete(`/ecoles/${ecoleId}/tab-order`, { method: 'PUT', body: JSON.stringify({ tab_order: ordre }) })).tab_order
+}
+
 // Renvoie la liste à jour (allumer un module allume aussi ceux dont il a besoin).
 export function changer(ecoleId, key, enabled) {
   return requete(`/ecoles/${ecoleId}/modules/${key}`, { method: 'PUT', body: JSON.stringify({ enabled }) })
