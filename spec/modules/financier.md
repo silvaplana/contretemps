@@ -209,6 +209,9 @@ Tous | Brouillon | Validé | Officiel, liste des bilans (nom, état, modèle, co
 **Par catégorie** (avec écart) ou **Par mois** (le modèle du trésorier) ; téléchargement **Excel** et
 **PDF**. Un seul bilan Officiel par saison : passer un bilan en Officiel ramène l'ancien en Validé.
 
+Sous le graphique et ses boutons de téléchargement : la ligne dépliable **« Opérations prévues
+(N) »**, fermée par défaut (§6.4).
+
 Laissé de côté de Sambo Admin : réordonnancement des cartes, consignes enregistrées ; pas de fichier
 Docs (décision de Seb : les produits seront rangés dans Docs › Financier plus tard).
 
@@ -256,6 +259,9 @@ PowerPoint modifié**. Un seul PowerPoint officiel par saison.
 
 *(Contretemps)* L'image Docker n'a que LibreOffice Writer et Calc : ajouter
 `libreoffice-impress-nogui` au `backend/Dockerfile` pour les images des diapos (à faire par Seb).
+Sous le graphique et ses boutons de téléchargement : la ligne dépliable **« Opérations prévues
+(N) »**, fermée par défaut (§6.4).
+
 Laissé de côté de Sambo Admin : réordonnancement des cartes, consignes enregistrées.
 
 ### 5.3 Données et routes
@@ -280,12 +286,16 @@ l'organisation, semaine par semaine, d'une date de départ jusqu'à la fin de la
   dernier jour connu des comptes, au plus aujourd'hui ; saison terminée : une date est obligatoire,
   pour tester le prévisionnel sur le passé), solde au début de la saison, semaines jusqu'à la fin
   de saison (avec les mois qui commencent), ce qui est déjà passé sur le mois en cours, les 12 mois
-  précédents par catégorie et leur moyenne mensuelle. Pas d'inscrits ni d'échéances de paiement
-  (Sambo Admin les lisait dans HelloAsso) : le modèle fait sans.
+  précédents par catégorie et leur moyenne mensuelle. **Échéances HelloAsso à venir** (§6.4) :
+  quand le module HelloAsso est allumé, les paiements en plusieurs fois pas encore encaissés de la
+  saison, par date, passés par le port de l'appli hôte (`finances_contretemps/`) ; sinon rien, le
+  modèle fait sans. Pas d'inscrits.
 - **Produire le prévisionnel** : le modèle de langage (jamais nommé « IA » à l'écran) n'écrit
   aucun chiffre : il écrit une **formule Python** `prevoir(donnees, p)` d'après les consignes du
-  trésorier et déclare ses **curseurs** (nom, libellé, min, max, défaut, pas, unité), avec une
-  explication en quelques phrases. **L'appli vérifie la formule** (une seule fonction, imports
+  trésorier et déclare ses **curseurs** (nom, libellé, min, max, défaut, pas, unité) et ses
+  **hypothèses** (§6.4), avec une explication en quelques phrases. La formule rend la **liste des
+  opérations futures** (§6.4) ; **l'appli en tire la courbe** (solde de départ + cumul, une valeur
+  par semaine), si bien que le graphique et le tableau ne peuvent pas se contredire. **L'appli vérifie la formule** (une seule fonction, imports
   limités à `math` et `datetime`, ni fichier, ni réseau, ni nom ou attribut commençant par `_`) et
   **l'exécute à part** (processus séparé, `python -I`, garde-fous d'audit, délai maximal). Une
   formule refusée ou en erreur est renvoyée une fois au modèle pour correction.
@@ -307,6 +317,9 @@ en pointillés, réel après le départ quand la date est passée, ligne d'équi
 saison), saisons précédentes superposées au choix (retenu sur l'appareil) ; téléchargement en
 **image** ou **PDF** avec les mêmes saisons.
 
+Sous le graphique et ses boutons de téléchargement : la ligne dépliable **« Opérations prévues
+(N) »**, fermée par défaut (§6.4).
+
 Laissé de côté de Sambo Admin : réordonnancement des cartes, consignes enregistrées, zones
 repliables mémorisées, inscrits HelloAsso.
 
@@ -316,6 +329,36 @@ Table `fin_forecasts` (mêmes colonnes que `fin_reports`, plus `start_date` et `
 position des curseurs ; résultat JSON : formule, explication, curseurs, données, courbe). Routes
 `GET|POST /finances/forecasts`, `GET|PUT|DELETE /finances/forecasts/{id}`, `POST …/{id}/run`,
 `PUT …/{id}/params`, `GET …/{id}/download?format=png|pdf&seasons=`.
+
+### 6.4 Opérations prévues et hypothèses (Seb, 18/11/2026)
+
+Maquette validée : https://claude.ai/artifact/Cpa2e2G1aFAKXB8hGppBEG. Le tableau sert à **rassurer
+le lecteur** : chaque chiffre de la courbe se retrouve sur une ligne, et chaque ligne dit sur quoi
+elle repose.
+
+- **Ce que rend la formule** : `prevoir(donnees, p)` renvoie une liste d'opérations
+  `{"date", "libelle", "categorie", "montant", "hypothese"}` entre le lendemain de la date de
+  départ et la fin de la saison (recettes positives, dépenses négatives, virements internes exclus).
+  `hypothese` vaut `null` pour une ligne **sûre**, sinon le code d'une hypothèse déclarée (`"H1"`…).
+  L'appli refuse (et renvoie une fois au modèle) une date hors période, un montant non numérique ou
+  un code d'hypothèse non déclaré.
+- **Sûr** : seulement les montants que l'appli connaît déjà, c'est-à-dire les **échéances HelloAsso
+  à venir** (`donnees["echeancesAVenir"]` : `[{"date", "montant", "libelle"}]`). Tout le reste est une
+  hypothèse, même un loyer qui revient chaque mois (« H5 : loyer identique aux 12 derniers mois »).
+- **Hypothèses** : déclarées par le modèle dans le même appel que la formule (pas d'appel en plus) :
+  `[{"code": "H1", "texte": "…"}]`, une phrase simple chacune. Une hypothèse qui dépend d'un curseur
+  écrit sa valeur entre accolades (`"Salaire du prof : {salaire} € par mois"`) : l'appli la remplace
+  par la position du curseur, donc la phrase suit le curseur sans rappeler le modèle.
+- **L'écran** (Financier › Prévisionnel › un prévisionnel) : sous le graphique, bouton dépliable
+  « Opérations prévues (N) », fermé par défaut. Ouvert : tableau **Date | Libellé (catégorie et
+  étiquette dessous) | Montant | Solde prévu**, une seule colonne de solde, tous comptes ensemble
+  (le prévisionnel ne sait pas sur quel compte tombe une opération). Première ligne : « Solde réel
+  à la date de départ » ; la dernière tombe sur le « Solde prévu » des trois chiffres. Étiquette
+  verte **Sûr** ou orange **H1**, **H2**… Sous le tableau, « Sur quoi reposent ces opérations » :
+  la définition de Sûr puis une ligne par hypothèse. Bouger un curseur met à jour graphique,
+  tableau et hypothèses ensemble.
+- **Prévisionnels déjà produits** : ils n'ont qu'un solde par semaine ; le tableau affiche « Produire
+  à nouveau le prévisionnel pour voir ses opérations ».
 
 ## 7. Actions de l'Assistant IA
 
