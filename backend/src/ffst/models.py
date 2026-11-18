@@ -5,6 +5,7 @@ site stays the only reference."""
 
 from datetime import datetime, timezone
 
+from sqlalchemy import true as sa_true
 from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -28,6 +29,13 @@ class FfstConnection(Base):
     connected_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)
     last_test_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     last_test_ok: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    # The school's settings (spec §2), hard-coded for ASC in Sambo Admin:
+    # discipline of a new request (« 0470-SAMBO »), birth town when the
+    # member's town is not found (empty: the school's town), « Droit à
+    # l'image » ticked on a new request.
+    discipline: Mapped[str] = mapped_column(String(60), nullable=False, default="", server_default="")
+    default_birth_town: Mapped[str] = mapped_column(String(100), nullable=False, default="", server_default="")
+    image_rights: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=sa_true())
 
 
 class FfstSnapshot(Base):

@@ -3,7 +3,7 @@
 Version 0.1 du 18 novembre 2026. Décisions de Seb du 18 novembre 2026. Repris de Sambo Admin
 (`silvaplana/test-python`, `backend/src/ffst/`, onglet Licences), à fonctions identiques. Étude :
 https://claude.ai/artifact/7HPSBAeGZ5YrE4jahT213a. Maquette validée par Seb le 18 novembre :
-https://claude.ai/artifact/4tizDZ6Br2WxGL5MYwSQfy. Étape 1 codée (§10).
+https://claude.ai/artifact/4tizDZ6Br2WxGL5MYwSQfy. Étapes 1 et 2 codées (§10).
 
 ## 1. Ce que fait le module
 
@@ -57,7 +57,8 @@ Colonne **Actions FFST**, mêmes boutons que Sambo Admin :
 - Pendant l'action : « Le portail FFST est piloté automatiquement : ça peut prendre jusqu'à
   30 secondes » ; puis l'erreur ou l'avertissement sous le bouton.
 
-Une demande pilote un vrai navigateur (Playwright, Chromium), une seule à la fois :
+Une demande pilote un vrai navigateur (Playwright, Chromium), une seule à la fois, pendant la
+demande (comme Sambo Admin, et non par le worker : décision de l'étape 2) :
 1. relire le site ; refuser si la personne est déjà en brouillon, validée ou licenciée ;
 2. chercher l'ancien licencié par nom et prénom : un seul trouvé = renouvellement, coordonnées
    remplacées par celles de HelloAsso (un champ vide garde l'ancienne valeur) ; plusieurs = refus,
@@ -98,7 +99,7 @@ table de licences à nous.
 | Deux connexions simultanées du même compte, mal supportées par le site | une action à la fois ; lectures rares grâce à la copie |
 | Refus silencieux du site | vérification du message de confirmation (§5) |
 | Aucun accord connu de la FFST pour cet usage automatique | à l'appréciation de Seb ; volume d'un bénévole |
-| Un navigateur occupe le serveur 30 secondes | fait par le worker, pas par le serveur principal |
+| Un navigateur occupe le serveur 30 secondes | une action à la fois ; pendant la demande comme Sambo Admin, dans un fil à part du serveur (les autres écrans restent servis) |
 
 ## 9. Technique
 
@@ -133,6 +134,32 @@ Colonne et boutons déclarés côté écran, `memberColumns` du `module.js` (`co
   dès que le site est connecté (saison imposée ou non) ; `GET …/ffst/adherents`. Rapprochement : sans
   accent, majuscule, apostrophe ni espace en trop, « Nom Prénom » de la fiche contre « Nom et Prénom »
   du site. « Rafraîchir » du tableau relit aussi le site.
-- *À savoir* : comme pour tout module, une école **créée** après la migration a le module allumé
-  (pas de ligne = allumé, `core.md` §9 bis.3) : l'onglet FFST y apparaît pour les admins, avec
-  « pas encore connecté ». Non corrigé ici (ce serait un réglage du core).
+- *Éteint par défaut* (Seb, 18 novembre) : HelloAsso et FFST sont éteints dans une école qui ne les a
+  pas allumés (`enabled_by_default=False`, `core.md` §11.3). Migration `e4a6c8f0b2d4` : chaque école
+  existante garde son état (Contretemps, Le Beausset inchangés) ; les écoles de nature combat
+  (ASC La Ciotat) ont HelloAsso et FFST allumés.
+
+**Fait (étape 2, 18 novembre 2026)** : Seb, 18 novembre : « dans ASC La Ciotat, on puisse écrire dans
+FFST » ; les essais ne sont pas graves (une demande reste un brouillon qu'on retire du panier).
+- *Actions FFST* (`ActionsFfst.jsx`), colonne Bouton du tableau : Inconnu → « Faire la demande
+  Pratiquant », « Faire la demande Autre rôle » (fenêtre « Rôle à la FFST », Annuler / Faire la
+  demande ; liste `GET …/ffst/fonctions`), et « Genre absent de HelloAsso : Choisir » si le formulaire
+  n'a pas de genre ; Brouillon → « Supprimer la demande ». Pendant l'action : « ⏳ Envoi en cours… Le
+  site de la FFST est piloté automatiquement : ça peut prendre jusqu'à 30 secondes » ; puis le tableau
+  est relu, l'erreur ou l'avertissement (commune par défaut) reste sous les boutons. Tout admin.
+- *Serveur* : `POST` / `DELETE …/ffst/adherents/{fiche}/demande`. Le site est **relu juste avant**
+  (refus si la personne est déjà en brouillon, validée ou licenciée, ou n'est plus dans le panier),
+  puis relu après. Clics et champs de Sambo Admin (`site.py` : `create_request`, `delete_draft`),
+  corrections reprises (apostrophe, ville, année sur deux chiffres, téléphone dans fixe et mobile,
+  message « bien enregistrée » vérifié, suppression vérifiée en deux essais).
+- *Données envoyées* : nom et prénom de la fiche ; genre, date de naissance, adresse, code postal,
+  ville, téléphone lus dans les réponses HelloAsso de la saison, la question trouvée par un mot de son
+  titre (« genre », « date de naissance », « adresse », « code postal », « ville », « téléphone » ;
+  formulaire d'ASC) ; email du payeur.
+- *Réglages* (Voir, Administrateur principal) : Discipline d'une nouvelle demande (ex. 0470-SAMBO ;
+  vide : nouvelle demande refusée avec un message), Commune de naissance par défaut (vide : la ville
+  de l'école), « Droit à l'image » coché ou non. Migration `f6b8d0a2c4e6`.
+- *Navigateur* : `playwright` (Python) ajouté aux dépendances ; il lance le Chromium déjà installé
+  dans l'image (`chromium` trouvé sur le chemin, ou `FFST_CHROMIUM`), sans `playwright install` ni
+  changement du Dockerfile. À vérifier en vrai sur le site : si ce Chromium ne convient pas, il faudra
+  l'accord de Seb pour toucher au Dockerfile (comme Sambo Admin, `playwright install chromium`).

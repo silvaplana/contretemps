@@ -110,6 +110,12 @@ def table(db: Session, org_id: int, season_id: int) -> dict[int, dict]:
     return out
 
 
+def table_answers(db: Session, org_id: int, season_id: int) -> dict[int, list[dict]]:
+    """{card: the answers of its HelloAsso form} (the FFST module reads the
+    gender there, spec/modules/ffst.md §5)."""
+    return {member_id: _main(rs).answers or [] for member_id, rs in _by_member(db, org_id, season_id).items()}
+
+
 def registration(db: Session, org_id: int, season_id: int, member_id: int) -> HelloAssoRegistration | None:
     registrations = _by_member(db, org_id, season_id).get(member_id)
     return _main(registrations) if registrations else None

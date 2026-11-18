@@ -5648,3 +5648,53 @@ tr.is-resiliee td.data-table__name button {
   color: var(--danger-text);
   font-weight: 700;
 }
+
+/* Module FFST, étape 2 : réglages d'une demande et colonne « Actions FFST ». */
+.ffst__case {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+}
+
+.ffst__case input {
+  width: 22px;
+  height: 22px;
+}
+
+.ffst-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  white-space: normal;
+  min-width: 260px;
+}
+
+.ffst-actions__boutons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ffst-actions .btn {
+  min-height: 48px;
+  white-space: nowrap;
+}
+
+.ffst-actions__genre select {
+  width: auto;
+  min-height: 48px;
+}
+
+.ffst-actions__attente,
+.ffst-actions__avertissement {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 16px;
+}
+
+.ffst-actions__erreur {
+  margin: 0;
+  color: var(--danger-text);
+  font-size: 16px;
+}

@@ -1,6 +1,6 @@
 """Déclaration du module HelloAsso (spec/core.md §9 bis,
-spec/modules/helloasso.md). Éteint dans les écoles existantes (migration du
-27 octobre 2026) : une école le coche quand elle encaisse sur HelloAsso."""
+spec/modules/helloasso.md). Éteint par défaut (Seb, 18 novembre 2026) : une
+école le coche quand elle encaisse sur HelloAsso."""
 
 from registry import Module, guide_file
 
@@ -37,4 +37,6 @@ def mount(app, core) -> None:
     )
 
 
-MODULE = Module(key="helloasso", label="HelloAsso", mount=mount, guide=guide_file(__file__))
+MODULE = Module(
+    key="helloasso", label="HelloAsso", mount=mount, guide=guide_file(__file__), enabled_by_default=False
+)

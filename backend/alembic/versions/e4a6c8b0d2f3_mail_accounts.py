@@ -7,14 +7,14 @@ combat schools (ASC La Ciotat, Seb 18 November 2026) with one `org_modules`
 row each, unless a choice already exists.
 
 Revision ID: e4a6c8b0d2f3
-Revises: d3f5a7c9e1b2
+Revises: f6b8d0a2c4e6
 """
 
 import sqlalchemy as sa
 from alembic import op
 
 revision = "e4a6c8b0d2f3"
-down_revision = "d3f5a7c9e1b2"
+down_revision = "f6b8d0a2c4e6"
 branch_labels = None
 depends_on = None
 

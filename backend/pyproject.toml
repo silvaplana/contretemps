@@ -69,6 +69,10 @@ dependencies = [
     # jeton signé RS256 par la clé de l'application, appels HTTP.
     "PyJWT",
     "httpx",
+    # Module FFST (ffst/site.py, repris de Sambo Admin) : une demande de
+    # licence pilote un vrai navigateur sur le site de la FFST, avec le
+    # Chromium déjà installé dans l'image (pas de `playwright install`).
+    "playwright",
 ]
 
 [project.optional-dependencies]
