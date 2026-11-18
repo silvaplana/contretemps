@@ -193,8 +193,15 @@ export const memberList = {
   ordreParDefaut: ['nom', 'email', ...COLONNES.map((c) => c.key)],
   // Une adhésion résiliée reste, grisée (spec §7.1).
   resiliee: (donnees, eleve) => Boolean(donnees.members[eleve.id]?.cancelled),
-  // Les résiliées ne comptent pas dans « Adhérents (n) ».
-  compte: (donnees, eleves) => eleves.filter((el) => !donnees.members[el.id]?.cancelled).length,
+  // L'ordre de Sambo Admin, celui de HelloAsso : la commande la plus récente
+  // d'abord (Seb, 18 novembre 2026). Une fiche sans adhésion va à la fin.
+  ordre: (donnees, eleves) =>
+    [...eleves].sort((a, b) => (donnees.members[a.id]?.rank ?? Infinity) - (donnees.members[b.id]?.rank ?? Infinity)),
+  // Comme Sambo Admin, « Adhérents (n) » ne compte que les adhésions HelloAsso
+  // non résiliées : une fiche sans adhésion (un prof, par exemple) reste dans
+  // la liste, en dernier, sans être comptée.
+  compte: (donnees, eleves) =>
+    eleves.filter((el) => donnees.members[el.id] && !donnees.members[el.id].cancelled).length,
   // « Rafraîchir » : synchronise maintenant (la saison en cours).
   rafraichir: (ecoleId) => api.synchroniser(ecoleId),
   menu: (redessiner) => [

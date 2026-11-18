@@ -272,7 +272,9 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
   }
 
   const testAge = verrouille ? FILTRES_AGE.find((f) => f.cle === filtreAge)?.test : null
-  const filtered = eleves.filter((el) => {
+  // Saison imposée : l'ordre du module s'il en donne un (`memberList.ordre`).
+  const ordonnes = verrouille && imposee.liste.ordre ? imposee.liste.ordre(imposee.donnees, eleves) : eleves
+  const filtered = ordonnes.filter((el) => {
     if (testAge) {
       const age = calculerAge(el.dateNaissance)
       if (age == null || !testAge(age)) return false

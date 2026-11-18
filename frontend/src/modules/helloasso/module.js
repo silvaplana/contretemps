@@ -11,8 +11,8 @@ import * as api from './api.js'
 // Connexions porte la connexion de l'école (`connection`) ; la fiche d'un membre, la
 // campagne de la saison (`memberFields`) ; une saison imposée par la
 // campagne, le tableau des adhérents (`memberList`) et ses colonnes
-// (`memberColumns`, adherents.jsx) ; « Impayés HelloAsso » à côté des
-// adhérents (`adminTabs`) ; le choix de la saison dans « Éditer la saison »
+// (`memberColumns`, adherents.jsx) ; « Paiements HelloAsso » à côté des
+// adhérents (`adminTabs`, pastille = nombre d'impayés) ; le choix de la saison dans « Éditer la saison »
 // (`seasonEditor`).
 export default {
   key: 'helloasso',
@@ -27,5 +27,13 @@ export default {
   seasonEditor: HelloAssoEditionSaison,
   memberList,
   memberColumns,
-  adminTabs: [{ value: 'helloasso-impayes', label: 'Impayés HelloAsso', Ecran: Impayes }],
+  adminTabs: [
+    {
+      value: 'helloasso-impayes',
+      label: 'À encaisser',
+      Ecran: Impayes,
+      // Pastille : les échéances dépassées sans paiement (Seb, 18 novembre 2026).
+      badge: (ecoleId) => api.impayes(ecoleId).then((r) => (r.campaign ? r.upcoming.filter((e) => e.overdue).length : 0)),
+    },
+  ],
 }

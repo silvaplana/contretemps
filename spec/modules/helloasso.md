@@ -216,11 +216,25 @@ donne sa première page en vignette.
 
 ### 7.4 Impayés HelloAsso
 
-Admin > **Impayés HelloAsso**, visible si le module est allumé. Les adhérents qui ont au moins une
-échéance refusée ou en échec (états `Refused`, `Error`, `Canceled`, `Abandoned`, `Deleted`,
-`Inconsistent`) ; les échéances à venir d'un paiement en plusieurs fois ne comptent pas. Colonnes :
-Nom, Prénom, Email, Total, Impayé, Échéances refusées. Lu dans `helloasso_registrations`
-(paiements déjà recopiés), rien de plus en base.
+Admin > **À encaisser** (ex-« Impayés HelloAsso », puis « Paiements HelloAsso » ; maquette validée par
+Seb le 18 novembre 2026 : https://claude.ai/artifact/RJr31x9iHp1694Wx3nZ4CA), visible si le module est
+allumé. Ce qui compte : l'argent qui doit encore arriver sur le compte. Pastille rouge = nombre
+d'échéances dépassées sans paiement (`badge` des `adminTabs`).
+
+- En haut, « À encaisser », « Rafraîchir » (synchronise puis relit) et un seul chiffre, « Doit encore
+  arriver sur le compte » = partie 1 + partie 2.
+- **1. À payer à HelloAsso** (et son total) : toutes les échéances que les adhérents doivent encore
+  payer, ni payées ni remboursées, des adhésions non résiliées (`upcoming` de
+  `GET …/helloasso/impayes`). Chaque ligne : date, Nom Prénom, nom de l'échéance sur HelloAsso
+  (« Paiement 2 », `installmentNumber`), somme. Une échéance dont la date est passée sans paiement
+  (refusée, ou jamais tentée) est un impayé : en rouge, en tête, avec au-dessus « n échéances
+  dépassées sans paiement : total ». Les autres, rangées par mois avec le total du mois.
+- **2. HelloAsso doit verser au compte** (et son total) : « Virement en route » et « Gardé par
+  HelloAsso, versé vers le 10 <mois> », repris des statistiques de la saison (§7.8, `cash.in_transit`
+  et `cash.held`, la banque disant quand un virement est arrivé).
+- Lu dans `helloasso_registrations` (paiements déjà recopiés), rien de plus en base. La liste par
+  adhérent de Sambo Admin (Email, Total, Impayé) n'est plus montrée ; la route la donne encore
+  (`members`).
 
 ### 7.5 Vérification des dossiers
 
@@ -314,8 +328,9 @@ Le module FFST (`modules/ffst.md`) s'intercale après l'étape 6.
   anglais), proposées dans « Affichage dans Admin » (nature Calculé, HelloAsso) ; sans affichage
   enregistré, ordre de Sambo Admin : Adhérent, Email, Montant, Code promo, Photo, Statut HelloAsso,
   le reste masqué. Le tableau d'Admin > Élèves, quand la saison affichée a une campagne : titre
-  « Adhérents (n) » (résiliées non comptées), « Rafraîchir » (synchronise, saison en cours),
-  « Rechercher un adhérent... » (nom, prénom, email), filtres par âge, ligne résiliée grisée et nom
+  « Adhérents (n) » (adhésions HelloAsso non résiliées seulement : une fiche sans adhésion, un prof par exemple, est listée en dernier sans être comptée), « Rafraîchir » (synchronise, saison en cours),
+  « Rechercher un adhérent... » (nom, prénom, email), ordre de Sambo Admin (celui de HelloAsso :
+  la commande la plus récente d'abord, Seb 18 novembre 2026 ; `memberList.ordre`), filtres par âge, ligne résiliée grisée et nom
   barré, pas de « + », d'import, de poubelle ni d'Inscription OCR / web ; menu ⋮ « Masquer /
   Afficher les photos » (par appareil, comme Sambo Admin). Route
   `GET /ecoles/{id}/helloasso/adherents`.

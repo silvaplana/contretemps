@@ -98,6 +98,8 @@ class SyncOut(BaseModel):
 
 
 class MemberRowOut(BaseModel):
+    # Place in the table, as in Sambo Admin: newest HelloAsso order first.
+    rank: int = 0
     # Centimes.
     amount: int
     discount_code: str | None = None
@@ -128,10 +130,25 @@ class UnpaidMemberOut(BaseModel):
     refused: list[RefusedOut]
 
 
+class UpcomingOut(BaseModel):
+    member_id: int | None = None
+    first_name: str
+    last_name: str
+    # Centimes.
+    amount: int
+    date: str | None = None
+    # Numéro de l'échéance sur HelloAsso (« Paiement 2 »).
+    installment: int | None = None
+    # Date passée sans paiement.
+    overdue: bool = False
+
+
 class UnpaidOut(BaseModel):
     # La saison affichée a une campagne (sinon rien à lire).
     campaign: bool
     members: list[UnpaidMemberOut] = []
+    # « À encaisser » : échéances encore dues, la plus ancienne d'abord (Seb, 18 novembre 2026).
+    upcoming: list[UpcomingOut] = []
 
 
 class MembersOut(BaseModel):
@@ -471,7 +488,11 @@ class HelloAssoReceiver:
         season_id = saison_demandee() or saison_courante_id(db, ecole_id)
         if season_id is None or self.campaigns.current(db, season_id) is None:
             return UnpaidOut(campaign=False)
-        return UnpaidOut(campaign=True, members=imposed_members.unpaid(db, ecole_id, season_id))
+        return UnpaidOut(
+            campaign=True,
+            members=imposed_members.unpaid(db, ecole_id, season_id),
+            upcoming=imposed_members.upcoming(db, ecole_id, season_id),
+        )
 
     def _registration(self, db: Session, ecole_id: int, member_id: int, appelant: Compte):
         rbac.require_admin(appelant, ecole_id)

@@ -532,7 +532,7 @@ def test_tableau_et_fiche_des_adherents(client, db_session, ecole, campagnes, mo
     tableau = client.get(f"/ecoles/{ecole.id}/helloasso/adherents").json()
     assert tableau["imposed"] is True and tableau["can_refresh"] is True
     lignes = {db_session.get(Compte, int(i)).prenom: ligne for i, ligne in tableau["members"].items()}
-    assert lignes["Léa"] == {"amount": 16000, "discount_code": "FRATRIE", "state": "Processed",
+    assert lignes["Léa"] == {"rank": 0, "amount": 16000, "discount_code": "FRATRIE", "state": "Processed",
                              "cancelled": False, "photo": True, "mails": 0, "sms": 0, "has_phone": False,
                              "check": None}
     assert lignes["Inès"]["cancelled"] is True and lignes["Inès"]["photo"] is False
@@ -636,7 +636,7 @@ def test_impayes_helloasso(client, db_session, ecole, campagnes, monkeypatch):
         echeance(8000, "Pending", "2026-12-02T10:00:00"),
     ]}
     url = f"/ecoles/{ecole.id}/helloasso/impayes"
-    assert client.get(url).json() == {"campaign": False, "members": []}
+    assert client.get(url).json() == {"campaign": False, "members": [], "upcoming": []}
     _saison_imposee(client, ecole, monkeypatch, [payee, refusee, a_venir])
 
     impayes = client.get(url).json()
@@ -1047,3 +1047,59 @@ def test_statistiques_branchees_sur_le_financier_et_la_ffst(db_session, ecole):
     assert sources.licences(db_session, ecole.id, 10) is None  # FFST éteinte
     set_enabled(db_session, ecole.id, MODULES, "finances", False)
     assert sources.ledger(db_session, ecole.id) is None
+
+
+def test_ordre_des_adherents_comme_sambo_admin(client, db_session, ecole, campagnes, monkeypatch):
+    """Seb 18/11 : le tableau suit l'ordre de Sambo Admin, celui de HelloAsso :
+    la commande la plus récente d'abord, puis les adhérents d'une même
+    commande dans leur ordre."""
+    from comptes import Compte
+
+    def inscrit(item_id, prenom, nom, commande, jour):
+        return {**_inscrit(item_id, prenom, nom, f"{prenom}@test.fr"), "order_id": commande,
+                "order_date": f"2026-{jour}T10:00:00"}
+
+    _saison_imposee(client, ecole, monkeypatch, [
+        inscrit("10", "Ana", "Zola", "c1", "09-02"),
+        inscrit("30", "Léo", "Abel", "c3", "10-15"),
+        inscrit("21", "Noé", "Moreau", "c2", "09-20"),
+        inscrit("22", "Lou", "Moreau", "c2", "09-20"),
+    ])
+    lignes = client.get(f"/ecoles/{ecole.id}/helloasso/adherents").json()["members"]
+    par_rang = sorted(lignes.items(), key=lambda kv: kv[1]["rank"])
+    assert [db_session.get(Compte, int(i)).prenom for i, _ in par_rang] == ["Léo", "Noé", "Lou", "Ana"]
+
+
+def test_echeances_a_venir(client, db_session, ecole, campagnes, monkeypatch):
+    """« À encaisser » (Seb 18/11) : toutes les échéances que les adhérents
+    doivent encore payer, par date, avec leur nom HelloAsso (« Paiement
+    2 ») ; une échéance dont la date est passée sans paiement (refusée ou
+    jamais tentée) est en retard. Ni les payées, ni les remboursées, ni
+    celles d'une adhésion résiliée."""
+    def echeance(montant, etat, date, numero):
+        return {"amount": montant, "date": f"{date}T10:00:00", "state": etat, "means": "Card", "installment": numero}
+
+    tom = {**_inscrit("1", "Tom", "Benali", "t@test.fr", montant=24000), "payments": [
+        echeance(8000, "Authorized", "2026-09-02", 1),
+        echeance(8000, "Refused", "2026-10-02", 2),
+        echeance(8000, "Pending", "2099-01-02", 3),
+    ]}
+    ines = {**_inscrit("2", "Inès", "Navarro", "i@test.fr", montant=16000), "payments": [
+        echeance(8000, "Authorized", "2026-09-05", 1),
+        echeance(8000, "Refunded", "2026-10-05", 2),
+        echeance(8000, "Pending", "2098-12-05", 3),
+    ]}
+    partie = {**_inscrit("3", "Enzo", "Roux", "e@test.fr", state="Canceled"), "payments": [
+        echeance(6000, "Pending", "2098-12-01", 1),
+    ]}
+    _saison_imposee(client, ecole, monkeypatch, [tom, ines, partie])
+    lu = client.get(f"/ecoles/{ecole.id}/helloasso/impayes").json()
+    assert [
+        (e["last_name"], e["first_name"], e["amount"], e["date"][:10], e["installment"], e["overdue"])
+        for e in lu["upcoming"]
+    ] == [
+        ("Benali", "Tom", 8000, "2026-10-02", 2, True),
+        ("Navarro", "Inès", 8000, "2098-12-05", 3, False),
+        ("Benali", "Tom", 8000, "2099-01-02", 3, False),
+    ]
+    assert lu["upcoming"][0]["member_id"] is not None

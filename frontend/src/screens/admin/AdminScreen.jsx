@@ -43,7 +43,7 @@ export default function AdminScreen({
   onModulesChange,
   barre,
 }) {
-  // Les sous-onglets des modules allumés (`adminTabs`, ex. « Impayés
+  // Les sous-onglets des modules allumés (`adminTabs`, ex. « Paiements
   // HelloAsso », spec/modules/helloasso.md §7.4), après Cours, ou après le
   // sous-onglet nommé par `after` (ex. Essais après Élèves) ; seulement
   // une fois la liste des modules lue (aucun sous-onglet de passage).
@@ -51,6 +51,9 @@ export default function AdminScreen({
     () => MODULES.filter((m) => modules.some((x) => x.key === m.key && x.enabled)).flatMap((m) => m.adminTabs ?? []),
     [modules],
   )
+  // Pastille d'un sous-onglet de module (`badge(ecoleId)` → nombre, ex. les
+  // impayés de « Paiements HelloAsso ») : relue à chaque changement d'onglet.
+  const [pastilles, setPastilles] = useState({})
   // Repart du dernier sous-onglet affiché sur cet appareil.
   const [subTab, setSubTab] = useState(() => {
     const dernier = sessionApi.lireEcran('admin')
@@ -60,6 +63,14 @@ export default function AdminScreen({
   useEffect(() => {
     sessionApi.sauvegarderEcran('admin', subTab)
   }, [subTab])
+  useEffect(() => {
+    if (!ecole?.id) return
+    for (const o of ongletsModules.filter((x) => x.badge)) {
+      o.badge(ecole.id)
+        .then((n) => setPastilles((p) => ({ ...p, [o.value]: n })))
+        .catch(() => null)
+    }
+  }, [ecole?.id, ongletsModules, subTab])
 
   // Effectif affiché directement dans l'onglet, "Élèves (179)" (demande
   // utilisateur). Compté sur `eleves`, la liste réellement chargée : le
@@ -70,12 +81,23 @@ export default function AdminScreen({
   const { motEcole, motEleves, motProfs, motCours } = useApparence()
   const sousOnglets = useMemo(() => {
     const mots = { ecole: motEcole, eleves: `${motEleves} (${eleves.length})`, professeurs: motProfs, cours: motCours }
-    const apres = (cle) => ongletsModules.filter((o) => o.after === cle).map(({ value, label }) => ({ value, label }))
+    const libelle = ({ value, label }) => ({
+      value,
+      label: pastilles[value] > 0 ? (
+        <>
+          {label}
+          <span className="admin-onglet__pastille">{pastilles[value]}</span>
+        </>
+      ) : (
+        label
+      ),
+    })
+    const apres = (cle) => ongletsModules.filter((o) => o.after === cle).map(libelle)
     return [
       ...SUB_TABS.flatMap((onglet) => [mots[onglet.value] ? { ...onglet, label: mots[onglet.value] } : onglet, ...apres(onglet.value)]),
-      ...ongletsModules.filter((o) => !SUB_TABS.some((s) => s.value === o.after)).map(({ value, label }) => ({ value, label })),
+      ...ongletsModules.filter((o) => !SUB_TABS.some((s) => s.value === o.after)).map(libelle),
     ]
-  }, [eleves.length, motEcole, motEleves, motProfs, motCours, ongletsModules])
+  }, [eleves.length, motEcole, motEleves, motProfs, motCours, ongletsModules, pastilles])
 
   // Un module éteint depuis : retour aux élèves.
   const onglet = sousOnglets.some((o) => o.value === subTab) ? subTab : 'eleves'

@@ -12,6 +12,7 @@ import io
 import os
 import re
 import unicodedata
+from datetime import date
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -108,6 +109,7 @@ def table(db: Session, org_id: int, season_id: int) -> dict[int, dict]:
     for member_id, registrations in grouped.items():
         r = _main(registrations)
         out[member_id] = {
+            "rank": 0,
             "check": view(checks.get(r.item_id)),
             "mails": mails.get(r.item_id, 0),
             "sms": sms.get(r.item_id, 0),
@@ -118,7 +120,17 @@ def table(db: Session, org_id: int, season_id: int) -> dict[int, dict]:
             "cancelled": is_cancelled(r.state),
             "photo": photo_index(r.answers) is not None,
         }
+    # Order of Sambo Admin, which shows HelloAsso's (Seb, 18 November 2026):
+    # newest order first, then the members of an order in their order.
+    mains = sorted(((member_id, _main(rs)) for member_id, rs in grouped.items()), key=lambda m: _item_key(m[1]))
+    mains.sort(key=lambda m: m[1].order_date or "", reverse=True)
+    for rank, (member_id, _) in enumerate(mains):
+        out[member_id]["rank"] = rank
     return out
+
+
+def _item_key(r: HelloAssoRegistration) -> tuple[int, str]:
+    return (int(r.item_id), "") if r.item_id.isdigit() else (0, r.item_id)
 
 
 def table_answers(db: Session, org_id: int, season_id: int) -> dict[int, list[dict]]:
@@ -224,3 +236,36 @@ def unpaid(db: Session, org_id: int, season_id: int) -> list[dict]:
                 "refused": [{"date": p.get("date"), "amount": p.get("amount") or 0} for p in refused],
             })
     return out
+
+
+def upcoming(db: Session, org_id: int, season_id: int, today: date | None = None) -> list[dict]:
+    """« À encaisser » (Seb, 18 November 2026): the instalments the members
+    still have to pay, first due first: neither paid nor refunded, of
+    memberships that are not cancelled. `overdue`: its day has passed
+    without payment (refused, or never tried)."""
+    from .stats import PAID, REFUNDED
+
+    today_iso = (today or date.today()).isoformat()
+
+    out = []
+    for r in db.scalars(
+        select(HelloAssoRegistration).where(
+            HelloAssoRegistration.org_id == org_id,
+            HelloAssoRegistration.season_id == season_id,
+            HelloAssoRegistration.gone_at.is_(None),
+        )
+    ):
+        if is_cancelled(r.state):
+            continue
+        for p in r.payments or []:
+            if p.get("state") not in PAID | REFUNDED:
+                out.append({
+                    "member_id": r.member_id,
+                    "first_name": r.first_name,
+                    "last_name": r.last_name,
+                    "amount": p.get("amount") or 0,
+                    "date": p.get("date"),
+                    "installment": p.get("installment"),
+                    "overdue": (p.get("date") or "")[:10] < today_iso,
+                })
+    return sorted(out, key=lambda e: (e["date"] or "", e["last_name"], e["first_name"]))

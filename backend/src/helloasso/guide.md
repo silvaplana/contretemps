@@ -94,13 +94,16 @@ Statistiques de la saison (saison imposée par HelloAsso)
   saison (solde + reste à encaisser − salaires et cotisations − licences FFST encore à payer).
 - Les chiffres viennent de HelloAsso et des comptes du Financier ; rien n'est modifiable ici.
 
-Impayés HelloAsso : Admin › Impayés HelloAsso (sous-onglet après Cours, module allumé, tout admin)
-- « Impayés HelloAsso (n) » et « Rafraîchir » (recopie depuis HelloAsso puis relit).
-- Les adhésions de la saison avec au moins une échéance refusée ou en échec ; une échéance à venir
-  d'un paiement en plusieurs fois ne compte pas.
-- Colonnes : Nom, Prénom, Email (du payeur), Total (l'adhésion), Impayé (les échéances refusées),
-  Échéances refusées (leurs dates).
-- « Aucun impayé. » ; sans campagne pour la saison : « Pas de campagne HelloAsso pour cette saison. »
+À encaisser : Admin › À encaisser (sous-onglet après Cours, module allumé, tout admin ; pastille rouge =
+  nombre d'échéances dépassées sans paiement)
+- En haut « À encaisser », « Rafraîchir » (recopie depuis HelloAsso puis relit) et le chiffre « Doit
+  encore arriver sur le compte » (partie 1 + partie 2).
+- « 1. À payer à HelloAsso » : les échéances que les adhérents doivent encore payer (date, nom,
+  « Paiement 2 »…, somme). Dépassée sans paiement = en rouge, en tête, avec le nombre et le total ;
+  les autres par mois. « Aucune échéance à payer. »
+- « 2. HelloAsso doit verser au compte » : « Virement en route » et « Gardé par HelloAsso » (versé
+  vers le 10 du mois suivant).
+- Sans campagne pour la saison : « Pas de campagne HelloAsso pour cette saison. »
 
 Où voir les paiements
 - Saison imposée par HelloAsso : dans la fiche de l'adhérent, rubrique Paiements. Sinon, sur
