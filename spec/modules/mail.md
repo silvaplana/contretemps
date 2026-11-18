@@ -4,7 +4,9 @@ Version 0.1 du 18 novembre 2026. Repris du client mail de Sambo Admin (`silvapla
 `backend/src/webmail/`, `frontend/src/Webmail.jsx`, onglet Messagerie > Mail), à fonctions
 identiques. Étude : https://claude.ai/artifact/7HPSBAeGZ5YrE4jahT213a (partie 7 ter). Méthode de
 connexion : étude Gmail du 22 octobre 2026. Maquette validée par Seb le 18 novembre :
-https://claude.ai/artifact/5wX9catY3i76qBEPo3fM4S. Étapes 1 à 3 codées (§12).
+https://claude.ai/artifact/5wX9catY3i76qBEPo3fM4S. Étapes 1 à 3 codées (§12). Plusieurs boîtes
+par école (§4 bis) : maquette https://claude.ai/artifact/LgpyHwySGTgyzJQuR3tAcH, validée par Seb
+le 18 novembre.
 
 ## 1. Ce que fait le sous-module
 
@@ -89,6 +91,30 @@ souvent après un changement du mot de passe du compte. », avec pour l'Administ
 « Reconnectez-la dans Admin › École › Personnalisation › Fonctionnalités, ligne Mail. » (bouton
 **Reconnecter** dans « Voir »), sinon « L'Administrateur principal doit la reconnecter. »
 
+## 4 bis. Plusieurs boîtes (Seb, 18 novembre)
+
+Une école peut connecter **plusieurs boîtes en même temps** (ex. ASC : la boîte du club et celle
+de la trésorerie).
+
+- **Connexions**, ligne « Boîte mail du club » : une ligne par boîte (« Nom · Connectée : adresse »
+  quand il y en a plusieurs) avec son bouton **Voir**, puis **Ajouter une boîte mail**. Sans boîte,
+  **Connecter** comme avant.
+- **Ajouter une boîte mail** : champ **Nom de la boîte** (30 caractères ; « Club » proposé pour la
+  première) au-dessus du choix Gmail / Infomaniak, puis l'écran guidé du §4. Reconnecter la même
+  adresse ne crée pas de doublon.
+- **Voir** une boîte : nom, adresse, fournisseur, date, lien **Renommer**, **Remplacer par une autre
+  boîte** (garde le nom), **Déconnecter la boîte** (celle-là seulement ; Annuler 10 s).
+- **Un seul droit** « Boîte mail du club » pour toutes les boîtes (Seb : « Un seul droit ») : qui est
+  coché lit et envoie depuis chacune.
+- **Messages** : une seule boîte, la puce s'appelle **Mail** comme avant ; plusieurs, **une puce par
+  boîte**, à son nom, avec ses non lus : **Chat | Club | Trésorerie** (Seb : « si plusieurs boîtes
+  mails, un onglet par boîte, sinon écrire « mail » »). La pastille de l'onglet Messages additionne
+  toutes les boîtes.
+- **Écrire** : avec plusieurs boîtes, **De** se choisit (« Nom · adresse »), la boîte de la puce
+  ouverte d'abord ; les suggestions d'adresses viennent de la boîte choisie.
+
+La boîte déjà connectée s'appelle « Club » : rien ne change pour qui la lit.
+
 ## 5. La boîte (Messages › Mail)
 
 - En haut : liste des **dossiers** (Boîte de réception, Suivis, Envoyés, Brouillons, Spam,
@@ -132,10 +158,14 @@ parti). Seul écart de comportement avec Sambo Admin.
 
 ## 9. Données
 
-Une table `mail_accounts` : `organization_id` (unique), `address`, `provider` (`gmail` ou
-`infomaniak`, défaut `gmail`), `app_password` chiffré,
-`connected_at`, `cut_at` (rempli quand Google refuse, vidé à la reconnexion). Une ligne par école :
-la boîte appartient à l'école, pas à une personne. Rien d'autre en base : ni mails, ni pièces
+Une table `mail_accounts` : `organization_id` (indexé, plus unique depuis le §4 bis), `name` (30
+caractères, « Club » par défaut), `address`, `provider` (`gmail` ou `infomaniak`, défaut `gmail`),
+`app_password` chiffré, `connected_at`, `cut_at` (rempli quand Google refuse, vidé à la
+reconnexion). Une ligne par boîte : la boîte appartient à l'école, pas à une personne. Routes :
+`?box=<id>` choisit la boîte (absent : la première) ; `PUT …/mail` sans `box` ajoute une boîte,
+avec la remplace ; `PATCH …/mail?box=` la renomme ; `GET …/mail/unread` donne le total et chaque
+boîte. Migration `59291952bcf2` : la table est refaite sans la contrainte d'unicité (SQLite ne sait
+pas la retirer autrement), les lignes sont recopiées telles quelles. Rien d'autre en base : ni mails, ni pièces
 jointes, ni cache.
 
 ## 10. Risques
@@ -145,7 +175,7 @@ jointes, ni cache.
 - **Google peut couper** les mots de passe d'application (changement de mot de passe, Protection
   avancée, compte pro bloqué par son admin) : bandeau §4, on reconnecte.
 - **Google interdit d'automatiser** la création du code : l'écran guide, la personne le crée.
-- **Une seule boîte par école** ; pas d'autre fournisseur que Gmail et Infomaniak pour l'instant.
+- Pas d'autre fournisseur que Gmail et Infomaniak pour l'instant.
 
 ## 11. Technique
 
@@ -178,3 +208,6 @@ Messagerie. `guide.md` du module mis à jour dans la même PR que les écrans.
    ferme l'écran ; le mail part au bout des 10 s d'Annuler, Annuler rouvre l'écran avec le mail
    (et ses pièces jointes) ; un envoi refusé rouvre aussi l'écran avec l'erreur. Pas de question
    « Envoyer sans objet ? » de Sambo Admin (l'Annuler la remplace).
+4. Plusieurs boîtes par école (§4 bis ; Seb, 18 novembre).
+   **Fait (18 novembre 2026)** : colonne `name`, `organization_id` plus unique (migration), un seul
+   droit, une puce par boîte, « De » au choix.

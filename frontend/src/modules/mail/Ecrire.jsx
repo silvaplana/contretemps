@@ -5,14 +5,16 @@ import * as api from './api.js'
 import ChampAdresses from './ChampAdresses.jsx'
 import { taille } from './format.js'
 
-// Écrire (spec/modules/mail.md §7) : écran plein, « De : » l'adresse du club,
+// Écrire (spec/modules/mail.md §7) : écran plein, « De : » l'adresse du club
+// (au choix quand l'école a plusieurs boîtes, celle qu'on regarde d'abord, §4 bis),
 // À, Cc, Cci (toujours affichés, Seb 18 novembre), Objet, message, pièces jointes (18 Mo au plus), Envoyer. Le
 // mail part au bout des 10 s d'Annuler (§8, Boite.jsx).
 
 const MAX = 18 * 1024 * 1024
 const TITRES = { new: 'Nouveau message', reply: 'Répondre', replyAll: 'Répondre à tous', forward: 'Transférer' }
 
-export default function Ecrire({ ecoleId, brouillon, fichiersInitiaux = [], de, onFermer, onEnvoyer }) {
+export default function Ecrire({ ecoleId, brouillon, fichiersInitiaux = [], boites, de, onFermer, onEnvoyer }) {
+  const [deId, setDeId] = useState(de)
   const [contacts, setContacts] = useState([])
   const [to, setTo] = useState(brouillon.to)
   const [cc, setCc] = useState(brouillon.cc)
@@ -25,8 +27,8 @@ export default function Ecrire({ ecoleId, brouillon, fichiersInitiaux = [], de, 
   const total = fichiers.reduce((s, f) => s + f.size, 0)
 
   useEffect(() => {
-    api.contacts(ecoleId).then((r) => setContacts(r.contacts), () => null)
-  }, [ecoleId])
+    api.contacts(ecoleId, deId).then((r) => setContacts(r.contacts), () => null)
+  }, [ecoleId, deId])
 
   // Réponse : curseur tout en haut, au-dessus du mail cité.
   useEffect(() => {
@@ -42,7 +44,7 @@ export default function Ecrire({ ecoleId, brouillon, fichiersInitiaux = [], de, 
       setErreur('Indiquez à qui envoyer le mail')
       return
     }
-    onEnvoyer({ ...brouillon, to, cc, bcc, subject, body }, fichiers)
+    onEnvoyer({ ...brouillon, to, cc, bcc, subject, body }, fichiers, deId)
   }
 
   return createPortal(
@@ -54,10 +56,23 @@ export default function Ecrire({ ecoleId, brouillon, fichiersInitiaux = [], de, 
         <h2 className="creer-saison__titre">{TITRES[brouillon.mode]}</h2>
       </div>
       <form className="creer-saison__corps mail mail__ecrire" onSubmit={envoyer}>
-        <div className="mail__champ-ligne">
-          <span>De</span>
-          <span className="mail__discret">{de}</span>
-        </div>
+        {boites.length > 1 ? (
+          <label className="mail__champ-ligne">
+            <span>De</span>
+            <select value={deId} onChange={(e) => setDeId(Number(e.target.value))}>
+              {boites.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name} · {b.address}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : (
+          <div className="mail__champ-ligne">
+            <span>De</span>
+            <span className="mail__discret">{boites.find((b) => b.id === deId)?.address}</span>
+          </div>
+        )}
         <ChampAdresses
           label="À"
           value={to}

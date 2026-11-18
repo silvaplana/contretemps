@@ -380,7 +380,8 @@
   width: 52px;
   color: var(--text-muted);
 }
-.mail__champ-ligne input {
+.mail__champ-ligne input,
+.mail__champ-ligne select {
   flex: 1;
   min-width: 0;
   min-height: 48px;
@@ -463,4 +464,19 @@
 .mail__suggestions small {
   color: var(--text-muted);
   font-size: 17px;
+}
+
+/* Connexions : une boîte par ligne, son état et « Voir » (spec §4 bis). */
+.connexions__ligne > .mail__reglage-boite {
+  grid-column: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+}
+.mail__reglage-boite > .helloasso__etat {
+  flex-basis: auto;
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }

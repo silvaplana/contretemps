@@ -6,7 +6,9 @@ import { FOURNISSEURS } from './fournisseurs.js'
 // Fonctionnalités, ligne Mail : l'adresse, la page du fournisseur pour créer
 // le code, coller, « Connecter ». Gmail ou Infomaniak (Seb, 18 novembre).
 
-export default function Connexion({ ecoleId, fournisseur, adresseInitiale, onConnecte }) {
+// `boite` : la boîte à reconnecter ou remplacer ; null : une boîte à ajouter,
+// nommée `nom` (§4 bis).
+export default function Connexion({ ecoleId, fournisseur, boite = null, nom = '', adresseInitiale, onConnecte }) {
   const f = FOURNISSEURS[fournisseur]
   const [etape, setEtape] = useState('adresse') // adresse | code | test | refus
   const [adresse, setAdresse] = useState(adresseInitiale ?? '')
@@ -31,7 +33,7 @@ export default function Connexion({ ecoleId, fournisseur, adresseInitiale, onCon
     setErreur(null)
     setEtape('test')
     try {
-      onConnecte(await api.connecter(ecoleId, adresse, code, fournisseur))
+      onConnecte(await api.connecter(ecoleId, { boite, name: nom, address: adresse, code, provider: fournisseur }))
     } catch (e) {
       setErreur(e.message)
       setEtape(e.status === 422 ? 'refus' : 'code')

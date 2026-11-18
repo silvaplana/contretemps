@@ -25,7 +25,9 @@ const RANGE = {
 }
 const DOSSIERS = [{ key: 'inbox', label: 'Boîte de réception' }]
 
-export default function Boite({ ecoleId, etat, menuBoite, onCoupee }) {
+// `boite` : la boîte affichée (`etat.boxes`), `boites` : toutes, pour « De »
+// quand on écrit (spec §4 bis).
+export default function Boite({ ecoleId, boite, boites, menuBoite, onCoupee }) {
   const [dossiers, setDossiers] = useState(DOSSIERS)
   const [dossier, setDossier] = useState('inbox')
   const [recherche, setRecherche] = useState('')
@@ -55,17 +57,17 @@ export default function Boite({ ecoleId, etat, menuBoite, onCoupee }) {
     (silencieux = false) => {
       if (!silencieux) setMails(null)
       setErreur(null)
-      return api.lister(ecoleId, dossier, { recherche: cherche }).then((r) => {
+      return api.lister(ecoleId, boite.id, dossier, { recherche: cherche }).then((r) => {
         setMails(r.messages)
         setEncore(r.hasMore)
       }, echec)
     },
-    [ecoleId, dossier, cherche, echec],
+    [ecoleId, boite.id, dossier, cherche, echec],
   )
 
   useEffect(() => {
-    api.dossiers(ecoleId).then((r) => setDossiers(r.folders), echec)
-  }, [ecoleId, echec])
+    api.dossiers(ecoleId, boite.id).then((r) => setDossiers(r.folders), echec)
+  }, [ecoleId, boite.id, echec])
 
   useEffect(() => {
     charger()
@@ -88,14 +90,14 @@ export default function Boite({ ecoleId, etat, menuBoite, onCoupee }) {
     setToast(null)
     if (a.action === 'send') {
       // Envoi refusé : le mail revient à l'écran pour ne pas le perdre.
-      api.envoyer(ecoleId, a.brouillon, a.fichiers).catch((e) => {
-        setEcrire({ brouillon: a.brouillon, fichiers: a.fichiers })
+      api.envoyer(ecoleId, a.de, a.brouillon, a.fichiers).catch((e) => {
+        setEcrire({ brouillon: a.brouillon, fichiers: a.fichiers, de: a.de })
         echec(e)
       })
       return
     }
     api
-      .cocher(ecoleId, a.dossier, a.uids, a.action)
+      .cocher(ecoleId, a.boite, a.dossier, a.uids, a.action)
       .then(() => api.signalerNonLus())
       .catch((e) => {
         setCachés((c) => new Set([...c].filter((u) => !a.uids.includes(u))))
@@ -112,15 +114,15 @@ export default function Boite({ ecoleId, etat, menuBoite, onCoupee }) {
     setCachés((c) => new Set([...c, ...uids]))
     setCoches(new Set())
     setOuvert(null)
-    attente.current = { dossier: d, uids, action, minuteur: setTimeout(envoyer, ANNULER_MS) }
+    attente.current = { boite: boite.id, dossier: d, uids, action, minuteur: setTimeout(envoyer, ANNULER_MS) }
     setToast(uids.length > 1 ? `${RANGE[action]} (${uids.length})` : RANGE[action])
   }
 
   // Envoyer : l'écran se ferme, le mail part au bout de 10 s (§8).
-  function envoyerPlusTard(brouillon, fichiers) {
+  function envoyerPlusTard(brouillon, fichiers, de) {
     envoyer()
     setEcrire(null)
-    attente.current = { action: 'send', brouillon, fichiers, minuteur: setTimeout(envoyer, ANNULER_MS) }
+    attente.current = { action: 'send', brouillon, fichiers, de, minuteur: setTimeout(envoyer, ANNULER_MS) }
     setToast(RANGE.send)
   }
 
@@ -131,7 +133,7 @@ export default function Boite({ ecoleId, etat, menuBoite, onCoupee }) {
     attente.current = null
     if (a.action === 'send') {
       setToast(null)
-      setEcrire({ brouillon: a.brouillon, fichiers: a.fichiers })
+      setEcrire({ brouillon: a.brouillon, fichiers: a.fichiers, de: a.de })
       return
     }
     setCachés((c) => new Set([...c].filter((u) => !a.uids.includes(u))))
@@ -146,7 +148,7 @@ export default function Boite({ ecoleId, etat, menuBoite, onCoupee }) {
     setCoches(new Set())
     changer(uids, { seen: lu })
     try {
-      await api.cocher(ecoleId, dossier, uids, lu ? 'read' : 'unread')
+      await api.cocher(ecoleId, boite.id, dossier, uids, lu ? 'read' : 'unread')
       api.signalerNonLus()
     } catch (e) {
       changer(uids, { seen: !lu })
@@ -157,7 +159,7 @@ export default function Boite({ ecoleId, etat, menuBoite, onCoupee }) {
   async function suivre(mail) {
     changer([mail.uid], { starred: !mail.starred })
     try {
-      await api.drapeaux(ecoleId, dossier, mail.uid, { starred: !mail.starred })
+      await api.drapeaux(ecoleId, boite.id, dossier, mail.uid, { starred: !mail.starred })
     } catch (e) {
       changer([mail.uid], { starred: mail.starred })
       echec(e)
@@ -167,7 +169,7 @@ export default function Boite({ ecoleId, etat, menuBoite, onCoupee }) {
   async function plusAnciens() {
     const dernier = mails[mails.length - 1]
     try {
-      const r = await api.lister(ecoleId, dossier, { avant: dernier.uid, recherche: cherche })
+      const r = await api.lister(ecoleId, boite.id, dossier, { avant: dernier.uid, recherche: cherche })
       setMails((liste) => [...liste, ...r.messages])
       setEncore(r.hasMore)
     } catch (e) {
@@ -201,7 +203,8 @@ export default function Boite({ ecoleId, etat, menuBoite, onCoupee }) {
       ecoleId={ecoleId}
       brouillon={ecrire.brouillon}
       fichiersInitiaux={ecrire.fichiers}
-      de={etat.address}
+      boites={boites}
+      de={ecrire.de ?? boite.id}
       onFermer={() => setEcrire(null)}
       onEnvoyer={envoyerPlusTard}
     />
@@ -214,7 +217,8 @@ export default function Boite({ ecoleId, etat, menuBoite, onCoupee }) {
           ecoleId={ecoleId}
           dossier={dossier}
           uid={ouvert}
-          adresseBoite={etat.address}
+          boite={boite.id}
+          adresseBoite={boite.address}
           onRetour={() => {
             setOuvert(null)
             charger(true)
