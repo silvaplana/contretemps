@@ -80,7 +80,7 @@ les boîtes Gmail et Infomaniak peuvent être connectées pour l'instant. »
 4. **Boîte connectée** (toast) ou **Code refusé** (lien « Recoller le code », bouton **Rouvrir…**).
 
 Le code est chiffré en base (`securite/chiffrement.py`), jamais réaffiché. **Voir** : adresse,
-fournisseur, date de connexion, lien **Connecter une autre boîte**, bouton **Déconnecter la
+fournisseur, date de connexion, lien **Remplacer par une autre boîte**, bouton **Déconnecter la
 boîte** (efface le code ; Annuler 10 s). Menu ⋮ de la boîte dans Messages : l'adresse connectée.
 
 **Le fournisseur coupe l'accès** (changement du mot de passe du compte, code révoqué) : bandeau en

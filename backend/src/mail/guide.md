@@ -23,7 +23,7 @@ Mail, « Connecter la boîte mail » y mène)
   Ajouter un appareil, choisir IMAP / SMTP, copier le mot de passe. Autre adresse Infomaniak :
   Manager › Service Mail › le domaine › l'adresse › Appareils › Ajouter un appareil.
 - Revenir, « Coller », puis « Connecter ». « Code refusé » : recoller en entier ou en créer un nouveau.
-- « Voir » : adresse, Gmail ou Infomaniak, date ; « Connecter une autre boîte » ; « Déconnecter la
+- « Voir » : adresse, Gmail ou Infomaniak, date ; « Remplacer par une autre boîte » ; « Déconnecter la
   boîte » (Annuler pendant 10 s).
 - Dans Messages › Mail, une boîte pas connectée affiche où la connecter.
 
