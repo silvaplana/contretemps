@@ -99,8 +99,16 @@ def upgrade() -> None:
         )
         op.create_index("ix_trial_signatures_org_id", "trial_signatures", ["org_id"])
         op.create_index("ix_trial_signatures_family", "trial_signatures", ["family"])
-    # Pas de ligne dans org_modules : le module est éteint partout
-    # (`Module.enabled_by_default=False`), chaque école l'allume elle-même.
+    # Éteint par défaut (`Module.enabled_by_default=False`) ; allumé dans les
+    # écoles de combat (ASC La Ciotat), comme HelloAsso et FFST (Seb, 18/11).
+    bind.execute(
+        sa.text(
+            "INSERT INTO org_modules (org_id, module_key, enabled, updated_at) "
+            "SELECT id, 'trials', :on, CURRENT_TIMESTAMP FROM ecoles "
+            "WHERE nature = 'combat' AND id NOT IN (SELECT org_id FROM org_modules WHERE module_key = 'trials')"
+        ),
+        {"on": True},
+    )
 
 def downgrade() -> None:
     op.execute("DELETE FROM org_modules WHERE module_key = 'trials'")

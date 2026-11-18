@@ -16,7 +16,8 @@ Le prof le scanne : le cours d'essai est noté. Deux cours d'essai au plus par p
 Un élève à l'essai n'est pas un membre de l'école : pas de fiche, pas d'invitation, pas de
 HelloAsso. Module optionnel, **éteint par défaut** (case « Essais » dans Admin > École >
 Personnalisation > Fonctionnalités) : rien ne change pour les écoles qui ne l'allument pas,
-Contretemps et Le Beausset compris. Il ne dépend d'aucun autre module.
+Contretemps et Le Beausset compris. Allumé dans les écoles de combat (ASC La Ciotat), comme
+HelloAsso et FFST (Seb, 18 novembre). Il ne dépend d'aucun autre module.
 
 ## 2. Page publique (sans compte)
 
