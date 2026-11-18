@@ -4,11 +4,12 @@ Version 0.1 du 18 novembre 2026. Repris du client mail de Sambo Admin (`silvapla
 `backend/src/webmail/`, `frontend/src/Webmail.jsx`, onglet Messagerie > Mail), à fonctions
 identiques. Étude : https://claude.ai/artifact/7HPSBAeGZ5YrE4jahT213a (partie 7 ter). Méthode de
 connexion : étude Gmail du 22 octobre 2026. Maquette validée par Seb le 18 novembre :
-https://claude.ai/artifact/5wX9catY3i76qBEPo3fM4S. Étapes 1 et 2 codées (§12).
+https://claude.ai/artifact/5wX9catY3i76qBEPo3fM4S. Étapes 1, 2 et 2 bis codées (§12).
 
 ## 1. Ce que fait le sous-module
 
-Les personnes choisies lisent et envoient les mails de **la boîte Gmail de l'école** depuis
+Les personnes choisies lisent et envoient les mails de **la boîte mail de l'école** (Gmail ou
+Infomaniak) depuis
 l'appli, sans ouvrir Gmail. Sous-module optionnel de la Messagerie instantanée, **éteint par
 défaut** : rien ne change pour les écoles qui ne l'allument pas (Contretemps, Le Beausset).
 
@@ -18,8 +19,9 @@ Aucun mail n'est copié en base.
 ## 2. Où il se trouve
 
 - **Admin › École › Personnalisation › Fonctionnalités** : ligne **Mail**, en retrait sous
-  Messagerie, « La boîte Gmail du club, lue et envoyée depuis Messages ». Allumer Mail allume la
-  Messagerie (`requires`).
+  Messagerie, « La boîte mail du club (Gmail ou Infomaniak), lue et envoyée depuis Messages ».
+  Allumer Mail allume la Messagerie (`requires`). Une fois allumée, la ligne montre la boîte
+  connectée et sert à la connecter (§4 ; Seb, 18 novembre).
 - **Admin › École › Administrateurs** : groupe **🔒 Boîte mail du club**, coché dans la colonne
   Groupes comme « Accès au Financier » (le mécanisme existant des droits, à la place de la colonne
   à part de la maquette), visible seulement si Mail est allumé (§3).
@@ -41,32 +43,47 @@ personnes cochées les voient. »
 Le droit donne tout : lire, envoyer au nom du club, ranger, supprimer. L'Assistant n'a **aucun
 outil** sur les mails (il ne les lit pas) ; il sait seulement guider vers l'écran.
 
-## 4. Connecter la boîte (Messages › Mail, première fois)
+## 4. Connecter la boîte (Fonctionnalités, ligne Mail)
 
-Réservé à l'**Administrateur principal** qui a le droit (et au Super User). Un autre titulaire du
-droit voit : « La boîte mail du club n'est pas encore connectée. Seul l'Administrateur principal
-peut la connecter. »
+Seb, 18 novembre : la connexion se fait dans **Admin › École › Personnalisation ›
+Fonctionnalités**, sur la ligne Mail (comme HelloAsso et FFST), et non plus dans Messages. Réservé
+à l'**Administrateur principal** et au Super User, **sans avoir besoin du droit** « Boîte mail du
+club » (connecter ne montre aucun mail ; lire en demande toujours le droit). La ligne dit
+« Connectée : adresse », « adresse : à reconnecter » ou « Pas encore connectée. Seules les boîtes
+Gmail et Infomaniak peuvent être connectées pour l'instant. », avec **Connecter** ou **Voir**.
+Cocher Mail sans boîte ouvre directement le choix du fournisseur. Dans Messages › Mail, une boîte
+pas connectée affiche : « La boîte mail du club n'est pas encore connectée. » et, pour
+l'Administrateur principal, où la connecter.
 
-Écran guidé, celui de la maquette du 22 octobre :
-1. **Adresse Gmail du club** ; encadré « **Toute la boîte sera visible** : les personnes qui ont
-   le droit « Boîte mail du club » verront tous les mails de cette adresse et pourront écrire en
-   son nom. Utilisez la boîte du club, jamais une boîte personnelle. » ; trois étapes numérotées ;
-   phrase sur la validation en deux étapes. Bouton principal **Ouvrir Google** (page des mots de
-   passe d'application, nouvel onglet).
-2. **Code Google** (16 lettres, espaces acceptés), bouton **Coller**, lien **Rouvrir Google**,
-   bouton principal **Connecter**.
-3. « Connexion à Gmail… » : l'appli essaie IMAP et SMTP.
-4. **Boîte connectée** (bouton **Ouvrir la boîte**) ou **Code refusé** (lien « Recoller le
-   code », bouton **Rouvrir Google**).
+**Fournisseurs** (Seb, 18 novembre) : **Gmail** et **Infomaniak** (adresses @ik.me de my kSuite et
+adresses d'un nom de domaine chez Infomaniak, serveur `mail.infomaniak.com`, IMAP 993 et SMTP 587).
+Premier écran : « Quelle boîte connecter ? », deux boutons Gmail / Infomaniak et la phrase « Seules
+les boîtes Gmail et Infomaniak peuvent être connectées pour l'instant. »
 
-Le code est chiffré en base (`securite/chiffrement.py`), jamais réaffiché. Menu ⋮ de la boîte :
-« Boîte connectée : adresse » et, pour l'Administrateur principal, **Déconnecter la boîte**
-(efface le code ; Annuler 10 s).
+Écran guidé, celui de la maquette du 22 octobre, selon le fournisseur :
+1. **Adresse Gmail (ou Infomaniak) du club** ; encadré « **Toute la boîte sera visible** : les
+   personnes qui ont le droit « Boîte mail du club » verront tous les mails de cette adresse et
+   pourront écrire en son nom. Utilisez la boîte du club, jamais une boîte personnelle. » ; trois
+   étapes numérotées. Bouton principal **Ouvrir Google** / **Ouvrir Infomaniak** (nouvel onglet) :
+   - Gmail : page des mots de passe d'application ; phrase sur la validation en deux étapes.
+   - Infomaniak @ik.me (aussi etik.com, ikmail.com) : appli Mail de kSuite, ⋮ à côté de
+     l'adresse › Paramètres › Gérer le mot de passe › Ajouter un appareil, IMAP / SMTP. Autre
+     adresse : Manager › Service Mail › domaine › adresse › Appareils › Ajouter un appareil.
+     Phrase : Infomaniak ne montre ce mot de passe qu'une fois.
+2. **Code Google** / **Mot de passe Infomaniak**, bouton **Coller**, lien **Rouvrir…**, bouton
+   principal **Connecter**. Les espaces sont retirés (le code Google s'affiche en quatre groupes).
+3. « Connexion à Gmail… » / « Connexion à Infomaniak… » : l'appli essaie IMAP et SMTP.
+4. **Boîte connectée** (toast) ou **Code refusé** (lien « Recoller le code », bouton **Rouvrir…**).
 
-**Google coupe l'accès** (changement du mot de passe du compte, code révoqué) : bandeau en haut de
-la boîte « La boîte mail n'est plus connectée. Google a coupé l'accès, souvent après un changement
-du mot de passe du compte. », bouton **Reconnecter** pour l'Administrateur principal, sinon « L'Administrateur
-principal doit la reconnecter. »
+Le code est chiffré en base (`securite/chiffrement.py`), jamais réaffiché. **Voir** : adresse,
+fournisseur, date de connexion, lien **Connecter une autre boîte**, bouton **Déconnecter la
+boîte** (efface le code ; Annuler 10 s). Menu ⋮ de la boîte dans Messages : l'adresse connectée.
+
+**Le fournisseur coupe l'accès** (changement du mot de passe du compte, code révoqué) : bandeau en
+haut de la boîte « La boîte mail n'est plus connectée. Google (ou Infomaniak) a coupé l'accès,
+souvent après un changement du mot de passe du compte. », avec pour l'Administrateur principal
+« Reconnectez-la dans Admin › École › Personnalisation › Fonctionnalités, ligne Mail. » (bouton
+**Reconnecter** dans « Voir »), sinon « L'Administrateur principal doit la reconnecter. »
 
 ## 5. La boîte (Messages › Mail)
 
@@ -107,7 +124,8 @@ parti). Seul écart de comportement avec Sambo Admin.
 
 ## 9. Données
 
-Une table `mail_accounts` : `organization_id` (unique), `address`, `app_password` chiffré,
+Une table `mail_accounts` : `organization_id` (unique), `address`, `provider` (`gmail` ou
+`infomaniak`, défaut `gmail`), `app_password` chiffré,
 `connected_at`, `cut_at` (rempli quand Google refuse, vidé à la reconnexion). Une ligne par école :
 la boîte appartient à l'école, pas à une personne. Rien d'autre en base : ni mails, ni pièces
 jointes, ni cache.
@@ -119,7 +137,7 @@ jointes, ni cache.
 - **Google peut couper** les mots de passe d'application (changement de mot de passe, Protection
   avancée, compte pro bloqué par son admin) : bandeau §4, on reconnecte.
 - **Google interdit d'automatiser** la création du code : l'écran guide, la personne le crée.
-- **Une seule boîte par école** ; pas d'autre fournisseur que Gmail pour l'instant.
+- **Une seule boîte par école** ; pas d'autre fournisseur que Gmail et Infomaniak pour l'instant.
 
 ## 11. Technique
 
@@ -142,4 +160,8 @@ Messagerie. `guide.md` du module mis à jour dans la même PR que les écrans.
    supprimer partent au bout des 10 s d'Annuler (Gmail change le numéro d'un mail déplacé : on
    ne peut pas le remettre après coup). Pièces jointes : téléchargées, comme dans Sambo Admin ;
    l'ouverture dans la visionneuse ou OnlyOffice (§6) reste à faire.
+2 bis. Connexion dans Fonctionnalités, Gmail ou Infomaniak (§2, §4, §9 ; Seb, 18 novembre).
+   **Fait (18 novembre 2026)** : colonne `provider` (migration), l'Administrateur principal
+   connecte sans le droit de lecture. Infomaniak à essayer avec la boîte du club
+   (alliancesambocombatprovence@ik.me) : dossiers et Archiver non vérifiés sur un vrai compte.
 3. Écrire, répondre, transférer, pièces jointes, Annuler 10 s (§7, §8).

@@ -504,7 +504,7 @@ class Webmail:
             else:
                 conn = imaplib.IMAP4(self.imap_host, self.imap_port, timeout=self.timeout)
         except OSError as exc:
-            raise WebmailError("Gmail ne répond pas. Réessayez dans un moment.") from exc
+            raise WebmailError("La boîte mail ne répond pas. Réessayez dans un moment.") from exc
         try:
             conn.login(self.address, self.password)
         except imaplib.IMAP4.error as exc:
@@ -812,7 +812,7 @@ class Webmail:
         except smtplib.SMTPAuthenticationError as exc:
             raise WebmailRefusedError("La boîte mail n'est plus connectée") from exc
         except (smtplib.SMTPException, OSError) as exc:
-            raise WebmailError("Envoi impossible : Gmail ne répond pas. Réessayez dans un moment.") from exc
+            raise WebmailError("Envoi impossible : la boîte mail ne répond pas. Réessayez dans un moment.") from exc
 
         # Gmail range lui-meme le mail dans "Envoyes" ; ailleurs, on l'y copie.
         if "gmail" not in self.smtp_host or answered is not None:

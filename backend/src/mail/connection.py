@@ -1,4 +1,4 @@
-"""La boîte Gmail d'une organisation (spec/modules/mail.md §4) : la
+"""La boîte mail (Gmail ou Infomaniak) d'une organisation (spec/modules/mail.md §4) : la
 connecter (Google teste le code avant tout enregistrement), la lire, la
 déconnecter."""
 
@@ -21,31 +21,40 @@ class NotConnected(Exception):
 
 
 def normalize_code(code: str) -> str:
-    """Google affiche le code en quatre groupes : « abcd efgh ijkl mnop »."""
+    """Google affiche le code en quatre groupes : « abcd efgh ijkl mnop ».
+    Sans espaces aussi pour Infomaniak : le client IMAP les retire (imap.py)."""
     return "".join(code.split())
+
+
+def open_webmail(address: str, password: str, provider: str) -> Webmail:
+    p = gmail.PROVIDERS[provider]
+    return Webmail(address, password, imap_host=p.imap_host, smtp_host=p.smtp_host)
 
 
 class Connection:
     def __init__(
-        self, check: Callable[[str, str], None] = gmail.check, webmail: Callable[[str, str], Webmail] = Webmail
+        self,
+        check: Callable[[str, str, str], None] = gmail.check,
+        webmail: Callable[[str, str, str], Webmail] = open_webmail,
     ) -> None:
         # Remplaçables dans les tests (pas d'appel réseau).
         self.check = check
         self.webmail = webmail
         # Un client par école, gardé tant que la boîte ne change pas : il
         # retient les noms des dossiers Gmail (10 min, voir imap.py).
-        self._clients: dict[int, tuple[tuple[str, str], Webmail]] = {}
+        self._clients: dict[int, tuple[tuple[str, str, str], Webmail]] = {}
 
     @staticmethod
     def account(db: Session, org_id: int) -> MailAccount | None:
         return db.scalar(select(MailAccount).where(MailAccount.organization_id == org_id))
 
-    def connect(self, db: Session, org_id: int, address: str, code: str) -> MailAccount:
-        """Teste chez Google puis enregistre (remplace l'ancienne boîte)."""
+    def connect(self, db: Session, org_id: int, address: str, code: str, provider: str = "gmail") -> MailAccount:
+        """Teste chez le fournisseur puis enregistre (remplace l'ancienne boîte)."""
         address, password = address.strip(), normalize_code(code)
-        self.check(address, password)
+        self.check(address, password, provider)
         account = self.account(db, org_id) or MailAccount(organization_id=org_id)
         account.address, account.app_password_encrypted = address, chiffrer(password)
+        account.provider = provider
         account.connected_at, account.cut_at = datetime.now(timezone.utc), None
         db.add(account)
         db.commit()
@@ -61,10 +70,10 @@ class Connection:
         if password is None:  # secret du serveur changé : il faut reconnecter
             self.mark_cut(db, org_id)
             raise NotConnected()
-        key = (account.address, password)
+        key = (account.address, password, account.provider)
         cached = self._clients.get(org_id)
         if cached is None or cached[0] != key:
-            cached = (key, self.webmail(account.address, password))
+            cached = (key, self.webmail(account.address, password, account.provider))
             self._clients[org_id] = cached
         return cached[1]
 

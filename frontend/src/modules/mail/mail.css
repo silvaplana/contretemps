@@ -359,3 +359,7 @@
   color: var(--text-muted);
   font-size: 14px;
 }
+.mail__fournisseur {
+  min-height: 56px;
+  font-size: 18px;
+}
