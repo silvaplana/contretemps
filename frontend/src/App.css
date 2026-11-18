@@ -4498,10 +4498,32 @@ a.btn {
   flex-direction: column;
 }
 
+/* Une ligne : le nom et son état à gauche, le bouton juste à côté (pas au
+   bord de l'écran), en retrait sous le titre (Seb, 18 novembre). */
+.connexions__liste {
+  padding-left: 24px;
+}
+
 .connexions__ligne {
-  padding: 8px 0;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  column-gap: 16px;
+  align-items: center;
+  max-width: 640px;
+  padding: 10px 0;
   border-bottom: 1px solid var(--border);
   font-size: 17px;
+}
+
+.connexions__ligne > span:first-child,
+.connexions__ligne > .helloasso__etat {
+  grid-column: 1;
+}
+
+.connexions__ligne > .helloasso__lien {
+  grid-column: 2;
+  grid-row: 1 / span 3;
+  margin-left: 0;
 }
 
 .connexions__aide {
