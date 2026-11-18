@@ -50,7 +50,9 @@ Fonctionnalités**, sur la ligne Mail (comme HelloAsso et FFST), et non plus dan
 à l'**Administrateur principal** et au Super User, **sans avoir besoin du droit** « Boîte mail du
 club » (connecter ne montre aucun mail ; lire en demande toujours le droit). La ligne dit
 « Connectée : adresse », « adresse : à reconnecter » ou « Pas encore connectée. Seules les boîtes
-Gmail et Infomaniak peuvent être connectées pour l'instant. », avec **Connecter** ou **Voir**.
+Gmail et Infomaniak peuvent être connectées pour l'instant. », avec le bouton **Connecter** ou **Voir**, toujours affiché
+(entouré comme les autres boutons de réglage, Seb 18 novembre ; s'il ne peut pas lire l'état, le
+bouton le relit et la ligne dit pourquoi).
 Cocher Mail sans boîte ouvre directement le choix du fournisseur. Dans Messages › Mail, une boîte
 pas connectée affiche : « La boîte mail du club n'est pas encore connectée. » et, pour
 l'Administrateur principal, où la connecter.
