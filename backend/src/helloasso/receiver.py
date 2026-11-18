@@ -137,13 +137,17 @@ class UpcomingOut(BaseModel):
     # Centimes.
     amount: int
     date: str | None = None
+    # Numéro de l'échéance sur HelloAsso (« Paiement 2 »).
+    installment: int | None = None
+    # Date passée sans paiement.
+    overdue: bool = False
 
 
 class UnpaidOut(BaseModel):
     # La saison affichée a une campagne (sinon rien à lire).
     campaign: bool
     members: list[UnpaidMemberOut] = []
-    # Échéances à venir, la prochaine d'abord (Seb, 18 novembre 2026).
+    # « À encaisser » : échéances encore dues, la plus ancienne d'abord (Seb, 18 novembre 2026).
     upcoming: list[UpcomingOut] = []
 
 

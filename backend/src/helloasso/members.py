@@ -12,6 +12,7 @@ import io
 import os
 import re
 import unicodedata
+from datetime import date
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -237,10 +238,14 @@ def unpaid(db: Session, org_id: int, season_id: int) -> list[dict]:
     return out
 
 
-def upcoming(db: Session, org_id: int, season_id: int) -> list[dict]:
-    """Instalments still to come (Seb, 18 November 2026), next first: not
-    paid, refused nor refunded, of memberships that are not cancelled."""
-    from .stats import FAILED, PAID, REFUNDED
+def upcoming(db: Session, org_id: int, season_id: int, today: date | None = None) -> list[dict]:
+    """« À encaisser » (Seb, 18 November 2026): the instalments the members
+    still have to pay, first due first: neither paid nor refunded, of
+    memberships that are not cancelled. `overdue`: its day has passed
+    without payment (refused, or never tried)."""
+    from .stats import PAID, REFUNDED
+
+    today_iso = (today or date.today()).isoformat()
 
     out = []
     for r in db.scalars(
@@ -253,12 +258,14 @@ def upcoming(db: Session, org_id: int, season_id: int) -> list[dict]:
         if is_cancelled(r.state):
             continue
         for p in r.payments or []:
-            if p.get("state") not in PAID | FAILED | REFUNDED:
+            if p.get("state") not in PAID | REFUNDED:
                 out.append({
                     "member_id": r.member_id,
                     "first_name": r.first_name,
                     "last_name": r.last_name,
                     "amount": p.get("amount") or 0,
                     "date": p.get("date"),
+                    "installment": p.get("installment"),
+                    "overdue": (p.get("date") or "")[:10] < today_iso,
                 })
     return sorted(out, key=lambda e: (e["date"] or "", e["last_name"], e["first_name"]))

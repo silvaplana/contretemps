@@ -1,23 +1,55 @@
 import { useCallback, useEffect, useState } from 'react'
 import * as api from './api.js'
 
-// Admin > Paiements HelloAsso (spec/modules/helloasso.md §7.4), repris de
-// Sambo Admin : les adhésions avec au moins une échéance refusée ou en
-// échec, puis les échéances à venir (Seb, 18 novembre 2026). Lu dans la
-// copie de la synchronisation ; « Rafraîchir » synchronise d'abord.
+// Admin > À encaisser (spec/modules/helloasso.md §7.4, maquette validée par
+// Seb le 18 novembre 2026) : l'argent qui doit encore arriver sur le compte.
+// 1. Ce que les adhérents doivent encore payer à HelloAsso, échéance par
+//    échéance ; dépassée sans paiement = en rouge, en tête.
+// 2. Ce que HelloAsso doit verser au compte (statistiques de la saison :
+//    virements en route et argent gardé par HelloAsso).
+// Lu dans la copie de la synchronisation ; « Rafraîchir » synchronise d'abord.
 
 const euros = (centimes) =>
-  (centimes / 100).toLocaleString('fr-FR', {
-    style: 'currency',
-    currency: 'EUR',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  })
+  (centimes / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })
 
-const dateFr = (iso) => (iso ? new Date(iso).toLocaleDateString('fr-FR') : '')
+const jour = (iso) => (iso ? new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : '')
+
+const mois = (iso) => {
+  const texte = new Date(iso).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
+  return texte.charAt(0).toUpperCase() + texte.slice(1)
+}
+
+// HelloAsso verse vers le 10 du mois suivant.
+const prochainVersement = () => {
+  const d = new Date()
+  const versement = new Date(d.getFullYear(), d.getMonth() + (d.getDate() < 10 ? 0 : 1), 10)
+  return versement.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })
+}
+
+const somme = (echeances) => echeances.reduce((s, e) => s + e.amount, 0)
+
+function Echeance({ e }) {
+  return (
+    <div className={`encaisser__ligne${e.overdue ? ' encaisser__ligne--retard' : ''}`}>
+      <span>{jour(e.date)}</span>
+      <span>
+        <b>{e.last_name}</b> {e.first_name}
+        {(e.installment || e.overdue) && (
+          <small>
+            {[e.installment && `Paiement ${e.installment}`, e.overdue && 'dépassée, pas de paiement']
+              .filter(Boolean)
+              .join(' · ')}
+          </small>
+        )}
+      </span>
+      <span className="encaisser__somme">{euros(e.amount)}</span>
+    </div>
+  )
+}
 
 export default function Impayes({ ecoleId }) {
   const [lu, setLu] = useState(null)
+  const [caisse, setCaisse] = useState(null)
   const [erreur, setErreur] = useState('')
   const [enCours, setEnCours] = useState(false)
 
@@ -29,6 +61,10 @@ export default function Impayes({ ecoleId }) {
         setErreur('')
       })
       .catch((e) => setErreur(e.message))
+    api
+      .statistiques(ecoleId)
+      .then((s) => setCaisse(s.cash))
+      .catch(() => setCaisse(null))
   }, [ecoleId])
 
   useEffect(() => {
@@ -46,10 +82,22 @@ export default function Impayes({ ecoleId }) {
     relire()
   }
 
+  const echeances = lu?.upcoming ?? []
+  const enRetard = echeances.filter((e) => e.overdue)
+  const parMois = []
+  for (const e of echeances.filter((x) => !x.overdue)) {
+    const cle = (e.date || '').slice(0, 7)
+    if (parMois.at(-1)?.cle !== cle) parMois.push({ cle, echeances: [] })
+    parMois.at(-1).echeances.push(e)
+  }
+  const aPayer = somme(echeances)
+  const enRoute = caisse ? Math.round(caisse.in_transit * 100) : 0
+  const garde = caisse ? Math.round(caisse.held * 100) : 0
+
   return (
     <div className="admin-panel">
       <div className="adherents__entete">
-        <h2>Impayés{lu?.campaign ? ` (${lu.members.length})` : ''}</h2>
+        <h2>À encaisser</h2>
         {lu?.campaign && (
           <button type="button" className="btn btn--secondary" onClick={rafraichir} disabled={enCours}>
             {enCours ? 'Rafraîchissement…' : 'Rafraîchir'}
@@ -58,69 +106,67 @@ export default function Impayes({ ecoleId }) {
       </div>
       {erreur && <p className="login-screen__erreur">{erreur}</p>}
       {lu && !lu.campaign && <p className="muted">Pas de campagne HelloAsso pour cette saison.</p>}
-      {lu?.campaign && lu.members.length === 0 && <p className="muted">Aucun impayé.</p>}
-      {lu?.campaign && lu.members.length > 0 && (
-        <div className="table-scroll">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Nom</th>
-                <th>Prénom</th>
-                <th>Email</th>
-                <th>Total</th>
-                <th>Impayé</th>
-                <th>Échéances refusées</th>
-              </tr>
-            </thead>
-            <tbody>
-              {lu.members.map((m, i) => (
-                <tr key={i}>
-                  <td>{m.last_name}</td>
-                  <td>{m.first_name}</td>
-                  <td>{m.email}</td>
-                  <td>{euros(m.total)}</td>
-                  <td className="impayes__montant">{euros(m.unpaid)}</td>
-                  <td>{m.refused.map((p) => dateFr(p.date)).join(', ')}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
       {lu?.campaign && (
         <>
-          <h2 className="impayes__titre">Échéances à venir ({lu.upcoming.length})</h2>
-          {lu.upcoming.length === 0 ? (
-            <p className="muted">Aucune échéance à venir.</p>
-          ) : (
-            <div className="table-scroll">
-              <table className="data-table impayes__a-venir">
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Nom</th>
-                    <th>Prénom</th>
-                    <th>Somme</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {lu.upcoming.map((e, i) => (
-                    <tr key={i}>
-                      <td>{dateFr(e.date)}</td>
-                      <td>{e.last_name}</td>
-                      <td>{e.first_name}</td>
-                      <td>{euros(e.amount)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr>
-                    <td colSpan={3}>Total</td>
-                    <td>{euros(lu.upcoming.reduce((s, e) => s + e.amount, 0))}</td>
-                  </tr>
-                </tfoot>
-              </table>
+          <div className="encaisser__total">
+            <span>Doit encore arriver sur le compte</span>
+            <b>{euros(aPayer + enRoute + garde)}</b>
+            {caisse && (
+              <span>
+                {euros(aPayer)} à payer par les adhérents + {euros(enRoute + garde)} chez HelloAsso
+              </span>
+            )}
+          </div>
+
+          <div className="encaisser__partie">
+            <h3>1. À payer à HelloAsso</h3>
+            <b>{euros(aPayer)}</b>
+          </div>
+          <p className="muted">Les échéances que les adhérents doivent encore payer.</p>
+          {enRetard.length > 0 && (
+            <p className="encaisser__alerte">
+              {enRetard.length === 1 ? '1 échéance dépassée' : `${enRetard.length} échéances dépassées`} sans
+              paiement : {euros(somme(enRetard))}
+            </p>
+          )}
+          {echeances.length === 0 && <p className="muted">Aucune échéance à payer.</p>}
+          {enRetard.map((e, i) => (
+            <Echeance key={`r${i}`} e={e} />
+          ))}
+          {parMois.map((m) => (
+            <div key={m.cle}>
+              <p className="encaisser__mois">
+                {m.cle ? mois(m.echeances[0].date) : 'Sans date'} · {euros(somme(m.echeances))}
+              </p>
+              {m.echeances.map((e, i) => (
+                <Echeance key={i} e={e} />
+              ))}
             </div>
+          ))}
+
+          {caisse && (
+            <>
+              <div className="encaisser__partie">
+                <h3>2. HelloAsso doit verser au compte</h3>
+                <b>{euros(enRoute + garde)}</b>
+              </div>
+              <p className="muted">L'argent déjà payé, que HelloAsso garde pour l'école.</p>
+              {enRoute > 0 && (
+                <div className="encaisser__ligne encaisser__ligne--large">
+                  <span>
+                    <b>Virement en route</b>
+                  </span>
+                  <span className="encaisser__somme">{euros(enRoute)}</span>
+                </div>
+              )}
+              <div className="encaisser__ligne encaisser__ligne--large">
+                <span>
+                  <b>Gardé par HelloAsso</b>
+                  <small>Versé vers le {prochainVersement()}</small>
+                </span>
+                <span className="encaisser__somme">{euros(garde)}</span>
+              </div>
+            </>
           )}
         </>
       )}

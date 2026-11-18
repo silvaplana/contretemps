@@ -5704,11 +5704,6 @@ tr.is-resiliee td.data-table__name button {
   color: var(--text-muted);
 }
 
-/* Admin > Impayés HelloAsso (modules/helloasso/Impayes.jsx). */
-.impayes__montant {
-  color: var(--danger-text);
-  font-weight: 700;
-}
 
 /* Les écrans de connexion FFST et HelloAsso : une colonne de téléphone, même
    sur un grand écran ; en pleine largeur, « Enregistrer », centré dans le
@@ -5910,12 +5905,72 @@ tr.is-resiliee td.data-table__name button {
   margin-top: 20px;
 }
 
-/* Impayés HelloAsso : la liste des échéances à venir. */
-.impayes__titre {
-  margin-top: 28px;
+/* Admin > À encaisser (modules/helloasso/Impayes.jsx). */
+.encaisser__total {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 8px 0 20px;
+  font-size: 17px;
 }
-.impayes__a-venir tfoot td {
+.encaisser__total span {
+  color: var(--text-muted);
+}
+.encaisser__total b {
+  font-size: 36px;
+}
+.encaisser__partie {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border, rgba(127, 127, 127, 0.3));
+  font-size: 19px;
+}
+.encaisser__partie h3 {
+  margin: 0;
+  font-size: 19px;
+}
+.encaisser__alerte {
+  color: var(--danger-text);
   font-weight: 700;
+  font-size: 17px;
+}
+.encaisser__mois {
+  margin: 16px 0 4px;
+  font-weight: 700;
+  color: var(--text-muted);
+  font-size: 17px;
+}
+.encaisser__ligne {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) auto;
+  gap: 8px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border, rgba(127, 127, 127, 0.2));
+  font-size: 17px;
+}
+.encaisser__ligne--large {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+.encaisser__ligne small {
+  display: block;
+  font-size: 15px;
+  color: var(--text-muted);
+}
+.encaisser__ligne--retard,
+.encaisser__ligne--retard small {
+  color: var(--danger-text);
+}
+.encaisser__ligne--retard {
+  background: var(--danger-bg);
+  padding-inline: 8px;
+}
+.encaisser__somme {
+  text-align: right;
+  white-space: nowrap;
 }
 
 /* Pastille d'un sous-onglet d'Admin venu d'un module (ex. impayés HelloAsso). */

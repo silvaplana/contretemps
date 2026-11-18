@@ -1071,28 +1071,35 @@ def test_ordre_des_adherents_comme_sambo_admin(client, db_session, ecole, campag
 
 
 def test_echeances_a_venir(client, db_session, ecole, campagnes, monkeypatch):
-    """Impayés HelloAsso montre aussi les échéances à venir (Seb 18/11) :
-    nom, somme, date, par date ; ni les payées, ni les refusées, ni celles
-    d'une adhésion résiliée."""
-    def echeance(montant, etat, date):
-        return {"amount": montant, "date": f"{date}T10:00:00", "state": etat, "means": "Card", "installment": 1}
+    """« À encaisser » (Seb 18/11) : toutes les échéances que les adhérents
+    doivent encore payer, par date, avec leur nom HelloAsso (« Paiement
+    2 ») ; une échéance dont la date est passée sans paiement (refusée ou
+    jamais tentée) est en retard. Ni les payées, ni les remboursées, ni
+    celles d'une adhésion résiliée."""
+    def echeance(montant, etat, date, numero):
+        return {"amount": montant, "date": f"{date}T10:00:00", "state": etat, "means": "Card", "installment": numero}
 
     tom = {**_inscrit("1", "Tom", "Benali", "t@test.fr", montant=24000), "payments": [
-        echeance(8000, "Authorized", "2026-09-02"),
-        echeance(8000, "Refused", "2026-10-02"),
-        echeance(8000, "Pending", "2027-01-02"),
+        echeance(8000, "Authorized", "2026-09-02", 1),
+        echeance(8000, "Refused", "2026-10-02", 2),
+        echeance(8000, "Pending", "2099-01-02", 3),
     ]}
     ines = {**_inscrit("2", "Inès", "Navarro", "i@test.fr", montant=16000), "payments": [
-        echeance(8000, "Authorized", "2026-09-05"),
-        echeance(8000, "Pending", "2026-12-05"),
+        echeance(8000, "Authorized", "2026-09-05", 1),
+        echeance(8000, "Refunded", "2026-10-05", 2),
+        echeance(8000, "Pending", "2098-12-05", 3),
     ]}
     partie = {**_inscrit("3", "Enzo", "Roux", "e@test.fr", state="Canceled"), "payments": [
-        echeance(6000, "Pending", "2026-12-01"),
+        echeance(6000, "Pending", "2098-12-01", 1),
     ]}
     _saison_imposee(client, ecole, monkeypatch, [tom, ines, partie])
     lu = client.get(f"/ecoles/{ecole.id}/helloasso/impayes").json()
-    assert [(e["last_name"], e["first_name"], e["amount"], e["date"][:10]) for e in lu["upcoming"]] == [
-        ("Navarro", "Inès", 8000, "2026-12-05"),
-        ("Benali", "Tom", 8000, "2027-01-02"),
+    assert [
+        (e["last_name"], e["first_name"], e["amount"], e["date"][:10], e["installment"], e["overdue"])
+        for e in lu["upcoming"]
+    ] == [
+        ("Benali", "Tom", 8000, "2026-10-02", 2, True),
+        ("Navarro", "Inès", 8000, "2098-12-05", 3, False),
+        ("Benali", "Tom", 8000, "2099-01-02", 3, False),
     ]
     assert lu["upcoming"][0]["member_id"] is not None

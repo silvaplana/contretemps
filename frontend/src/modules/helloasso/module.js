@@ -30,10 +30,10 @@ export default {
   adminTabs: [
     {
       value: 'helloasso-impayes',
-      label: 'Paiements HelloAsso',
+      label: 'À encaisser',
       Ecran: Impayes,
-      // Pastille : les adhésions avec une échéance refusée (Seb, 18 novembre 2026).
-      badge: (ecoleId) => api.impayes(ecoleId).then((r) => (r.campaign ? r.members.length : 0)),
+      // Pastille : les échéances dépassées sans paiement (Seb, 18 novembre 2026).
+      badge: (ecoleId) => api.impayes(ecoleId).then((r) => (r.campaign ? r.upcoming.filter((e) => e.overdue).length : 0)),
     },
   ],
 }
