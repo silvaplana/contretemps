@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import * as authApi from '../../api/auth.js'
+import Modal from '../../components/Modal.jsx'
 
 // Invitation et suivi de l'accès à l'appli (voir spec/SPEC.md §2.2 :
 // « Invitation » et « Suivi de l'invitation ») — colonnes « Inviter » et
@@ -58,11 +59,12 @@ export function useAcces(ecoleId) {
   }, [message])
 
   // `email` : une seule adresse d'une fiche qui en a plusieurs.
-  async function inviter(compteIds, email = null) {
+  // `appliAndroid` : un administrateur invité sur l'appli Android.
+  async function inviter(compteIds, email = null, appliAndroid = false) {
     setMessage(null)
     setEnvoiEnCours(true)
     try {
-      const { emails, enCours, adresses } = await authApi.inviter(ecoleId, compteIds, email)
+      const { emails, enCours, adresses } = await authApi.inviter(ecoleId, compteIds, email, appliAndroid)
       setMessage({
         texte: enCours
           ? `Envoi de ${emails} mails en cours : les statuts se mettent à jour au fur et à mesure.`
@@ -133,21 +135,55 @@ function aDesAdressesNonInvitees(etat) {
 }
 
 // Disponible à chaque étape (un nouveau lien annule le précédent), grisé
-// seulement sans email.
-export function BoutonInviter({ acces, compteId, prenom }) {
+// seulement sans email. `appliAndroid` : l'appli Android de l'école est
+// prête (Admin › Administrateurs seulement, Seb 18/11/2026) ; « Inviter »
+// demande alors sur quelle appli.
+export function BoutonInviter({ acces, compteId, prenom, appliAndroid = false }) {
+  const [choix, setChoix] = useState(false)
   const etat = acces.statuts[compteId]
   const sansEmail = !etat || etat.statut === 'pas_email'
+  const libelle =
+    etat && !['pas_email', 'pas_invite'].includes(etat.statut) && !aDesAdressesNonInvitees(etat) ? 'Réinviter' : 'Inviter'
+  function envoyer(android) {
+    setChoix(false)
+    acces.inviter([compteId], null, android)
+  }
   return (
-    <button
-      type="button"
-      className="btn btn--secondary acces-inviter"
-      disabled={sansEmail || acces.envoiEnCours}
-      title={sansEmail ? 'Pas d’email : ajoutez-en un pour pouvoir inviter' : undefined}
-      onClick={() => acces.inviter([compteId])}
-      aria-label={`Inviter ${prenom}`}
-    >
-      {etat && !['pas_email', 'pas_invite'].includes(etat.statut) && !aDesAdressesNonInvitees(etat) ? 'Réinviter' : 'Inviter'}
-    </button>
+    <>
+      <button
+        type="button"
+        className="btn btn--secondary acces-inviter"
+        disabled={sansEmail || acces.envoiEnCours}
+        title={sansEmail ? 'Pas d’email : ajoutez-en un pour pouvoir inviter' : undefined}
+        onClick={() => (appliAndroid ? setChoix(true) : acces.inviter([compteId]))}
+        aria-label={`Inviter ${prenom}`}
+      >
+        {libelle}
+      </button>
+      {choix && (
+        <Modal
+          title={`${libelle} ${prenom}`}
+          onClose={() => setChoix(false)}
+          footer={
+            <button type="button" className="btn btn--secondary btn--block" onClick={() => setChoix(false)}>
+              Annuler
+            </button>
+          }
+        >
+          <p className="acces-choix__question">Sur quelle appli ?</p>
+          <button type="button" className="btn btn--primary btn--block" onClick={() => envoyer(false)}>
+            Appli normale
+          </button>
+          <button type="button" className="btn btn--secondary btn--block" onClick={() => envoyer(true)}>
+            Appli Android
+          </button>
+          <p className="acces-choix__aide">
+            Appli Android : à choisir s’il filme dans Fights et que son téléphone sert de caméra pour la
+            télécommande. Attention, l’appli Android en APK n’a pas encore les notifications push.
+          </p>
+        </Modal>
+      )}
+    </>
   )
 }
 

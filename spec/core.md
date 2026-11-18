@@ -121,8 +121,13 @@ nouveau, toute table nouvelle est en anglais.
   l'appli par l'action GitHub (quelques minutes, état « Fabrication… » puis « Prête » avec la date
   de la version) ; « Non » ne la retire pas des téléphones. Colonnes `ecoles.appli_android` et
   `ecoles.apk_cle` (nom de l'appli dans la release, fixé au premier « Oui » pour que les applis
-  installées se mettent à jour). Ensuite (étape suivante) : les adhérents qui arrivent par leur
-  invitation sur Android reçoivent l'appli au lieu de l'installation dans Chrome ; iPhone inchangé.
+  installées se mettent à jour). **Invitation par mail** (Seb 18 novembre) : adhérents et profs
+  toujours sur l'appli normale. Dans Admin › École › Administrateurs, quand l'appli Android est
+  prête, « Inviter » demande « Sur quelle appli ? » : « Appli normale » ou « Appli Android » (à
+  choisir s'il filme dans Fights et que son téléphone sert de caméra pour la télécommande ; elle
+  n'a pas encore les notifications push). Le mail « Appli Android » garde « Activer mon accès »,
+  puis ajoute « Télécharger l'appli Android » (lien du fichier dans la release) et comment
+  l'installer. Sans appli prête, « Inviter » envoie directement le mail de l'appli normale.
 - **Personnalisation de l'application** (Admin > École), trois parties dans cet ordre :
   **Apparence visuelle** (logo, nom, slogan, couleurs, polices, adresse), **Fonctionnalités** (une
   case par module, §11.3) et **Vocabulaire** (§2). Apparence et Vocabulaire : tout admin ;

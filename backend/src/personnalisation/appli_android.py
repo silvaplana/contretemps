@@ -72,6 +72,16 @@ def lancer_fabrication() -> bool:
         return False
 
 
+def telechargement(ecole: Ecole) -> tuple[str, str] | None:
+    """(nom de l'appli, lien du fichier) pour le mail d'invitation d'un
+    administrateur sur l'appli Android (Seb 18/11/2026) ; None si l'appli
+    de l'école n'est pas allumée ou pas encore publiée."""
+    if not ecole.appli_android or ecole.apk_cle is None:
+        return None
+    url = (version_publiee().get("apk") or {}).get(ecole.apk_cle)
+    return (f"Tournage {ecole.nom_appli or ecole.nom}", url) if url else None
+
+
 def etat(ecole: Ecole, fights_allume: bool) -> dict:
     """Ce que montrent Admin › École › Personnalisation et l'écran
     d'installation : `disponible` (Fights allumé), `actif`, `prete`, `url`
