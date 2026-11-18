@@ -115,9 +115,11 @@ FORMATS = {
 
 
 def forms(client_id: str, client_secret: str, slug: str) -> list[Form]:
-    """Les formulaires d'adhésion et d'événement de l'association."""
+    """Les formulaires d'adhésion et d'événement de l'association. Tous
+    sont lus puis triés ici, comme Sambo Admin : le filtre
+    « Membership,Event » en un seul paramètre donnait une liste vide à ASC
+    (18 novembre 2026)."""
     token = _token(client_id, client_secret)
-    params = {"formTypes": ",".join(CAMPAIGN_TYPES), "pageSize": 100}
     return [
         Form(
             form_type=f.get("formType", ""),
@@ -125,7 +127,8 @@ def forms(client_id: str, client_secret: str, slug: str) -> list[Form]:
             name=f.get("title") or f.get("formSlug", ""),
             state=f.get("state", ""),
         )
-        for f in _data(_get(f"/v5/organizations/{slug}/forms", token, params=params))
+        for f in _data(_get(f"/v5/organizations/{slug}/forms", token, params={"pageSize": 100}))
+        if f.get("formType") in CAMPAIGN_TYPES
     ]
 
 

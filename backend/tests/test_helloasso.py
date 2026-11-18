@@ -123,6 +123,35 @@ def test_connexion_par_l_api(monkeypatch):
         api.connect("id", "mauvais")
 
 
+def test_formulaires_adhesion_et_evenement(monkeypatch):
+    """La liste des campagnes : sans le filtre « Membership,Event » en un
+    seul paramètre (liste vide à ASC, Seb 18/11) ; on lit tout et on garde
+    les adhésions et les événements."""
+    from helloasso import api
+
+    class Reponse:
+        def __init__(self, status, corps):
+            self.status_code, self.ok, self._corps = status, status < 400, corps
+
+        def json(self):
+            return self._corps
+
+    def get(url, headers, params, timeout):
+        if "," in str((params or {}).get("formTypes", "")):
+            return Reponse(400, {})
+        return Reponse(200, {"data": [
+            {"title": "Adhésion 2026-2027", "formSlug": "adhesion-2026-2027", "formType": "Membership", "state": "Public"},
+            {"title": "Stage d'été", "formSlug": "stage", "formType": "Event", "state": "Public"},
+            {"title": "Dons", "formSlug": "dons", "formType": "Donation", "state": "Public"},
+        ]})
+
+    monkeypatch.setattr(api, "_token", lambda *_: "jeton")
+    monkeypatch.setattr(api.requests, "get", get)
+    assert [(f.form_type, f.form_slug) for f in api.forms("id", "secret", "asc")] == [
+        ("Membership", "adhesion-2026-2027"), ("Event", "stage"),
+    ]
+
+
 # --- Étape 8b : la campagne de la saison et ses champs (spec §3) ---
 
 QUESTIONS = {
