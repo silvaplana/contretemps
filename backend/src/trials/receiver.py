@@ -131,6 +131,17 @@ class StudentIn(BaseModel):
     course2_date: date | None = None
 
 
+class CheckInIn(BaseModel):
+    code: str = Field(max_length=500)
+
+
+class CheckInOut(BaseModel):
+    # added | today | full | unknown (voir Trials.check_in).
+    status: str
+    course: int | None = None
+    student: StudentOut | None = None
+
+
 class RegisteredOut(BaseModel):
     first_name: str
     last_name: str
@@ -169,6 +180,7 @@ class TrialsReceiver:
         app.post(f"{base}/students/{{student_id}}/courses", response_model=StudentOut, dependencies=admin)(
             self.add_course
         )
+        app.post(f"{base}/checkin", response_model=CheckInOut, dependencies=admin)(self.check_in)
 
     def _admin(self, ecole_id: int, appelant: Compte = Depends(rbac.compte_appelant)) -> None:
         rbac.require_admin(appelant, ecole_id)
@@ -319,3 +331,7 @@ class TrialsReceiver:
         except TrialError as erreur:
             raise HTTPException(status_code=409, detail=str(erreur)) from None
         return _student_out(row)
+
+    def check_in(self, ecole_id: int, data: CheckInIn, db: Session = Depends(get_db)):
+        status, course, row = self.client.check_in(db, ecole_id, data.code)
+        return CheckInOut(status=status, course=course, student=_student_out(row) if row else None)

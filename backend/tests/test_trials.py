@@ -219,3 +219,38 @@ def test_suppression_au_bout_d_un_an(client, db_session, ecole, allume, mails):
     assert main.core.trials_client.purge_expired(db_session) == 1
     assert [r.first_name for r in db_session.query(TrialStudent)] == ["Léa"]
     assert db_session.query(TrialSignature).count() == 1
+
+
+def test_scan_des_qr_codes(client, db_session, ecole, allume, mails):
+    """Étape 2 : le QR code contient `<adresse de l'école>/?essai=<jeton>`."""
+    from ecoles import Ecoles
+    from trials import TrialStudent
+
+    terms_id = client.get(f"/trials/public/orgs/{ecole.id}/page").json()["terms_id"]
+    _inscrire(client, ecole, terms_id, [SOPHIE], ["Sophie Martin"])
+    sophie = db_session.query(TrialStudent).one()
+    scanner = f"/ecoles/{ecole.id}/trials/checkin"
+    code = f"https://asc.exemple.fr/?essai={sophie.token}"
+
+    un = client.post(scanner, json={"code": code}).json()
+    assert (un["status"], un["course"]) == ("added", 1)
+    assert un["student"]["course1_date"] == date.today().isoformat() and un["student"]["course1_mode"] == "qr"
+    # Relu le même jour : rien d'ajouté.
+    assert client.post(scanner, json={"code": code}).json()["status"] == "today"
+    # Le jeton seul marche aussi.
+    sophie.course1_date = date.today() - timedelta(days=7)
+    db_session.commit()
+    deux = client.post(scanner, json={"code": sophie.token}).json()
+    assert (deux["status"], deux["course"], deux["student"]["course2_mode"]) == ("added", 2, "qr")
+    sophie.course2_date = date.today() - timedelta(days=1)
+    db_session.commit()
+    assert client.post(scanner, json={"code": code}).json()["status"] == "full"
+
+    assert client.post(scanner, json={"code": "https://ailleurs.fr/?essai=inconnu"}).json() == {
+        "status": "unknown",
+        "course": None,
+        "student": None,
+    }
+    # Écoles étanches : le QR code d'une autre école est inconnu.
+    voisine = Ecoles().create(db_session, nom="Voisine", code_postal="13000")
+    assert client.post(f"/ecoles/{voisine.id}/trials/checkin", json={"code": code}).json()["status"] == "unknown"

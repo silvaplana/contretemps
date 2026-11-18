@@ -12,7 +12,7 @@ Page publique, sans compte : <adresse de l'école>/essai
 - Le certificat médical n'est jamais gardé dans l'appli : il est seulement joint à ce mail.
 
 Liste : Admin › Essais (sous-onglet après Élèves, administrateurs)
-- « Élèves à l'essai (n) », puces « Pas encore adhérents » (par défaut) et « Tous », recherche.
+- « Élèves à l'essai (n) », bouton principal « Scanner les QR codes », puces « Pas encore adhérents » (par défaut) et « Tous », recherche.
 - Colonnes : Inscrit, 1er cours, 2e cours (date, « QR » ou « à la main »), Âge, Inscription,
   Commentaire, bouton « + Cours aujourd'hui » (deux cours au plus).
 - Couleur du nom : vert si le 1er cours est aujourd'hui, orange si un cours est déjà fait, rouge si
@@ -23,6 +23,16 @@ Liste : Admin › Essais (sous-onglet après Élèves, administrateurs)
   parent, dates des deux cours), « + Cours aujourd'hui », Inscription, « Signature et décharge »,
   Commentaire (« Enregistrer le commentaire »), « Supprimer … » (« Annuler » proposé 10 secondes).
 - Un inscrit est supprimé tout seul un an après son dernier cours ou son inscription.
+
+Scanner les QR codes : Admin › Essais › « Scanner les QR codes » (← revient à la liste)
+- Caméra arrière ; présenter le QR code de l'élève devant la caméra au début du cours. Chaque code lu
+  s'ajoute en haut de la liste et la caméra continue : « ok pour le cours d'essai 1 aujourd'hui »
+  (vert), « ok pour le cours d'essai 2 aujourd'hui (dernier) » (orange), « déjà noté aujourd'hui »
+  (vert, rien ajouté), « les 2 cours d'essai ont déjà été faits le … et le … » (rouge), « Code
+  inconnu » (rouge). Le téléphone vibre quand un cours est noté.
+- Le QR code lu avec l'appareil photo du téléphone ouvre l'appli sur cet écran (après connexion si
+  besoin), avec le résultat.
+- Caméra refusée : autoriser l'accès à la caméra pour ce site dans les réglages du navigateur.
 
 Page d'essai : Admin › Essais › ⋮ › Page d'essai (← revient à la liste)
 - Lien de la page, « Copier le lien », « Voir la page ».
