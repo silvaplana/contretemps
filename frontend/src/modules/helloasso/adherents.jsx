@@ -131,18 +131,26 @@ const COLONNES = [
     texte: (l) => (l ? statut(l) : ''),
   },
 ].map((c) => ({ ...c, nature: 'Calculé', detail: 'HelloAsso' }))
+// Une colonne de module : { key, label, nature ('Calculé' ou 'Bouton'),
+// detail, texte(ligne), cellule?({ ecoleId, eleve, ligne, relire }),
+// cachee?() }.
+
+// → null (rien ne change) ou { members, can_refresh, form_name }.
+async function charger(ecoleId) {
+  try {
+    const lu = await api.adherents(ecoleId)
+    return lu.imposed ? lu : null
+  } catch {
+    return null // module éteint (404) ou hors ligne
+  }
+}
+
+// Ses colonnes dans le tableau (spec/core.md §11.1), seulement quand la
+// saison affichée a une campagne.
+export const memberColumns = { charger, colonnes: COLONNES }
 
 export const memberList = {
-  // → null (rien ne change) ou { members, can_refresh, form_name }.
-  async charger(ecoleId) {
-    try {
-      const lu = await api.adherents(ecoleId)
-      return lu.imposed ? lu : null
-    } catch {
-      return null // module éteint (404) ou hors ligne
-    }
-  },
-  colonnes: COLONNES,
+  charger,
   // Sans affichage enregistré, le tableau de Sambo Admin (Seb, 18 novembre).
   ordreParDefaut: ['nom', 'email', ...COLONNES.map((c) => c.key)],
   // Une adhésion résiliée reste, grisée (spec §7.1).

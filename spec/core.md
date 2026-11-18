@@ -681,8 +681,7 @@ MODULE = Module(
     actions=lambda core: actions(core.finances),   # actions ouvertes à l'assistant (actions.py)
     rights=(Right("finances.access", "Accès au Financier"),),  # cible : un groupe 🔒 par droit (§5.3)
     groups=(Group("Bureau", children=("Président·e", "Vice-président·e", "Secrétaire", "Trésorier·e")),),
-    columns=(Column("Montant payé", compute=amount_paid),),    # cible : colonnes d'Admin (§4.3)
-    buttons=(Button("Demander la licence", action="ffst.request"),),
+    # colonnes et boutons d'Admin > Élèves : côté écran, `memberColumns` de module.js (ci-dessous)
 )
 ```
 
@@ -691,9 +690,12 @@ MODULE = Module(
   jamais un autre module : l'appli les relie dans `<module>_contretemps/`.
 - `actions` : la liste de l'assistant, prise telle quelle dans `actions.py`
   (`spec/modules/assistant-ia.md` §3). Un bouton de l'écran = une action de l'assistant.
-- `rights`, `groups`, `columns`, `buttons` *(cible, étude du 26 octobre)* : ce que le module apporte
-  au core ; le core crée les groupes et les droits quand le module est allumé, et propose les
-  colonnes dans l'affichage d'Admin. Le champ `roles` d'aujourd'hui (Professeur, « Accès au
+- `rights`, `groups` *(cible, étude du 26 octobre)* : ce que le module apporte au core ; le core
+  crée les groupes et les droits quand le module est allumé. Les colonnes et boutons du tableau
+  des membres ne sont pas dans `module.py` (18 novembre 2026, étape 6 de `modules/helloasso.md`) :
+  le module les déclare côté écran (`memberColumns`, ci-dessous) et lit leurs valeurs par ses
+  propres routes, qui gardent leurs droits ; un bouton appelle une route du module, qui est aussi
+  son action de l'assistant. Le champ `roles` d'aujourd'hui (Professeur, « Accès au
   Financier ») disparaît au profit de `rights` et `groups`.
 - Les tables d'un module restent dans son `models.py`, préfixées par le module (`doc_`, `nf_`),
   créées par Alembic.
@@ -712,7 +714,15 @@ MODULE = Module(
   du tableau d'Admin > Élèves (aussi dans « Affichage dans Admin ») et leur ordre par défaut, le
   verrou (ni « + », ni import, ni poubelle), les filtres par âge, « Rafraîchir », la ligne grisée
   d'une adhésion résiliée et son bloc dans la fiche. Côté serveur, le verrou passe par
-  `Eleves.locks`, que le module remplit dans `mount` ; de même `HelloAsso.school_keys` des
+  `Eleves.locks`, que le module remplit dans `mount`. Et `memberColumns` (18 novembre 2026) : les
+  colonnes et boutons qu'un module ajoute au tableau d'Admin > Élèves, quel que soit qui apporte les
+  membres (Montant, Photo… de HelloAsso ; Statut FFST, Actions FFST) : `charger(ecole)` rend
+  `{ members: { fiche: ligne } }` ou rien (module éteint, rien à montrer), chaque colonne a sa
+  clé, son libellé, sa nature (Calculé ou Bouton, d'où elle vient), son texte (recherche, appui
+  long) et au besoin sa cellule (un bouton, qui relit le tableau après son action) ; `rafraichir`
+  est appelé par « Rafraîchir ». Elles sont proposées dans « Affichage dans Admin » ; sans affichage
+  enregistré, celles d'un autre module que celui qui apporte les membres s'affichent après son
+  ordre par défaut. De même `HelloAsso.school_keys` des
   inscriptions en ligne (les clés de paiement de l'école, `modules/helloasso.md` §8.2). Un module
   sans onglet a `tabs: []`.
 

@@ -1,7 +1,7 @@
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
 import * as champsApi from '../../api/champs.js'
 import * as elevesApi from '../../api/eleves.js'
-import { listeImposee } from '../../app/modules.js'
+import { colonnesModules, listeImposee, rafraichirColonnes } from '../../app/modules.js'
 import Badge from '../../components/Badge.jsx'
 import Icon from '../../components/Icon.jsx'
 import MenuEntete from '../../components/MenuEntete.jsx'
@@ -112,20 +112,29 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
   // réglés dans « Affichage dans Admin », et les champs de la fiche avec les
   // réponses de tous les élèves. Relus à la fermeture de « Champs ».
   // `imposee` : le module qui apporte les membres de la saison (HelloAsso,
-  // spec/modules/helloasso.md §7), ses colonnes et ses données ; null pour
-  // une école qui saisit ses élèves (rien ne change).
-  const [reglage, setReglage] = useState({ colonnes: [], champs: [], reponses: {}, sousGroupes: {}, imposee: null })
+  // spec/modules/helloasso.md §7) et ses données ; null pour une école qui
+  // saisit ses élèves (rien ne change). `modules` : les colonnes et boutons
+  // que les modules ajoutent (spec/core.md §11.1).
+  const [reglage, setReglage] = useState({
+    colonnes: [],
+    champs: [],
+    reponses: {},
+    sousGroupes: {},
+    imposee: null,
+    modules: [],
+  })
   const relireColonnes = useCallback(async () => {
     try {
-      const [colonnes, champs, reponses, choix, imposee] = await Promise.all([
+      const [colonnes, champs, reponses, choix, imposee, modules] = await Promise.all([
         champsApi.colonnes(ecoleId),
         champsApi.lister(ecoleId),
         champsApi.toutesReponses(ecoleId),
         champsApi.groupes(ecoleId),
         listeImposee(ecoleId),
+        colonnesModules(ecoleId),
       ])
       const sousGroupes = Object.fromEntries(choix.parents.map((g) => [g.id, g.children]))
-      setReglage({ colonnes, champs, reponses, sousGroupes, imposee })
+      setReglage({ colonnes, champs, reponses, sousGroupes, imposee, modules })
     } catch {
       // Hors ligne : les colonnes d'origine restent affichées.
     }
@@ -134,7 +143,7 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
     relireColonnes()
   }, [relireColonnes])
   const { reponses, sousGroupes, imposee } = reglage
-  const toutesColonnes = ordonner(reglage.colonnes, reglage.champs, imposee)
+  const toutesColonnes = ordonner(reglage.colonnes, reglage.champs, imposee, reglage.modules)
   const affichees = toutesColonnes.filter((c) => c.shown && !c.cachee?.())
   // Ni ajout, ni import, ni suppression : les membres viennent du module.
   const verrouille = Boolean(imposee)
@@ -276,7 +285,7 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
   async function rafraichir() {
     setRafraichissement('…')
     try {
-      await imposee.liste.rafraichir(ecoleId)
+      await Promise.all([imposee.liste.rafraichir(ecoleId), rafraichirColonnes(ecoleId)])
       setRafraichissement('')
     } catch (e) {
       setRafraichissement(e.message)
@@ -333,7 +342,7 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
   const champAppuye = pressed ? toutesColonnes.find((c) => c.key === pressed.champ && c.champ)?.champ : null
   const colonneModuleAppuyee = pressed ? toutesColonnes.find((c) => c.key === pressed.champ && c.module) : null
   function valeurAppuyee() {
-    if (colonneModuleAppuyee) return colonneModuleAppuyee.texte(imposee?.donnees.members[eleveAppuye.id])
+    if (colonneModuleAppuyee) return colonneModuleAppuyee.texte(colonneModuleAppuyee.ligne(eleveAppuye.id))
     if (!champAppuye) return valeurCellule(eleveAppuye, pressed.champ, cours)
     return texteReponse(champAppuye, reponses[eleveAppuye.id]?.[champAppuye.id], sousGroupes[champAppuye.group_id])
   }
@@ -547,10 +556,11 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
                     c.module ? (
                       <td key={c.key} className={classeCellule(c.key)} {...celluleProps(el.id, c.key)}>
                         {c.cellule ? (
-                          c.cellule({ ecoleId, eleve: el, ligne: imposee.donnees.members[el.id] })
+                          // Un bouton du module relit le tableau après son action.
+                          c.cellule({ ecoleId, eleve: el, ligne: c.ligne(el.id), relire: relireColonnes })
                         ) : (
                           <button type="button" className="cell-comment" onClick={() => setFicheId(el.id)}>
-                            {c.texte(imposee.donnees.members[el.id]) || <span className="muted">—</span>}
+                            {c.texte(c.ligne(el.id)) || <span className="muted">—</span>}
                           </button>
                         )}
                       </td>
