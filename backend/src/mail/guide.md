@@ -11,6 +11,9 @@ Connecter la boîte (Admin › École › Connexions, ligne « Boîte mail du cl
 Mail, « Connecter la boîte mail » y mène)
 - Seul l'Administrateur principal la connecte, même sans être dans « Boîte mail du club ». La
   ligne dit « Connectée : adresse » ou « Pas encore connectée », avec « Connecter » ou « Voir ».
+- Sous la ligne : seuls les administrateurs cochés dans « Boîte mail du club » voient les mails.
+  Celui qui connecte n'est pas coché d'office : il se coche dans Administrateurs pour voir les
+  puces Chat | Mail.
 - Seules les boîtes Gmail et Infomaniak peuvent être connectées pour l'instant. « Connecter » :
   choisir Gmail ou Infomaniak, taper l'adresse du club, puis « Ouvrir Google » ou « Ouvrir
   Infomaniak ».

@@ -144,6 +144,9 @@ export default function MailReglages({ ecole, enabled }) {
   return (
     <>
       <small className="helloasso__etat">{petit}</small>
+      <small className="helloasso__etat">
+        Seuls les administrateurs cochés dans « Boîte mail du club » (Administrateurs) voient les mails.
+      </small>
       {enabled && erreur && <small className="helloasso__etat login-screen__erreur">{erreur}</small>}
       {enabled && (
         <button
