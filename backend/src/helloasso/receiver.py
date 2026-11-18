@@ -98,6 +98,8 @@ class SyncOut(BaseModel):
 
 
 class MemberRowOut(BaseModel):
+    # Place in the table, as in Sambo Admin: newest HelloAsso order first.
+    rank: int = 0
     # Centimes.
     amount: int
     discount_code: str | None = None

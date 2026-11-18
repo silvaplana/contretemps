@@ -532,7 +532,7 @@ def test_tableau_et_fiche_des_adherents(client, db_session, ecole, campagnes, mo
     tableau = client.get(f"/ecoles/{ecole.id}/helloasso/adherents").json()
     assert tableau["imposed"] is True and tableau["can_refresh"] is True
     lignes = {db_session.get(Compte, int(i)).prenom: ligne for i, ligne in tableau["members"].items()}
-    assert lignes["Léa"] == {"amount": 16000, "discount_code": "FRATRIE", "state": "Processed",
+    assert lignes["Léa"] == {"rank": 0, "amount": 16000, "discount_code": "FRATRIE", "state": "Processed",
                              "cancelled": False, "photo": True, "mails": 0, "sms": 0, "has_phone": False,
                              "check": None}
     assert lignes["Inès"]["cancelled"] is True and lignes["Inès"]["photo"] is False
@@ -1047,3 +1047,24 @@ def test_statistiques_branchees_sur_le_financier_et_la_ffst(db_session, ecole):
     assert sources.licences(db_session, ecole.id, 10) is None  # FFST éteinte
     set_enabled(db_session, ecole.id, MODULES, "finances", False)
     assert sources.ledger(db_session, ecole.id) is None
+
+
+def test_ordre_des_adherents_comme_sambo_admin(client, db_session, ecole, campagnes, monkeypatch):
+    """Seb 18/11 : le tableau suit l'ordre de Sambo Admin, celui de HelloAsso :
+    la commande la plus récente d'abord, puis les adhérents d'une même
+    commande dans leur ordre."""
+    from comptes import Compte
+
+    def inscrit(item_id, prenom, nom, commande, jour):
+        return {**_inscrit(item_id, prenom, nom, f"{prenom}@test.fr"), "order_id": commande,
+                "order_date": f"2026-{jour}T10:00:00"}
+
+    _saison_imposee(client, ecole, monkeypatch, [
+        inscrit("10", "Ana", "Zola", "c1", "09-02"),
+        inscrit("30", "Léo", "Abel", "c3", "10-15"),
+        inscrit("21", "Noé", "Moreau", "c2", "09-20"),
+        inscrit("22", "Lou", "Moreau", "c2", "09-20"),
+    ])
+    lignes = client.get(f"/ecoles/{ecole.id}/helloasso/adherents").json()["members"]
+    par_rang = sorted(lignes.items(), key=lambda kv: kv[1]["rank"])
+    assert [db_session.get(Compte, int(i)).prenom for i, _ in par_rang] == ["Léo", "Noé", "Lou", "Ana"]

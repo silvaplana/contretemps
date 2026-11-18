@@ -108,6 +108,7 @@ def table(db: Session, org_id: int, season_id: int) -> dict[int, dict]:
     for member_id, registrations in grouped.items():
         r = _main(registrations)
         out[member_id] = {
+            "rank": 0,
             "check": view(checks.get(r.item_id)),
             "mails": mails.get(r.item_id, 0),
             "sms": sms.get(r.item_id, 0),
@@ -118,7 +119,17 @@ def table(db: Session, org_id: int, season_id: int) -> dict[int, dict]:
             "cancelled": is_cancelled(r.state),
             "photo": photo_index(r.answers) is not None,
         }
+    # Order of Sambo Admin, which shows HelloAsso's (Seb, 18 November 2026):
+    # newest order first, then the members of an order in their order.
+    mains = sorted(((member_id, _main(rs)) for member_id, rs in grouped.items()), key=lambda m: _item_key(m[1]))
+    mains.sort(key=lambda m: m[1].order_date or "", reverse=True)
+    for rank, (member_id, _) in enumerate(mains):
+        out[member_id]["rank"] = rank
     return out
+
+
+def _item_key(r: HelloAssoRegistration) -> tuple[int, str]:
+    return (int(r.item_id), "") if r.item_id.isdigit() else (0, r.item_id)
 
 
 def table_answers(db: Session, org_id: int, season_id: int) -> dict[int, list[dict]]:

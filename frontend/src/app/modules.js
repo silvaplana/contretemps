@@ -9,7 +9,7 @@
 // bloc sous les dates de « Éditer la saison » (`seasonEditor` : { ecoleId },
 // saison en cours, voir SaisonsSection.jsx), et
 // les membres de la saison quand c'est lui qui les apporte (`memberList` :
-// ses colonnes, le verrou de création, sa part de la fiche ; voir
+// ses colonnes, son ordre, le verrou de création, sa part de la fiche ; voir
 // AdminEleves.jsx et listeImposee ci-dessous), et ses colonnes et boutons
 // dans le tableau des membres (`memberColumns`, voir colonnesModules
 // ci-dessous), et des sous-onglets d'Admin (`adminTabs` : { value, label,
