@@ -31,7 +31,7 @@ from eleves.actions import actions as actions_eleves
 from db import Base, engine
 from documents_contretemps import DOSSIER_DOCUMENTS, membre_appelant
 from ecoles import EcoleExport, Ecoles, EcolesReceiver
-from eleves import Eleves, ElevesReceiver, ImportExcel, ImportExcelReceiver
+from eleves import Eleves, ElevesReceiver, ImportExcel, ImportExcelReceiver, ImposedMembers
 from inscriptions.stockage import DOSSIER_INSCRIPTIONS
 from ressources import Ressources, RessourcesReceiver
 from personnalisation.ia import detourage_ia_disponible
@@ -91,6 +91,13 @@ async def _saison_en_lecture_seule(request: Request, erreur: SaisonEnLectureSeul
     # Toute écriture dans une ancienne saison (spec §2.6), où qu'elle soit
     # tentée : refusée par saisons/portee.py, jamais par chaque route.
     return JSONResponse(status_code=403, content={"detail": erreur.message})
+
+
+@app.exception_handler(ImposedMembers)
+async def _imposed_members(request: Request, erreur: ImposedMembers):
+    # Saison imposée par HelloAsso (spec/modules/helloasso.md §7.1) : aucune
+    # fiche d'élève créée, importée ou supprimée à la main, où que ce soit.
+    return JSONResponse(status_code=409, content={"detail": str(erreur)})
 
 
 app.add_middleware(

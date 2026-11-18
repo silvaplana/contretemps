@@ -292,6 +292,41 @@ inchangé » à chaque PR.
 10. Statistiques de la saison.
 Le module FFST (`modules/ffst.md`) s'intercale après l'étape 6.
 
+**Fait (étape 5, 18 novembre 2026)** :
+- *Verrou* : `Eleves.locks` (core), que le module remplit en se montant
+  (`helloasso/members.py`, `lock`) : saison en cours avec une campagne et module allumé ⇒ refus
+  (409, message en clair) de créer, importer (aperçu et validation) ou supprimer une fiche d'élève,
+  par l'écran, l'inscription OCR / web ou l'assistant. La synchronisation crée ses fiches malgré le
+  verrou (`Eleves.create(..., external=True)`). « Nos champs » ou module éteint rouvrent tout. Les
+  profs, admins et la fusion de deux fiches ne changent pas.
+- *Résiliées* : la synchronisation recopie aussi les lignes `Canceled`, `Refunded`, `Refunding`,
+  `Deleted`, `Abandoned` (avant : ignorées) avec leur état ; une fiche est créée si besoin, ses
+  réponses ne sont pas écrites (une adhésion active de la même personne fait foi).
+  `helloasso_registrations` gagne `answers` (réponses telles que HelloAsso les donne ; pour un
+  fichier, son adresse chez HelloAsso) et `payer_name` (migration `ab41da4bb0f7`, remplies au passage
+  suivant du worker).
+- *Tableau* : le module déclare côté écran `memberList` (module.js, `adherents.jsx`) : ses colonnes
+  Montant, Code promo, Photo, Statut HelloAsso (« Validé HelloAsso », « Résilié », jamais le mot
+  anglais), proposées dans « Affichage dans Admin » (nature Calculé, HelloAsso) ; sans affichage
+  enregistré, ordre de Sambo Admin : Adhérent, Email, Montant, Code promo, Photo, Statut HelloAsso,
+  le reste masqué. Le tableau d'Admin > Élèves, quand la saison affichée a une campagne : titre
+  « Adhérents (n) » (résiliées non comptées), « Rafraîchir » (synchronise, saison en cours),
+  « Rechercher un adhérent... » (nom, prénom, email), filtres par âge, ligne résiliée grisée et nom
+  barré, pas de « + », d'import, de poubelle ni d'Inscription OCR / web ; menu ⋮ « Masquer /
+  Afficher les photos » (par appareil, comme Sambo Admin). Route
+  `GET /ecoles/{id}/helloasso/adherents`.
+- *Fiche* : bloc du module sous l'identité : photo, Adhésion, Documents déposés sur HelloAsso,
+  Réponses au formulaire (« Modifiable sur HelloAsso. »), Payeur, Paiements. Photo par
+  `…/adherents/{fiche}/photo?size=` : vignette carrée gardée sur le disque
+  (`HELLOASSO_PHOTOS_DIR`, défaut `./data/helloasso-photos`), première page pour un PDF ; documents
+  par `…/adherents/{fiche}/fichiers/{n}`, lus chez HelloAsso à chaque demande, jamais enregistrés
+  (`Cache-Control: no-store`). Le serveur ne relaie que les adresses `https://docs.helloasso.com/
+  customFieldsAnswer/…` gardées en base, jamais une adresse envoyée par le navigateur. Tout admin.
+- *Écarts* : Nom et Prénom restent dans une seule colonne « Adhérent » (colonne du core) ; Vérification,
+  Statut FFST, Actions FFST, Contact, Adhésion, les messages envoyés et le menu « Statistiques » /
+  « Vérifier les adhérents » viennent avec les étapes 6 à 10. Le branchement `memberList` est le
+  début de l'étape 6 côté écran ; `columns` / `buttons` de `module.py` restent à faire.
+
 ## 8. Deux façons d'utiliser HelloAsso, par saison (Seb, 18 novembre 2026)
 
 La connexion (§2) se fait **une seule fois pour l'association**. Ensuite **chaque saison** choisit

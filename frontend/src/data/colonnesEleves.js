@@ -34,15 +34,27 @@ export const COLONNES = [
 
 // Toutes les colonnes, dans l'ordre choisi : celles enregistrées d'abord,
 // puis celles qui manquent (nouveau champ, saison jamais réglée), affichées.
-export function ordonner(enregistrees, champs) {
+// `imposee` (listeImposee de app/modules.js) : les colonnes du module qui
+// apporte les membres ; saison jamais réglée, seules celles de son
+// `ordreParDefaut` sont affichées, dans cet ordre.
+export function ordonner(enregistrees, champs, imposee = null) {
   const colonneDe = (c) => ({ key: `field:${c.id}`, label: c.label, nature: 'Saisi', champ: c })
   const connues = [
     ...COLONNES.flatMap((c) => (c.champ ? champs.filter((f) => f.key === c.champ).map(colonneDe) : [c])),
+    ...(imposee?.liste.colonnes ?? []).map((c) => ({ ...c, module: true })),
     ...champs.filter((f) => !f.key).map(colonneDe),
   ]
   const parCle = new Map(connues.map((c) => [c.key, c]))
+  const defaut = imposee?.liste.ordreParDefaut ?? []
+  const reglees =
+    imposee && enregistrees.length === 0
+      ? [
+          ...defaut.map((key) => ({ key, shown: true })),
+          ...connues.filter((c) => !defaut.includes(c.key)).map((c) => ({ key: c.key, shown: false })),
+        ]
+      : enregistrees
   const resultat = []
-  for (const { key, shown } of enregistrees) {
+  for (const { key, shown } of reglees) {
     const colonne = parCle.get(key)
     if (!colonne) continue
     resultat.push({ ...colonne, shown: colonne.verrouillee ? true : shown })

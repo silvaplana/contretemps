@@ -66,14 +66,22 @@ class HelloAssoRegistration(Base):
     first_name: Mapped[str] = mapped_column(String(255), nullable=False)
     last_name: Mapped[str] = mapped_column(String(255), nullable=False)
     payer_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # Prénom et nom du payeur (fiche de l'adhérent, spec §7.3).
+    payer_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     tier_name: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     # Centimes.
     amount: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     discount_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    # État HelloAsso de la ligne : `Processed`, ou résiliée (CANCELLED de
+    # sync.py), gardée et grisée « Résilié » (spec §7.1).
     state: Mapped[str] = mapped_column(String(30), nullable=False, default="")
     order_date: Mapped[str | None] = mapped_column(String(40), nullable=True)
     # [{amount (centimes), date, state, means, installment}] : payés ou à venir.
     payments: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    # Les réponses au formulaire telles que HelloAsso les donne
+    # [{id, name, type, answer}] : pour un fichier (photo, certificat),
+    # l'adresse du fichier chez HelloAsso, jamais le fichier (spec §7.3).
+    answers: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     # « Plus sur HelloAsso » : la ligne a disparu ou a été annulée ; la
     # fiche reste, l'admin décide.
     gone_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

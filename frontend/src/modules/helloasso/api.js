@@ -40,3 +40,21 @@ export const nosChamps = (ecoleId) => requete(`/ecoles/${ecoleId}/helloasso/camp
 // → { campaign, form_name, plans, options, codes, error }
 export const tarifs = (ecoleId) => requete(`/ecoles/${ecoleId}/helloasso/tarifs`)
 export const synchroniser = (ecoleId) => requete(`/ecoles/${ecoleId}/helloasso/synchroniser`, { method: 'POST' })
+
+// Adhérents imposés par HelloAsso (spec §7) : la saison affichée.
+// → { imposed, form_name, can_refresh, members: { [fiche]: { amount, discount_code, state, cancelled, photo } } }
+export const adherents = (ecoleId) => requete(`/ecoles/${ecoleId}/helloasso/adherents`)
+// → { tier_name, amount, discount_code, state, cancelled, order_date, photo, files, answers, payer_name, payer_email, payments }
+export const adherent = (ecoleId, ficheId) => requete(`/ecoles/${ecoleId}/helloasso/adherents/${ficheId}`)
+
+// Photo et documents déposés sur HelloAsso, relayés par le serveur : une
+// URL locale (blob), la session passant par fetch (api/identite.js).
+async function blob(chemin) {
+  const reponse = await fetch(`${BASE_URL}${chemin}`)
+  if (!reponse.ok) throw new Error('Fichier introuvable')
+  return URL.createObjectURL(await reponse.blob())
+}
+export const urlPhoto = (ecoleId, ficheId, taille) =>
+  blob(`/ecoles/${ecoleId}/helloasso/adherents/${ficheId}/photo?size=${taille}`)
+export const urlFichier = (ecoleId, ficheId, index) =>
+  blob(`/ecoles/${ecoleId}/helloasso/adherents/${ficheId}/fichiers/${index}`)

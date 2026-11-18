@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import * as champsApi from '../../api/champs.js'
+import { listeImposee } from '../../app/modules.js'
 import Modal from '../../components/Modal.jsx'
 import { ordonner } from '../../data/colonnesEleves.js'
 import { mots } from '../../api/mots.js'
@@ -21,9 +22,9 @@ export default function AffichageAdmin({ ecoleId, champs, onRetour, onClose }) {
   const lignes = useRef({})
 
   useEffect(() => {
-    champsApi
-      .colonnes(ecoleId)
-      .then((enregistrees) => setColonnes(ordonner(enregistrees, champs)))
+    // Saison imposée par un module (HelloAsso) : ses colonnes en plus.
+    Promise.all([champsApi.colonnes(ecoleId), listeImposee(ecoleId)])
+      .then(([enregistrees, imposee]) => setColonnes(ordonner(enregistrees, champs, imposee)))
       .catch(() => setErreur('Impossible de charger les colonnes : vérifiez la connexion.'))
     return () => clearTimeout(minuteur.current)
   }, [ecoleId, champs])

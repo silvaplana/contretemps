@@ -6,7 +6,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from comptes import Compte, rbac
-from fastapi import Depends, FastAPI, HTTPException, Response
+from fastapi import Depends, FastAPI, HTTPException, Query, Response
 from pydantic import BaseModel, Field
 from saisons import saison_courante_id
 from saisons.portee import saison_demandee
@@ -14,6 +14,8 @@ from sqlalchemy.orm import Session
 
 from db import get_db
 
+from . import api
+from . import members as imposed_members
 from .api import HelloAssoError, Organization
 from .campaign import Campaigns
 from .connection import Connection
@@ -92,6 +94,51 @@ class SyncOut(BaseModel):
     gone: int
 
 
+class MemberRowOut(BaseModel):
+    # Centimes.
+    amount: int
+    discount_code: str | None = None
+    state: str
+    cancelled: bool
+    photo: bool
+
+
+class MembersOut(BaseModel):
+    # La saison affichée a une campagne : adhérents imposés par HelloAsso
+    # (spec §7), le tableau perd « + », l'import et la corbeille.
+    imposed: bool
+    form_name: str | None = None
+    # « Rafraîchir » : la saison en cours seulement.
+    can_refresh: bool = False
+    # {fiche: colonnes HelloAsso}.
+    members: dict[int, MemberRowOut] = {}
+
+
+class FileOut(BaseModel):
+    index: int
+    name: str
+
+
+class AnswerOut(BaseModel):
+    name: str
+    answer: str | int | float | bool | None = None
+
+
+class MemberCardOut(BaseModel):
+    tier_name: str
+    amount: int
+    discount_code: str | None = None
+    state: str
+    cancelled: bool
+    order_date: str | None = None
+    photo: bool
+    files: list[FileOut]
+    answers: list[AnswerOut]
+    payer_name: str | None = None
+    payer_email: str | None = None
+    payments: list[dict]
+
+
 class CampaignIn(BaseModel):
     form_type: str = Field(min_length=1, max_length=30)
     form_slug: str = Field(min_length=1, max_length=255)
@@ -108,6 +155,12 @@ class HelloAssoReceiver:
         self.client = client
         self.campaigns = campaigns or Campaigns()
         self.sync = sync
+        # Remplaçable dans les tests (pas d'appel réseau).
+        self.fetch_file = api.file
+        app.get("/ecoles/{ecole_id}/helloasso/adherents", response_model=MembersOut)(self.adherents)
+        app.get("/ecoles/{ecole_id}/helloasso/adherents/{member_id}", response_model=MemberCardOut)(self.adherent)
+        app.get("/ecoles/{ecole_id}/helloasso/adherents/{member_id}/photo")(self.photo)
+        app.get("/ecoles/{ecole_id}/helloasso/adherents/{member_id}/fichiers/{index}")(self.fichier)
         app.post("/ecoles/{ecole_id}/helloasso/synchroniser", response_model=SyncOut)(self.synchroniser)
         app.get("/ecoles/{ecole_id}/helloasso/tarifs", response_model=PricesOut)(self.tarifs)
         owner = [Depends(self._owner)]
@@ -247,3 +300,81 @@ class HelloAssoReceiver:
             return PricesOut(campaign=True, **self.campaigns.prices(db, ecole_id, season_id))
         except HelloAssoError as erreur:
             return PricesOut(campaign=True, form_name=current.form_name, error=str(erreur))
+
+    # --- Adhérents imposés par HelloAsso (spec §7.2, §7.3) : tout admin ---
+
+    def adherents(
+        self, ecole_id: int, db: Session = Depends(get_db), appelant: Compte = Depends(rbac.compte_appelant)
+    ):
+        rbac.require_admin(appelant, ecole_id)
+        season_id = saison_demandee() or saison_courante_id(db, ecole_id)
+        current = self.campaigns.current(db, season_id) if season_id else None
+        if current is None:
+            return MembersOut(imposed=False)
+        return MembersOut(
+            imposed=True,
+            form_name=current.form_name,
+            can_refresh=season_id == saison_courante_id(db, ecole_id),
+            members=imposed_members.table(db, ecole_id, season_id),
+        )
+
+    def _registration(self, db: Session, ecole_id: int, member_id: int, appelant: Compte):
+        rbac.require_admin(appelant, ecole_id)
+        season_id = saison_demandee() or saison_courante_id(db, ecole_id)
+        registration = imposed_members.registration(db, ecole_id, season_id, member_id) if season_id else None
+        if registration is None:
+            raise HTTPException(status_code=404, detail="Pas d’adhésion HelloAsso pour cette fiche")
+        return registration
+
+    def adherent(
+        self, ecole_id: int, member_id: int, db: Session = Depends(get_db),
+        appelant: Compte = Depends(rbac.compte_appelant),
+    ):
+        return imposed_members.card(self._registration(db, ecole_id, member_id, appelant))
+
+    def _file(self, db: Session, ecole_id: int, url: str) -> tuple[bytes, str]:
+        connection = self.client.current(db, ecole_id)
+        if connection is None:
+            raise HTTPException(status_code=422, detail="HelloAsso n’est pas connecté")
+        try:
+            return self.fetch_file(*Campaigns._keys(connection)[:2], url)
+        except HelloAssoError as erreur:
+            raise HTTPException(status_code=502, detail=str(erreur)) from None
+
+    def photo(
+        self, ecole_id: int, member_id: int, size: int = Query(default=128, ge=32, le=640),
+        db: Session = Depends(get_db), appelant: Compte = Depends(rbac.compte_appelant),
+    ):
+        """La vignette de la photo d'identité, gardée sur le disque (elle ne
+        change pas) ; 404 sans photo."""
+        registration = self._registration(db, ecole_id, member_id, appelant)
+        index = imposed_members.photo_index(registration.answers)
+        if index is None:
+            raise HTTPException(status_code=404, detail="Pas de photo")
+        url = registration.answers[index]["answer"]
+        path = imposed_members.thumbnail_path(ecole_id, url, size)
+        if path.exists():
+            content = path.read_bytes()
+        else:
+            try:
+                content = imposed_members.thumbnail(self._file(db, ecole_id, url)[0], size)
+            except HTTPException:
+                raise
+            except Exception:
+                raise HTTPException(status_code=422, detail="Cette photo ne se lit pas") from None
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(content)
+        return Response(content=content, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=86400"})
+
+    def fichier(
+        self, ecole_id: int, member_id: int, index: int, db: Session = Depends(get_db),
+        appelant: Compte = Depends(rbac.compte_appelant),
+    ):
+        """Un document déposé sur HelloAsso (certificat médical…), lu chez
+        HelloAsso à chaque demande, jamais enregistré (spec §7.3)."""
+        registration = self._registration(db, ecole_id, member_id, appelant)
+        answers = registration.answers or []
+        if not 0 <= index < len(answers) or not imposed_members.is_file_url(answers[index].get("answer")):
+            raise HTTPException(status_code=404, detail="Fichier introuvable")
+        content, mime = self._file(db, ecole_id, answers[index]["answer"])
+        return Response(content=content, media_type=mime, headers={"Cache-Control": "no-store"})

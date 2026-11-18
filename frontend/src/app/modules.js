@@ -5,7 +5,10 @@
 // d'onglet (`tabs: []`) et porter des réglages (`settings` : composant
 // affiché sur sa ligne de Fonctionnalités) et un bloc en tête de la fiche
 // d'un membre (`memberFields`, voir ChampsMembres.jsx), et des tarifs
-// imposés qui remplacent les nôtres (`seasonPrices`, voir Tarifs.jsx). Les onglets du core (Admin,
+// imposés qui remplacent les nôtres (`seasonPrices`, voir Tarifs.jsx), et
+// les membres de la saison quand c'est lui qui les apporte (`memberList` :
+// ses colonnes, le verrou de création, sa part de la fiche ; voir
+// AdminEleves.jsx et listeImposee ci-dessous). Les onglets du core (Admin,
 // Supervision, Profil) sont dans data/nav.js.
 import choregraphies from '../modules/choregraphies/module.js'
 import documents from '../modules/documents/module.js'
@@ -18,3 +21,14 @@ import sessionClips from '../modules/session-clips/module.js'
 
 // Publications en premier : ses onglets (Actus…) viennent juste après Admin (Seb, 6 novembre).
 export const MODULES = [publications, presence, choregraphies, messagerie, documents, finances, sessionClips, helloasso]
+
+// Le module qui impose les membres de la saison affichée (HelloAsso,
+// spec/modules/helloasso.md §7) : { liste: son `memberList`, donnees }, ou
+// null (le tableau de l'école, comme toujours).
+export async function listeImposee(ecoleId) {
+  for (const m of MODULES.filter((x) => x.memberList)) {
+    const donnees = await m.memberList.charger(ecoleId)
+    if (donnees) return { liste: m.memberList, donnees }
+  }
+  return null
+}
