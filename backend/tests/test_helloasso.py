@@ -20,6 +20,15 @@ def ecole(db_session):
     return ecole
 
 
+@pytest.fixture(autouse=True)
+def _acces_au_financier(monkeypatch):
+    """Les droits sont neutralisés (conftest.py) : l'appelant a l'accès au
+    Financier, sauf quand un test le retire."""
+    from comptes import roles
+
+    monkeypatch.setattr(roles, "has_right", lambda compte, droit: True)
+
+
 @pytest.fixture()
 def helloasso(monkeypatch):
     from app import main
@@ -453,7 +462,7 @@ def test_ecole_sans_helloasso_inchangee(client, db_session, ecole, campagnes):
     assert creee.status_code == 201
     assert client.delete(f"/eleves/{creee.json()['id']}").status_code == 204
     assert client.get(f"/ecoles/{ecole.id}/helloasso/adherents").json() == {
-        "imposed": False, "form_name": None, "can_refresh": False, "members": {},
+        "imposed": False, "form_name": None, "can_refresh": False, "can_cancel": False, "members": {},
     }
 
 
@@ -493,7 +502,7 @@ def test_tableau_et_fiche_des_adherents(client, db_session, ecole, campagnes, mo
     assert tableau["imposed"] is True and tableau["can_refresh"] is True
     lignes = {db_session.get(Compte, int(i)).prenom: ligne for i, ligne in tableau["members"].items()}
     assert lignes["Léa"] == {"amount": 16000, "discount_code": "FRATRIE", "state": "Processed",
-                             "cancelled": False, "photo": True}
+                             "cancelled": False, "photo": True, "mails": 0, "sms": 0, "has_phone": False}
     assert lignes["Inès"]["cancelled"] is True and lignes["Inès"]["photo"] is False
 
     lea_id = next(int(i) for i, ligne in tableau["members"].items() if ligne["photo"])
@@ -605,3 +614,101 @@ def test_impayes_helloasso(client, db_session, ecole, campagnes, monkeypatch):
     ]
     assert [p["date"][:10] for p in impayes["members"][0]["refused"]] == ["2026-10-02", "2026-11-02"]
     assert impayes["members"][0]["member_id"] is not None
+
+
+# --- Étape 8 : contact et résiliation (spec §7.6, §7.7) ---
+
+
+def test_mail_sms_et_messages_preenregistres(client, db_session, ecole, campagnes, monkeypatch):
+    from app import main
+    from comptes import Compte, roles
+
+    monkeypatch.setattr(roles, "has_right", lambda compte, droit: True)
+    telephone = {"id": "30", "name": "Numéro de téléphone", "type": "Phone", "answer": "06 12 34 56 78"}
+    _saison_imposee(client, ecole, monkeypatch, [
+        _inscrit("1", "Léa", "Martin", "parent@test.fr", [telephone]),
+        _inscrit("2", "Tom", "Noir", "tom@test.fr"),
+    ])
+    fiches = {db_session.get(Compte, int(i)).prenom: int(i)
+              for i in client.get(f"/ecoles/{ecole.id}/helloasso/adherents").json()["members"]}
+    lea, tom = fiches["Léa"], fiches["Tom"]
+    envoyes = []
+
+    def envoyer(db, org_id, a, sujet, texte, html):
+        envoyes.append((org_id, a, sujet, texte))
+        return "contact@club.fr"
+
+    monkeypatch.setattr(main.core.helloasso_receiver, "send_mail", envoyer)
+    url = f"/ecoles/{ecole.id}/helloasso/adherents"
+    reponse = client.post(f"{url}/{lea}/mail", json={"subject": "Certificat", "message": "Bonjour Léa,\n\nMerci."})
+    assert reponse.json() == {"to": "parent@test.fr", "cc": "contact@club.fr"}
+    assert envoyes == [(ecole.id, "parent@test.fr", "Certificat", "Bonjour Léa,\n\nMerci.")]
+    assert client.post(f"{url}/{lea}/mail", json={"subject": "", "message": "x"}).status_code == 422
+
+    def panne(*_):
+        raise RuntimeError("SMTP indisponible")
+
+    monkeypatch.setattr(main.core.helloasso_receiver, "send_mail", panne)
+    echec = client.post(f"{url}/{lea}/mail", json={"subject": "Relance", "message": "Bonjour"})
+    assert echec.status_code == 502 and "SMTP indisponible" in echec.json()["detail"]
+
+    assert client.post(f"{url}/{lea}/sms", json={"message": "Bonjour Léa"}).json() == {"phone": "+33612345678"}
+    assert client.post(f"{url}/{tom}/sms", json={"message": "Bonjour"}).status_code == 422
+
+    lignes = client.get(url).json()["members"]
+    assert (lignes[str(lea)]["mails"], lignes[str(lea)]["sms"], lignes[str(lea)]["has_phone"]) == (1, 1, True)
+    assert (lignes[str(tom)]["mails"], lignes[str(tom)]["has_phone"]) == (0, False)
+    fiche = client.get(f"{url}/{lea}").json()
+    assert [(m["kind"], m["sent"]) for m in fiche["messages"]] == [("sms", True), ("mail", False), ("mail", True)]
+
+    route = f"/ecoles/{ecole.id}/helloasso/messages"
+    client.post(route, json={"kind": "mail", "subject": "Certificat", "body": "Bonjour {prénom}"})
+    client.post(route, json={"kind": "mail", "subject": "Certificat", "body": "Bonjour {prénom}"})
+    gardes = client.post(route, json={"kind": "sms", "body": "Bonjour {prénom}"}).json()
+    assert [t["body"] for t in gardes] == ["Bonjour {prénom}"]
+    mails = client.get(route, params={"kind": "mail"}).json()
+    assert len(mails) == 1 and mails[0]["subject"] == "Certificat"
+    assert client.delete(f"{route}/{mails[0]['id']}", params={"kind": "mail"}).json() == []
+
+
+def test_resilier_une_commande(client, db_session, ecole, campagnes, monkeypatch):
+    """Toute la commande (une fratrie) ; aperçu avant ; droit Accès au
+    Financier ; HelloAsso n'est appelé qu'une fois, jamais pour une
+    commande déjà résiliée."""
+    from app import main
+    from comptes import Compte, roles
+
+    def echeances(montant):
+        return [
+            {"amount": montant // 3, "date": "2026-09-05T10:00:00", "state": "Authorized"},
+            {"amount": montant // 3, "date": "2026-10-05T10:00:00", "state": "Pending"},
+            {"amount": montant // 3, "date": "2026-11-05T10:00:00", "state": "Pending"},
+        ]
+
+    timeo = {**_inscrit("4", "Timéo", "Roux", "claire@test.fr", montant=15000), "order_id": "c504",
+             "payments": echeances(15000)}
+    lina = {**_inscrit("5", "Lina", "Roux", "claire@test.fr", montant=15000), "order_id": "c504",
+            "payments": echeances(15000)}
+    _saison_imposee(client, ecole, monkeypatch, [timeo, lina, _inscrit("6", "Hugo", "Ferrand", "h@test.fr")])
+    fiches = {db_session.get(Compte, int(i)).prenom: int(i)
+              for i in client.get(f"/ecoles/{ecole.id}/helloasso/adherents").json()["members"]}
+    url = f"/ecoles/{ecole.id}/helloasso/adherents/{fiches['Timéo']}"
+
+    monkeypatch.setattr(roles, "has_right", lambda compte, droit: False)
+    assert client.get(f"{url}/resiliation").status_code == 403
+    assert client.get(f"/ecoles/{ecole.id}/helloasso/adherents").json()["can_cancel"] is False
+    monkeypatch.setattr(roles, "has_right", lambda compte, droit: True)
+
+    apercu = client.get(f"{url}/resiliation").json()
+    assert [m["first_name"] for m in apercu["members"]] == ["Timéo", "Lina"]
+    assert (apercu["paid"], apercu["scheduled"], apercu["scheduled_count"], apercu["cancelled"]) == (
+        10000, 20000, 4, False)
+
+    appels = []
+    monkeypatch.setattr(main.core.helloasso_receiver, "cancel_order", lambda *a: appels.append(a))
+    assert client.post(f"{url}/resilier").json()["cancelled"] is True
+    assert [a[-1] for a in appels] == ["c504"]
+    lignes = client.get(f"/ecoles/{ecole.id}/helloasso/adherents").json()["members"]
+    assert lignes[str(fiches["Lina"])]["cancelled"] is True and lignes[str(fiches["Hugo"])]["cancelled"] is False
+    assert client.post(f"{url}/resilier").status_code == 409
+    assert len(appels) == 1

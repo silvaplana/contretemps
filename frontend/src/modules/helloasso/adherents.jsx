@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import Modal from '../../components/Modal.jsx'
 import * as api from './api.js'
+import { CelluleAdhesion, CelluleContact } from './Contact.jsx'
 
 // Adhérents entièrement imposés par HelloAsso (spec/modules/helloasso.md §7,
 // maquette https://claude.ai/artifact/4tizDZ6Br2WxGL5MYwSQfy) : ce que le
@@ -130,7 +131,25 @@ const COLONNES = [
     label: 'Statut HelloAsso',
     texte: (l) => (l ? statut(l) : ''),
   },
-].map((c) => ({ ...c, nature: 'Calculé', detail: 'HelloAsso' }))
+]
+  .map((c) => ({ ...c, nature: 'Calculé', detail: 'HelloAsso' }))
+  .concat(
+    // Les boutons de Sambo Admin (spec §7.6, §7.7, étape 8).
+    [
+      {
+        key: 'helloasso_contact',
+        label: 'Contact',
+        texte: (l) => (l ? `${l.mails} mail${l.mails > 1 ? 's' : ''}, ${l.sms} SMS` : ''),
+        cellule: (props) => <CelluleContact {...props} />,
+      },
+      {
+        key: 'helloasso_cancel',
+        label: 'Adhésion',
+        texte: (l) => (l?.cancelled ? 'Résiliée' : ''),
+        cellule: (props) => <CelluleAdhesion {...props} />,
+      },
+    ].map((c) => ({ ...c, nature: 'Bouton', detail: 'HelloAsso' })),
+  )
 // Une colonne de module : { key, label, nature ('Calculé' ou 'Bouton'),
 // detail, texte(ligne), cellule?({ ecoleId, eleve, ligne, relire }),
 // cachee?() }.
@@ -139,7 +158,10 @@ const COLONNES = [
 async function charger(ecoleId) {
   try {
     const lu = await api.adherents(ecoleId)
-    return lu.imposed ? lu : null
+    if (!lu.imposed) return null
+    // « Résilier » demande l'Accès au Financier (spec §7.7) : sur chaque ligne.
+    for (const ligne of Object.values(lu.members)) ligne.can_cancel = lu.can_cancel
+    return lu
   } catch {
     return null // module éteint (404) ou hors ligne
   }
@@ -241,6 +263,16 @@ function Fiche({ ecoleId, eleve }) {
             key={i}
             libelle={dateFr(p.date)}
             valeur={`${euros(p.amount)} ${ETATS_PAIEMENT[p.state] ?? 'à venir'}`}
+          />
+        ))}
+      </Rubrique>
+      <Rubrique titre="Messages envoyés">
+        {fiche.messages.length === 0 && <Ligne valeur="Aucun" />}
+        {fiche.messages.map((m, i) => (
+          <Ligne
+            key={i}
+            libelle={`${dateFr(m.at)}, ${m.kind === 'mail' ? 'mail' : 'SMS préparé'}`}
+            valeur={m.sent ? m.subject || m.body : `Pas parti : ${m.error}`}
           />
         ))}
       </Rubrique>

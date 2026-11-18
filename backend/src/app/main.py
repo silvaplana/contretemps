@@ -30,7 +30,7 @@ from ecoles.actions import actions as actions_ecoles
 from eleves.actions import actions as actions_eleves
 from db import Base, engine
 from documents_contretemps import DOSSIER_DOCUMENTS, membre_appelant
-from ecoles import EcoleExport, Ecoles, EcolesReceiver
+from ecoles import EcoleExport, Ecoles, EcolesReceiver, mail_ecole
 from eleves import Eleves, ElevesReceiver, ImportExcel, ImportExcelReceiver, ImposedMembers
 from inscriptions.stockage import DOSSIER_INSCRIPTIONS
 from ressources import Ressources, RessourcesReceiver
@@ -253,6 +253,8 @@ core = SimpleNamespace(
     gestion_saisons=gestion_saisons,
     membre_appelant=membre_appelant,
     message_attachments=pieces_jointes(),
+    # Un mail au nom de l'école (ecoles/mail_ecole.py), pour les modules.
+    mail_ecole=mail_ecole.envoyer,
 )
 registry.mount_all(app, MODULES, core)
 

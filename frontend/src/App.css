@@ -5698,3 +5698,53 @@ tr.is-resiliee td.data-table__name button {
   color: var(--danger-text);
   font-size: 16px;
 }
+
+/* Contact et résiliation HelloAsso (modules/helloasso/Contact.jsx). */
+.contact__boutons {
+  display: flex;
+  gap: 8px;
+}
+
+.contact__boutons .btn,
+.contact__pied .btn {
+  min-height: 48px;
+  white-space: nowrap;
+}
+
+.contact__compteur {
+  margin-left: 6px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--text);
+  color: var(--bg);
+  font-size: 14px;
+}
+
+.contact__pied {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.contact__lab {
+  display: block;
+  margin: 14px 0 4px;
+  font-weight: 600;
+}
+
+.contact__message {
+  min-height: 140px;
+}
+
+.contact__liens {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.contact__alerte {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--danger-bg, #fdecea);
+  color: var(--danger-text);
+}
