@@ -3145,6 +3145,15 @@
   gap: 12px;
 }
 
+.installation-screen__etapes {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding-left: 22px;
+  line-height: 1.4;
+}
+
 .installation-screen__choix .checkbox-inline {
   justify-content: center;
   margin-top: 4px;

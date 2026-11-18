@@ -3,6 +3,10 @@ Financier, Fights), Supervision, Profil. Chacun ne voit que les onglets de ses r
 les derniers passent sous « Plus » (⋯) en bas à droite ; le badge des messages non lus s'y ajoute.
 Chacun peut ranger ses onglets dans Profil › Ma barre du bas.
 
+Après la connexion, l'écran « Installez l'application » propose d'installer l'appli (Oui, installer /
+Non merci). Sur Android, quand l'école a son appli Android : « Télécharger l'appli Android », puis
+les étapes (ouvrir le fichier, autoriser Chrome, Installer, Ouvrir, se connecter).
+
 En-tête
 - Bulle à gauche du badge : ouvre ou ferme l'assistant (absente si le module Assistant est éteint).
 - Badge aux initiales : la personne connectée. Son menu liste les autres profils de la même adresse
