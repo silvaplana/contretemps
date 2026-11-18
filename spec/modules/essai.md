@@ -161,4 +161,8 @@ supprimé avec ses signatures (tâche du worker, comme les autres purges).
 2. Scanner les QR codes (caméra, ouverture par l'appareil photo du téléphone). **Codée le 18
    novembre** (bibliothèque qr-scanner, comme Sambo Admin : elle lit aussi sur iPhone).
 3. Reprise des inscrits de Sambo Admin (commande lancée par Seb sur le VPS, Sambo Admin lu en
-   copie, sans y toucher).
+   copie, sans y toucher). **Codée le 18 novembre** : `python -m app.reprise_essais --ecole <n>
+   --base <copie de sambo.db> [--essai]` (étapes de copie dans le fichier). Chaque inscrit garde son
+   jeton (le QR code envoyé par Sambo Admin marche au scan), ses cours, son commentaire et ses
+   signatures ; le certificat n'est pas repris, seulement sa date. Relançable. La page d'essai de
+   l'école, si elle n'a ni horaires, ni salles, ni contacts, reçoit les textes de Sambo Admin.
