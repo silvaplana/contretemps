@@ -14,8 +14,12 @@ tout le monde garde la PWA pour le reste.
 - **L'icône est celle de l'école** : l'action prend `<adresse>/icons/icon-512-maskable.png` (la même
   que la PWA) et en fabrique les icônes Android. Après un changement de logo, relancer l'action
   « Appli Tournage (APK) » à la main (Actions › Run workflow).
-- **Une appli par école**, listée dans `frontend/android/ecoles.json` :
-  `{"cle": "asc-la-ciotat", "nom": "ASC La Ciotat", "adresse": "https://…"}`. Le nom affiché est
+- **Une appli par école** dont le Super User a choisi « Oui » dans Admin › École ›
+  Personnalisation › Appli Android (visible si Fights est allumé ; depuis le 18/11/2026, remplace
+  `frontend/android/ecoles.json`). L'action lit la liste sur le serveur
+  (`/api/applis-android` : `{"cle", "nom", "adresse"}`), et le serveur la lance lui-même au « Oui »
+  avec le jeton `GITHUB_APK_TOKEN` de `backend/.env` (jeton GitHub à grain fin, dépôt
+  `silvaplana/contretemps`, droit « Actions : lecture et écriture »). Le nom affiché est
   « Tournage » suivi de `nom` ; l'identifiant Android est `com.contretemps.tournage.<clé>`, donc
   plusieurs applis cohabitent sur un même téléphone.
 - **Mises à jour sans Play Store** : `Updater.java` (repris de l'appli Mountain) lit

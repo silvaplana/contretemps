@@ -343,6 +343,7 @@ export default function PersonnalisationSection({ ecole, activeUser, modules, on
                 La nature choisit l’adresse ({enPlace.domaine}) et l’apparence par défaut. L’ancienne adresse renvoie vers la
                 nouvelle.
               </p>
+              <AppliAndroid ecoleId={ecole.id} />
             </>
           )}
 
@@ -652,6 +653,86 @@ function ChoixPolice({ id, libelle, options, valeur, texte, titre = false, famil
 // Images déjà validées (demande du 2026-10-15) : un clic remet l'une en
 // place ; la poubelle supprime celles dont on ne veut plus (jamais celle en
 // place). Rien d'affiché tant qu'il n'y a qu'une image ou aucune.
+// Appli Android (Seb 18/11/2026, maquette https://claude.ai/artifact/D1ebpynBsJdPyGj8qpui93) :
+// Super User seulement, et seulement si Fights est allumé. « Oui » fait
+// fabriquer l'appli ; l'état est relu toutes les 20 s pendant la fabrication.
+function AppliAndroid({ ecoleId }) {
+  const [etat, setEtat] = useState(null)
+  const [erreur, setErreur] = useState('')
+  const [enCours, setEnCours] = useState(false)
+
+  useEffect(() => {
+    let fini = false
+    const lire = () =>
+      personnalisationApi
+        .appliAndroid(ecoleId)
+        .then((e) => !fini && setEtat(e))
+        .catch(() => {})
+    lire()
+    return () => {
+      fini = true
+    }
+  }, [ecoleId])
+
+  const fabrication = etat?.actif && !etat.prete
+  useEffect(() => {
+    if (!fabrication) return undefined
+    const minuteur = setInterval(() => {
+      personnalisationApi.appliAndroid(ecoleId).then(setEtat).catch(() => {})
+    }, 20000)
+    return () => clearInterval(minuteur)
+  }, [ecoleId, fabrication])
+
+  if (!etat?.disponible) return null
+
+  async function choisir(actif) {
+    setErreur('')
+    setEnCours(true)
+    try {
+      setEtat(await personnalisationApi.changerAppliAndroid(ecoleId, actif))
+    } catch (err) {
+      setErreur(err.message)
+    } finally {
+      setEnCours(false)
+    }
+  }
+
+  return (
+    <>
+      <p className="perso__label">Appli Android</p>
+      <p className="muted perso__aide">
+        Pour filmer les combats avec la télécommande, le téléphone qui filme ne doit pas se mettre en veille. Seule
+        l’appli Android le permet : dans le navigateur, le téléphone s’endort et n’entend plus la télécommande.
+      </p>
+      <div className="perso__natures">
+        {[
+          [false, 'Non'],
+          [true, 'Oui'],
+        ].map(([actif, libelle]) => (
+          <button
+            key={libelle}
+            type="button"
+            className={etat.actif === actif ? 'btn btn--primary' : 'btn btn--secondary'}
+            disabled={enCours || etat.actif === actif}
+            onClick={() => choisir(actif)}
+          >
+            {libelle}
+          </button>
+        ))}
+      </div>
+      <p className="perso__appli-etat">
+        <span className={`perso__point ${etat.prete ? 'perso__point--pret' : fabrication ? 'perso__point--cours' : ''}`} />
+        {!etat.actif
+          ? 'Pas d’appli Android : l’installation se fait dans Chrome.'
+          : etat.prete
+            ? `Prête${etat.date ? ` : version du ${etat.date}` : ''}`
+            : 'Fabrication de l’appli… quelques minutes.'}
+      </p>
+      {erreur && <p className="login-screen__erreur">{erreur}</p>}
+    </>
+  )
+}
+
 function Historique({ ecoleId, type, version, desactive, onReprendre }) {
   const apparence = useApparence()
   const [images, setImages] = useState([])

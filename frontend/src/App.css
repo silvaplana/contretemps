@@ -3867,6 +3867,43 @@ a.btn {
   gap: 8px;
 }
 
+/* Appli Android : état de l'appli (point gris, jaune qui bat, vert). */
+.perso__appli-etat {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.perso__point {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+
+.perso__point--pret {
+  background: #3FA45B;
+}
+
+.perso__point--cours {
+  background: var(--accent);
+  animation: perso-battre 1s infinite alternate;
+}
+
+@keyframes perso-battre {
+  to {
+    opacity: 0.3;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .perso__point--cours {
+    animation: none;
+  }
+}
+
 .perso__adresse {
   display: flex;
   align-items: center;

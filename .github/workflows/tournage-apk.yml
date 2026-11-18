@@ -1,11 +1,14 @@
 # Construit l'appli Android « Tournage <école> » (frontend/android, Capacitor),
-# une par école de frontend/android/ecoles.json : elle ouvre le site de
+# une par école dont l'appli est allumée dans Admin › École › Personnalisation
+# (liste lue sur le serveur : /api/applis-android) : elle ouvre le site de
 # l'école et filme la salle (spec/modules/video-combats.md §4, ANDROID.md).
 #
 # Sur une PR : vérifie que les applis se construisent (APK dans les
 # « Artifacts » de l'exécution). Sur main : les APK et version.json sont
 # publiés dans la release « tournage-latest » ; l'appli y voit qu'une
 # nouvelle version existe et propose de l'installer (Updater.java).
+# Le serveur la lance aussi lui-même quand un Super User dit « Oui »
+# (workflow_dispatch, personnalisation/appli_android.py).
 name: Appli Tournage (APK)
 
 on:
@@ -37,7 +40,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - id: ecoles
-        run: echo "liste=$(jq -c . frontend/android/ecoles.json)" >> "$GITHUB_OUTPUT"
+        # Les écoles dont l'appli Android est allumée. Serveur injoignable ou
+        # liste vide : rien n'est fabriqué ni publié.
+        run: |
+          liste=$(curl -fsS --max-time 30 https://app.contretemps.silvaplana.cloud/api/applis-android | jq -c . 2>/dev/null || true)
+          if [ -z "$liste" ]; then echo "::warning::Liste des applis illisible sur le serveur."; liste='[]'; fi
+          echo "Applis : $liste"
+          echo "liste=$liste" >> "$GITHUB_OUTPUT"
       - id: cle
         env:
           SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
@@ -67,6 +76,7 @@ jobs:
   apk:
     name: APK ${{ matrix.ecole.nom }}
     needs: cle
+    if: needs.cle.outputs.ecoles != '[]'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
@@ -126,7 +136,7 @@ jobs:
   release:
     name: Mettre les APK en téléchargement
     needs: [cle, apk]
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && needs.cle.outputs.ecoles != '[]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
@@ -139,7 +149,8 @@ jobs:
         run: |
           u=https://github.com/${{ github.repository }}/releases/download/tournage-latest
           echo "$ECOLES" | jq --argjson b ${{ github.run_number }} --arg u "$u" \
-            '{build: $b, apk: (map({key: .cle, value: "\($u)/tournage-\(.cle).apk"}) | from_entries)}' > version.json
+            --arg d "$(TZ=Europe/Paris date +%d/%m)" \
+            '{build: $b, date: $d, apk: (map({key: .cle, value: "\($u)/tournage-\(.cle).apk"}) | from_entries)}' > version.json
           gh release view tournage-latest >/dev/null 2>&1 || \
             gh release create tournage-latest --title "Appli Tournage" \
               --notes "Appli Android « Tournage <école> ». Ouvrir le lien tournage-<école>.apk sur le téléphone pour l'installer ; ensuite l'appli propose elle-même les nouvelles versions."

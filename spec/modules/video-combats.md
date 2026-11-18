@@ -171,7 +171,7 @@ et deux téléphones à manipuler, c'était trop compliqué
 (maquette https://claude.ai/artifact/AktTkAwZjXtrKKEFV285B2) :
 - L'appli Android (`frontend/android`) ouvre le site de l'école, donc chaque mise en ligne s'y voit
   sans réinstaller. Une appli par école, nommée « Tournage » suivi du nom de l'école
-  (`frontend/android/ecoles.json`). Elle cohabite avec la PWA, qui reste l'appli de tout le monde ;
+  (réglage « Appli Android » d'Admin › École › Personnalisation, spec/core.md §2.7 ter). Elle cohabite avec la PWA, qui reste l'appli de tout le monde ;
   seul le téléphone qui filme a besoin de « Tournage ».
 - Elle propose elle-même ses nouvelles versions, comme l'appli Mountain de Seb : à l'ouverture et
   deux fois par jour, « Nouvelle version disponible › Installer ». La clé de signature est fixe.
@@ -1070,8 +1070,9 @@ refuse la mise à jour par-dessus : désinstaller l'ancienne, installer la nouve
 
 **Appli Tournage (décision du 12/11, §4).** Code dans `frontend/android` (Capacitor) : l'appli ouvre
 l'adresse de l'école (`server.url`), avec la page `frontend/android-shell/hors-ligne.html` sans
-réseau. Les écoles sont dans `frontend/android/ecoles.json` (clé, nom affiché, adresse) : en
-ajouter une suffit pour fabriquer son appli. L'action `.github/workflows/tournage-apk.yml`
+réseau. Les écoles sont celles où le Super User a choisi « Oui » à « Appli Android » (Admin ›
+École › Personnalisation, spec/core.md §2.7 ter) ; l'action lit leur liste sur le serveur
+(`/api/applis-android`), et le serveur la lance au « Oui ». L'action `.github/workflows/tournage-apk.yml`
 (« Appli Tournage (APK) ») construit une appli par école à chaque PR qui touche ces fichiers, et, à
 chaque fusion dans `main`, la publie avec `version.json` dans la release « tournage-latest » :
 https://github.com/silvaplana/contretemps/releases/download/tournage-latest/tournage-<clé>.apk.
@@ -1084,7 +1085,7 @@ Signature : clé fixe créée par l'action au premier passage, chiffrée par le 
 `SIGNING_PASSWORD` et rangée dans la release « tournage-cle ». Ne jamais supprimer cette release ni
 changer le mot de passe : les applis installées ne pourraient plus se mettre à jour sans être
 désinstallées. Sans le secret, l'appli est signée par une clé jetable. Rien ne dépend du VPS, sauf
-l'adresse de l'école dans `ecoles.json`.
+la liste des applis lue sur le serveur.
 
 **Allumer le module pour une école.** Admin > École > Personnalisation de l'application >
 Fonctionnalités > case « Sparring » (Administrateur principal ou Super User). Il faut aussi le

@@ -19,10 +19,10 @@ from sqlalchemy.orm import Session
 from db import get_db
 from ecoles.models import Ecole
 
-from . import brands
+from . import appli_android, brands
 from .adresse import AdresseInvalide
 from .images import ImageRefusee
-from .personnalisation import TYPES_IMAGE, Personnalisation, PersonnalisationRefusee
+from .personnalisation import TYPES_IMAGE, Personnalisation, PersonnalisationRefusee, adresse_de_l_ecole
 
 
 class PersonnalisationModification(BaseModel):
@@ -48,6 +48,10 @@ class AdresseModification(BaseModel):
 
 class NatureModification(BaseModel):
     nature: str
+
+
+class AppliAndroidChoix(BaseModel):
+    actif: bool
 
 
 class DetourageChoix(BaseModel):
@@ -78,6 +82,9 @@ class PersonnalisationReceiver:
         r.post("/ecoles/{ecole_id}/personnalisation/defaut", dependencies=[Depends(self._admin)])(self.defaut)
         r.patch("/ecoles/{ecole_id}/sous-domaine", dependencies=[Depends(self._owner)])(self.changer_adresse)
         r.patch("/ecoles/{ecole_id}/nature", dependencies=[Depends(self._superuser)])(self.changer_nature)
+        r.get("/applis-android")(self.applis_android)
+        r.get("/ecoles/{ecole_id}/appli-android", dependencies=[Depends(self._membre)])(self.appli_android)
+        r.put("/ecoles/{ecole_id}/appli-android", dependencies=[Depends(self._superuser)])(self.changer_appli_android)
         r.post("/ecoles/{ecole_id}/personnalisation/images/{type_image}", dependencies=[Depends(self._admin)])(
             self.envoyer_image
         )
@@ -113,6 +120,9 @@ class PersonnalisationReceiver:
 
     def _admin(self, ecole_id: int, appelant: Compte = Depends(rbac.compte_appelant)) -> None:
         rbac.require_admin(appelant, ecole_id)
+
+    def _membre(self, ecole_id: int, appelant: Compte = Depends(rbac.compte_appelant)) -> None:
+        rbac.require_membre(appelant, ecole_id)
 
     def _owner(self, ecole_id: int, appelant: Compte = Depends(rbac.compte_appelant)) -> None:
         rbac.require_owner(appelant, ecole_id)
@@ -272,3 +282,37 @@ class PersonnalisationReceiver:
     def annuler(self, ecole_id: int, type_image: str, db: Session = Depends(get_db)):
         self._ecole(db, ecole_id)
         self.client.annuler_image(ecole_id, self._type(type_image))
+
+    # --- Appli Android (appli_android.py) ---
+
+    def _etat_appli(self, db: Session, ecole: Ecole) -> dict:
+        return appli_android.etat(ecole, self.client.fights_allume(db, ecole.id))
+
+    def applis_android(self, db: Session = Depends(get_db)):
+        """Les applis à fabriquer, lues par l'action GitHub « Appli Tournage
+        (APK) » : une par école dont l'appli est allumée (et Fights aussi)."""
+        ecoles = db.query(Ecole).filter(Ecole.appli_android.is_(True)).order_by(Ecole.id).all()
+        return [
+            {"cle": e.apk_cle, "nom": e.nom_appli or e.nom, "adresse": adresse_de_l_ecole(e)}
+            for e in ecoles
+            if self.client.fights_allume(db, e.id)
+        ]
+
+    def appli_android(self, ecole_id: int, db: Session = Depends(get_db)):
+        return self._etat_appli(db, self._ecole(db, ecole_id))
+
+    def changer_appli_android(self, ecole_id: int, donnees: AppliAndroidChoix, db: Session = Depends(get_db)):
+        """Super User seulement (Seb 18/11/2026). « Oui » lance la fabrication ;
+        « Non » ne retire pas l'appli des téléphones où elle est installée."""
+        ecole = self._ecole(db, ecole_id)
+        if not self.client.fights_allume(db, ecole.id):
+            raise HTTPException(status_code=400, detail="L'appli Android sert à filmer : allumez d'abord Fights.")
+        ecole.appli_android = donnees.actif
+        if donnees.actif and ecole.apk_cle is None:
+            ecole.apk_cle = ecole.sous_domaine
+        db.commit()
+        db.refresh(ecole)
+        if donnees.actif:
+            appli_android.oublier_version()
+            appli_android.lancer_fabrication()
+        return self._etat_appli(db, ecole)
