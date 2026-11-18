@@ -48,8 +48,9 @@ def _ecoles(db):
 
 
 def test_tous_les_modules_sont_allumes_par_defaut(client, db_session):
+    # Sauf ceux déclarés éteints par défaut (Mail, Seb 18/11/2026).
     ecole, _ = _ecoles(db_session)
-    assert _etats(client, ecole.id) == {m.key: True for m in MODULES if not m.technical}
+    assert _etats(client, ecole.id) == {m.key: m.enabled_by_default for m in MODULES if not m.technical}
 
 
 def test_eteindre_n_eteint_que_cette_ecole_et_rallumer_retrouve_tout(client, db_session):
@@ -58,7 +59,7 @@ def test_eteindre_n_eteint_que_cette_ecole_et_rallumer_retrouve_tout(client, db_
     assert _etats(client, ecole.id)["messaging"] is False
     assert _etats(client, voisine.id)["messaging"] is True
     client.put(f"/ecoles/{ecole.id}/modules/messaging", json={"enabled": True})
-    assert all(_etats(client, ecole.id).values())
+    assert _etats(client, ecole.id) == _etats(client, voisine.id)
 
 
 def test_on_n_eteint_pas_un_module_dont_un_autre_a_besoin(client, db_session):

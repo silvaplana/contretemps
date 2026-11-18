@@ -1,7 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import * as conversationsApi from '../api/conversations.js'
 import * as messagesApi from '../api/messages.js'
 import Icon from '../components/Icon.jsx'
+import SegmentedTabs from '../components/SegmentedTabs.jsx'
+import * as mailApi from '../modules/mail/api.js'
+import MailScreen from '../modules/mail/MailScreen.jsx'
 import { envoyerAvecReprise } from '../utils/messageOutbox.js'
 import { initialiserPresence } from '../utils/presenceEnLigne.js'
 import ConversationListScreen from './messagerie/ConversationListScreen.jsx'
@@ -55,6 +58,20 @@ export default function MessagerieScreen({
   onOuvrirDocs,
 }) {
   const [selectedId, setSelectedId] = useState(null)
+  // Puces Chat | Mail (spec/modules/mail.md §2) : seulement si le sous-module
+  // Mail est allumé et que la personne a le droit « Boîte mail du club ».
+  const [mailEtat, setMailEtat] = useState(null)
+  const [puce, setPuce] = useState('chat')
+  useEffect(() => {
+    let actif = true
+    mailApi
+      .etatOuRien(ecoleId)
+      .then((etat) => actif && setMailEtat(etat))
+      .catch(() => null)
+    return () => {
+      actif = false
+    }
+  }, [ecoleId])
   // Écran « Nouvelle discussion », ouvert par le bouton + de la liste
   // (spec/modules/messagerie-instantanee.md §2). « Nouveau groupe » s'ouvre
   // depuis cet écran (§2.5 : plus dans le menu ⋯ de l'en-tête).
@@ -166,8 +183,11 @@ export default function MessagerieScreen({
   // Un seul `return` : la modale "Nouveau groupe" ci-dessous s'affiche
   // PAR-DESSUS l'écran Nouvelle discussion, et le bouton + par-dessus la
   // liste.
+  const voirMail = mailEtat && puce === 'mail'
   let corps
-  if (selected) {
+  if (voirMail) {
+    corps = <MailScreen ecoleId={ecoleId} etat={mailEtat} onEtat={setMailEtat} />
+  } else if (selected) {
     corps = (
       <ConversationThreadScreen
         conversation={selected}
@@ -244,10 +264,21 @@ export default function MessagerieScreen({
     )
   }
 
-  const surLaListe = !selected && !frame && !nouvelleDiscussion
+  const surLaListe = !voirMail && !selected && !frame && !nouvelleDiscussion
 
   return (
     <>
+      {mailEtat && (voirMail || surLaListe) && (
+        <SegmentedTabs
+          className="messagerie-puces"
+          options={[
+            { value: 'chat', label: 'Chat' },
+            { value: 'mail', label: 'Mail' },
+          ]}
+          value={puce}
+          onChange={setPuce}
+        />
+      )}
       {corps}
       {envoiA && (
         <EnvoyerAScreen

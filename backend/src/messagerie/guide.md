@@ -2,6 +2,8 @@ Messagerie : onglet « Messages » de la barre du bas (sous « Plus » sur tél�
 d'onglets), titre « Messagerie » en haut. Un badge sur l'onglet compte les messages non lus.
 Trois écrans, jamais deux à la fois : la liste des discussions, une discussion, la carte
 d'un contact.
+Si le sous-module Mail est allumé et que la personne a le droit « Boîte mail du club », deux puces
+en haut : « Chat » (la messagerie) et « Mail » (la boîte du club, voir le guide de Mail).
 
 Liste des discussions
 - La plus récente en haut ; à droite, l'heure du dernier message, « Hier », le jour ou la date.

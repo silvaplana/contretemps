@@ -14,11 +14,21 @@ from db import get_db
 from .models import OrgModule
 
 
+# Modules éteints tant que l'organisation ne les a pas cochés (Module.
+# enabled_by_default=False, rempli au montage par registry.mount_all).
+_OFF_BY_DEFAULT: set[str] = set()
+
+
+def set_off_by_default(keys: set[str]) -> None:
+    _OFF_BY_DEFAULT.clear()
+    _OFF_BY_DEFAULT.update(keys)
+
+
 def disabled(db: Session, org_id: int) -> set[str]:
-    """Les modules éteints dans cette organisation (tous allumés par défaut)."""
-    return set(
-        db.scalars(select(OrgModule.module_key).where(OrgModule.org_id == org_id, OrgModule.enabled.is_(False)))
-    )
+    """Les modules éteints dans cette organisation : allumés par défaut, sauf
+    ceux de `_OFF_BY_DEFAULT` qui n'ont pas de ligne."""
+    rows = dict(db.execute(select(OrgModule.module_key, OrgModule.enabled).where(OrgModule.org_id == org_id)).all())
+    return {k for k, on in rows.items() if not on} | {k for k in _OFF_BY_DEFAULT if k not in rows}
 
 
 def listing(db: Session, org_id: int, modules: list) -> list[dict]:

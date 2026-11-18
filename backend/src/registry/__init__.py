@@ -15,6 +15,8 @@ from fastapi import FastAPI
 from groups import rights
 from sqlalchemy.orm import Session
 
+from . import activation
+
 
 @dataclass(frozen=True)
 class Role:
@@ -60,6 +62,9 @@ class Module:
     # Sous-module technique (Vidéos) : sans onglet, toujours allumé, absent
     # de Fonctionnalités (Seb, 12 novembre).
     technical: bool = False
+    # Éteint dans une organisation tant qu'elle ne l'a pas coché (Mail,
+    # spec/modules/mail.md) : pas de ligne `org_modules` = éteint.
+    enabled_by_default: bool = True
 
 
 def guide_file(module_file: str) -> str:
@@ -100,6 +105,7 @@ def mount_all(app: FastAPI, modules: list[Module], core: SimpleNamespace) -> Non
     dans l'organisation de l'appelant (activation.py)."""
     check(modules)
     app.state.module_of_route = {}
+    activation.set_off_by_default({m.key for m in modules if not m.enabled_by_default})
     for module in modules:
         for right in module.rights:
             rights.declare(right.key, right.label)

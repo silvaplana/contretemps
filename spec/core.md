@@ -748,7 +748,7 @@ Supervision (Super User). Chaque produit a sa propre liste, avec le même core.
 
 ### 11.3 Modules allumés par organisation
 
-- Table `org_modules` (organisation, module, allumé, date) ; **pas de ligne = allumé**.
+- Table `org_modules` (organisation, module, allumé, date) ; **pas de ligne = allumé**, sauf pour un module déclaré `enabled_by_default=False` (Mail, `modules/mail.md`) : pas de ligne = éteint.
 - Module éteint pour une organisation : pas d'onglet, pas de bouton d'en-tête, pas d'action de
   l'assistant, routes « introuvable » (vérifié une fois pour toutes par le core, juste après la
   session ; pas pour les routes publiques ni le Super User), groupes cachés. **Éteindre n'efface
