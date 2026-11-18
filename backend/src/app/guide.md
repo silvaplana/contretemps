@@ -1,7 +1,7 @@
 Barre du bas : Admin, puis les onglets des modules allumés (Présence, Chorégraphies, Messages, Docs,
 Financier, Fights), Supervision, Profil. Chacun ne voit que les onglets de ses rôles. Sur téléphone,
 les derniers passent sous « Plus » (⋯) en bas à droite ; le badge des messages non lus s'y ajoute.
-Chacun peut ranger ses onglets dans Profil › Ma barre du bas.
+L'ordre des onglets se règle pour toute l'école dans Admin › École › Personnalisation › Fonctionnalités.
 
 En-tête
 - Bulle à gauche du badge : ouvre ou ferme l'assistant (absente si le module Assistant est éteint).
@@ -39,7 +39,8 @@ Admin › École
 - Personnalisation de l'application : Apparence visuelle (aperçus, adresse web de l'appli, « Nature de l'école » Danse ou Combat pour le
   Super User seulement, puis « Appli Android » Non ou Oui pour le Super User quand Fights est allumé, nom sous
   l'icône, logo, nom de l'école en texte ou image, slogan, polices, couleurs ; Enregistrer ;
-  « Revenir à l'apparence par défaut »), Fonctionnalités (une case par module), Vocabulaire.
+  « Revenir à l'apparence par défaut »), Fonctionnalités (une case par module, puis « Ordre de la
+  barre du bas » : faire glisser un onglet par sa poignée, pour toute l'école), Vocabulaire.
 - Connexions (Administrateur principal et Super User) : une ligne par module allumé qui demande des
   identifiants (Boîte mail du club, HelloAsso, Site de la FFST ; Comptes en banque avec l'Accès au
   Financier en plus), « Connecter » ou « Voir » ; pastille du nombre à connecter.
@@ -73,8 +74,7 @@ Admin › Cours
   « Créer aussi la conversation de groupe de ce cours ».
 
 Profil : identité (email et téléphone modifiables au crayon par un admin, sinon via Admin), Ma
-famille, Mes heures (profs), Mes notes de frais, Notifications, Ma barre du bas (flèches ↑ ↓ pour
-ranger ses onglets, « Remettre l'ordre de l'école »), Changer mon mot de passe, Mon RIB,
+famille, Mes heures (profs), Mes notes de frais, Notifications, Changer mon mot de passe, Mon RIB,
 Changer d'école (Super User), Se déconnecter.
 
 Supervision (Super User seulement) : vide pour l'instant.

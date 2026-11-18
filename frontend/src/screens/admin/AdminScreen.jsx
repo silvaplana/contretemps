@@ -41,6 +41,7 @@ export default function AdminScreen({
   onMonRoleTresorier,
   modules,
   onModulesChange,
+  barre,
 }) {
   // Les sous-onglets des modules allumés (`adminTabs`, ex. « Impayés
   // HelloAsso », spec/modules/helloasso.md §7.4), après Cours, ou après le
@@ -105,6 +106,7 @@ export default function AdminScreen({
           onMonRoleTresorier={onMonRoleTresorier}
           modules={modules}
           onModulesChange={onModulesChange}
+          barre={barre}
         />
       )}
       {onglet === 'eleves' && (

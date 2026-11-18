@@ -135,3 +135,29 @@ def test_les_routes_d_un_module_eteint_repondent_introuvable(client, db_session)
             f"/ecoles/{ecole.id}/modules/messaging", json={"enabled": True}, headers=entetes_session(compte)
         )
         assert reponse.status_code == attendu
+
+
+@pytest.mark.rbac_reel
+def test_l_ordre_de_la_barre_du_bas_est_celui_de_l_ecole(client, db_session):
+    """Seb, 18/11/2026 : l'Administrateur principal range les onglets dans
+    Fonctionnalités, le même ordre pour tout le monde ; l'école voisine
+    garde le sien."""
+    from comptes import Comptes
+    from conftest import entetes_session
+
+    ecole, voisine = _ecoles(db_session)
+    prof = Comptes().create(db_session, ecole_id=ecole.id, role="professeur", nom="Blanc", prenom="Ima")
+    principal = Comptes().create(db_session, ecole_id=ecole.id, role="admin", nom="Dho", prenom="Julia")
+    admin = Comptes().create(db_session, ecole_id=ecole.id, role="admin", nom="Roux", prenom="Ana")
+    route = f"/ecoles/{ecole.id}/tab-order"
+    assert client.get(route, headers=entetes_session(prof)).json() == {"tab_order": []}
+    ordre = {"tab_order": ["messagerie", "admin", "profil"]}
+    assert client.put(route, json=ordre, headers=entetes_session(admin)).status_code == 403
+    assert client.put(route, json=ordre, headers=entetes_session(prof)).status_code == 403
+    assert client.put(route, json=ordre, headers=entetes_session(principal)).json() == ordre
+    assert client.get(route, headers=entetes_session(prof)).json() == ordre
+    voisin = Comptes().create(db_session, ecole_id=voisine.id, role="professeur", nom="Z", prenom="W")
+    assert client.get(f"/ecoles/{voisine.id}/tab-order", headers=entetes_session(voisin)).json() == {"tab_order": []}
+    # [] : retour à l'ordre des modules.
+    client.put(route, json={"tab_order": []}, headers=entetes_session(principal))
+    assert client.get(route, headers=entetes_session(prof)).json() == {"tab_order": []}
