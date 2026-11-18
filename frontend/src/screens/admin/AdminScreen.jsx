@@ -43,7 +43,8 @@ export default function AdminScreen({
   onModulesChange,
 }) {
   // Les sous-onglets des modules allumés (`adminTabs`, ex. « Impayés
-  // HelloAsso », spec/modules/helloasso.md §7.4), après Cours ; seulement
+  // HelloAsso », spec/modules/helloasso.md §7.4), après Cours, ou après le
+  // sous-onglet nommé par `after` (ex. Essais après Élèves) ; seulement
   // une fois la liste des modules lue (aucun sous-onglet de passage).
   const ongletsModules = useMemo(
     () => MODULES.filter((m) => modules.some((x) => x.key === m.key && x.enabled)).flatMap((m) => m.adminTabs ?? []),
@@ -68,9 +69,10 @@ export default function AdminScreen({
   const { motEcole, motEleves, motProfs, motCours } = useApparence()
   const sousOnglets = useMemo(() => {
     const mots = { ecole: motEcole, eleves: `${motEleves} (${eleves.length})`, professeurs: motProfs, cours: motCours }
+    const apres = (cle) => ongletsModules.filter((o) => o.after === cle).map(({ value, label }) => ({ value, label }))
     return [
-      ...SUB_TABS.map((onglet) => (mots[onglet.value] ? { ...onglet, label: mots[onglet.value] } : onglet)),
-      ...ongletsModules.map(({ value, label }) => ({ value, label })),
+      ...SUB_TABS.flatMap((onglet) => [mots[onglet.value] ? { ...onglet, label: mots[onglet.value] } : onglet, ...apres(onglet.value)]),
+      ...ongletsModules.filter((o) => !SUB_TABS.some((s) => s.value === o.after)).map(({ value, label }) => ({ value, label })),
     ]
   }, [eleves.length, motEcole, motEleves, motProfs, motCours, ongletsModules])
 

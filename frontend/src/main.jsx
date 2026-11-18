@@ -14,24 +14,33 @@ import { rechargerSiNouvelleVersion } from './utils/nouvelleVersion.js'
 const lienPersonnel = window.location.pathname.match(/\/r\/([A-Za-z0-9_-]{16,})\/?$/)?.[1]
 const pagePublique = lienPersonnel ? { jeton: lienPersonnel } : pageDuHost(window.location.hostname)
 const PagePublique = lazy(() => import('./pagePublique/PagePublique.jsx'))
+// <adresse de l'école>/essai : la page d'essai, sans compte (module Essai,
+// spec/modules/essai.md §2).
+const pageEssai = !pagePublique && /^\/essai\/?$/.test(window.location.pathname)
+const PagePubliqueEssai = lazy(() => import('./modules/trials/PagePubliqueEssai.jsx'))
+const sansAppli = pagePublique || pageEssai
 
 // Avant tout rendu : chaque appel à notre API porte l'id du profil actif
 // (RBAC du serveur, voir api/identite.js).
-if (!pagePublique) installerIdentiteAppelant()
+if (!sansAppli) installerIdentiteAppelant()
 // Tout de suite : l'annonce "installable" du navigateur peut arriver avant
 // le premier affichage (voir api/installation.js).
-if (!pagePublique) ecouterInstallation()
+if (!sansAppli) ecouterInstallation()
 // L'apparence de l'école de l'adresse visitée (spec §2.7), avant même la
 // page de connexion ; rien à faire sur l'adresse générique.
-if (!pagePublique) chargerParAdresse()
+if (!sansAppli) chargerParAdresse()
 // Nouvelle version mise en ligne : rechargée au retour au premier plan.
-if (!pagePublique) rechargerSiNouvelleVersion()
+if (!sansAppli) rechargerSiNouvelleVersion()
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     {pagePublique ? (
       <Suspense fallback={null}>
         <PagePublique slug={pagePublique.page} jeton={pagePublique.jeton} />
+      </Suspense>
+    ) : pageEssai ? (
+      <Suspense fallback={null}>
+        <PagePubliqueEssai />
       </Suspense>
     ) : (
       <App />
@@ -54,7 +63,7 @@ if (dansUneWebView && 'serviceWorker' in navigator) {
     await Promise.all(inscrits.map((r) => r.unregister()))
     if (!window.Capacitor?.isNativePlatform?.()) window.location.reload()
   })
-} else if (!pagePublique && 'serviceWorker' in navigator) {
+} else if (!sansAppli && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`)
   })

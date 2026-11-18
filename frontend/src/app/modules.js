@@ -23,9 +23,10 @@ import messagerie from '../modules/messagerie/module.js'
 import presence from '../modules/presence/module.js'
 import publications from '../modules/publications/module.js'
 import sessionClips from '../modules/session-clips/module.js'
+import trials from '../modules/trials/module.js'
 
 // Publications en premier : ses onglets (Actus…) viennent juste après Admin (Seb, 6 novembre).
-export const MODULES = [publications, presence, choregraphies, messagerie, mail, documents, finances, sessionClips, helloasso, ffst]
+export const MODULES = [publications, presence, choregraphies, messagerie, mail, documents, finances, sessionClips, helloasso, ffst, trials]
 
 // Le module qui impose les membres de la saison affichée (HelloAsso,
 // spec/modules/helloasso.md §7) : { module, liste: son `memberList`, donnees }, ou
