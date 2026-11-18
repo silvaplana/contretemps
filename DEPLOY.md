@@ -365,6 +365,18 @@ Même serveur, même conteneur ; les écoles de nature « combat » ont leur adr
 }
 ```
 
+- **Adresses nues** (connexion, 18/11/2026) : `assofight.silvaplana.cloud` et
+  `contretemps.silvaplana.cloud` ouvrent la connexion de leur enseigne, comme
+  `app.<domaine>`. DNS : deux enregistrements `A` `assofight` et `contretemps`
+  -> `187.124.17.136` (l'étoile ne couvre pas l'adresse nue). Gateway, en fin
+  de fichier (certificat ordinaire, sans `on_demand`) :
+
+```caddyfile
+assofight.silvaplana.cloud, contretemps.silvaplana.cloud {
+	reverse_proxy contretemps-frontend-ecoles:80
+}
+```
+
 - **Brevo** : l'expéditeur des mails d'Assofight est `assofight@silvaplana.cloud`
   (`SMTP_FROM_EMAIL_ASSOFIGHT` dans `backend/.env` pour en changer). Le domaine
   `silvaplana.cloud` doit être authentifié dans Brevo.
