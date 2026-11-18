@@ -4613,7 +4613,9 @@ a.btn {
 
 .helloasso__resultat dl {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* Le nombre juste après son libellé : en 1fr 1fr, sur un écran large,
+     il partait au milieu de l'écran, hors de vue (Seb, 18/11). */
+  grid-template-columns: max-content 1fr;
   gap: 6px 12px;
   margin: 12px 0 0;
   font-size: 16px;
