@@ -1,13 +1,17 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import MenuEntete from '../../components/MenuEntete.jsx'
 import Modal from '../../components/Modal.jsx'
 import * as api from './api.js'
+import { prendreJetonEnAttente } from './lienScan.js'
 import './essais.css'
 
 // Admin > Essais (spec/modules/essai.md §4, maquette
 // https://claude.ai/artifact/3iTgQGr9aJFFyJTuZZ5kcX), repris de l'onglet
 // Essai de Sambo Admin : la liste des élèves à l'essai, leur fiche, et la
-// page d'essai (§5). Le scan des QR codes vient à l'étape 2.
+// page d'essai (§5), et le scan des QR codes au début du cours.
+
+// La caméra et la lecture des QR codes ne se chargent qu'à l'ouverture du scan.
+const Scanner = lazy(() => import('./Scanner.jsx'))
 
 const MAX_COURS = 2
 
@@ -53,7 +57,11 @@ export default function Essais({ ecoleId }) {
   const [erreur, setErreur] = useState('')
   const [recherche, setRecherche] = useState('')
   const [tous, setTous] = useState(false)
-  const [ecran, setEcran] = useState({ nom: 'liste' })
+  // Arrivé par un QR code lu avec l'appareil photo : l'écran de scan, avec ce code.
+  const [ecran, setEcran] = useState(() => {
+    const jeton = prendreJetonEnAttente()
+    return jeton ? { nom: 'scan', code: jeton } : { nom: 'liste' }
+  })
   const [lien, setLien] = useState('')
   const [toast, setToast] = useState(null)
   const minuteur = useRef(null)
@@ -78,6 +86,9 @@ export default function Essais({ ecoleId }) {
     setToast({ texte, annuler })
     minuteur.current = setTimeout(() => setToast(null), annuler ? 10000 : 3000)
   }
+
+  // Cours noté par le scan : la ligne de l'inscrit est mise à jour.
+  const noter = useCallback((s) => setListe((l) => l && l.map((x) => (x.id === s.id ? { ...s, member: x.member } : x))), [])
 
   function remplacer(s) {
     setListe((l) => l.map((x) => (x.id === s.id ? s : x)))
@@ -155,6 +166,18 @@ export default function Essais({ ecoleId }) {
       </>
     )
   }
+  if (ecran.nom === 'scan') {
+    return (
+      <Suspense fallback={<p className="muted">Ouverture de la caméra…</p>}>
+        <Scanner
+          ecoleId={ecoleId}
+          code={ecran.code}
+          onRetour={() => setEcran({ nom: 'liste' })}
+          onNote={noter}
+        />
+      </Suspense>
+    )
+  }
   if (ecran.nom === 'reglages') {
     return (
       <>
@@ -181,7 +204,9 @@ export default function Essais({ ecoleId }) {
       />
       <div className="essais__entete">
         <h2>Élèves à l'essai{liste ? ` (${liste.length})` : ''}</h2>
-        {/* Scanner les QR codes : étape 2 (spec/modules/essai.md §9). */}
+        <button type="button" className="btn btn--primary" onClick={() => setEcran({ nom: 'scan' })}>
+          Scanner les QR codes
+        </button>
       </div>
       <input
         id="essais-recherche"
