@@ -1,0 +1,171 @@
+"""Members entirely imposed by HelloAsso (spec/modules/helloasso.md §7): a
+season with a campaign has no other source of members. The lock refuses
+student cards created, imported or deleted by hand; the rest reads the copy
+made by the synchronisation (`helloasso_registrations`) for the members
+table and card: amount, discount code, photo, HelloAsso status, answers,
+payer, payments. Uploaded files (photo, medical certificate...) stay at
+HelloAsso: the server relays them, and keeps only the photo thumbnail."""
+
+from __future__ import annotations
+
+import io
+import os
+import re
+import unicodedata
+from pathlib import Path
+from urllib.parse import urlparse
+
+from saisons import saison_courante_id
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from .campaign import Campaigns
+from .models import HelloAssoRegistration
+from .sync import is_cancelled
+
+LOCKED = (
+    "Les adhérents de cette saison viennent de HelloAsso : on les ajoute sur HelloAsso "
+    "(paiement en espèces ou par chèque compris), ils arrivent par la synchronisation, "
+    "et on ne les supprime pas."
+)
+# Thumbnails only: a photo does not change once uploaded (Sambo Admin).
+PHOTOS_DIR = Path(os.environ.get("HELLOASSO_PHOTOS_DIR", "./data/helloasso-photos"))
+# A file uploaded in a HelloAsso form (the only URLs the server relays).
+_FILE_URL = re.compile(r"^/customFieldsAnswer/\d+$")
+
+
+def lock(db: Session, org_id: int) -> str | None:
+    """The `Eleves.locks` entry: the current season has a campaign and the
+    module is on (switching it off, or « Nos champs », opens the cards)."""
+    from registry.activation import disabled
+
+    season_id = saison_courante_id(db, org_id)
+    if season_id is None or Campaigns.current(db, season_id) is None:
+        return None
+    return None if "helloasso" in disabled(db, org_id) else LOCKED
+
+
+def _key(text: str | None) -> str:
+    return unicodedata.normalize("NFKD", text or "").encode("ascii", "ignore").decode().lower()
+
+
+def is_file_url(url) -> bool:
+    if not isinstance(url, str):
+        return False
+    parsed = urlparse(url)
+    return parsed.scheme == "https" and parsed.netloc == "docs.helloasso.com" and bool(_FILE_URL.match(parsed.path))
+
+
+def files(answers: list[dict]) -> list[dict]:
+    """The files uploaded with the form: [{index, name}], `index` being the
+    answer's position (what the relay route asks for)."""
+    return [
+        {"index": i, "name": a.get("name") or "Fichier"}
+        for i, a in enumerate(answers or [])
+        if is_file_url(a.get("answer"))
+    ]
+
+
+def photo_index(answers: list[dict]) -> int | None:
+    """The ID photo: the first uploaded file whose question says « photo »
+    (« photo d'identité » at Alliance Sambo Combat)."""
+    for f in files(answers):
+        if "photo" in _key(f["name"]):
+            return f["index"]
+    return None
+
+
+def _main(registrations: list[HelloAssoRegistration]) -> HelloAssoRegistration:
+    """The registration a card shows: an active one before a cancelled one,
+    the latest first."""
+    return sorted(registrations, key=lambda r: (not is_cancelled(r.state), r.order_date or "", r.id))[-1]
+
+
+def _by_member(db: Session, org_id: int, season_id: int) -> dict[int, list[HelloAssoRegistration]]:
+    grouped: dict[int, list[HelloAssoRegistration]] = {}
+    for r in db.scalars(
+        select(HelloAssoRegistration).where(
+            HelloAssoRegistration.org_id == org_id,
+            HelloAssoRegistration.season_id == season_id,
+            HelloAssoRegistration.member_id.is_not(None),
+            HelloAssoRegistration.gone_at.is_(None),
+        )
+    ):
+        grouped.setdefault(r.member_id, []).append(r)
+    return grouped
+
+
+def table(db: Session, org_id: int, season_id: int) -> dict[int, dict]:
+    """{card: the HelloAsso columns of the members table} (spec §7.2)."""
+    out = {}
+    for member_id, registrations in _by_member(db, org_id, season_id).items():
+        r = _main(registrations)
+        out[member_id] = {
+            "amount": r.amount,
+            "discount_code": r.discount_code,
+            "state": r.state,
+            "cancelled": is_cancelled(r.state),
+            "photo": photo_index(r.answers) is not None,
+        }
+    return out
+
+
+def registration(db: Session, org_id: int, season_id: int, member_id: int) -> HelloAssoRegistration | None:
+    registrations = _by_member(db, org_id, season_id).get(member_id)
+    return _main(registrations) if registrations else None
+
+
+def card(r: HelloAssoRegistration) -> dict:
+    """The HelloAsso part of a member's card (spec §7.3): membership, files,
+    answers (files apart), payer, payments."""
+    file_indexes = {f["index"] for f in files(r.answers)}
+    return {
+        "tier_name": r.tier_name,
+        "amount": r.amount,
+        "discount_code": r.discount_code,
+        "state": r.state,
+        "cancelled": is_cancelled(r.state),
+        "order_date": r.order_date,
+        "photo": photo_index(r.answers) is not None,
+        "files": files(r.answers),
+        "answers": [
+            {"name": a.get("name") or "", "answer": a.get("answer")}
+            for i, a in enumerate(r.answers or [])
+            if i not in file_indexes and a.get("answer") not in (None, "")
+        ],
+        "payer_name": r.payer_name,
+        "payer_email": r.payer_email,
+        "payments": r.payments or [],
+    }
+
+
+def thumbnail(content: bytes, size: int) -> bytes:
+    """Square JPEG thumbnail (Sambo Admin, `get_photo_thumbnail`): EXIF
+    orientation, centred crop. A PDF uploaded instead of a photo gives its
+    first page."""
+    from PIL import Image, ImageOps, UnidentifiedImageError
+
+    try:
+        image = Image.open(io.BytesIO(content))
+        image.load()
+    except UnidentifiedImageError:
+        import pymupdf
+
+        with pymupdf.open(stream=content, filetype="pdf") as pdf:
+            if pdf.page_count == 0:
+                raise ValueError("PDF vide") from None
+            pixmap = pdf[0].get_pixmap(matrix=pymupdf.Matrix(2, 2))
+        mode = "RGBA" if pixmap.alpha else "RGB"
+        image = Image.frombytes(mode, (pixmap.width, pixmap.height), pixmap.samples)
+    image = ImageOps.exif_transpose(image).convert("RGB")
+    width, height = image.size
+    side = min(width, height)
+    left, top = (width - side) // 2, (height - side) // 2
+    image = image.crop((left, top, left + side, top + side)).resize((size, size), Image.LANCZOS)
+    buffer = io.BytesIO()
+    image.save(buffer, format="JPEG", quality=82)
+    return buffer.getvalue()
+
+
+def thumbnail_path(org_id: int, url: str, size: int) -> Path:
+    return PHOTOS_DIR / str(org_id) / f"{url.rsplit('/', 1)[-1]}_{size}.jpg"

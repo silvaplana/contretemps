@@ -179,6 +179,9 @@ def orders(client_id: str, client_secret: str, slug: str, form_type: str, form_s
                         "first_name": (user.get("firstName") or payer.get("firstName") or "").strip(),
                         "last_name": (user.get("lastName") or payer.get("lastName") or "").strip(),
                         "payer_email": (payer.get("email") or "").strip() or None,
+                        "payer_name": " ".join(
+                            x for x in (payer.get("firstName"), payer.get("lastName")) if x
+                        ).strip() or None,
                         "tier_name": item.get("name") or "",
                         "amount": item.get("amount") or 0,
                         "discount_code": (item.get("discount") or {}).get("code"),
@@ -186,7 +189,7 @@ def orders(client_id: str, client_secret: str, slug: str, form_type: str, form_s
                         "order_date": order.get("date"),
                         "answers": [
                             {"id": str(c.get("id")) if c.get("id") is not None else None, "name": c.get("name") or "",
-                             "answer": c.get("answer")}
+                             "type": c.get("type") or "", "answer": c.get("answer")}
                             for c in item.get("customFields") or []
                         ],
                         "payments": [
@@ -238,3 +241,35 @@ def form_prices(client_id: str, client_secret: str, slug: str, form_type: str, f
                  "required": bool(option.get("isRequired"))},
             )
     return {"plans": plans, "options": list(options.values())}
+
+
+# Jetons gardés ~25 min (HelloAsso les donne pour 30) : une page de
+# vignettes ne redemande pas un jeton par photo.
+_TOKENS: dict[str, tuple[str, float]] = {}
+TOKEN_SECONDS = 25 * 60
+
+
+def _cached_token(client_id: str, client_secret: str) -> str:
+    import time
+
+    token, expires = _TOKENS.get(client_id, ("", 0.0))
+    if time.monotonic() >= expires:
+        token = _token(client_id, client_secret)
+        _TOKENS[client_id] = (token, time.monotonic() + TOKEN_SECONDS)
+    return token
+
+
+def file(client_id: str, client_secret: str, url: str) -> tuple[bytes, str]:
+    """Un fichier déposé dans le formulaire (photo, certificat médical…),
+    protégé par le jeton comme l'API : (contenu, type MIME). L'appelant
+    vérifie que l'adresse est bien un fichier HelloAsso (members.is_file_url)."""
+    token = _cached_token(client_id, client_secret)
+    try:
+        reponse = requests.get(url, headers={"Authorization": f"Bearer {token}"}, timeout=DELAI)
+    except requests.RequestException as erreur:
+        raise HelloAssoError("HelloAsso ne répond pas : réessayez dans un moment.") from erreur
+    if not reponse.ok:
+        _TOKENS.pop(client_id, None)
+        raise HelloAssoError(f"HelloAsso n’a pas donné le fichier ({reponse.status_code}).")
+    mime = reponse.headers.get("content-type", "application/octet-stream").split(";")[0].strip()
+    return reponse.content, mime

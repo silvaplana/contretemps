@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 
 from db import get_db
 
+from .eleves import ImposedMembers
 from .import_excel import ImportExcel, LigneApercu
 from .schemas import (
     ApercuImportSortie,
@@ -59,6 +60,8 @@ class ImportExcelReceiver:
             apercu = self.client.previsualiser(
                 db, ecole_id, io.BytesIO(contenu), fichier.filename or ""
             )
+        except ImposedMembers:
+            raise  # saison imposée par HelloAsso : 409 (app/main.py)
         except Exception as exc:  # fichier illisible/mal formé/contrainte de format non respectée
             raise HTTPException(status_code=400, detail=f"Fichier invalide : {exc}") from exc
         return apercu

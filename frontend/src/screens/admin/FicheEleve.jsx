@@ -38,7 +38,7 @@ function brouillonDe(eleve, reponses) {
   return brouillon
 }
 
-export default function FicheEleve({ ecoleId, eleve, cours, onClose, onEnregistre, onFusionnee }) {
+export default function FicheEleve({ ecoleId, eleve, cours, onClose, onEnregistre, onFusionnee, bloc }) {
   const [fusionOuverte, setFusionOuverte] = useState(false)
   const [brouillon, setBrouillon] = useState(null) // null = lecture
   const [enCours, setEnCours] = useState(false)
@@ -351,6 +351,8 @@ export default function FicheEleve({ ecoleId, eleve, cours, onClose, onEnregistr
             <Ligne libelle="Prénom" valeur={eleve.prenom} />
             <Ligne libelle="Nom" valeur={eleve.nom} />
           </Rubrique>
+          {/* Saison imposée par un module (HelloAsso) : sa part de la fiche. */}
+          {bloc}
           <Rubrique titre="Coordonnées">
             <Ligne libelle="Téléphone" valeur={eleve.telephone} />
             <Ligne libelle={eleve.emails?.length > 1 ? 'Emails' : 'Email'} valeur={eleve.email} />

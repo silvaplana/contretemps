@@ -697,7 +697,12 @@ MODULE = Module(
   (`member_fields.source`) : verrouillés, seuls les réglages avancés changent, ils ne se retirent
   pas et ne sont pas recopiés à la saison suivante. Et `seasonPrices` : un bloc de l'écran Tarifs ;
   quand il dit que la saison a des tarifs imposés (la campagne HelloAsso), il remplace nos formules,
-  en lecture seule. Un module sans onglet a `tabs: []`.
+  en lecture seule. Et `memberList` (18 novembre 2026) : quand c'est le module qui apporte les
+  membres de la saison affichée (la campagne HelloAsso, `modules/helloasso.md` §7), ses colonnes
+  du tableau d'Admin > Élèves (aussi dans « Affichage dans Admin ») et leur ordre par défaut, le
+  verrou (ni « + », ni import, ni poubelle), les filtres par âge, « Rafraîchir », la ligne grisée
+  d'une adhésion résiliée et son bloc dans la fiche. Côté serveur, le verrou passe par
+  `Eleves.locks`, que le module remplit dans `mount`. Un module sans onglet a `tabs: []`.
 
 **Codé (Seb, 12 novembre 2026 ; spec/modules/actualites.md §12.8)** : pour le module Publications, où
 l'on crée des blogs à l'écran, un module pourra aussi déclarer des droits **par organisation**

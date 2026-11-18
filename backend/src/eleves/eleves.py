@@ -6,6 +6,7 @@ pas, ne fait qu'ajouter `ProfilEleve`/`ContactEleve` par-dessus.
 from __future__ import annotations
 
 import datetime as dt
+from collections.abc import Callable
 
 from choregraphies.models import choregraphies_eleves
 from comptes import Compte, Comptes, RegleRoles, roles
@@ -49,9 +50,29 @@ def calculer_age(date_naissance: dt.date | None, aujourdhui: dt.date | None = No
     return age
 
 
+class ImposedMembers(ValueError):
+    """The season's members come from a module (HelloAsso, spec/modules/
+    helloasso.md §7.1): no student card is created, imported or deleted by
+    hand. The message is shown as is (HTTP 409, assistant refusal)."""
+
+
+# lock(db, org_id) -> message, or None when cards may be created by hand.
+Lock = Callable[[Session, int], "str | None"]
+
+
 class Eleves:
     def __init__(self, comptes: Comptes) -> None:
         self.comptes = comptes
+        # Set by modules when they mount (HelloAsso: a season imposed by a
+        # campaign). Empty for a school without such a module.
+        self.locks: list[Lock] = []
+
+    def check_open(self, db: Session, ecole_id: int) -> None:
+        """ImposedMembers if a module owns this school's student cards."""
+        for lock in self.locks:
+            message = lock(db, ecole_id)
+            if message:
+                raise ImposedMembers(message)
 
     def list(self, db: Session, ecole_id: int) -> list[Compte]:
         return self.comptes.list_par_role(db, ecole_id, role="eleve")
@@ -92,11 +113,15 @@ class Eleves:
         email: str | None = None,
         telephone: str | None = None,
         date_naissance: dt.date | None = None,
+        external: bool = False,
         **profil_champs,
     ) -> tuple[Compte, ProfilEleve]:
         """Une personne = une fiche (spec/core.md §4) : si la personne a déjà
         une fiche dans l'école sans être élève (un prof, un admin), on la
-        complète au lieu d'en créer une autre."""
+        complète au lieu d'en créer une autre. `external` : created by the
+        module that owns the cards (HelloAsso sync), past `locks`."""
+        if not external:
+            self.check_open(db, ecole_id)
         compte = self._fiche_a_completer(db, ecole_id, nom, prenom, email)
         if compte is not None:
             if email:
@@ -142,6 +167,7 @@ class Eleves:
         compte = self.get_compte(db, eleve_id)
         if compte is None:
             return False
+        self.check_open(db, compte.ecole_id)
         # Un élève peut être administrateur principal (§2.4) : le supprimer
         # ne doit jamais laisser l'école sans administrateur principal.
         if roles.is_owner(compte) and self.comptes.est_seul_owner(db, compte):

@@ -53,6 +53,8 @@ Admin › Élèves
   Champs : « La fiche d'un membre » (« + Ajouter un champ », « Affichage dans Admin › » pour
   choisir et ordonner les colonnes).
 - Fiche : Modifier, puis Valider ou Annuler ; « Fusionner avec… » pour réunir deux fiches.
+- Saison « Imposés par HelloAsso » : l'écran change, voir le module HelloAsso (pas de « + », ni
+  d'import, ni de poubelle, ni d'Inscription OCR / web).
 
 Admin › Profs
 - Recherche ; toucher les cours enseignés pour les cocher ; Inviter, Statut.

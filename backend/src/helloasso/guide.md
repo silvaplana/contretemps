@@ -28,8 +28,26 @@ Tarifs : Admin › École › Tarifs
 - Formules (prix, « Dès … » pour un prix libre, en plusieurs fois), Options et codes promo (avec
   « Utilisé n fois »). Tout est en lecture seule, à la place des tarifs de l'appli.
 
+Adhérents imposés par HelloAsso : Admin › Élèves (« Adhérents » si l'école a ce mot), saison dont la
+campagne est choisie
+- En haut : « Adhérents (n) » (les adhésions résiliées ne comptent pas) et « Rafraîchir » (recopie
+  tout de suite depuis HelloAsso ; saison en cours).
+- « Rechercher un adhérent... » (nom, prénom ou email) ; filtres par âge : Tous, Juniors (moins de
+  18 ans), Seniors, -10, 10-20, 20-30, 30-40, 40-50, 50+.
+- Colonnes par défaut : Adhérent, Email (du payeur), Montant, Code promo, Photo, Statut HelloAsso
+  (« Validé HelloAsso » ou « Résilié »). Les autres colonnes s'affichent par « Affichage dans Admin ».
+- Toucher la photo l'agrandit. Menu ⋮ : « Masquer les photos » / « Afficher les photos » (sur cet
+  appareil), Champs.
+- Une adhésion résiliée reste dans le tableau, grisée, nom barré.
+- Pas de « + », ni d'import, ni de poubelle : on ajoute quelqu'un sur HelloAsso (paiement en
+  espèces ou par chèque compris), il arrive par la synchronisation. Le serveur refuse aussi.
+- La fiche (toucher le nom) : photo, Adhésion (formule, montant, code promo, statut HelloAsso),
+  Documents déposés sur HelloAsso (photo d'identité, certificat médical… : ouverts depuis HelloAsso,
+  jamais gardés), Réponses au formulaire (« Modifiable sur HelloAsso. »), Payeur, Paiements.
+- Revenir à « Nos champs » ou éteindre le module rend le tableau habituel.
+
 Où voir les paiements
-- Les paiements des inscrits sont recopiés, mais aucun écran ne les montre encore : on les voit sur
+- Saison imposée par HelloAsso : dans la fiche de l'adhérent, rubrique Paiements. Sinon, sur
   HelloAsso.
 - L'argent versé par HelloAsso sur le compte de l'école : Financier › Pièces › Ventes.
 - Paiement par carte de la page d'inscription en ligne : il passe aussi par HelloAsso (voir les
@@ -39,7 +57,8 @@ Règles de l'appli
 - Les inscrits sont recopiés toutes les 5 minutes pour la saison en cours, ou par « Synchroniser
   maintenant ».
 - Une commande retrouve sa fiche par nom et prénom, sinon par email du payeur et prénom ; sinon une
-  fiche d'élève est créée. Une commande annulée ou remboursée est ignorée.
+  fiche d'élève est créée. Une adhésion résiliée, annulée ou remboursée est recopiée quand même,
+  avec son état (« Résilié »).
 - Quelqu'un retiré sur HelloAsso garde sa fiche dans l'appli.
 - Déconnecter ne touche ni aux membres ni aux paiements déjà recopiés.
 - Les clés sont gardées chiffrées.

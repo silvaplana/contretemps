@@ -258,9 +258,9 @@ def test_synchroniser_les_inscrits(client, db_session, ecole, campagnes, monkeyp
     ]
     monkeypatch.setattr(main.core.helloasso_sync, "orders", lambda *_: inscrits)
 
-    assert client.post(url).json() == {"created": 2, "completed": 2, "updated": 0, "gone": 0}
+    assert client.post(url).json() == {"created": 3, "completed": 2, "updated": 0, "gone": 0}
     lignes = {r.item_id: r for r in db_session.query(HelloAssoRegistration)}
-    assert set(lignes) == {"1", "2", "3", "4"} and lignes["3"].member_id == leon.id
+    assert set(lignes) == {"1", "2", "3", "4", "5"} and lignes["3"].member_id == leon.id
     assert lignes["4"].member_id == prof.id and lignes["1"].payments[0]["means"] == "Card"
     lea = db_session.get(Compte, lignes["1"].member_id)
     tom = db_session.get(Compte, lignes["2"].member_id)
@@ -271,11 +271,12 @@ def test_synchroniser_les_inscrits(client, db_session, ecole, campagnes, monkeyp
     assert reponses[("Date de naissance", "helloasso")] == "2017-11-05"
     # Notre date de naissance (cachée) la reçoit aussi : elle donne l’âge.
     assert values.known_of(db_session, lea)["birth_date"] == "2017-11-05"
-    assert db_session.query(Compte).filter(Compte.nom == "Annulée").count() == 0
+    # Remboursée : recopiée avec son état, jamais ignorée (spec §7.1).
+    assert lignes["5"].state == "Refunded" and db_session.get(Compte, lignes["5"].member_id).nom == "Annulée"
 
     # Deuxième passage : Tom n'est plus sur HelloAsso, rien n'est recréé.
     inscrits.pop(1)
-    assert client.post(url).json() == {"created": 0, "completed": 0, "updated": 3, "gone": 1}
+    assert client.post(url).json() == {"created": 0, "completed": 0, "updated": 4, "gone": 1}
     db_session.expire_all()
     assert db_session.get(HelloAssoRegistration, lignes["2"].id).gone_at is not None
     assert db_session.get(Compte, tom.id) is not None
@@ -326,8 +327,9 @@ def test_commandes_par_l_api(monkeypatch):
         ("7", "Léa", "Martin"), ("9", "Ana", "Noir"),
     ]
     assert inscrits[0]["discount_code"] == "FRATRIE" and inscrits[0]["answers"] == [
-        {"id": "11", "name": "Genre", "answer": "F"},
+        {"id": "11", "name": "Genre", "type": "", "answer": "F"},
     ]
+    assert inscrits[0]["payer_name"] == "Paul" and inscrits[1]["payer_name"] == "Ana Noir"
     assert inscrits[0]["payments"] == [
         {"amount": 9000, "date": "2026-09-02", "state": "Authorized", "means": "Card", "installment": 1},
     ]
@@ -388,3 +390,145 @@ def test_formules_par_l_api(monkeypatch):
         ("Solo, en 3 fois", 30000, None, "En plusieurs fois"), ("Prix libre", None, 1000, ""),
     ]
     assert prix["options"] == [{"name": "Kimono", "price": 4500, "required": False}]
+
+
+# --- Étape 5 : adhérents entièrement imposés par HelloAsso (spec §7) ---
+
+PHOTO_URL = "https://docs.helloasso.com/customFieldsAnswer/4242"
+CERTIFICAT_URL = "https://docs.helloasso.com/customFieldsAnswer/4343"
+
+
+def _saison_imposee(client, ecole, monkeypatch, inscrits):
+    from app import main
+
+    client.put(f"/ecoles/{ecole.id}/helloasso", json=CLES)
+    client.put(f"/ecoles/{ecole.id}/helloasso/campagne", json={"form_type": "Membership", "form_slug": "adhesion"})
+    monkeypatch.setattr(main.core.helloasso_sync, "orders", lambda *_: inscrits)
+    return client.post(f"/ecoles/{ecole.id}/helloasso/synchroniser").json()
+
+
+def test_saison_imposee_sans_fiche_a_la_main(client, db_session, ecole, campagnes, monkeypatch):
+    """Totalement esclave (spec §7.1) : ni création, ni import, ni
+    suppression d'une fiche d'élève, refusés par le serveur ; la
+    synchronisation, elle, crée les fiches. « Nos champs » ou le module
+    éteint rouvrent tout."""
+    from app import main
+    from registry import activation
+
+    params = {"ecole_id": ecole.id}
+    avant = client.post("/eleves", params=params, json={"nom": "Avant", "prenom": "Léon"})
+    assert avant.status_code == 201
+    assert _saison_imposee(client, ecole, monkeypatch, [_inscrit("1", "Léa", "Martin", "p@test.fr")])["created"] == 1
+
+    refus = client.post("/eleves", params=params, json={"nom": "Perrin", "prenom": "Léon"})
+    assert refus.status_code == 409 and "HelloAsso" in refus.json()["detail"]
+    assert client.delete(f"/eleves/{avant.json()['id']}").status_code == 409
+    fichier = ("eleves.csv", b"Nom;Prenom\nPerrin;Leon\n", "text/csv")
+    assert client.post("/eleves/import/previsualiser", params=params, files={"fichier": fichier}).status_code == 409
+    assert client.post("/eleves/import/valider", params=params, json={"lignes": []}).status_code == 409
+    # L'assistant non plus.
+    with pytest.raises(ValueError, match="HelloAsso"):
+        main.core.eleves_client.create(db_session, ecole.id, nom="Perrin", prenom="Léon")
+
+    activation.set_enabled(db_session, ecole.id, main.MODULES, "helloasso", False)
+    assert client.post("/eleves", params=params, json={"nom": "Perrin", "prenom": "Léon"}).status_code == 201
+    activation.set_enabled(db_session, ecole.id, main.MODULES, "helloasso", True)
+    assert client.post("/eleves", params=params, json={"nom": "Perrin", "prenom": "Zoé"}).status_code == 409
+    client.delete(f"/ecoles/{ecole.id}/helloasso/campagne")
+    assert client.post("/eleves", params=params, json={"nom": "Perrin", "prenom": "Zoé"}).status_code == 201
+
+
+def test_ecole_sans_helloasso_inchangee(client, db_session, ecole, campagnes):
+    """Contretemps, Le Beausset : sans campagne, rien ne change."""
+    params = {"ecole_id": ecole.id}
+    creee = client.post("/eleves", params=params, json={"nom": "Perrin", "prenom": "Léon"})
+    assert creee.status_code == 201
+    assert client.delete(f"/eleves/{creee.json()['id']}").status_code == 204
+    assert client.get(f"/ecoles/{ecole.id}/helloasso/adherents").json() == {
+        "imposed": False, "form_name": None, "can_refresh": False, "members": {},
+    }
+
+
+def _image(couleur=(200, 30, 30), taille=(60, 40)):
+    import io
+
+    from PIL import Image
+
+    tampon = io.BytesIO()
+    Image.new("RGB", taille, couleur).save(tampon, format="PNG")
+    return tampon.getvalue()
+
+
+def test_tableau_et_fiche_des_adherents(client, db_session, ecole, campagnes, monkeypatch, tmp_path):
+    """Colonnes Montant, Code promo, Photo, Statut HelloAsso (spec §7.2) et
+    la fiche (§7.3) ; la photo et les documents relayés depuis HelloAsso,
+    seule la vignette est gardée."""
+    import io
+
+    from app import main
+    from comptes import Compte
+    from helloasso import members
+    from PIL import Image
+
+    monkeypatch.setattr(members, "PHOTOS_DIR", tmp_path)
+    fichiers = [
+        {"id": "20", "name": "photo d'identité", "type": "File", "answer": PHOTO_URL},
+        {"id": "21", "name": "Certificat médical", "type": "File", "answer": CERTIFICAT_URL},
+        {"id": "22", "name": "Ville", "type": "TextInput", "answer": "La Ciotat"},
+    ]
+    lea = {**_inscrit("1", "Léa", "Martin", "p@test.fr", fichiers, montant=16000), "discount_code": "FRATRIE",
+           "payer_name": "Claire Martin"}
+    resiliee = _inscrit("2", "Inès", "Navarro", "i@test.fr", state="Canceled")
+    _saison_imposee(client, ecole, monkeypatch, [lea, resiliee])
+
+    tableau = client.get(f"/ecoles/{ecole.id}/helloasso/adherents").json()
+    assert tableau["imposed"] is True and tableau["can_refresh"] is True
+    lignes = {db_session.get(Compte, int(i)).prenom: ligne for i, ligne in tableau["members"].items()}
+    assert lignes["Léa"] == {"amount": 16000, "discount_code": "FRATRIE", "state": "Processed",
+                             "cancelled": False, "photo": True}
+    assert lignes["Inès"]["cancelled"] is True and lignes["Inès"]["photo"] is False
+
+    lea_id = next(int(i) for i, ligne in tableau["members"].items() if ligne["photo"])
+    fiche = client.get(f"/ecoles/{ecole.id}/helloasso/adherents/{lea_id}").json()
+    assert fiche["files"] == [{"index": 0, "name": "photo d'identité"}, {"index": 1, "name": "Certificat médical"}]
+    assert fiche["answers"] == [{"name": "Ville", "answer": "La Ciotat"}]
+    assert (fiche["payer_name"], fiche["tier_name"], fiche["payments"][0]["means"]) == ("Claire Martin", "Adulte", "Card")
+
+    lus = []
+
+    def fetch_file(client_id, secret, url):
+        lus.append(url)
+        return (_image(), "image/png") if url == PHOTO_URL else (b"%PDF-certificat", "application/pdf")
+
+    monkeypatch.setattr(main.core.helloasso_receiver, "fetch_file", fetch_file, raising=False)
+    photo = client.get(f"/ecoles/{ecole.id}/helloasso/adherents/{lea_id}/photo", params={"size": 64})
+    assert photo.status_code == 200 and photo.headers["content-type"] == "image/jpeg"
+    assert Image.open(io.BytesIO(photo.content)).size == (64, 64)
+    # Vignette gardée : HelloAsso n'est plus appelé.
+    client.get(f"/ecoles/{ecole.id}/helloasso/adherents/{lea_id}/photo", params={"size": 64})
+    assert lus == [PHOTO_URL]
+
+    certificat = client.get(f"/ecoles/{ecole.id}/helloasso/adherents/{lea_id}/fichiers/1")
+    assert certificat.content == b"%PDF-certificat" and certificat.headers["cache-control"] == "no-store"
+    assert list(tmp_path.rglob("*")) and not any("4343" in p.name for p in tmp_path.rglob("*"))
+    assert client.get(f"/ecoles/{ecole.id}/helloasso/adherents/{lea_id}/fichiers/2").status_code == 404
+    autre = client.get(f"/ecoles/{ecole.id}/helloasso/adherents/999999")
+    assert autre.status_code == 404
+
+
+def test_vignette_d_un_pdf():
+    """Un PDF déposé à la place d'une photo donne sa première page."""
+    import io
+
+    import pymupdf
+    from helloasso.members import is_file_url, photo_index, thumbnail
+    from PIL import Image
+
+    with pymupdf.open() as pdf:
+        pdf.new_page(width=200, height=300)
+        contenu = pdf.tobytes()
+    assert Image.open(io.BytesIO(thumbnail(contenu, 128))).size == (128, 128)
+    assert is_file_url(PHOTO_URL) and not is_file_url("https://evil.test/customFieldsAnswer/1")
+    assert not is_file_url("https://docs.helloasso.com/autre/1")
+    assert photo_index([{"name": "Photo d’identité", "answer": PHOTO_URL}]) == 0
+    assert photo_index([{"name": "Certificat", "answer": PHOTO_URL}]) is None

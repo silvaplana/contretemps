@@ -281,6 +281,7 @@ class ImportExcel:
         d'origine (voir _lire_lignes_brutes, décide csv/xlsx par
         extension). Voir §6.4bis : "rien n'est écrit en base tant que
         l'admin n'a pas validé l'écran de relecture dans son ensemble"."""
+        self.eleves.check_open(db, ecole_id)  # saison imposée par HelloAsso : pas d'import
         lignes_brutes = _lire_lignes_brutes(nom_fichier, fichier)
         if not lignes_brutes:
             raise ValueError("Fichier vide.")
@@ -547,6 +548,7 @@ class ImportExcel:
         LigneApercu) éventuellement corrigés par l'admin à la relecture —
         cet ajustement est fait par l'appelant/le frontend avant d'appeler
         `valider`, pas ici."""
+        self.eleves.check_open(db, ecole_id)
         crees = mis_a_jour = inchanges = 0
         for ligne in lignes:
             if ligne.eleve_existant_id is None:

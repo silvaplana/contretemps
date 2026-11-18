@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
 import * as champsApi from '../../api/champs.js'
 import * as elevesApi from '../../api/eleves.js'
+import { listeImposee } from '../../app/modules.js'
 import Badge from '../../components/Badge.jsx'
 import Icon from '../../components/Icon.jsx'
 import MenuEntete from '../../components/MenuEntete.jsx'
@@ -22,6 +23,21 @@ import { mots } from '../../api/mots.js'
 const PAIEMENT_TONE = { en_cours: 'warning', paye: 'success' }
 
 const DUREE_APPUI_LONG = 500 // ms
+
+// Filtres par âge d'une saison imposée par HelloAsso, repris de Sambo Admin
+// (spec/modules/helloasso.md §7.2) : un seul à la fois ; sans date de
+// naissance, la fiche n'apparaît que dans « Tous ».
+const FILTRES_AGE = [
+  { cle: 'tous', libelle: 'Tous' },
+  { cle: 'juniors', libelle: 'Juniors', test: (a) => a < 18 },
+  { cle: 'seniors', libelle: 'Seniors', test: (a) => a >= 18 },
+  { cle: '-10', libelle: '-10', test: (a) => a < 10 },
+  { cle: '10-20', libelle: '10-20', test: (a) => a >= 10 && a < 20 },
+  { cle: '20-30', libelle: '20-30', test: (a) => a >= 20 && a < 30 },
+  { cle: '30-40', libelle: '30-40', test: (a) => a >= 30 && a < 40 },
+  { cle: '40-50', libelle: '40-50', test: (a) => a >= 40 && a < 50 },
+  { cle: '50+', libelle: '50+', test: (a) => a >= 50 },
+]
 
 // Libellé affiché en titre de la popover "voir en entier / marquer en
 // rouge" (appui long — voir ci-dessous), et texte complet par colonne pour
@@ -95,17 +111,21 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
   // Colonnes du tableau (spec/core.md §4.3) : l'ordre et la case Afficher
   // réglés dans « Affichage dans Admin », et les champs de la fiche avec les
   // réponses de tous les élèves. Relus à la fermeture de « Champs ».
-  const [reglage, setReglage] = useState({ colonnes: [], champs: [], reponses: {}, sousGroupes: {} })
+  // `imposee` : le module qui apporte les membres de la saison (HelloAsso,
+  // spec/modules/helloasso.md §7), ses colonnes et ses données ; null pour
+  // une école qui saisit ses élèves (rien ne change).
+  const [reglage, setReglage] = useState({ colonnes: [], champs: [], reponses: {}, sousGroupes: {}, imposee: null })
   const relireColonnes = useCallback(async () => {
     try {
-      const [colonnes, champs, reponses, choix] = await Promise.all([
+      const [colonnes, champs, reponses, choix, imposee] = await Promise.all([
         champsApi.colonnes(ecoleId),
         champsApi.lister(ecoleId),
         champsApi.toutesReponses(ecoleId),
         champsApi.groupes(ecoleId),
+        listeImposee(ecoleId),
       ])
       const sousGroupes = Object.fromEntries(choix.parents.map((g) => [g.id, g.children]))
-      setReglage({ colonnes, champs, reponses, sousGroupes })
+      setReglage({ colonnes, champs, reponses, sousGroupes, imposee })
     } catch {
       // Hors ligne : les colonnes d'origine restent affichées.
     }
@@ -113,9 +133,15 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
   useEffect(() => {
     relireColonnes()
   }, [relireColonnes])
-  const { reponses, sousGroupes } = reglage
-  const toutesColonnes = ordonner(reglage.colonnes, reglage.champs)
-  const affichees = toutesColonnes.filter((c) => c.shown)
+  const { reponses, sousGroupes, imposee } = reglage
+  const toutesColonnes = ordonner(reglage.colonnes, reglage.champs, imposee)
+  const affichees = toutesColonnes.filter((c) => c.shown && !c.cachee?.())
+  // Ni ajout, ni import, ni suppression : les membres viennent du module.
+  const verrouille = Boolean(imposee)
+  const [filtreAge, setFiltreAge] = useState('tous')
+  const [rafraichissement, setRafraichissement] = useState('')
+  // Le menu ⋮ du module (photos masquées) redessine le tableau.
+  const [, setDessin] = useState(0)
 
   // Un élève peut être ajouté depuis un autre onglet (« Inscription élève
   // (OCR) » ouvre le formulaire à part) : la liste est relue dès qu'on
@@ -236,7 +262,28 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
     changerRouge(eleveId, { ligne_rouge: !surlignageDe(eleveId).ligneRouge })
   }
 
-  const filtered = eleves.filter((el) => correspond(`${el.prenom} ${el.nom}`, search))
+  const testAge = verrouille ? FILTRES_AGE.find((f) => f.cle === filtreAge)?.test : null
+  const filtered = eleves.filter((el) => {
+    if (testAge) {
+      const age = calculerAge(el.dateNaissance)
+      if (age == null || !testAge(age)) return false
+    }
+    // Saison imposée : l'email (du payeur) se cherche aussi, comme Sambo Admin.
+    return correspond(verrouille ? `${el.prenom} ${el.nom} ${el.email ?? ''}` : `${el.prenom} ${el.nom}`, search)
+  })
+
+  // « Rafraîchir » : synchronise maintenant, puis relit tout.
+  async function rafraichir() {
+    setRafraichissement('…')
+    try {
+      await imposee.liste.rafraichir(ecoleId)
+      setRafraichissement('')
+    } catch (e) {
+      setRafraichissement(e.message)
+    }
+    relireEleves()
+    relireColonnes()
+  }
 
   // Remplace l'élève mis à jour (renvoyé par l'API) dans la liste locale.
   function remplacer(eleveMisAJour) {
@@ -284,7 +331,9 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
   const eleveAppuye = pressed ? eleves.find((el) => el.id === pressed.eleveId) : null
   // Une colonne d'un champ de la fiche : son intitulé et la réponse en clair.
   const champAppuye = pressed ? toutesColonnes.find((c) => c.key === pressed.champ && c.champ)?.champ : null
+  const colonneModuleAppuyee = pressed ? toutesColonnes.find((c) => c.key === pressed.champ && c.module) : null
   function valeurAppuyee() {
+    if (colonneModuleAppuyee) return colonneModuleAppuyee.texte(imposee?.donnees.members[eleveAppuye.id])
     if (!champAppuye) return valeurCellule(eleveAppuye, pressed.champ, cours)
     return texteReponse(champAppuye, reponses[eleveAppuye.id]?.[champAppuye.id], sousGroupes[champAppuye.group_id])
   }
@@ -295,13 +344,18 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
       <MenuEntete
         label={`Menu ${mots().Eleves}`}
         actions={[
-          {
-            label: `Inscription ${mots().eleve} (OCR)`,
-            icon: 'camera',
-            onClick: () => setOcrOuvert(true),
-            groupeAvecSuivante: true,
-          },
-          { label: `Inscription ${mots().eleve} (web)`, icon: 'users', onClick: ouvrirInscriptionEleve },
+          // Saison imposée : on s'inscrit sur HelloAsso, pas ici.
+          ...(verrouille
+            ? imposee.liste.menu(() => setDessin((n) => n + 1))
+            : [
+                {
+                  label: `Inscription ${mots().eleve} (OCR)`,
+                  icon: 'camera',
+                  onClick: () => setOcrOuvert(true),
+                  groupeAvecSuivante: true,
+                },
+                { label: `Inscription ${mots().eleve} (web)`, icon: 'users', onClick: ouvrirInscriptionEleve },
+              ]),
           // La fiche d'un membre (spec/core.md §4.3).
           { label: 'Champs', icon: 'edit', onClick: () => setChampsOuverts(true) },
         ]}
@@ -320,14 +374,42 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
       {ocrOuvert && (
         <AjoutEleveOcr ecoleId={ecoleId} onEleveAjoute={relireEleves} onClose={() => setOcrOuvert(false)} />
       )}
+      {verrouille && (
+        <div className="adherents__entete">
+          <h2>
+            {mots().Eleves} ({imposee.liste.compte(imposee.donnees, eleves)})
+          </h2>
+          {imposee.donnees.can_refresh && (
+            <button type="button" className="btn btn--secondary" onClick={rafraichir} disabled={rafraichissement === '…'}>
+              {rafraichissement === '…' ? 'Rafraîchissement…' : 'Rafraîchir'}
+            </button>
+          )}
+        </div>
+      )}
+      {rafraichissement && rafraichissement !== '…' && <p className="login-screen__erreur">{rafraichissement}</p>}
       <div className="search-bar">
         <Icon name="search" size={18} />
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder={`Rechercher ${mots().unEleve} par nom`}
+          placeholder={verrouille ? `Rechercher ${mots().unEleve}...` : `Rechercher ${mots().unEleve} par nom`}
         />
       </div>
+      {verrouille && (
+        <div className="adherents__filtres" role="group" aria-label="Filtrer par âge">
+          {FILTRES_AGE.map((f) => (
+            <button
+              key={f.cle}
+              type="button"
+              className="adherents__filtre"
+              aria-pressed={filtreAge === f.cle}
+              onClick={() => setFiltreAge(f.cle)}
+            >
+              {f.libelle}
+            </button>
+          ))}
+        </div>
+      )}
       <MessageAcces acces={acces} />
       <DeuxFiches ecoleId={ecoleId} eleves={eleves} onFusionnee={relireEleves} />
 
@@ -346,7 +428,7 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
                   )}
                 </th>
               ))}
-              <th aria-label="Supprimer" />
+              {!verrouille && <th aria-label="Supprimer" />}
             </tr>
           </thead>
           <tbody>
@@ -454,9 +536,25 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
                 ),
               }
               return (
-                <tr key={el.id} className={ligneRouge ? 'is-ligne-rouge' : ''}>
+                <tr
+                  key={el.id}
+                  className={[
+                    ligneRouge ? 'is-ligne-rouge' : '',
+                    verrouille && imposee.liste.resiliee(imposee.donnees, el) ? 'is-resiliee' : '',
+                  ].join(' ')}
+                >
                   {affichees.map((c) =>
-                    c.champ ? (
+                    c.module ? (
+                      <td key={c.key} className={classeCellule(c.key)} {...celluleProps(el.id, c.key)}>
+                        {c.cellule ? (
+                          c.cellule({ ecoleId, eleve: el, ligne: imposee.donnees.members[el.id] })
+                        ) : (
+                          <button type="button" className="cell-comment" onClick={() => setFicheId(el.id)}>
+                            {c.texte(imposee.donnees.members[el.id]) || <span className="muted">—</span>}
+                          </button>
+                        )}
+                      </td>
+                    ) : c.champ ? (
                       <td key={c.key} className={classeCellule(c.key)} {...celluleProps(el.id, c.key)}>
                         <button type="button" className="cell-comment" onClick={() => setFicheId(el.id)}>
                           {texteReponse(c.champ, reponses[el.id]?.[c.champ.id], sousGroupes[c.champ.group_id]) || (
@@ -468,16 +566,18 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
                       <Fragment key={c.key}>{cellules[c.key]}</Fragment>
                     ),
                   )}
-                  <td>
-                    <button
-                      type="button"
-                      className="icon-btn icon-btn--danger"
-                      onClick={() => remove(el.id)}
-                      aria-label={`Supprimer ${el.prenom}`}
-                    >
-                      <Icon name="trash" size={18} />
-                    </button>
-                  </td>
+                  {!verrouille && (
+                    <td>
+                      <button
+                        type="button"
+                        className="icon-btn icon-btn--danger"
+                        onClick={() => remove(el.id)}
+                        aria-label={`Supprimer ${el.prenom}`}
+                      >
+                        <Icon name="trash" size={18} />
+                      </button>
+                    </td>
+                  )}
                 </tr>
               )
             })}
@@ -485,17 +585,26 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
         </table>
       </div>
 
-      <button
-        type="button"
-        className="fab--secondary"
-        onClick={() => setShowImport(true)}
-        aria-label={`Importer des ${mots().eleves}`}
-      >
-        <Icon name="folder" size={20} />
-      </button>
-      <button type="button" className="fab" onClick={() => setShowAdd(true)} aria-label={`Ajouter ${mots().unEleve}`}>
-        <Icon name="plus" size={24} />
-      </button>
+      {!verrouille && (
+        <>
+          <button
+            type="button"
+            className="fab--secondary"
+            onClick={() => setShowImport(true)}
+            aria-label={`Importer des ${mots().eleves}`}
+          >
+            <Icon name="folder" size={20} />
+          </button>
+          <button
+            type="button"
+            className="fab"
+            onClick={() => setShowAdd(true)}
+            aria-label={`Ajouter ${mots().unEleve}`}
+          >
+            <Icon name="plus" size={24} />
+          </button>
+        </>
+      )}
 
       {eleveEnFiche && (
         <FicheEleve
@@ -503,6 +612,8 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
           eleve={eleveEnFiche}
           cours={cours}
           onClose={() => setFicheId(null)}
+          // La part du module qui apporte les membres (photo, adhésion, paiements…).
+          bloc={verrouille && <imposee.liste.Fiche ecoleId={ecoleId} eleve={eleveEnFiche} />}
           onEnregistre={(eleve) => {
             remplacer(eleve)
             relireColonnes() // les réponses aux champs de la fiche

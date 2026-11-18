@@ -26,8 +26,14 @@ from .campaign import SOURCE, Campaigns
 from .connection import Connection
 from .models import HelloAssoRegistration, OrgHelloAsso
 
-# Une ligne annulée ou remboursée n'est plus une inscription.
-CANCELLED = ("Canceled", "Refunded", "Deleted", "Abandoned")
+# Une adhésion résiliée, annulée ou remboursée (états de Sambo Admin, plus
+# `Deleted`) : recopiée quand même, avec son état, et grisée « Résilié »
+# dans le tableau ; on ne supprime jamais (spec §7.1).
+CANCELLED = ("Canceled", "Refunded", "Refunding", "Deleted", "Abandoned")
+
+
+def is_cancelled(state: str | None) -> bool:
+    return state in CANCELLED
 _DATE = re.compile(r"^(\d{1,2})/(\d{1,2})/(\d{4})$")
 
 
@@ -148,7 +154,7 @@ class Sync:
         }
         result, now, seen = Result(), _now(), set()
         for item in items:
-            if item["state"] in CANCELLED or not (item["first_name"] or item["last_name"]):
+            if not (item["first_name"] or item["last_name"]):
                 continue
             seen.add(item["item_id"])
             registration = registrations.get(item["item_id"])
@@ -168,8 +174,14 @@ class Sync:
             for key in ("order_id", "first_name", "last_name", "payer_email", "tier_name", "amount",
                         "discount_code", "state", "order_date", "payments"):
                 setattr(registration, key, item[key])
+            registration.payer_name = item.get("payer_name")
+            registration.answers = item["answers"]
             registration.gone_at, registration.synced_at = None, now
             db.add(registration)
+            if is_cancelled(item["state"]):
+                # Résiliée : la fiche est gardée telle quelle (une autre
+                # adhésion, active, de la même personne fait foi).
+                continue
             if item["payer_email"]:
                 member.payer_email = item["payer_email"]
             for answer in item["answers"]:
