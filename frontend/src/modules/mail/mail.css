@@ -363,3 +363,69 @@
   min-height: 56px;
   font-size: 18px;
 }
+/* Écrire (§7) */
+.mail__ecrire {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.mail__champ-ligne {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  border-bottom: 1px solid var(--border);
+}
+.mail__champ-ligne > span:first-child {
+  width: 52px;
+  color: var(--text-muted);
+}
+.mail__champ-ligne input {
+  flex: 1;
+  min-width: 0;
+  min-height: 48px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+.mail__corps {
+  min-height: 240px;
+  margin-top: 8px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card-bg);
+  color: inherit;
+  font: inherit;
+  resize: vertical;
+}
+.mail__joindre {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  margin-top: 8px;
+}
+.mail__nouveau {
+  width: auto;
+  padding: 0 20px;
+  gap: 8px;
+  border-radius: 28px;
+  font: inherit;
+  font-weight: 600;
+}
+.mail__repondre {
+  display: flex;
+  gap: 8px;
+  margin: 16px 0;
+}
+.mail__repondre .btn {
+  flex: 1;
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}

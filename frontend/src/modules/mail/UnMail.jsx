@@ -2,13 +2,15 @@ import { useEffect, useRef, useState } from 'react'
 import Icon from '../../components/Icon.jsx'
 import MenuEntete from '../../components/MenuEntete.jsx'
 import * as api from './api.js'
+import { brouillon } from './brouillon.js'
 import { adresse, dateComplete, initiales, nom, taille } from './format.js'
 
 // Un mail (spec/modules/mail.md §6) : ← retour, Archiver, Corbeille, ⋮ ;
 // objet, expéditeur, « À : », date, étoile, texte, pièces jointes. L'ouvrir
-// le marque lu. Répondre et Transférer viennent à l'étape 3.
+// le marque lu. En bas : Répondre (bouton principal) et Transférer ; ⋮ :
+// Répondre à tous (§7).
 
-export default function UnMail({ ecoleId, dossier, uid, onRetour, onRanger, onNonLu, onSuivi, onErreur }) {
+export default function UnMail({ ecoleId, dossier, uid, adresseBoite, onRetour, onRanger, onNonLu, onSuivi, onErreur, onEcrire }) {
   const [mail, setMail] = useState(null)
   const [erreur, setErreur] = useState(null)
 
@@ -66,7 +68,9 @@ export default function UnMail({ ecoleId, dossier, uid, onRetour, onRanger, onNo
 
   const corbeille = dossier === 'trash'
   const spam = dossier === 'spam'
+  const ecrire = (mode) => onEcrire(brouillon(mode, mail, adresseBoite))
   const menu = [
+    ...(mail ? [{ label: 'Répondre à tous', icon: 'reply', onClick: () => ecrire('replyAll') }] : []),
     { label: 'Marquer comme non lu', icon: 'mail', onClick: nonLu },
     spam
       ? { label: "Ce n'est pas du spam", icon: 'check', onClick: () => onRanger('inbox') }
@@ -139,6 +143,14 @@ export default function UnMail({ ecoleId, dossier, uid, onRetour, onRanger, onNo
               ))}
             </div>
           )}
+          <div className="mail__repondre">
+            <button type="button" className="btn btn--primary" onClick={() => ecrire('reply')}>
+              <Icon name="reply" /> Répondre
+            </button>
+            <button type="button" className="btn btn--secondary" onClick={() => ecrire('forward')}>
+              <Icon name="forward" /> Transférer
+            </button>
+          </div>
         </>
       )}
     </article>

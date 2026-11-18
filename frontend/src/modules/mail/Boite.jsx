@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom'
 import Icon from '../../components/Icon.jsx'
 import MenuEntete from '../../components/MenuEntete.jsx'
 import * as api from './api.js'
+import { NOUVEAU } from './brouillon.js'
+import Ecrire from './Ecrire.jsx'
 import { dateListe, initiales, nom } from './format.js'
 import UnMail from './UnMail.jsx'
 
@@ -19,6 +21,7 @@ const RANGE = {
   spam: 'Mis dans le spam',
   inbox: 'Remis dans la boîte de réception',
   delete: 'Supprimé définitivement',
+  send: 'Mail envoyé',
 }
 const DOSSIERS = [{ key: 'inbox', label: 'Boîte de réception' }]
 
@@ -33,7 +36,10 @@ export default function Boite({ ecoleId, etat, menuBoite, onCoupee }) {
   const [coches, setCoches] = useState(() => new Set())
   const [ouvert, setOuvert] = useState(null)
   const [toast, setToast] = useState(null)
-  // Rangement en attente (Annuler 10 s) : { dossier, uids, action, minuteur }.
+  // Écrire (§7) : { brouillon, fichiers } ouvert, ou null.
+  const [ecrire, setEcrire] = useState(null)
+  // Rangement ou envoi en attente (Annuler 10 s) : { dossier, uids, action,
+  // minuteur } ou { action: 'send', brouillon, fichiers, minuteur }.
   const attente = useRef(null)
   const [cachés, setCachés] = useState(() => new Set())
 
@@ -80,6 +86,14 @@ export default function Boite({ ecoleId, etat, menuBoite, onCoupee }) {
     attente.current = null
     clearTimeout(a.minuteur)
     setToast(null)
+    if (a.action === 'send') {
+      // Envoi refusé : le mail revient à l'écran pour ne pas le perdre.
+      api.envoyer(ecoleId, a.brouillon, a.fichiers).catch((e) => {
+        setEcrire({ brouillon: a.brouillon, fichiers: a.fichiers })
+        echec(e)
+      })
+      return
+    }
     api
       .cocher(ecoleId, a.dossier, a.uids, a.action)
       .then(() => api.signalerNonLus())
@@ -102,11 +116,24 @@ export default function Boite({ ecoleId, etat, menuBoite, onCoupee }) {
     setToast(uids.length > 1 ? `${RANGE[action]} (${uids.length})` : RANGE[action])
   }
 
+  // Envoyer : l'écran se ferme, le mail part au bout de 10 s (§8).
+  function envoyerPlusTard(brouillon, fichiers) {
+    envoyer()
+    setEcrire(null)
+    attente.current = { action: 'send', brouillon, fichiers, minuteur: setTimeout(envoyer, ANNULER_MS) }
+    setToast(RANGE.send)
+  }
+
   function annuler() {
     const a = attente.current
     if (!a) return
     clearTimeout(a.minuteur)
     attente.current = null
+    if (a.action === 'send') {
+      setToast(null)
+      setEcrire({ brouillon: a.brouillon, fichiers: a.fichiers })
+      return
+    }
     setCachés((c) => new Set([...c].filter((u) => !a.uids.includes(u))))
     setToast(null)
   }
@@ -169,6 +196,16 @@ export default function Boite({ ecoleId, etat, menuBoite, onCoupee }) {
       document.body,
     )
 
+  const ecran = ecrire && (
+    <Ecrire
+      brouillon={ecrire.brouillon}
+      fichiersInitiaux={ecrire.fichiers}
+      de={etat.address}
+      onFermer={() => setEcrire(null)}
+      onEnvoyer={envoyerPlusTard}
+    />
+  )
+
   if (ouvert) {
     return (
       <>
@@ -188,7 +225,9 @@ export default function Boite({ ecoleId, etat, menuBoite, onCoupee }) {
           }}
           onSuivi={(starred) => changer([ouvert], { starred })}
           onErreur={echec}
+          onEcrire={(brouillon) => setEcrire({ brouillon, fichiers: [] })}
         />
+        {ecran}
         {toastPortail}
       </>
     )
@@ -324,6 +363,10 @@ export default function Boite({ ecoleId, etat, menuBoite, onCoupee }) {
           Mails plus anciens
         </button>
       )}
+      <button type="button" className="fab mail__nouveau" onClick={() => setEcrire({ brouillon: NOUVEAU, fichiers: [] })}>
+        <Icon name="edit" /> Nouveau message
+      </button>
+      {ecran}
       {toastPortail}
     </div>
   )

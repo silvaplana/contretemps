@@ -116,6 +116,7 @@ def test_droit_boite_mail_du_club(client, db_session, ecole, gmail):
     # Les mails : le droit suffit ; sans lui, rien.
     assert client.get(f"{url}/unread", headers=entetes_session(admin)).status_code == 200
     assert client.get(f"{url}/messages", headers=entetes_session(eleve)).status_code == 403
+    assert client.post(f"{url}/send", data={"to": "a@b.fr"}, headers=entetes_session(eleve)).status_code == 403
 
 
 class FakeWebmail:
@@ -123,6 +124,7 @@ class FakeWebmail:
 
     def __init__(self, address, password):
         self.address, self.password = address, password
+        self.sender_name = ""
         self.calls = []
         self.refuse = False
 
@@ -168,6 +170,10 @@ class FakeWebmail:
     def delete(self, folder, uid):
         self._note("delete", folder, uid)
         return {}
+
+    def send(self, **kwargs):
+        self._note("send", self.sender_name, kwargs)
+        return {"sent": True}
 
     def bulk(self, folder, uids, action):
         self._note("bulk", folder, uids, action)
@@ -263,3 +269,32 @@ def test_boite_infomaniak(client, db_session, ecole, gmail, monkeypatch):
     assert client.put(url, json={**infomaniak, "provider": "orange"}).status_code == 422
     # Sans fournisseur : Gmail, comme avant.
     assert client.put(url, json=CONNEXION).json()["provider"] == "gmail"
+
+
+def test_envoyer_repondre_transferer(client, ecole, boite):
+    """Étape 3 (spec §7) : envoi au nom du club, pièces jointes, réponse
+    marquée « répondu », transfert avec les pièces jointes du mail."""
+    url = f"/ecoles/{ecole.id}/mail/send"
+    reponse = client.post(
+        url,
+        data={
+            "to": "a@b.fr", "cc": "c@d.fr", "bcc": "e@f.fr", "subject": "Re: Cours", "body": "Merci",
+            "inReplyTo": "<x@y>", "references": "<w@y>", "answeredFolder": "inbox", "answeredUid": "7",
+        },
+        files=[("files", ("note.txt", b"hello", "text/plain"))],
+    )
+    assert reponse.json() == {"sent": True}
+    _send, nom, envoi = boite[0].calls[-1]
+    assert nom == "Sambo La Ciotat"  # « De : » le nom de l'école
+    assert envoi["attachments"] == [("note.txt", "text/plain", b"hello")]
+    assert (envoi["to"], envoi["cc"], envoi["bcc"]) == ("a@b.fr", "c@d.fr", "e@f.fr")
+    assert (envoi["in_reply_to"], envoi["references"]) == ("<x@y>", "<w@y>")
+    assert envoi["answered"] == ("inbox", 7) and envoi["forward"] is None
+
+    client.post(url, data={"to": "a@b.fr", "subject": "Fwd: x", "forwardFolder": "inbox", "forwardUid": "7"})
+    envoi = boite[0].calls[-1][2]
+    assert envoi["forward"] == ("inbox", 7) and envoi["answered"] is None and envoi["attachments"] == []
+
+    gros = b"x" * (18 * 1024 * 1024 + 1)
+    reponse = client.post(url, data={"to": "a@b.fr"}, files=[("files", ("gros.bin", gros, "application/octet-stream"))])
+    assert reponse.status_code == 400 and "18 Mo" in reponse.json()["detail"]
