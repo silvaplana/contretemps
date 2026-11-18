@@ -1,6 +1,6 @@
 # AppBase — Module `helloasso`
 
-Version 1.1 du 18 novembre 2026 (§7 : adhérents entièrement imposés par HelloAsso, tableau repris de Sambo Admin, impayés, vérification, contact, résiliation). Décisions de Seb des 23, 26 et 27 octobre et du 18 novembre 2026. Repris de Sambo Admin
+Version 1.2 du 18 novembre 2026 (§8 : deux façons d'utiliser HelloAsso par saison, paiement par carte avec les clés de l'école ; §7 : adhérents entièrement imposés par HelloAsso, tableau repris de Sambo Admin, impayés, vérification, contact, résiliation). Décisions de Seb des 23, 26 et 27 octobre et du 18 novembre 2026. Repris de Sambo Admin
 (`silvaplana/test-python`, `backend/src/helloasso/`), qui lit HelloAsso en direct sans base ; ici on
 recopie en base et on synchronise. Maquette de la connexion :
 https://claude.ai/artifact/FhTWcRKXpVfdf9toaTSeXS. Socle : `spec/core.md` §4.3 et §9.3.
@@ -291,3 +291,53 @@ inchangé » à chaque PR.
 9. Vérification des dossiers, notification « Nouvel adhérent ».
 10. Statistiques de la saison.
 Le module FFST (`modules/ffst.md`) s'intercale après l'étape 6.
+
+## 8. Deux façons d'utiliser HelloAsso, par saison (Seb, 18 novembre 2026)
+
+La connexion (§2) se fait **une seule fois pour l'association**. Ensuite **chaque saison** choisit
+comment elle s'en sert. Maquette du paramétrage : https://claude.ai/artifact/N9NhspShBZ4S1F7ZPCa7h2.
+
+### 8.1 Les trois choix
+
+Écran HelloAsso (Fonctionnalités > HelloAsso > Voir), bloc de la saison en cours, bouton
+**Choisir pour cette saison** ; trois cartes, une seule cochée :
+1. **HelloAsso fait tout** : les gens s'inscrivent et paient sur HelloAsso. On choisit la campagne
+   (§3) ; les adhérents sont recopiés et verrouillés (§7). C'est le choix « Imposés par HelloAsso »
+   de l'écran Champs, qui reste et dit la même chose.
+2. **L'appli fait tout, HelloAsso encaisse** : les gens s'inscrivent dans l'appli, l'école garde
+   ses champs, ses tarifs et crée ses adhérents librement. HelloAsso ne sert qu'à payer par carte,
+   élève par élève. Pas de campagne : chaque paiement arrive sur le compte HelloAsso de
+   l'association. Chèque, espèces et virement restent possibles.
+3. **Sans HelloAsso** : rien ne passe par HelloAsso pour cette saison.
+
+Le choix vaut pour une saison et se refait à la suivante. Quitter le choix 1 retire la campagne
+(Annuler 10 s), les réponses déjà recopiées restent. Administrateur principal et Super User.
+
+### 8.2 Le paiement par carte avec les clés de l'école (choix 2)
+
+Aujourd'hui le paiement en ligne (`inscriptions/helloasso.py`, Checkout HelloAsso) lit ses clés
+dans les variables du serveur (`HELLOASSO_CLIENT_ID`, `HELLOASSO_CLIENT_SECRET`,
+`HELLOASSO_ORGANIZATION_SLUG`) : une seule association pour tout le serveur. Désormais :
+- une saison au choix 2 paie avec la connexion de son école (`org_helloasso` : identifiant client,
+  clé secrète déchiffrée, slug de l'association) ;
+- une école sans connexion garde le comportement d'aujourd'hui (variables du serveur) : rien ne
+  change pour Contretemps tant qu'elle n'a pas choisi ;
+- la vérification d'un paiement ne change pas : on redemande toujours à HelloAsso l'état du
+  paiement, jamais le seul retour du navigateur.
+
+### 8.3 Données
+
+`season_helloasso` gagne le choix de la saison (`mode` : `master` ou `payment`) ; au choix 2 la
+ligne n'a pas de campagne (colonnes du formulaire vides). Pas de ligne = sans HelloAsso. Une
+migration : les lignes existantes passent à `master`.
+
+### 8.4 Ce qui n'est pas fait ici
+
+Le **formulaire d'inscription de l'appli** : celui qui existe est fait pour l'école de danse
+Contretemps (`SPEC-inscription.md`). Le rendre propre à chaque association est une étude à part
+(Seb, 18 novembre : « on verra après »). Tant qu'elle n'est pas faite, le choix 2 ne sert que là
+où ce parcours d'inscription existe.
+
+### 8.5 Étape (une PR, sur le « vas-y » de Seb)
+
+11. Choix de la saison (écran de la maquette) et paiement par carte avec les clés de l'école.
