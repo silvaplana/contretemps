@@ -273,3 +273,24 @@ def file(client_id: str, client_secret: str, url: str) -> tuple[bytes, str]:
         raise HelloAssoError(f"HelloAsso n’a pas donné le fichier ({reponse.status_code}).")
     mime = reponse.headers.get("content-type", "application/octet-stream").split(";")[0].strip()
     return reponse.content, mime
+
+
+def cancel_order(client_id: str, client_secret: str, order_id: str) -> None:
+    """Cancels a whole order at HelloAsso (`POST /v5/orders/{id}/cancel`,
+    RefundManagement right of the key): its memberships and future
+    instalments, refunding nothing. Cannot be undone (Sambo Admin
+    `cancel_order`)."""
+    token = _cached_token(client_id, client_secret)
+    try:
+        reponse = requests.post(
+            f"{_base()}/v5/orders/{order_id}/cancel", headers={"Authorization": f"Bearer {token}"}, timeout=DELAI
+        )
+    except requests.RequestException as erreur:
+        raise HelloAssoError("HelloAsso ne répond pas : réessayez dans un moment.") from erreur
+    if reponse.status_code in (401, 403):
+        raise HelloAssoError(
+            "HelloAsso refuse la résiliation : la clé doit avoir le droit « remboursement » "
+            "(Mon compte > Intégrations et API)."
+        )
+    if not reponse.ok:
+        raise HelloAssoError(f"HelloAsso a refusé la résiliation ({reponse.status_code}) : {reponse.text[:200]}")

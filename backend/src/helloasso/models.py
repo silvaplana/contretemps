@@ -91,3 +91,55 @@ class HelloAssoRegistration(Base):
     # fiche reste, l'admin décide.
     gone_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     synced_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)
+
+
+class HelloAssoMail(Base):
+    """A mail sent to a member from the members table (spec §7.6), sent or
+    failed. Filed under the HelloAsso id of the membership (`item_id`), with
+    a copy of the name and address at the time: the log stays readable if
+    the member disappears from HelloAsso (Sambo Admin, `member_mails`)."""
+
+    __tablename__ = "helloasso_mails"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    org_id: Mapped[int] = mapped_column(ForeignKey("ecoles.id"), nullable=False, index=True)
+    item_id: Mapped[str] = mapped_column(String(40), nullable=False, index=True)
+    first_name: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    last_name: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    to_email: Mapped[str] = mapped_column(String(255), nullable=False)
+    cc: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    subject: Mapped[str] = mapped_column(String(255), nullable=False)
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    # The reason when the mail did not leave (None: sent).
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    sent_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)
+
+
+class HelloAssoSms(Base):
+    """A text message prepared in the phone's SMS app (spec §7.6): the app
+    knows it was prepared, not that it left."""
+
+    __tablename__ = "helloasso_sms"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    org_id: Mapped[int] = mapped_column(ForeignKey("ecoles.id"), nullable=False, index=True)
+    item_id: Mapped[str] = mapped_column(String(40), nullable=False, index=True)
+    first_name: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    last_name: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    phone: Mapped[str] = mapped_column(String(40), nullable=False)
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    prepared_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)
+
+
+class HelloAssoTemplate(Base):
+    """A preset message of the school, for mails (`kind` « mail », with a
+    subject) or text messages (« sms »)."""
+
+    __tablename__ = "helloasso_templates"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    org_id: Mapped[int] = mapped_column(ForeignKey("ecoles.id"), nullable=False, index=True)
+    kind: Mapped[str] = mapped_column(String(10), nullable=False)
+    subject: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)

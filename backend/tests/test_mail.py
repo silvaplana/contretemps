@@ -37,7 +37,7 @@ def test_eteint_par_defaut_et_s_allume_avec_la_messagerie(client, db_session, ec
     from registry import activation
 
     # Une école sans aucun choix : Mail est éteint, comme HelloAsso et FFST.
-    assert activation.disabled(db_session, ecole.id) == {"mail", "helloasso", "ffst"}
+    assert activation.disabled(db_session, ecole.id) == {"mail", "helloasso", "ffst", "trials"}
     activation.set_enabled(db_session, ecole.id, main.MODULES, "messaging", False)
     activation.set_enabled(db_session, ecole.id, main.MODULES, "mail", True)
     off = activation.disabled(db_session, ecole.id)
