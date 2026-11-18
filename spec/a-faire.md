@@ -20,8 +20,9 @@ module. Rayer ce qui est fait.
   HelloAsso encaisse », paiement par carte avec les clés de l'école (`modules/helloasso.md` §8).
 - Reprise de Sambo Admin dans Assofight pour ASC La Ciotat (Seb, 18 novembre) : adhérents entièrement
   imposés par HelloAsso, tableau, impayés, contact, résiliation (`modules/helloasso.md` §7) et module
-  FFST (`modules/ffst.md`). Module Essai spécifié (`modules/essai.md`, 18 novembre), à coder en
-  trois étapes. À spécifier ensuite dans son fil : client mail de la Messagerie.
+  FFST (`modules/ffst.md`). Module Essai (`modules/essai.md`, 18 novembre) : étape 1 codée, restent le
+  scan des QR codes et la reprise des inscrits de Sambo Admin. Client mail de la Messagerie : sous-module Mail (`modules/mail.md`), à coder en trois
+  étapes.
 - Saisons en module optionnel (fil du 24 octobre).
 - Signature de documents : retours de Seb après ses tests (`modules/signature-documents.md`).
 - `SPEC.md` à réduire à ce qui est propre à Contretemps.

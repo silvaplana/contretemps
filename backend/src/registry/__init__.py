@@ -60,6 +60,16 @@ class Module:
     # Sous-module technique (Vidéos) : sans onglet, toujours allumé, absent
     # de Fonctionnalités (Seb, 12 novembre).
     technical: bool = False
+    # False : éteint dans une organisation tant qu'elle ne l'a pas allumé
+    # (Seb, 18 novembre 2026 : HelloAsso, FFST). Les organisations qui
+    # existaient déjà gardent leur état par une ligne explicite (migration).
+    enabled_by_default: bool = True
+
+    def __post_init__(self) -> None:
+        if not self.enabled_by_default:
+            from .activation import OFF_BY_DEFAULT
+
+            OFF_BY_DEFAULT.add(self.key)
 
 
 def guide_file(module_file: str) -> str:

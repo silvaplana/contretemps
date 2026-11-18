@@ -1,7 +1,7 @@
 """trials: module Essai (spec/modules/essai.md §7)
 
 Revision ID: d4e6f8a0b2c4
-Revises: b7d2a9c4e1f3
+Revises: e4a6c8b0d2f3
 Create Date: 2026-11-18 16:00:00.000000
 
 """
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "d4e6f8a0b2c4"
-down_revision: str | None = "b7d2a9c4e1f3"
+down_revision: str | None = "e4a6c8b0d2f3"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
@@ -99,17 +99,8 @@ def upgrade() -> None:
         )
         op.create_index("ix_trial_signatures_org_id", "trial_signatures", ["org_id"])
         op.create_index("ix_trial_signatures_family", "trial_signatures", ["family"])
-    # Éteint dans les écoles existantes (Contretemps, Le Beausset, ASC…),
-    # sauf si un choix existe déjà.
-    bind.execute(
-        sa.text(
-            "INSERT INTO org_modules (org_id, module_key, enabled, updated_at) "
-            "SELECT id, 'trials', :off, CURRENT_TIMESTAMP FROM ecoles "
-            "WHERE id NOT IN (SELECT org_id FROM org_modules WHERE module_key = 'trials')"
-        ),
-        {"off": False},
-    )
-
+    # Pas de ligne dans org_modules : le module est éteint partout
+    # (`Module.enabled_by_default=False`), chaque école l'allume elle-même.
 
 def downgrade() -> None:
     op.execute("DELETE FROM org_modules WHERE module_key = 'trials'")

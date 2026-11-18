@@ -24,9 +24,12 @@ export default function FonctionnalitesSection({ ecole, activeUser, modules, onM
   return (
     <div className="checkbox-list perso__sous-partie">
       {modules.map((m) => {
-        const Reglages = peutChanger && MODULES.find((x) => x.key === m.key)?.settings
+        const declaration = MODULES.find((x) => x.key === m.key)
+        const Reglages = peutChanger && declaration?.settings
+        // Un sous-module (Mail) en retrait sous son module (spec/modules/mail.md §2).
+        const sous = declaration?.sousModule ? ' fonctionnalites__module--sous' : ''
         return (
-          <label key={m.key} className="checkbox-list__item fonctionnalites__module">
+          <label key={m.key} className={`checkbox-list__item fonctionnalites__module${sous}`}>
             <input
               type="checkbox"
               checked={m.enabled}

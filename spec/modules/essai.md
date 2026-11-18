@@ -154,7 +154,9 @@ supprimé avec ses signatures (tâche du worker, comme les autres purges).
 ## 9. Étapes (chacune une PR, sur le « vas-y » de Seb)
 
 1. Module, réglages (§5), page publique, mail, Admin > Essais (tableau, fiche, + Cours
-   aujourd'hui), suppression au bout d'un an.
+   aujourd'hui), suppression au bout d'un an. **Codée le 18 novembre.** Pas encore : la
+   mention « à la main » à l'inscription quand un administrateur ajoute quelqu'un (tout
+   s'affiche « en ligne »).
 2. Scanner les QR codes (caméra, ouverture par l'appareil photo du téléphone).
 3. Reprise des inscrits de Sambo Admin (commande lancée par Seb sur le VPS, Sambo Admin lu en
    copie, sans y toucher).

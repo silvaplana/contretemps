@@ -180,7 +180,7 @@ def test_migration_actus_devient_un_blog_sans_rien_perdre(tmp_path, monkeypatch)
         assert q("SELECT g.key, g.name, m.member_id FROM groups g JOIN group_members m ON m.group_id = g.id") == [
             (f"right.publications.publish.{actus}", "Publier dans Actus", 10)]
         # Le module garde son état : allumé chez Contretemps, éteint ailleurs.
-        assert q("SELECT org_id, module_key, enabled FROM org_modules ORDER BY org_id") == [
+        assert q("SELECT org_id, module_key, enabled FROM org_modules WHERE module_key = 'publications' ORDER BY org_id") == [
             (1, "publications", 1), (2, "publications", 0)]
         assert actus2 != actus
 

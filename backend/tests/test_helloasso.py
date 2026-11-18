@@ -11,7 +11,13 @@ CLES = {"client_id": "3f9c2a", "client_secret": "le-secret"}
 
 @pytest.fixture()
 def ecole(db_session):
-    return Ecoles().create(db_session, nom="Sambo La Ciotat", code_postal="13600")
+    from app.modules import MODULES
+    from registry.activation import set_enabled
+
+    ecole = Ecoles().create(db_session, nom="Sambo La Ciotat", code_postal="13600")
+    # HelloAsso est éteint par défaut (Seb, 18/11) : l'école l'allume.
+    set_enabled(db_session, ecole.id, MODULES, "helloasso", True)
+    return ecole
 
 
 @pytest.fixture()
@@ -430,6 +436,8 @@ def test_saison_imposee_sans_fiche_a_la_main(client, db_session, ecole, campagne
     with pytest.raises(ValueError, match="HelloAsso"):
         main.core.eleves_client.create(db_session, ecole.id, nom="Perrin", prenom="Léon")
 
+    # FFST a besoin de HelloAsso : on l'éteint d'abord.
+    activation.set_enabled(db_session, ecole.id, main.MODULES, "ffst", False)
     activation.set_enabled(db_session, ecole.id, main.MODULES, "helloasso", False)
     assert client.post("/eleves", params=params, json={"nom": "Perrin", "prenom": "Léon"}).status_code == 201
     activation.set_enabled(db_session, ecole.id, main.MODULES, "helloasso", True)

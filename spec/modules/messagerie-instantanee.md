@@ -30,6 +30,8 @@ En bref, aujourd'hui :
   de l'organisation ;
 - côté serveur : `backend/src/messagerie/`.
 
+Sous-module optionnel **Mail** (la boîte Gmail de l'école, puces Chat | Mail) : `modules/mail.md`.
+
 ## 2. Bouton + et écran « Nouvelle discussion » (Seb, 18 octobre)
 
 Modèle : l'écran « Sélectionner un contact » de WhatsApp, ouvert par son bouton de nouvelle discussion.

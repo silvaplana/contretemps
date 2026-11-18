@@ -35,4 +35,6 @@ def mount(app, core) -> None:
     core.trials_receiver = TrialsReceiver(client=core.trials_client, app=app)
 
 
-MODULE = Module(key="trials", label="Essais", mount=mount, guide=guide_file(__file__))
+MODULE = Module(
+    key="trials", label="Essais", mount=mount, guide=guide_file(__file__), enabled_by_default=False
+)

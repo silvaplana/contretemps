@@ -31,6 +31,15 @@ def ecole(db_session):
 
 
 @pytest.fixture()
+def allume(db_session, ecole):
+    from app import main
+    from registry import activation
+
+    activation.set_enabled(db_session, ecole.id, main.MODULES, "trials", True)
+    return ecole
+
+
+@pytest.fixture()
 def mails(monkeypatch):
     from app import main
 
@@ -64,13 +73,12 @@ LEA = {"first_name": "Léa", "last_name": "Martin", "minor": True, "age": 12, "p
 
 
 def test_page_publique_eteinte_puis_allumee(client, db_session, ecole):
-    from registry.models import OrgModule
+    from app import main
+    from registry import activation
 
-    db_session.add(OrgModule(org_id=ecole.id, module_key="trials", enabled=False))
-    db_session.commit()
+    # Éteint par défaut : la page n'existe pas tant que l'école ne l'allume pas.
     assert client.get(f"/trials/public/orgs/{ecole.id}/page").status_code == 404
-    db_session.get(OrgModule, (ecole.id, "trials")).enabled = True
-    db_session.commit()
+    activation.set_enabled(db_session, ecole.id, main.MODULES, "trials", True)
     page = client.get(f"/trials/public/orgs/{ecole.id}/page").json()
     assert page["club"] == "Alliance Sambo Combat La Ciotat"
     assert page["title"] == "S'inscrire à un cours d'essai gratuit"
@@ -96,7 +104,7 @@ def test_reglages_nouvelle_version_de_la_decharge(client, ecole):
     assert client.put(f"/ecoles/{ecole.id}/trials/settings", json=lu).status_code == 422
 
 
-def test_inscription_famille_mail_et_certificat_jamais_garde(client, db_session, ecole, mails):
+def test_inscription_famille_mail_et_certificat_jamais_garde(client, db_session, ecole, allume, mails):
     from trials import TrialSignature, TrialStudent
 
     terms_id = client.get(f"/trials/public/orgs/{ecole.id}/page").json()["terms_id"]
@@ -129,7 +137,7 @@ def test_inscription_famille_mail_et_certificat_jamais_garde(client, db_session,
     assert db_session.query(TrialStudent).count() == 2 and lea.token == jeton
 
 
-def test_inscription_refusee(client, db_session, ecole, mails, monkeypatch):
+def test_inscription_refusee(client, db_session, ecole, allume, mails, monkeypatch):
     from app import main
     from trials import TrialStudent
 
@@ -153,7 +161,7 @@ def test_inscription_refusee(client, db_session, ecole, mails, monkeypatch):
     assert db_session.query(TrialStudent).count() == 0
 
 
-def test_limite_de_demandes(client, ecole, mails):
+def test_limite_de_demandes(client, ecole, allume, mails):
     from app import main
 
     main.core.trials_receiver.limiter.limit = 2
@@ -165,7 +173,7 @@ def test_limite_de_demandes(client, ecole, mails):
         main.core.trials_receiver.limiter.limit = 10
 
 
-def test_admin_liste_cours_fiche_suppression(client, db_session, ecole, mails):
+def test_admin_liste_cours_fiche_suppression(client, db_session, ecole, allume, mails):
     from comptes import Comptes
 
     terms_id = client.get(f"/trials/public/orgs/{ecole.id}/page").json()["terms_id"]
@@ -196,7 +204,7 @@ def test_admin_liste_cours_fiche_suppression(client, db_session, ecole, mails):
     assert client.get(base).status_code == 404
 
 
-def test_suppression_au_bout_d_un_an(client, db_session, ecole, mails):
+def test_suppression_au_bout_d_un_an(client, db_session, ecole, allume, mails):
     from app import main
     from trials import TrialSignature, TrialStudent
 

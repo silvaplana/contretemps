@@ -49,6 +49,7 @@ import Blog, { blogDuRetourInstagram } from './modules/publications/Blog.jsx'
 import * as publicationsApi from './modules/publications/api.js'
 import * as publicationsPartage from './modules/publications/partage.js'
 import Sparring from './modules/session-clips/Sparring.jsx'
+import FfstOnglet from './modules/ffst/FfstOnglet.jsx'
 import useNouveaux from './modules/session-clips/useNouveaux.js'
 import MesNotesDeFrais from './modules/notes-frais/MesNotesDeFrais.jsx'
 import SupervisionScreen from './screens/SupervisionScreen.jsx'
@@ -1143,6 +1144,7 @@ function App() {
     activeTab === 'notes-frais' ||
     activeTab === 'financier' ||
     activeTab === 'sparring' ||
+    activeTab === 'ffst' ||
     activeTab === 'supervision' ||
     activeTab === 'docs' ||
     // Messagerie : rien à voir avec les cours (spec/modules/
@@ -1168,6 +1170,8 @@ function App() {
               ? 'Financier'
             : activeTab === 'sparring'
               ? 'Fights'
+            : activeTab === 'ffst'
+              ? 'FFST'
           : activeTab === 'supervision'
             ? 'Supervision'
             : activeTab === 'docs'
@@ -1356,6 +1360,9 @@ function App() {
         {blogActif && <Blog key={`${activeUser.id}-${blogActif.id}`} ecoleId={ecole.id} blog={blogActif} prenom={activeUser.prenom} />}
 
         {activeTab === 'sparring' && <Sparring key={activeUser.id} ecoleId={ecole.id} cours={cours} />}
+
+        {/* FFST (spec/modules/ffst.md §6) : les listes du site de la fédération, admins. */}
+        {activeTab === 'ffst' && <FfstOnglet ecoleId={ecole.id} />}
 
         {activeTab === 'profil' && (
           <ProfilScreen
