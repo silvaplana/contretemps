@@ -288,8 +288,9 @@ l'organisation, semaine par semaine, d'une date de départ jusqu'à la fin de la
   de saison (avec les mois qui commencent), ce qui est déjà passé sur le mois en cours, les 12 mois
   précédents par catégorie et leur moyenne mensuelle. **Échéances HelloAsso à venir** (§6.4) :
   quand le module HelloAsso est allumé, les paiements en plusieurs fois pas encore encaissés de la
-  saison, par date, passés par le port de l'appli hôte (`finances_contretemps/`) ; sinon rien, le
-  modèle fait sans. Pas d'inscrits.
+  saison et ce qui attend chez HelloAsso, ramenés aux dates des virements vers le compte, passés par
+  le port de l'appli hôte (`finances_contretemps/`) ; sinon rien, le modèle fait sans. Pas
+  d'inscrits.
 - **Produire le prévisionnel** : le modèle de langage (jamais nommé « IA » à l'écran) n'écrit
   aucun chiffre : il écrit une **formule Python** `prevoir(donnees, p)` d'après les consignes du
   trésorier et déclare ses **curseurs** (nom, libellé, min, max, défaut, pas, unité) et ses
@@ -342,18 +343,32 @@ elle repose.
   `hypothese` est le code d'une hypothèse déclarée (`"H1"`…).
   L'appli refuse (et renvoie une fois au modèle) une date hors période, un montant non numérique ou
   un code d'hypothèse non déclaré.
-- **Sûr** : seulement les montants que l'appli connaît déjà, c'est-à-dire les **échéances HelloAsso
-  à venir**. **L'appli écrit elle-même ces lignes** (une par date d'échéance : « Échéances HelloAsso
-  du 05/12 (9 adhérents) »), le modèle ne peut ni les changer ni les compter deux fois : il les voit
-  dans `donnees["echeancesAVenir"]` (`[{"date", "montant", "adherents"}]`) et ses opérations n'en
-  contiennent pas. Tout le reste est une hypothèse, même un loyer qui revient chaque mois (« H5 :
-  loyer identique aux 12 derniers mois »).
+- **Sûr** : seulement l'argent que l'appli sait déjà venir de **HelloAsso**. Deux fonctionnements
+  à suivre (Seb, 18/11) :
+  1. **Licences en une ou trois fois** : en trois fois, la 1re échéance tombe à l'adhésion, puis
+     deux **dates fixes** que l'appli retrouve dans les paiements à venir de HelloAsso (dates les
+     plus fréquentes des 2e et 3e échéances).
+  2. **Virements de HelloAsso vers le compte** : l'argent encaissé par HelloAsso n'arrive pas tout
+     de suite à la banque ; HelloAsso vire chaque mois à **date fixe** (réglage fait dans HelloAsso).
+     L'appli retrouve ce jour dans les relevés : jour du mois le plus fréquent des derniers virements
+     HelloAsso reçus (libellé contenant « HELLOASSO », montant positif ; même repérage que Sambo
+     Admin `bank_cash_outs`). Moins de 3 virements trouvés : pas de jour fixe, chaque échéance
+     arrive à sa date et l'explication le dit.
+  **L'appli écrit elle-même les lignes sûres**, une par virement prévu : ce que HelloAsso aura
+  encaissé avant ce virement (« Virement HelloAsso : 2e échéance du 05/12 (9 adhérents × 90 €) »),
+  plus, au premier virement, ce qui est déjà encaissé chez HelloAsso et pas encore versé (état
+  `cashOutState` des paiements, à ajouter à la synchronisation HelloAsso : `cashOutState`,
+  `cashOutDate`). Le modèle voit ces lignes dans `donnees["virementsHelloAsso"]`
+  (`[{"date", "montant", "libelle"}]`), ne peut ni les changer ni les compter deux fois, et ses
+  opérations n'en contiennent pas. Tout le reste est une hypothèse, même un loyer qui revient
+  chaque mois (« H5 : loyer identique aux 12 derniers mois »).
 - **Ce qui vient de HelloAsso est expliqué** (Seb, 18/11), texte écrit par l'appli, pas par le
-  modèle : la campagne et la date de la dernière relecture, le nombre d'adhérents qui paient en
-  plusieurs fois, le nombre d'échéances pas encore encaissées, leur total et leur période ; ce qui
-  n'est **pas** compté (impayés avec leur montant, adhésions résiliées) ; et que ce qui est déjà
-  encaissé est dans le solde de départ. Sans HelloAsso : « Aucune ligne sûre : HelloAsso n'est pas
-  relié ».
+  modèle : la campagne et la date de la dernière relecture ; combien ont payé en une fois, en
+  trois fois, et les deux dates fixes ; le jour du virement mensuel et sur combien de virements
+  des relevés il a été retrouvé (une échéance arrive au virement suivant, pas le jour du paiement) ;
+  ce qui est encaissé chez HelloAsso et pas encore versé ; ce qui n'est **pas** compté (impayés
+  avec leur montant, adhésions résiliées). Sans HelloAsso : « Aucune ligne sûre : HelloAsso n'est
+  pas relié ».
 - **Hypothèses** : déclarées par le modèle dans le même appel que la formule (pas d'appel en plus) :
   `[{"code": "H1", "texte": "…"}]`, une phrase simple chacune. Une hypothèse qui dépend d'un curseur
   écrit sa valeur entre accolades (`"Salaire du prof : {salaire} € par mois"`) : l'appli la remplace
