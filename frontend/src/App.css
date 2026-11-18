@@ -5904,3 +5904,8 @@ tr.is-resiliee td.data-table__name button {
 .stats__detail {
   padding: 0 0 8px 18px;
 }
+
+/* HelloAsso dans « Éditer la saison » (spec/modules/helloasso.md §8.1). */
+.helloasso__edition-saison {
+  margin-top: 20px;
+}

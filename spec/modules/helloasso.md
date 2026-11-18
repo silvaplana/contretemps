@@ -1,6 +1,6 @@
 # AppBase — Module `helloasso`
 
-Version 1.8 du 18 novembre 2026 (§7.11 : étapes 6 à 10 faites ; §8.5 : étape 11 faite ; §8 : deux façons d'utiliser HelloAsso par saison, paiement par carte avec les clés de l'école ; §7 : adhérents entièrement imposés par HelloAsso, tableau repris de Sambo Admin, impayés, vérification, contact, résiliation). Décisions de Seb des 23, 26 et 27 octobre et du 18 novembre 2026. Repris de Sambo Admin
+Version 1.9 du 18 novembre 2026 (§8.1 : le choix de la saison dans Éditer la saison ; §7.11 : étapes 6 à 10 faites ; §8.5 : étape 11 faite ; §8 : deux façons d'utiliser HelloAsso par saison, paiement par carte avec les clés de l'école ; §7 : adhérents entièrement imposés par HelloAsso, tableau repris de Sambo Admin, impayés, vérification, contact, résiliation). Décisions de Seb des 23, 26 et 27 octobre et du 18 novembre 2026. Repris de Sambo Admin
 (`silvaplana/test-python`, `backend/src/helloasso/`), qui lit HelloAsso en direct sans base ; ici on
 recopie en base et on synchronise. Maquette de la connexion :
 https://claude.ai/artifact/FhTWcRKXpVfdf9toaTSeXS. Socle : `spec/core.md` §4.3 et §9.3.
@@ -454,8 +454,14 @@ comment elle s'en sert. Maquette du paramétrage : https://claude.ai/artifact/N9
 
 ### 8.1 Les trois choix
 
-Écran HelloAsso (Fonctionnalités > HelloAsso > Voir), bloc de la saison en cours, bouton
-**Choisir pour cette saison** ; trois cartes, une seule cochée :
+Seb, 18 novembre 2026 : une campagne par saison, donc le choix se fait **dans la saison** :
+Admin › École › Saisons › **Éditer la saison**, sous les dates (saison en cours, HelloAsso
+connecté, administrateur principal et Super User). La connexion (Connexions › HelloAsso › Voir)
+ne garde que les clés, le résumé de la saison et le rappel « N'oubliez pas de brancher chaque
+saison à sa campagne HelloAsso dans « Saisons » ». Point de branchement côté écran :
+`seasonEditor` du module.js (bloc sous les dates, `SaisonsSection.jsx`). Pas encore fait :
+choisir à l'avance pour une saison future (aujourd'hui, la saison en cours seulement). Trois
+cartes, une seule cochée :
 1. **HelloAsso fait tout** : les gens s'inscrivent et paient sur HelloAsso. On choisit la campagne
    (§3) ; les adhérents sont recopiés et verrouillés (§7). C'est le choix « Imposés par HelloAsso »
    de l'écran Champs, qui reste et dit la même chose.
@@ -510,6 +516,6 @@ où ce parcours d'inscription existe.
   module remplit au montage (`helloasso/payment.py` : clés de `org_helloasso` si la saison est au
   choix 2), sans que `inscriptions` connaisse le module. Sans réponse : variables du serveur, comme
   avant (Contretemps et Le Beausset inchangés).
-- Écran : Fonctionnalités > HelloAsso > Voir, bloc « Saison <nom> » et « Choisir pour cette
-  saison » → écran « Cette saison » (`HelloAssoSaison.jsx`), trois cartes de la maquette ; au
+- Écran (depuis le 18 novembre 2026, §8.1) : Saisons › Éditer la saison, bloc
+  `HelloAssoSaison.jsx`, trois cartes de la maquette ; au
   choix 1, la campagne se choisit dans la carte, puis « Synchroniser maintenant ».

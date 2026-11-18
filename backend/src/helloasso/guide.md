@@ -11,18 +11,20 @@ Case : Admin › École › Personnalisation › Fonctionnalités. Connexion : A
 - « Tester la connexion » : « Connexion réussie » avec l'association et le nombre de formulaires, ou
   « La connexion n'a pas marché » et la raison. Puis « Enregistrer ».
 - Voir : « Connecté », l'association, depuis quand, le bloc « Saison <nom> » (ce que la saison fait
-  de HelloAsso), les formulaires d'adhésion trouvés ; « Tester la connexion », « Changer les clés »,
+  de HelloAsso) et le rappel « N'oubliez pas de brancher chaque saison à sa campagne HelloAsso dans
+  « Saisons » », les formulaires d'adhésion trouvés ; « Tester la connexion », « Changer les clés »,
   « Déconnecter » (« Annuler » proposé 10 secondes).
 
-Comment chaque saison utilise HelloAsso : Voir › « Choisir pour cette saison » (administrateur
-principal et super user, saison en cours) ouvre l'écran « Cette saison », trois choix :
+Comment chaque saison utilise HelloAsso : Admin › École › Saisons › « Éditer la saison », sous les
+dates (administrateur principal et super user, saison en cours, HelloAsso connecté), trois choix
+qui s'enregistrent tout de suite (« Valider » ne sert qu'au nom et aux dates) :
 - « HelloAsso fait tout » : on choisit la campagne HelloAsso dans la carte ; les adhérents viennent
   de HelloAsso (voir plus bas). « Synchroniser maintenant ».
 - « L'appli fait tout, HelloAsso encaisse » : inscriptions, champs, tarifs et adhérents dans l'appli ;
   le paiement par carte de l'inscription en ligne arrive sur le compte HelloAsso de l'association.
 - « Sans HelloAsso » : rien ne passe par HelloAsso cette saison.
 - Quitter « HelloAsso fait tout » retire la campagne, les réponses restent (« Annuler » 10 secondes).
-- Le choix vaut pour la saison et se refait à chaque nouvelle saison. ← revient à l'écran HelloAsso.
+- Le choix vaut pour la saison et se refait à chaque nouvelle saison.
 
 La campagne de la saison : Admin › Élèves › menu ⋮ › Champs (« La fiche d'un membre »)
 - En tête, si HelloAsso est connecté : « Nos champs » ou « Imposés par HelloAsso ».

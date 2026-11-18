@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import Icon from '../../components/Icon.jsx'
-import HelloAssoSaison, { resumeSaison } from './HelloAssoSaison.jsx'
+import { resumeSaison } from './HelloAssoSaison.jsx'
 import * as api from './api.js'
 
 // La connexion HelloAsso de l'école (spec/modules/helloasso.md §2, maquette
@@ -13,7 +13,7 @@ import * as api from './api.js'
 
 const ANNULER_MS = 10000
 
-const TITRES = { cles: 'Connecter HelloAsso', saison: 'Cette saison' }
+const TITRES = { cles: 'Connecter HelloAsso' }
 
 const date = (iso) => new Date(iso).toLocaleDateString('fr-FR')
 
@@ -189,7 +189,7 @@ function NouveauxAdherents({ ecoleId }) {
   )
 }
 
-function Connecte({ ecoleId, etat, onChangerCles, onDeconnecter, onSaison }) {
+function Connecte({ ecoleId, etat, onChangerCles, onDeconnecter }) {
   const [formulaires, setFormulaires] = useState(null)
   const [test, setTest] = useState(null)
   const [saison, setSaison] = useState(null)
@@ -225,18 +225,20 @@ function Connecte({ ecoleId, etat, onChangerCles, onDeconnecter, onSaison }) {
           <dd>{date(etat.connected_at)}</dd>
         </dl>
       </div>
-      {/* Le choix de la saison (spec §8.1) : la connexion vaut pour l'association. */}
-      {saison && (
-        <div className="helloasso__saison">
-          <p className="helloasso__titre">Saison {saison.season_name}</p>
-          <p>{resumeSaison(saison)}</p>
-          {saison.can_change && (
-            <button type="button" className="btn btn--secondary btn--block" onClick={onSaison}>
-              Choisir pour cette saison
-            </button>
-          )}
-        </div>
-      )}
+      {/* La connexion vaut pour l'association ; chaque saison se branche à
+          sa campagne dans Saisons (Seb, 18 novembre 2026, spec §8.1). */}
+      <div className="helloasso__saison">
+        {saison && (
+          <>
+            <p className="helloasso__titre">Saison {saison.season_name}</p>
+            <p>{resumeSaison(saison)}</p>
+          </>
+        )}
+        <p>
+          N’oubliez pas de brancher chaque saison à sa campagne HelloAsso dans « Saisons » : Admin › École ›
+          Saisons › Éditer la saison.
+        </p>
+      </div>
       <NouveauxAdherents ecoleId={ecoleId} />
       {formulaires && (
         <>
@@ -279,7 +281,7 @@ function Connecte({ ecoleId, etat, onChangerCles, onDeconnecter, onSaison }) {
 
 export default function HelloAssoReglages({ ecole, enabled, onEnabledChange }) {
   const [etat, setEtat] = useState(null)
-  const [ecran, setEcran] = useState(null) // null | 'cles' | 'connecte' | 'saison'
+  const [ecran, setEcran] = useState(null) // null | 'cles' | 'connecte'
   const [toast, setToast] = useState(null)
   const minuteur = useRef(null)
   const avant = useRef(enabled)
@@ -371,8 +373,7 @@ export default function HelloAssoReglages({ ecole, enabled, onEnabledChange }) {
                 className="icon-btn"
                 onClick={(e) => {
                   e.preventDefault()
-                  // ← revient là où on était : la saison revient à « Connecté ».
-                  setEcran(ecran === 'saison' ? 'connecte' : null)
+                  setEcran(null)
                 }}
                 aria-label="Retour"
               >
@@ -383,14 +384,11 @@ export default function HelloAssoReglages({ ecole, enabled, onEnabledChange }) {
             <div className="creer-saison__corps connexion-ecran">
               {ecran === 'cles' ? (
                 <Cles ecoleId={ecole.id} onEnregistre={enregistre} />
-              ) : ecran === 'saison' ? (
-                <HelloAssoSaison ecoleId={ecole.id} onToast={montrerToast} />
               ) : (
                 <Connecte
                   ecoleId={ecole.id}
                   etat={etat}
                   onChangerCles={() => setEcran('cles')}
-                  onSaison={() => setEcran('saison')}
                   onDeconnecter={() => deconnecter().catch(() => null)}
                 />
               )}
