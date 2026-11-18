@@ -1,6 +1,6 @@
 # AppBase — Module `helloasso`
 
-Version 1.4 du 18 novembre 2026 (§7.11 : étape 6 faite ; §8.5 : étape 11 faite ; §8 : deux façons d'utiliser HelloAsso par saison, paiement par carte avec les clés de l'école ; §7 : adhérents entièrement imposés par HelloAsso, tableau repris de Sambo Admin, impayés, vérification, contact, résiliation). Décisions de Seb des 23, 26 et 27 octobre et du 18 novembre 2026. Repris de Sambo Admin
+Version 1.5 du 18 novembre 2026 (§7.11 : étapes 6 et 7 faites ; §8.5 : étape 11 faite ; §8 : deux façons d'utiliser HelloAsso par saison, paiement par carte avec les clés de l'école ; §7 : adhérents entièrement imposés par HelloAsso, tableau repris de Sambo Admin, impayés, vérification, contact, résiliation). Décisions de Seb des 23, 26 et 27 octobre et du 18 novembre 2026. Repris de Sambo Admin
 (`silvaplana/test-python`, `backend/src/helloasso/`), qui lit HelloAsso en direct sans base ; ici on
 recopie en base et on synchronise. Maquette de la connexion :
 https://claude.ai/artifact/FhTWcRKXpVfdf9toaTSeXS. Socle : `spec/core.md` §4.3 et §9.3.
@@ -338,6 +338,16 @@ range ses quatre colonnes (Montant, Code promo, Photo, Statut HelloAsso) ; `memb
 verrou, le compte, les filtres, le menu et la fiche. Sans affichage enregistré d'une saison imposée,
 les colonnes d'un autre module (Statut FFST, Actions FFST) s'affichent après l'ordre de Sambo Admin.
 Rien ne change à l'écran tant qu'aucun autre module ne déclare de colonne.
+
+**Fait (étape 7, 18 novembre 2026)** : Admin > **Impayés HelloAsso**, sous-onglet après Cours quand
+le module est allumé (`adminTabs` du `module.js`, `core.md` §11.1 : un module peut ajouter un
+sous-onglet d'Admin). Titre « Impayés HelloAsso (n) », « Rafraîchir » (synchronise puis relit) ;
+colonnes Nom, Prénom, Email (du payeur), Total, Impayé (en rouge), Échéances refusées (dates) ;
+« Aucun impayé. » ou « Pas de campagne HelloAsso pour cette saison. ». Une ligne par adhésion de la
+saison affichée (résiliées comprises) dont au moins un paiement est `Refused`, `Error`, `Canceled`,
+`Abandoned`, `Deleted` ou `Inconsistent` ; Impayé = somme de ces paiements, Total = montant de
+l'adhésion. Route `GET /ecoles/{id}/helloasso/impayes` (tout admin), lue dans
+`helloasso_registrations.payments` : rien de plus en base.
 
 ## 8. Deux façons d'utiliser HelloAsso, par saison (Seb, 18 novembre 2026)
 

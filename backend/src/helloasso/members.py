@@ -169,3 +169,36 @@ def thumbnail(content: bytes, size: int) -> bytes:
 
 def thumbnail_path(org_id: int, url: str, size: int) -> Path:
     return PHOTOS_DIR / str(org_id) / f"{url.rsplit('/', 1)[-1]}_{size}.jpg"
+
+
+# A payment refused or failed for good (spec §7.4, Sambo Admin
+# FAILED_PAYMENT_STATES): an instalment still to come (Pending, Waiting...)
+# is not unpaid.
+FAILED_PAYMENTS = ("Refused", "Error", "Canceled", "Abandoned", "Deleted", "Inconsistent")
+
+
+def unpaid(db: Session, org_id: int, season_id: int) -> list[dict]:
+    """« Impayés HelloAsso » (spec §7.4): the registrations with at least one
+    failed payment, read from the copy made by the synchronisation."""
+    out = []
+    for r in db.scalars(
+        select(HelloAssoRegistration)
+        .where(
+            HelloAssoRegistration.org_id == org_id,
+            HelloAssoRegistration.season_id == season_id,
+            HelloAssoRegistration.gone_at.is_(None),
+        )
+        .order_by(HelloAssoRegistration.last_name, HelloAssoRegistration.first_name)
+    ):
+        refused = [p for p in r.payments or [] if p.get("state") in FAILED_PAYMENTS]
+        if refused:
+            out.append({
+                "member_id": r.member_id,
+                "first_name": r.first_name,
+                "last_name": r.last_name,
+                "email": r.payer_email,
+                "total": r.amount,
+                "unpaid": sum(p.get("amount") or 0 for p in refused),
+                "refused": [{"date": p.get("date"), "amount": p.get("amount") or 0} for p in refused],
+            })
+    return out

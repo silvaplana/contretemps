@@ -727,7 +727,9 @@ MODULE = Module(
   long) et au besoin sa cellule (un bouton, qui relit le tableau après son action) ; `rafraichir`
   est appelé par « Rafraîchir ». Elles sont proposées dans « Affichage dans Admin » ; sans affichage
   enregistré, celles d'un autre module que celui qui apporte les membres s'affichent après son
-  ordre par défaut. De même `HelloAsso.school_keys` des
+  ordre par défaut. Et `adminTabs` (18 novembre 2026) : des sous-onglets d'Admin après Cours
+  (`{ value, label, Ecran }`), montrés quand le module est allumé (ex. « Impayés HelloAsso »,
+  `modules/helloasso.md` §7.4). De même `HelloAsso.school_keys` des
   inscriptions en ligne (les clés de paiement de l'école, `modules/helloasso.md` §8.2). Un module
   sans onglet a `tabs: []`.
 

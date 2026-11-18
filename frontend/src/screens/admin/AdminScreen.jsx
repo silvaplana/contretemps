@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useApparence } from '../../api/apparence.js'
+import { MODULES } from '../../app/modules.js'
 import * as sessionApi from '../../api/session.js'
 import SegmentedTabs from '../../components/SegmentedTabs.jsx'
 import AdminCours from './AdminCours.jsx'
@@ -41,10 +42,18 @@ export default function AdminScreen({
   modules,
   onModulesChange,
 }) {
+  // Les sous-onglets des modules allumés (`adminTabs`, ex. « Impayés
+  // HelloAsso », spec/modules/helloasso.md §7.4), après Cours ; seulement
+  // une fois la liste des modules lue (aucun sous-onglet de passage).
+  const ongletsModules = useMemo(
+    () => MODULES.filter((m) => modules.some((x) => x.key === m.key && x.enabled)).flatMap((m) => m.adminTabs ?? []),
+    [modules],
+  )
   // Repart du dernier sous-onglet affiché sur cet appareil.
   const [subTab, setSubTab] = useState(() => {
     const dernier = sessionApi.lireEcran('admin')
-    return SUB_TABS.some((o) => o.value === dernier) ? dernier : 'eleves'
+    const connus = [...SUB_TABS, ...MODULES.flatMap((m) => m.adminTabs ?? [])]
+    return connus.some((o) => o.value === dernier) ? dernier : 'eleves'
   })
   useEffect(() => {
     sessionApi.sauvegarderEcran('admin', subTab)
@@ -59,19 +68,26 @@ export default function AdminScreen({
   const { motEcole, motEleves, motProfs, motCours } = useApparence()
   const sousOnglets = useMemo(() => {
     const mots = { ecole: motEcole, eleves: `${motEleves} (${eleves.length})`, professeurs: motProfs, cours: motCours }
-    return SUB_TABS.map((onglet) => (mots[onglet.value] ? { ...onglet, label: mots[onglet.value] } : onglet))
-  }, [eleves.length, motEcole, motEleves, motProfs, motCours])
+    return [
+      ...SUB_TABS.map((onglet) => (mots[onglet.value] ? { ...onglet, label: mots[onglet.value] } : onglet)),
+      ...ongletsModules.map(({ value, label }) => ({ value, label })),
+    ]
+  }, [eleves.length, motEcole, motEleves, motProfs, motCours, ongletsModules])
+
+  // Un module éteint depuis : retour aux élèves.
+  const onglet = sousOnglets.some((o) => o.value === subTab) ? subTab : 'eleves'
+  const ongletModule = ongletsModules.find((o) => o.value === onglet)
 
   return (
     <div className="screen screen--admin">
       <SegmentedTabs
         options={sousOnglets}
-        value={subTab}
+        value={onglet}
         onChange={setSubTab}
         className="admin-screen__tabs"
       />
 
-      {subTab === 'ecole' && (
+      {onglet === 'ecole' && (
         <AdminParametres
           ecole={ecole}
           setEcole={setEcole}
@@ -89,10 +105,10 @@ export default function AdminScreen({
           onModulesChange={onModulesChange}
         />
       )}
-      {subTab === 'eleves' && (
+      {onglet === 'eleves' && (
         <AdminEleves eleves={eleves} setEleves={setEleves} cours={cours} ecoleId={ecole.id} />
       )}
-      {subTab === 'professeurs' && (
+      {onglet === 'professeurs' && (
         <AdminProfesseurs
           professeurs={professeurs}
           setProfesseurs={setProfesseurs}
@@ -101,7 +117,8 @@ export default function AdminScreen({
           onOpenHeures={onOpenHeures}
         />
       )}
-      {subTab === 'cours' && (
+      {ongletModule && <ongletModule.Ecran ecoleId={ecole.id} />}
+      {onglet === 'cours' && (
         <AdminCours
           cours={cours}
           setCours={setCours}
