@@ -4,7 +4,7 @@ Version 0.1 du 18 novembre 2026. Repris du client mail de Sambo Admin (`silvapla
 `backend/src/webmail/`, `frontend/src/Webmail.jsx`, onglet Messagerie > Mail), à fonctions
 identiques. Étude : https://claude.ai/artifact/7HPSBAeGZ5YrE4jahT213a (partie 7 ter). Méthode de
 connexion : étude Gmail du 22 octobre 2026. Maquette validée par Seb le 18 novembre :
-https://claude.ai/artifact/5wX9catY3i76qBEPo3fM4S. Rien n'est codé.
+https://claude.ai/artifact/5wX9catY3i76qBEPo3fM4S. Étapes 1 et 2 codées (§12).
 
 ## 1. Ce que fait le sous-module
 
@@ -137,4 +137,9 @@ Messagerie. `guide.md` du module mis à jour dans la même PR que les écrans.
    « combat » (ASC, Seb 18 novembre). Écran : la boîte connectée affiche son adresse, la liste vient
    à l'étape 2.
 2. La boîte et un mail (§5, §6).
+   **Fait (18 novembre 2026)** : lecture IMAP reprise telle quelle de Sambo Admin
+   (`backend/src/mail/imap.py`), boîte coupée marquée au premier refus de Google. Ranger et
+   supprimer partent au bout des 10 s d'Annuler (Gmail change le numéro d'un mail déplacé : on
+   ne peut pas le remettre après coup). Pièces jointes : téléchargées, comme dans Sambo Admin ;
+   l'ouverture dans la visionneuse ou OnlyOffice (§6) reste à faire.
 3. Écrire, répondre, transférer, pièces jointes, Annuler 10 s (§7, §8).

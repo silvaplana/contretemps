@@ -37,6 +37,8 @@ export default function MessagerieScreen({
   compteId,
   viewerRole,
   ecoleId,
+  // Non lus de la boîte du club (pastille de la puce Mail, voir App.jsx).
+  mailNonLus = 0,
   admins,
   professeurs,
   eleves,
@@ -273,7 +275,14 @@ export default function MessagerieScreen({
           className="messagerie-puces"
           options={[
             { value: 'chat', label: 'Chat' },
-            { value: 'mail', label: 'Mail' },
+            {
+              value: 'mail',
+              label: (
+                <>
+                  Mail{mailNonLus > 0 && <span className="mail__pastille">{mailNonLus}</span>}
+                </>
+              ),
+            },
           ]}
           value={puce}
           onChange={setPuce}
