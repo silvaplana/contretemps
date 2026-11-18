@@ -199,6 +199,10 @@ def orders(client_id: str, client_secret: str, slug: str, form_type: str, form_s
                                 "state": payments[ref.get("id")].get("state"),
                                 "means": payments[ref.get("id")].get("paymentMeans"),
                                 "installment": payments[ref.get("id")].get("installmentNumber"),
+                                # Where the money is (statistics, spec §7.8):
+                                # paid to the school's account or not yet.
+                                "cash_out_state": payments[ref.get("id")].get("cashOutState"),
+                                "cash_out_date": payments[ref.get("id")].get("cashOutDate"),
                             }
                             for ref in item.get("payments") or []
                             if ref.get("id") in payments

@@ -5802,3 +5802,64 @@ tr.is-resiliee td.data-table__name button {
   height: 22px;
   flex: none;
 }
+
+/* HelloAsso, statistiques de la saison (spec/modules/helloasso.md §7.8). */
+.stats__chiffres {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 4px 0 8px;
+}
+.stats__chiffres div {
+  background: var(--surface-2, rgba(127, 127, 127, 0.1));
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+.stats__chiffres span {
+  display: block;
+  font-size: 17px;
+  color: var(--text-muted, #666);
+}
+.stats__chiffres b {
+  font-size: 22px;
+}
+.stats__titre {
+  font-size: 17px;
+  margin: 18px 0 6px;
+}
+.stats__ligne {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  font-size: 17px;
+}
+.stats__ligne b {
+  white-space: nowrap;
+}
+.stats__depliable > summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  cursor: pointer;
+  font-size: 17px;
+  font-weight: 600;
+}
+.stats__depliable > summary {
+  list-style: none;
+}
+.stats__depliable > summary::before {
+  content: '▸';
+  color: var(--text-muted);
+}
+.stats__depliable[open] > summary::before {
+  content: '▾';
+}
+.stats__depliable > summary span {
+  flex: 1;
+}
+.stats__detail {
+  padding: 0 0 8px 18px;
+}

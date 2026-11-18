@@ -8,6 +8,7 @@ from . import members, payment
 from .campaign import Campaigns
 from .connection import Connection
 from .receiver import HelloAssoReceiver
+from .stats import Sources, StatsReceiver
 from .sync import Sync
 from .verification import Checker, ChecksReceiver
 
@@ -48,6 +49,10 @@ def mount(app, core) -> None:
     )
     core.helloasso_sync.on_new.append(core.helloasso_checker.on_new)
     ChecksReceiver(app, core.helloasso_checker, core.helloasso_receiver._registration)
+    # Statistiques de la saison (spec §7.8) : les comptes et les licences
+    # viennent d'autres modules, branchés par l'appli (helloasso_contretemps).
+    core.helloasso_stats = Sources()
+    StatsReceiver(app, core.helloasso_stats)
 
 
 MODULE = Module(

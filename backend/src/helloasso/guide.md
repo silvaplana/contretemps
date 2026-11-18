@@ -84,6 +84,14 @@ Vérifier les dossiers des adhérents (saison imposée par HelloAsso)
 - Un nouvel adhérent est vérifié tout seul ; s'il y a un problème, l'école reçoit un mail.
 - Les documents sont lus sur HelloAsso pour la vérification, jamais gardés.
 
+Statistiques de la saison (saison imposée par HelloAsso)
+- Admin › Élèves, menu ⋮ › « Statistiques des adhérents de la saison » (tout admin) : majeurs,
+  mineurs, prix moyen ; encaissements des adhésions (déjà arrivé sur le compte courant, reste à
+  encaisser), dépliables ; bouton Fermer.
+- Avec l'Accès au Financier : solde actuel de chaque compte et « Solde projeté » à la fin de la
+  saison (solde + reste à encaisser − salaires et cotisations − licences FFST encore à payer).
+- Les chiffres viennent de HelloAsso et des comptes du Financier ; rien n'est modifiable ici.
+
 Impayés HelloAsso : Admin › Impayés HelloAsso (sous-onglet après Cours, module allumé, tout admin)
 - « Impayés HelloAsso (n) » et « Rafraîchir » (recopie depuis HelloAsso puis relit).
 - Les adhésions de la saison avec au moins une échéance refusée ou en échec ; une échéance à venir
