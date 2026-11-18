@@ -158,6 +158,7 @@ supprimé avec ses signatures (tâche du worker, comme les autres purges).
    aujourd'hui), suppression au bout d'un an. **Codée le 18 novembre.** Pas encore : la
    mention « à la main » à l'inscription quand un administrateur ajoute quelqu'un (tout
    s'affiche « en ligne »).
-2. Scanner les QR codes (caméra, ouverture par l'appareil photo du téléphone).
+2. Scanner les QR codes (caméra, ouverture par l'appareil photo du téléphone). **Codée le 18
+   novembre** (bibliothèque qr-scanner, comme Sambo Admin : elle lit aussi sur iPhone).
 3. Reprise des inscrits de Sambo Admin (commande lancée par Seb sur le VPS, Sambo Admin lu en
    copie, sans y toucher).
