@@ -346,7 +346,8 @@ def test_commandes_par_l_api(monkeypatch):
     ]
     assert inscrits[0]["payer_name"] == "Paul" and inscrits[1]["payer_name"] == "Ana Noir"
     assert inscrits[0]["payments"] == [
-        {"amount": 9000, "date": "2026-09-02", "state": "Authorized", "means": "Card", "installment": 1},
+        {"amount": 9000, "date": "2026-09-02", "state": "Authorized", "means": "Card", "installment": 1,
+         "cash_out_state": None, "cash_out_date": None},
     ]
 
 
@@ -868,3 +869,57 @@ def test_verifier_les_adherents_et_valider(client, db_session, ecole, campagnes,
 
     monkeypatch.setattr(roles, "has_right", lambda compte, droit: False)
     assert client.post(url).status_code == 403
+
+
+def test_argent_helloasso_pour_le_previsionnel(db_session, ecole):
+    """Prévisionnel (financier.md §6.4) : des faits seulement, l'argent qui
+    arrivera sur le compte après la date de départ ; rien si HelloAsso est
+    éteint dans l'école."""
+    from datetime import datetime
+
+    from app.modules import MODULES
+    from finances_contretemps.adapter import argent_helloasso
+    from helloasso import money
+    from helloasso.models import HelloAssoRegistration, SeasonHelloAsso
+    from registry.activation import set_enabled
+
+    db_session.add(SeasonHelloAsso(org_id=ecole.id, season_id=1, form_type="Membership", form_slug="a",
+                                   form_name="Adhésions 2026-2027", synced_at=datetime(2026, 11, 18, 9)))
+
+    def paiement(montant, jour, etat, versement=None, le=None, n=1):
+        return {"amount": montant, "date": jour, "state": etat, "means": "Card", "installment": n,
+                "cash_out_state": versement, "cash_out_date": le}
+
+    def inscrit(item_id, paiements, state="Processed"):
+        db_session.add(HelloAssoRegistration(org_id=ecole.id, season_id=1, item_id=item_id, order_id=item_id,
+                                             first_name="A", last_name=item_id, state=state, payments=paiements))
+
+    # En trois fois : la 1re versée avant le départ, deux échéances fixes.
+    for i in ("1", "2"):
+        inscrit(i, [paiement(9000, "2026-09-20", "Authorized", "CashedOut", "2026-10-10"),
+                    paiement(9000, "2026-12-05T10:00:00", "Pending", n=2),
+                    paiement(9000, "2027-02-05T10:00:00", "Pending", n=3)])
+    # En une fois : encaissé, pas encore versé ; un autre versé après le départ.
+    inscrit("3", [paiement(27000, "2026-11-12", "Authorized", "MoneyIn")])
+    inscrit("4", [paiement(27000, "2026-10-30", "Authorized", "CashedOut", "2026-11-10")])
+    # Un impayé et une adhésion résiliée : pas comptés.
+    inscrit("5", [paiement(27000, "2026-10-01", "Refused")])
+    inscrit("6", [paiement(27000, "2026-10-01", "Authorized", "MoneyIn")], state="Canceled")
+    db_session.commit()
+
+    faits = money.to_come(db_session, ecole.id, 1, "2026-11-01")
+    assert faits["echeancesAVenir"] == [
+        {"date": "2026-12-05", "echeance": 2, "montant": 180.0, "adherents": 2},
+        {"date": "2027-02-05", "echeance": 3, "montant": 180.0, "adherents": 2},
+    ]
+    assert faits["encaisseNonVerse"] == 540.0 and faits["totalSur"] == 900.0
+    assert (faits["adherentsEnUneFois"], faits["adherentsEnPlusieursFois"]) == (3, 2)
+    assert faits["nonComptes"] == {"impayes": 270.0, "resilies": 1}
+    assert faits["campagne"] == "Adhésions 2026-2027" and faits["relueLe"] == "2026-11-18"
+    assert faits["aResynchroniser"] is False
+
+    core = type("Core", (), {"helloasso_money": staticmethod(money.to_come)})()
+    lire = argent_helloasso(core)
+    assert lire(db_session, ecole.id, 1, "2026-11-01")["totalSur"] == 900.0
+    set_enabled(db_session, ecole.id, MODULES, "helloasso", False)
+    assert lire(db_session, ecole.id, 1, "2026-11-01") is None

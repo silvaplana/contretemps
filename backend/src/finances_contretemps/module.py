@@ -29,6 +29,7 @@ from securite.chiffrement import chiffrer, dechiffrer
 from .actions import actions
 from .lectures import financier
 from .adapter import (
+    argent_helloasso,
     balance_dans_docs,
     bilan_financier_dans_docs,
     deposer_bilan_financier,
@@ -110,6 +111,7 @@ def mount(app, core) -> None:
         seasons=saisons_de_l_ecole,
         session_factory=SessionLocal,
         note_cost=note_cost("previsionnel"),
+        helloasso=argent_helloasso(core),
     )
     # Documents de l'AG (spec §8.6) : calculés depuis les lignes, rangés dans
     # Docs › Financier › AG par le module documents.

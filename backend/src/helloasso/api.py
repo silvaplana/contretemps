@@ -199,6 +199,10 @@ def orders(client_id: str, client_secret: str, slug: str, form_type: str, form_s
                                 "state": payments[ref.get("id")].get("state"),
                                 "means": payments[ref.get("id")].get("paymentMeans"),
                                 "installment": payments[ref.get("id")].get("installmentNumber"),
+                                # Versement vers le compte de l'association
+                                # (prévisionnel, financier.md §6.4).
+                                "cash_out_state": payments[ref.get("id")].get("cashOutState"),
+                                "cash_out_date": payments[ref.get("id")].get("cashOutDate"),
                             }
                             for ref in item.get("payments") or []
                             if ref.get("id") in payments
