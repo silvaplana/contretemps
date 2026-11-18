@@ -3,6 +3,7 @@ import Modal from '../../components/Modal.jsx'
 import * as api from './api.js'
 import { CelluleAdhesion, CelluleContact } from './Contact.jsx'
 import { CelluleVerification, RubriqueVerification, ouvrirVerification } from './Dossier.jsx'
+import { ouvrirStatistiques } from './Statistiques.jsx'
 
 // Adhérents entièrement imposés par HelloAsso (spec/modules/helloasso.md §7,
 // maquette https://claude.ai/artifact/4tizDZ6Br2WxGL5MYwSQfy) : ce que le
@@ -197,6 +198,7 @@ export const memberList = {
   // « Rafraîchir » : synchronise maintenant (la saison en cours).
   rafraichir: (ecoleId) => api.synchroniser(ecoleId),
   menu: (redessiner) => [
+    { label: 'Statistiques des adhérents de la saison', icon: 'calculator', onClick: () => ouvrirStatistiques(ecoleLue) },
     ...(verificationAllumee
       ? [{ label: 'Vérifier les adhérents', icon: 'check', onClick: () => ouvrirVerification(ecoleLue) }]
       : []),

@@ -318,7 +318,7 @@ def test_commandes_par_l_api(monkeypatch):
         1: {"data": [{
             "id": 900, "date": "2026-09-02", "payer": {"email": "parent@test.fr", "firstName": "Paul"},
             "payments": [{"id": 1, "date": "2026-09-02", "state": "Authorized", "paymentMeans": "Card",
-                          "installmentNumber": 1}],
+                          "installmentNumber": 1, "cashOutState": "CashedOut", "cashOutDate": "2026-10-07"}],
             "items": [
                 {"id": 7, "type": "Membership", "name": "Enfant", "amount": 9000, "state": "Processed",
                  "user": {"firstName": "Léa", "lastName": "Martin"}, "discount": {"code": "FRATRIE"},
@@ -346,7 +346,8 @@ def test_commandes_par_l_api(monkeypatch):
     ]
     assert inscrits[0]["payer_name"] == "Paul" and inscrits[1]["payer_name"] == "Ana Noir"
     assert inscrits[0]["payments"] == [
-        {"amount": 9000, "date": "2026-09-02", "state": "Authorized", "means": "Card", "installment": 1},
+        {"amount": 9000, "date": "2026-09-02", "state": "Authorized", "means": "Card", "installment": 1,
+         "cash_out_state": "CashedOut", "cash_out_date": "2026-10-07"},
     ]
 
 
@@ -868,3 +869,98 @@ def test_verifier_les_adherents_et_valider(client, db_session, ecole, campagnes,
 
     monkeypatch.setattr(roles, "has_right", lambda compte, droit: False)
     assert client.post(url).status_code == 403
+
+
+# --- Étape 10 : statistiques de la saison (spec §7.8) ---
+
+
+def test_projection_des_salaires():
+    """Montant des 3 derniers mois s'ils sont identiques, sinon moyenne des
+    6 derniers mois complets ; mois restants jusqu'à la fin de la saison."""
+    from datetime import date
+
+    from helloasso.stats import payroll
+
+    def op(jour, montant, categorie):
+        return {"date": jour, "amount": montant, "category": categorie}
+
+    reguliers = [op(f"2026-{m:02d}-28", -1000, "Salaires") for m in (9, 10, 11)] + [
+        op(f"2026-{m:02d}-15", -240, "URSSAF") for m in (9, 10, 11)
+    ]
+    # Novembre payé : de décembre à août, 9 mois.
+    assert payroll(reguliers, date(2027, 8, 31), date(2026, 11, 30)) == {
+        "total": 11160.0, "monthly": 1240.0, "months": 9, "regular": True,
+    }
+    # Mois sauté puis doublé : moyenne de septembre (1er paiement) à novembre.
+    irreguliers = [op("2026-09-28", -1000, "Salaires"), op("2026-11-28", -2000, "Salaires")]
+    projection = payroll(irreguliers, date(2027, 8, 31), date(2026, 12, 5))
+    assert (projection["monthly"], projection["months"], projection["regular"]) == (1000.0, 9, False)
+
+
+def test_statistiques_de_la_saison(client, db_session, ecole, campagnes, monkeypatch):
+    """Majeurs, mineurs, prix moyen ; encaissements (la banque dit ce qui est
+    arrivé) ; soldes et projection seulement avec l'Accès au Financier."""
+    from app import main
+    from comptes import roles
+
+    def paiement(montant, etat, jour, sortie=None, versement=None):
+        return {"amount": montant, "date": f"{jour}T10:00:00", "state": etat, "means": "Card", "installment": 1,
+                "cash_out_state": sortie, "cash_out_date": versement and f"{versement}T08:00:00"}
+
+    naissance = lambda d: [{"id": "1", "name": "Date de naissance", "type": "Date", "answer": d}]  # noqa: E731
+    lea = {**_inscrit("1", "Léa", "Martin", "p@test.fr", naissance("14/03/1990"), montant=24000), "payments": [
+        paiement(8000, "Authorized", "2026-09-02", "CashedOut", "2026-10-07"),
+        paiement(8000, "Authorized", "2026-10-02", "Transfered"),
+        paiement(8000, "Pending", "2026-12-02"),
+    ]}
+    noe = {**_inscrit("2", "Noé", "Lefèvre", "n@test.fr", naissance("11/10/2012"), montant=12000), "payments": [
+        paiement(12000, "Authorized", "2026-11-02", "WaitingForCashOutConfirmation", "2026-11-07"),
+    ]}
+    partie = _inscrit("3", "Tom", "Benali", "t@test.fr", state="Canceled")
+    _saison_imposee(client, ecole, monkeypatch, [lea, noe, partie])
+
+    comptes = {
+        "accounts": [{"name": "Compte courant", "balance": 4820.0, "asOf": "2026-11-15"},
+                     {"name": "Livret", "balance": 6000.0, "asOf": "2026-11-15"}],
+        "rows": [
+            # Le versement du 07/10 est arrivé le 10/10 ; celui du 07/11 pas encore.
+            {"date": "2026-10-10", "label": "VIR HELLOASSOPAY HELLOASSO 3711911 07-10-2026", "amount": 80.0,
+             "category": "Cotisations en ligne"},
+            *[{"date": f"2026-{m:02d}-28", "label": "VIR SALAIRE", "amount": -1240.0, "category": "Salaires"}
+              for m in (8, 9, 10)],
+        ],
+    }
+    monkeypatch.setattr(main.core.helloasso_stats, "ledger", lambda db, org_id: comptes)
+    monkeypatch.setattr(main.core.helloasso_stats, "licences", lambda db, org_id, n: {"count": n + 1, "price": 24})
+    url = f"/ecoles/{ecole.id}/helloasso/statistiques"
+    stats = client.get(url).json()
+    assert (stats["members"], stats["adults"], stats["minors"], stats["average_price"], stats["total_price"]) == (
+        2, 1, 1, 180.0, 360.0,
+    )
+    caisse = stats["cash"]
+    assert caisse["on_account"] == [{"date": "2026-10-10", "requested": "2026-10-07", "amount": 80.0, "payments": 1}]
+    assert (caisse["in_transit"], caisse["held"], caisse["to_receive"]) == (120.0, 80.0, 280.0)
+    assert caisse["upcoming"] == [{"month": "2026-12", "amount": 80.0, "payments": 1}]
+    assert stats["balance"] == 10820.0 and [a["name"] for a in stats["accounts"]] == ["Compte courant", "Livret"]
+    assert stats["licences"] == {"count": 3, "price": 24}
+    salaires = stats["payroll"]["total"]
+    assert stats["projected"] == round(10820.0 + 280.0 - salaires - 72, 2)
+
+    monkeypatch.setattr(roles, "has_right", lambda compte, droit: False)
+    stats = client.get(url).json()
+    assert stats["finances"] is False and stats["cash"]["to_receive"] == 280.0
+    assert (stats["accounts"], stats["balance"], stats["payroll"], stats["projected"]) == (None, None, None, None)
+
+
+def test_statistiques_branchees_sur_le_financier_et_la_ffst(db_session, ecole):
+    """Contretemps relie les statistiques au Financier et à la FFST ; une
+    école sans le Financier ou sans la FFST n'a ni solde ni licences."""
+    from app import main
+    from app.modules import MODULES
+    from registry.activation import set_enabled
+
+    sources = main.core.helloasso_stats
+    assert sources.ledger(db_session, ecole.id)["accounts"] == []
+    assert sources.licences(db_session, ecole.id, 10) is None  # FFST éteinte
+    set_enabled(db_session, ecole.id, MODULES, "finances", False)
+    assert sources.ledger(db_session, ecole.id) is None

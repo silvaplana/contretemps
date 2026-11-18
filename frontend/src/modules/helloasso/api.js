@@ -92,6 +92,9 @@ export const regler = (ecoleId, checkFiles, notifyNew) =>
   requete(`/ecoles/${ecoleId}/helloasso/reglages`, json('PUT', { check_files: checkFiles, notify_new: notifyNew }))
 // → { on, running, to_check, cost (dollars), can_run }.
 export const verification = (ecoleId) => requete(`/ecoles/${ecoleId}/helloasso/verification`)
+// Statistiques de la saison affichée (spec §7.8) ; soldes et projection à null
+// sans l'Accès au Financier.
+export const statistiques = (ecoleId) => requete(`/ecoles/${ecoleId}/helloasso/statistiques`)
 export const verifier = (ecoleId) => requete(`/ecoles/${ecoleId}/helloasso/verification`, { method: 'POST' })
 export const validerDossier = (ecoleId, ficheId) =>
   requete(`/ecoles/${ecoleId}/helloasso/adherents/${ficheId}/valider`, { method: 'POST' })
