@@ -3,8 +3,8 @@ import * as api from './api.js'
 
 // Admin > Impayés HelloAsso (spec/modules/helloasso.md §7.4), repris de
 // Sambo Admin : les adhésions avec au moins une échéance refusée ou en
-// échec. Lu dans la copie de la synchronisation ; « Rafraîchir »
-// synchronise d'abord.
+// échec, puis les échéances à venir (Seb, 18 novembre 2026). Lu dans la
+// copie de la synchronisation ; « Rafraîchir » synchronise d'abord.
 
 const euros = (centimes) =>
   (centimes / 100).toLocaleString('fr-FR', {
@@ -86,6 +86,43 @@ export default function Impayes({ ecoleId }) {
             </tbody>
           </table>
         </div>
+      )}
+      {lu?.campaign && (
+        <>
+          <h2 className="impayes__titre">Échéances à venir ({lu.upcoming.length})</h2>
+          {lu.upcoming.length === 0 ? (
+            <p className="muted">Aucune échéance à venir.</p>
+          ) : (
+            <div className="table-scroll">
+              <table className="data-table impayes__a-venir">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Nom</th>
+                    <th>Prénom</th>
+                    <th>Somme</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {lu.upcoming.map((e, i) => (
+                    <tr key={i}>
+                      <td>{dateFr(e.date)}</td>
+                      <td>{e.last_name}</td>
+                      <td>{e.first_name}</td>
+                      <td>{euros(e.amount)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td colSpan={3}>Total</td>
+                    <td>{euros(lu.upcoming.reduce((s, e) => s + e.amount, 0))}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          )}
+        </>
       )}
     </div>
   )

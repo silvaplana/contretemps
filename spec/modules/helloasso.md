@@ -222,6 +222,10 @@ Admin > **Impayés HelloAsso**, visible si le module est allumé. Les adhérents
 Nom, Prénom, Email, Total, Impayé, Échéances refusées. Lu dans `helloasso_registrations`
 (paiements déjà recopiés), rien de plus en base.
 
+Dessous (Seb, 18 novembre 2026) : **Échéances à venir (n)**, colonnes Date, Nom, Prénom, Somme,
+la prochaine d'abord, et le Total : les échéances ni payées, ni refusées, ni remboursées, des
+adhésions non résiliées (`upcoming` de `GET …/helloasso/impayes`).
+
 ### 7.5 Vérification des dossiers
 
 Reprise de `helloasso/verification.py` de Sambo Admin. Pour chaque adhérent : contrôles sans

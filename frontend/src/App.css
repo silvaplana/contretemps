@@ -5909,3 +5909,11 @@ tr.is-resiliee td.data-table__name button {
 .helloasso__edition-saison {
   margin-top: 20px;
 }
+
+/* Impayés HelloAsso : la liste des échéances à venir. */
+.impayes__titre {
+  margin-top: 28px;
+}
+.impayes__a-venir tfoot td {
+  font-weight: 700;
+}

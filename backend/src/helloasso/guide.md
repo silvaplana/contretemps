@@ -101,6 +101,8 @@ Impayés HelloAsso : Admin › Impayés HelloAsso (sous-onglet après Cours, mod
 - Colonnes : Nom, Prénom, Email (du payeur), Total (l'adhésion), Impayé (les échéances refusées),
   Échéances refusées (leurs dates).
 - « Aucun impayé. » ; sans campagne pour la saison : « Pas de campagne HelloAsso pour cette saison. »
+- Dessous, « Échéances à venir (n) » : Date, Nom, Prénom, Somme, la prochaine d'abord, et le Total ;
+  ni les échéances payées ou refusées, ni celles d'une adhésion résiliée. « Aucune échéance à venir. »
 
 Où voir les paiements
 - Saison imposée par HelloAsso : dans la fiche de l'adhérent, rubrique Paiements. Sinon, sur

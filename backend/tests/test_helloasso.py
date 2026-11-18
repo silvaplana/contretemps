@@ -636,7 +636,7 @@ def test_impayes_helloasso(client, db_session, ecole, campagnes, monkeypatch):
         echeance(8000, "Pending", "2026-12-02T10:00:00"),
     ]}
     url = f"/ecoles/{ecole.id}/helloasso/impayes"
-    assert client.get(url).json() == {"campaign": False, "members": []}
+    assert client.get(url).json() == {"campaign": False, "members": [], "upcoming": []}
     _saison_imposee(client, ecole, monkeypatch, [payee, refusee, a_venir])
 
     impayes = client.get(url).json()
@@ -1068,3 +1068,31 @@ def test_ordre_des_adherents_comme_sambo_admin(client, db_session, ecole, campag
     lignes = client.get(f"/ecoles/{ecole.id}/helloasso/adherents").json()["members"]
     par_rang = sorted(lignes.items(), key=lambda kv: kv[1]["rank"])
     assert [db_session.get(Compte, int(i)).prenom for i, _ in par_rang] == ["Léo", "Noé", "Lou", "Ana"]
+
+
+def test_echeances_a_venir(client, db_session, ecole, campagnes, monkeypatch):
+    """Impayés HelloAsso montre aussi les échéances à venir (Seb 18/11) :
+    nom, somme, date, par date ; ni les payées, ni les refusées, ni celles
+    d'une adhésion résiliée."""
+    def echeance(montant, etat, date):
+        return {"amount": montant, "date": f"{date}T10:00:00", "state": etat, "means": "Card", "installment": 1}
+
+    tom = {**_inscrit("1", "Tom", "Benali", "t@test.fr", montant=24000), "payments": [
+        echeance(8000, "Authorized", "2026-09-02"),
+        echeance(8000, "Refused", "2026-10-02"),
+        echeance(8000, "Pending", "2027-01-02"),
+    ]}
+    ines = {**_inscrit("2", "Inès", "Navarro", "i@test.fr", montant=16000), "payments": [
+        echeance(8000, "Authorized", "2026-09-05"),
+        echeance(8000, "Pending", "2026-12-05"),
+    ]}
+    partie = {**_inscrit("3", "Enzo", "Roux", "e@test.fr", state="Canceled"), "payments": [
+        echeance(6000, "Pending", "2026-12-01"),
+    ]}
+    _saison_imposee(client, ecole, monkeypatch, [tom, ines, partie])
+    lu = client.get(f"/ecoles/{ecole.id}/helloasso/impayes").json()
+    assert [(e["last_name"], e["first_name"], e["amount"], e["date"][:10]) for e in lu["upcoming"]] == [
+        ("Navarro", "Inès", 8000, "2026-12-05"),
+        ("Benali", "Tom", 8000, "2027-01-02"),
+    ]
+    assert lu["upcoming"][0]["member_id"] is not None

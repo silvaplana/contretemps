@@ -235,3 +235,30 @@ def unpaid(db: Session, org_id: int, season_id: int) -> list[dict]:
                 "refused": [{"date": p.get("date"), "amount": p.get("amount") or 0} for p in refused],
             })
     return out
+
+
+def upcoming(db: Session, org_id: int, season_id: int) -> list[dict]:
+    """Instalments still to come (Seb, 18 November 2026), next first: not
+    paid, refused nor refunded, of memberships that are not cancelled."""
+    from .stats import FAILED, PAID, REFUNDED
+
+    out = []
+    for r in db.scalars(
+        select(HelloAssoRegistration).where(
+            HelloAssoRegistration.org_id == org_id,
+            HelloAssoRegistration.season_id == season_id,
+            HelloAssoRegistration.gone_at.is_(None),
+        )
+    ):
+        if is_cancelled(r.state):
+            continue
+        for p in r.payments or []:
+            if p.get("state") not in PAID | FAILED | REFUNDED:
+                out.append({
+                    "member_id": r.member_id,
+                    "first_name": r.first_name,
+                    "last_name": r.last_name,
+                    "amount": p.get("amount") or 0,
+                    "date": p.get("date"),
+                })
+    return sorted(out, key=lambda e: (e["date"] or "", e["last_name"], e["first_name"]))
