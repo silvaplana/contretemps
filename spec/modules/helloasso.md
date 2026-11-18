@@ -1,6 +1,6 @@
 # AppBase — Module `helloasso`
 
-Version 1.7 du 18 novembre 2026 (§7.11 : étapes 6 à 9 faites ; §8.5 : étape 11 faite ; §8 : deux façons d'utiliser HelloAsso par saison, paiement par carte avec les clés de l'école ; §7 : adhérents entièrement imposés par HelloAsso, tableau repris de Sambo Admin, impayés, vérification, contact, résiliation). Décisions de Seb des 23, 26 et 27 octobre et du 18 novembre 2026. Repris de Sambo Admin
+Version 1.8 du 18 novembre 2026 (§7.11 : étapes 6 à 10 faites ; §8.5 : étape 11 faite ; §8 : deux façons d'utiliser HelloAsso par saison, paiement par carte avec les clés de l'école ; §7 : adhérents entièrement imposés par HelloAsso, tableau repris de Sambo Admin, impayés, vérification, contact, résiliation). Décisions de Seb des 23, 26 et 27 octobre et du 18 novembre 2026. Repris de Sambo Admin
 (`silvaplana/test-python`, `backend/src/helloasso/`), qui lit HelloAsso en direct sans base ; ici on
 recopie en base et on synchronise. Maquette de la connexion :
 https://claude.ai/artifact/FhTWcRKXpVfdf9toaTSeXS. Socle : `spec/core.md` §4.3 et §9.3.
@@ -265,6 +265,10 @@ Majeurs et mineurs, prix moyen, encaissements arrivés et à venir mois par mois
 projection de fin de saison. Dépend des comptes de l'école dans le Financier (versements
 HelloAsso vus à la banque) : dernière étape.
 
+Seb, 18 novembre 2026 (maquette « Adhérents ASC » validée) : on la code comme la maquette,
+projection comprise, même si elle recoupe le Prévisionnel du Financier ; on verra plus tard
+laquelle on garde (a priori le Prévisionnel). Détail dans « Fait (étape 10) » (§7.11).
+
 ### 7.9 Données
 
 `helloasso_registrations` gagne l'état résilié. Nouvelles tables, toutes par organisation et
@@ -413,6 +417,35 @@ après Statut HelloAsso, sur les lignes qui ont une adhésion.
   (tout admin). Le tableau gagne `checks_on` et, par ligne, `check` {ok, issues} ; la fiche, `check`.
 - Pas encore fait : la pastille sur l'onglet (un module ne peut pas encore ajouter de pastille à un
   onglet du core : point de branchement à proposer).
+
+**Fait (étape 10, 18 novembre 2026)** : statistiques de la saison, repris de Sambo Admin
+(`helloasso/summary.py`, `seasons/projection.py`), sans modèle : chaque chiffre s'explique.
+- **⋮ > Statistiques des adhérents de la saison** (tout admin, saison affichée) : « Statistiques de
+  la saison 2026-2027 » ; Majeurs / Mineurs / Prix moyen (âge tiré de la réponse « date de
+  naissance ») ; « n adhérents, x € au total (résiliées non comptées). ».
+- *Solde actuel* : un solde par compte du Financier, « au » jour connu.
+- *Encaissements des adhésions*, dépliables : « Déjà arrivé sur le compte courant » (« Reçu le …
+  (versement HelloAsso du …), n paiements ») et « Reste à encaisser » : « Versement en cours
+  HelloAsso → compte courant », « Payé sur HelloAsso, versé vers le 10 du mois prochain »,
+  « Échéances de <mois> ». C'est la banque qui dit si un versement est arrivé (virement HelloAsso
+  dont le libellé finit par le jour du versement, lu dans les comptes du Financier) ; sans comptes,
+  l'état donné par HelloAsso. Un paiement hors HelloAsso (chèque, espèces) n'y est pas.
+- *Projection de fin de saison* : « Solde projeté au <fin de saison> » = solde actuel + reste à
+  encaisser − salaires et cotisations jusqu'à la fin de la saison − licences FFST encore à payer.
+  Salaires, URSSAF et mutuelle (catégories du Financier) : montant des 3 derniers mois s'ils sont
+  identiques, sinon moyenne des 6 derniers mois complets ; du mois en cours s'il n'est pas encore
+  payé. Licences : (adhérents + 1 coach − licenciés de la dernière lecture du site FFST) × 24 €,
+  comme Sambo Admin ; ligne absente si la FFST est éteinte ou jamais lue. « Chiffre optimiste : il
+  ne compte ni les autres dépenses (matériel, frais bancaires…), ni les adhésions qui peuvent
+  encore arriver. »
+- Soldes et projection seulement avec l'Accès au Financier et le Financier allumé ; sinon absents.
+- *Lien* : les comptes et les licences appartiennent à d'autres modules. Le module HelloAsso les
+  attend dans `core.helloasso_stats` (`Sources` : `ledger`, `licences`, vides par défaut) ;
+  Contretemps les remplit dans `backend/src/helloasso_contretemps/` (lit le Financier et la copie
+  de la FFST), qui déclare le module à la place de `helloasso.module` dans `app/modules.py`.
+- La synchronisation garde désormais, par paiement, `cash_out_state` et `cash_out_date` de
+  HelloAsso (dans le JSON `payments`, sans migration ; remplis au passage suivant du worker).
+- Route : `GET /ecoles/{id}/helloasso/statistiques`.
 
 ## 8. Deux façons d'utiliser HelloAsso, par saison (Seb, 18 novembre 2026)
 
