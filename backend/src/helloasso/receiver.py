@@ -104,6 +104,28 @@ class MemberRowOut(BaseModel):
     photo: bool
 
 
+class RefusedOut(BaseModel):
+    date: str | None = None
+    amount: int
+
+
+class UnpaidMemberOut(BaseModel):
+    member_id: int | None = None
+    first_name: str
+    last_name: str
+    email: str | None = None
+    # Centimes : montant de l'adhésion, puis échéances refusées ou en échec.
+    total: int
+    unpaid: int
+    refused: list[RefusedOut]
+
+
+class UnpaidOut(BaseModel):
+    # La saison affichée a une campagne (sinon rien à lire).
+    campaign: bool
+    members: list[UnpaidMemberOut] = []
+
+
 class MembersOut(BaseModel):
     # La saison affichée a une campagne : adhérents imposés par HelloAsso
     # (spec §7), le tableau perd « + », l'import et la corbeille.
@@ -177,6 +199,7 @@ class HelloAssoReceiver:
         # Remplaçable dans les tests (pas d'appel réseau).
         self.fetch_file = api.file
         app.get("/ecoles/{ecole_id}/helloasso/adherents", response_model=MembersOut)(self.adherents)
+        app.get("/ecoles/{ecole_id}/helloasso/impayes", response_model=UnpaidOut)(self.impayes)
         app.get("/ecoles/{ecole_id}/helloasso/adherents/{member_id}", response_model=MemberCardOut)(self.adherent)
         app.get("/ecoles/{ecole_id}/helloasso/adherents/{member_id}/photo")(self.photo)
         app.get("/ecoles/{ecole_id}/helloasso/adherents/{member_id}/fichiers/{index}")(self.fichier)
@@ -376,6 +399,16 @@ class HelloAssoReceiver:
             can_refresh=season_id == saison_courante_id(db, ecole_id),
             members=imposed_members.table(db, ecole_id, season_id),
         )
+
+    def impayes(
+        self, ecole_id: int, db: Session = Depends(get_db), appelant: Compte = Depends(rbac.compte_appelant)
+    ):
+        """Admin > Impayés HelloAsso (spec §7.4) : tout admin."""
+        rbac.require_admin(appelant, ecole_id)
+        season_id = saison_demandee() or saison_courante_id(db, ecole_id)
+        if season_id is None or self.campaigns.current(db, season_id) is None:
+            return UnpaidOut(campaign=False)
+        return UnpaidOut(campaign=True, members=imposed_members.unpaid(db, ecole_id, season_id))
 
     def _registration(self, db: Session, ecole_id: int, member_id: int, appelant: Compte):
         rbac.require_admin(appelant, ecole_id)

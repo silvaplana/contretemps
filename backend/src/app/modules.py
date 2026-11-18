@@ -7,6 +7,7 @@ from choregraphies.module import MODULE as choregraphies
 from documents_contretemps.module import MODULE as documents
 from helloasso.module import MODULE as helloasso
 from finances_contretemps.module import MODULE as finances
+from ffst.module import MODULE as ffst
 from inscriptions.module import MODULE as registration
 from messagerie.module import MODULE as messaging
 from notes_frais_contretemps.module import MODULE as expense_notes
@@ -29,5 +30,6 @@ MODULES = [
     finances,
     session_clips,
     helloasso,
+    ffst,
     publications,
 ]

@@ -5588,3 +5588,63 @@ tr.is-resiliee td button {
 tr.is-resiliee td.data-table__name button {
   text-decoration: line-through;
 }
+
+/* Module FFST (modules/ffst/, spec/modules/ffst.md) : l'identifiant du club
+   en trois cases, et l'onglet FFST (trois listes lues sur le site). */
+.ffst__identifiant {
+  display: flex;
+  gap: 8px;
+}
+
+.ffst__identifiant input {
+  flex: 1;
+  min-width: 0;
+}
+
+.ffst {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 16px 24px;
+  font-size: 17px;
+}
+
+.ffst__listes .segmented__option {
+  min-height: 48px;
+}
+
+.ffst__source {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  color: var(--text-muted);
+}
+
+.ffst__source .btn {
+  min-height: 48px;
+}
+
+.ffst__erreur {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--danger-bg);
+  color: var(--danger-text);
+}
+
+.ffst__erreur a {
+  color: inherit;
+}
+
+.ffst__vide,
+.ffst__note {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+/* Admin > Impayés HelloAsso (modules/helloasso/Impayes.jsx). */
+.impayes__montant {
+  color: var(--danger-text);
+  font-weight: 700;
+}

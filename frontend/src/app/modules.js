@@ -10,10 +10,12 @@
 // ses colonnes, le verrou de création, sa part de la fiche ; voir
 // AdminEleves.jsx et listeImposee ci-dessous), et ses colonnes et boutons
 // dans le tableau des membres (`memberColumns`, voir colonnesModules
-// ci-dessous). Les onglets du core (Admin, Supervision, Profil) sont dans
-// data/nav.js.
+// ci-dessous), et des sous-onglets d'Admin (`adminTabs` : { value, label,
+// Ecran }, après Cours, module allumé ; voir AdminScreen.jsx). Les onglets
+// du core (Admin, Supervision, Profil) sont dans data/nav.js.
 import choregraphies from '../modules/choregraphies/module.js'
 import documents from '../modules/documents/module.js'
+import ffst from '../modules/ffst/module.js'
 import finances from '../modules/finances/module.js'
 import helloasso from '../modules/helloasso/module.js'
 import messagerie from '../modules/messagerie/module.js'
@@ -22,7 +24,7 @@ import publications from '../modules/publications/module.js'
 import sessionClips from '../modules/session-clips/module.js'
 
 // Publications en premier : ses onglets (Actus…) viennent juste après Admin (Seb, 6 novembre).
-export const MODULES = [publications, presence, choregraphies, messagerie, documents, finances, sessionClips, helloasso]
+export const MODULES = [publications, presence, choregraphies, messagerie, documents, finances, sessionClips, helloasso, ffst]
 
 // Le module qui impose les membres de la saison affichée (HelloAsso,
 // spec/modules/helloasso.md §7) : { module, liste: son `memberList`, donnees }, ou

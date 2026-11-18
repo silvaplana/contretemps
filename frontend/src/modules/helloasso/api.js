@@ -65,3 +65,7 @@ export const saison = (ecoleId) => requete(`/ecoles/${ecoleId}/helloasso/saison`
 // « L'appli fait tout, HelloAsso encaisse » ('payment') ou « Sans HelloAsso » ('none') ;
 // « HelloAsso fait tout » se choisit avec sa campagne (choisirCampagne).
 export const choisirSaison = (ecoleId, mode) => requete(`/ecoles/${ecoleId}/helloasso/saison`, json('PUT', { mode }))
+
+// Admin > Impayés HelloAsso (spec §7.4) → { campaign, members: [{ member_id,
+// first_name, last_name, email, total, unpaid, refused: [{ date, amount }] }] }.
+export const impayes = (ecoleId) => requete(`/ecoles/${ecoleId}/helloasso/impayes`)
