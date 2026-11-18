@@ -14,6 +14,7 @@ from presence.module import MODULE as presence
 from publications.module import MODULE as publications
 from saisons.module import MODULE as seasons
 from session_clips_contretemps.module import MODULE as session_clips
+from trials.module import MODULE as trials
 from videos.module import MODULE as videos
 
 MODULES = [
@@ -30,4 +31,5 @@ MODULES = [
     session_clips,
     helloasso,
     publications,
+    trials,
 ]

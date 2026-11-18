@@ -1,0 +1,501 @@
+/* Module Essai (spec/modules/essai.md) : Admin > Essais et la page publique.
+   Texte ≥ 17 px, touches ≥ 48 px. */
+.essais {
+  font-size: 17px;
+}
+
+.essais__entete,
+.essais__retour {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.essais__entete h2,
+.essais__retour h2 {
+  flex: 1;
+  min-width: 0;
+  margin: 8px 0;
+}
+
+.essais__retour .icon-btn {
+  min-width: 48px;
+  min-height: 48px;
+  font-size: 22px;
+}
+
+.essais__recherche,
+.essais__champ {
+  width: 100%;
+  min-height: 48px;
+  font-size: 17px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card-bg);
+  color: var(--text);
+  box-sizing: border-box;
+}
+
+.essais__champ--court {
+  max-width: 140px;
+}
+
+textarea.essais__champ {
+  resize: vertical;
+}
+
+.essais__puces {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 12px 0;
+}
+
+.essais__puces button {
+  min-height: 48px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 17px;
+}
+
+.essais__puces button[aria-pressed='true'] {
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.essais__table td,
+.essais__table th {
+  white-space: nowrap;
+}
+
+.essais__ligne {
+  cursor: pointer;
+}
+
+.essais__nom {
+  font-weight: 600;
+}
+
+.essais__ligne--jour .essais__nom,
+.essais__nom--jour {
+  color: var(--success-text);
+  font-weight: 600;
+}
+
+.essais__ligne--passe .essais__nom,
+.essais__nom--passe {
+  color: var(--warning-text);
+  font-weight: 600;
+}
+
+.essais__ligne--fini .essais__nom,
+.essais__nom--fini {
+  color: var(--danger-text);
+  font-weight: 600;
+}
+
+.essais__pastille {
+  display: inline-block;
+  font-size: 14px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--accent-bg);
+}
+
+.essais__vide,
+.essais__commentaire {
+  color: var(--text-muted);
+}
+
+.essais__commentaire {
+  white-space: normal !important;
+  max-width: 240px;
+}
+
+.essais__table .btn {
+  min-height: 48px;
+}
+
+.essais__legende {
+  color: var(--text-muted);
+  margin-top: 12px;
+}
+
+.essais__bloc {
+  border-top: 1px solid var(--border);
+  padding: 16px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.essais__bloc h3 {
+  margin: 0;
+  font-size: 15px;
+  color: var(--text-muted);
+}
+
+.essais__bloc .btn,
+.essais__boutons .btn,
+.essais__pied .btn {
+  min-height: 48px;
+}
+
+.essais__dl {
+  display: grid;
+  grid-template-columns: minmax(120px, 40%) 1fr;
+  gap: 8px 14px;
+  margin: 0;
+  width: 100%;
+}
+
+.essais__dl dt {
+  color: var(--text-muted);
+}
+
+.essais__dl dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.essais__label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 12px 0;
+  font-size: 15px;
+  color: var(--text-muted);
+}
+
+.essais__pied {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.essais__signature img {
+  max-width: 100%;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.essais__lien {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.essais__boutons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.essais__boutons a.btn {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.essais__volet {
+  border-top: 1px solid var(--border);
+}
+
+.essais__volet summary {
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.essais__volet[open] {
+  padding-bottom: 16px;
+}
+
+.essais__ligne-edit {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.essais__ligne-edit .essais__champ {
+  flex: 1;
+  min-width: 0;
+}
+
+.essais__ligne-edit .icon-btn {
+  min-width: 48px;
+  min-height: 48px;
+}
+
+.essais__enregistrer {
+  min-height: 56px;
+  margin: 20px 0;
+}
+
+.essais__toast {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(var(--bottom-nav-height) + 24px + env(safe-area-inset-bottom));
+  background: var(--text);
+  color: var(--bg);
+  padding: 12px 18px;
+  border-radius: 12px;
+  font-weight: 600;
+  z-index: 50;
+  max-width: calc(100% - 32px);
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+
+.essais__toast button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  min-height: 40px;
+  font-size: 17px;
+}
+
+/* Page publique */
+.essai-pub {
+  font-size: 17px;
+  line-height: 1.45;
+}
+
+.essai-pub .pp-corps {
+  max-width: 620px;
+}
+
+.essai-pub section {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.essai-pub h1 {
+  font-size: 28px;
+  line-height: 1.15;
+  margin: 0 0 6px;
+  font-family: var(--titres);
+}
+
+.essai-pub h2 {
+  font-size: 21px;
+  margin: 0 0 10px;
+  font-family: var(--titres);
+}
+
+.essai-pub__titre p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.essai-pub__horaire {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 14px;
+  padding: 8px 0;
+  border-top: 1px solid var(--border);
+}
+
+.essai-pub__salle h3 {
+  margin: 12px 0 0;
+  font-size: 17px;
+}
+
+.essai-pub__salle p {
+  margin: 2px 0 8px;
+}
+
+.essai-pub a.btn {
+  display: inline-flex;
+  align-items: center;
+  min-height: 48px;
+  text-decoration: none;
+}
+
+.essai-pub__contacts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.essai-pub__formulaire fieldset {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 6px 16px 16px;
+  margin: 0 0 14px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.essai-pub__formulaire legend {
+  font-weight: 700;
+  padding: 0 6px;
+}
+
+.essai-pub__formulaire label:not(.essai-pub__case):not(.essai-pub__fichier),
+.essai-pub__etiquette {
+  margin-top: 10px;
+  font-size: 15px;
+  color: var(--text-muted);
+}
+
+.essai-pub__formulaire .muted {
+  margin: 0;
+  font-size: 15px;
+}
+
+.essai-pub__case {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  min-height: 48px;
+  padding: 8px 0;
+  cursor: pointer;
+}
+
+.essai-pub__case input {
+  width: 24px;
+  height: 24px;
+  flex: none;
+  margin-top: 2px;
+  accent-color: var(--accent);
+}
+
+.essai-pub__parent {
+  border-left: 3px solid var(--border);
+  padding-left: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.essai-pub__fichier {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 56px;
+  border: 2px dashed var(--border);
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  padding: 8px;
+}
+
+.essai-pub__fichier input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.essai-pub__fichier--ok {
+  border-style: solid;
+  border-color: var(--success-text);
+  color: var(--success-text);
+}
+
+.essai-pub__ajouter {
+  width: 100%;
+  min-height: 56px;
+  border-radius: 12px;
+  border: 1px dashed var(--accent);
+  background: transparent;
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 17px;
+  margin-bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+}
+
+.essai-pub__ajouter small {
+  font-weight: 400;
+  font-size: 14px;
+}
+
+.essai-pub__signataire {
+  margin-top: 10px;
+}
+
+.essai-pub__accord {
+  font-size: 15px;
+  color: var(--text-muted);
+  background: var(--accent-bg);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.essai-pub__signature {
+  position: relative;
+  margin-top: 8px;
+}
+
+.essai-pub__signature canvas {
+  display: block;
+  width: 100%;
+  height: 170px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  touch-action: none;
+}
+
+.essai-pub__signez {
+  position: absolute;
+  left: 14px;
+  bottom: 10px;
+  color: #999;
+  font-size: 14px;
+  pointer-events: none;
+}
+
+.essai-pub__valider {
+  min-height: 56px;
+  font-size: 18px;
+}
+
+.essai-pub__qr {
+  background: #fff;
+  color: #111;
+  border-radius: 16px;
+  padding: 16px;
+  text-align: center;
+  margin: 12px 0;
+  max-width: 280px;
+}
+
+.essai-pub__qr img {
+  width: 100%;
+  display: block;
+}
+
+.essai-pub__qr figcaption {
+  font-weight: 700;
+  margin-top: 8px;
+}
+
+.essai-pub__confidentialite {
+  font-size: 15px;
+  padding: 16px 0 32px;
+}
