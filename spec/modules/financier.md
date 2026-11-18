@@ -352,6 +352,14 @@ elle repose.
     versé, total sûr, impayés et résiliés (non comptés) ; et `donnees["operations12Mois"]` : la
     liste brute des opérations des 12 mois avant le départ `[{"date", "libelle", "montant"}]`
     (virements internes exclus), en plus des totaux par catégorie.
+  - **Consignes fixes de l'appli, en deux parties** (Seb, 18/11 : le prévisionnel marche aussi sans
+    HelloAsso, par exemple à Contretemps) : une partie générale toujours envoyée, et un court
+    paragraphe HelloAsso **ajouté seulement quand l'école a HelloAsso relié** :
+    « HelloAsso : l'argent HelloAsso donné dans les données est sûr, compte-le en entier et une
+    seule fois. HelloAsso ne verse pas le jour du paiement : il vire une fois par mois, à un jour
+    que tu retrouves dans les opérations des 12 derniers mois. Les paiements en plusieurs fois
+    tombent à des dates fixes, à retrouver dans les échéances à venir. » Sans HelloAsso : ni ce
+    paragraphe, ni lignes sûres ; toutes les opérations sont des hypothèses.
   - **Ce que le modèle cherche** (liste dans ses consignes) : le calendrier des échéances (paiements
     en une ou trois fois : 1re à l'adhésion puis dates fixes), le jour des versements de la
     plateforme vers le compte (HelloAsso vire chaque mois à date fixe, réglage propre à chaque
