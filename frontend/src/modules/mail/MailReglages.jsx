@@ -58,7 +58,7 @@ function Connectee({ etat, onReconnecter, onChanger, onDeconnecter }) {
         Elle se lit dans Messages, puce Mail, par les personnes cochées dans « Boîte mail du club » (Administrateurs).
       </p>
       <button type="button" className="mail__lien" onClick={onChanger}>
-        Connecter une autre boîte
+        Remplacer par une autre boîte
       </button>
       <button type="button" className="btn btn--secondary btn--block" onClick={onDeconnecter}>
         Déconnecter la boîte
@@ -144,6 +144,9 @@ export default function MailReglages({ ecole, enabled }) {
   return (
     <>
       <small className="helloasso__etat">{petit}</small>
+      <small className="helloasso__etat">
+        Seuls les administrateurs cochés dans « Boîte mail du club » (Administrateurs) voient les mails.
+      </small>
       {enabled && erreur && <small className="helloasso__etat login-screen__erreur">{erreur}</small>}
       {enabled && (
         <button

@@ -1,26 +1,32 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import Icon from '../../components/Icon.jsx'
+import * as api from './api.js'
+import ChampAdresses from './ChampAdresses.jsx'
 import { taille } from './format.js'
 
 // Écrire (spec/modules/mail.md §7) : écran plein, « De : » l'adresse du club,
-// À, Cc / Cci, Objet, message, pièces jointes (18 Mo au plus), Envoyer. Le
+// À, Cc, Cci (toujours affichés, Seb 18 novembre), Objet, message, pièces jointes (18 Mo au plus), Envoyer. Le
 // mail part au bout des 10 s d'Annuler (§8, Boite.jsx).
 
 const MAX = 18 * 1024 * 1024
 const TITRES = { new: 'Nouveau message', reply: 'Répondre', replyAll: 'Répondre à tous', forward: 'Transférer' }
 
-export default function Ecrire({ brouillon, fichiersInitiaux = [], de, onFermer, onEnvoyer }) {
+export default function Ecrire({ ecoleId, brouillon, fichiersInitiaux = [], de, onFermer, onEnvoyer }) {
+  const [contacts, setContacts] = useState([])
   const [to, setTo] = useState(brouillon.to)
   const [cc, setCc] = useState(brouillon.cc)
   const [bcc, setBcc] = useState(brouillon.bcc ?? '')
-  const [copies, setCopies] = useState(Boolean(brouillon.cc || brouillon.bcc))
   const [subject, setSubject] = useState(brouillon.subject)
   const [body, setBody] = useState(brouillon.body)
   const [fichiers, setFichiers] = useState(fichiersInitiaux)
   const [erreur, setErreur] = useState(null)
   const texte = useRef(null)
   const total = fichiers.reduce((s, f) => s + f.size, 0)
+
+  useEffect(() => {
+    api.contacts(ecoleId).then((r) => setContacts(r.contacts), () => null)
+  }, [ecoleId])
 
   // Réponse : curseur tout en haut, au-dessus du mail cité.
   useEffect(() => {
@@ -52,33 +58,15 @@ export default function Ecrire({ brouillon, fichiersInitiaux = [], de, onFermer,
           <span>De</span>
           <span className="mail__discret">{de}</span>
         </div>
-        <label className="mail__champ-ligne">
-          <span>À</span>
-          <input
-            value={to}
-            onChange={(e) => setTo(e.target.value)}
-            inputMode="email"
-            autoCapitalize="none"
-            autoFocus={brouillon.mode === 'new' || brouillon.mode === 'forward'}
-          />
-          {!copies && (
-            <button type="button" className="mail__lien" onClick={() => setCopies(true)}>
-              Cc / Cci
-            </button>
-          )}
-        </label>
-        {copies && (
-          <>
-            <label className="mail__champ-ligne">
-              <span>Cc</span>
-              <input value={cc} onChange={(e) => setCc(e.target.value)} inputMode="email" autoCapitalize="none" />
-            </label>
-            <label className="mail__champ-ligne">
-              <span>Cci</span>
-              <input value={bcc} onChange={(e) => setBcc(e.target.value)} inputMode="email" autoCapitalize="none" />
-            </label>
-          </>
-        )}
+        <ChampAdresses
+          label="À"
+          value={to}
+          onChange={setTo}
+          contacts={contacts}
+          autoFocus={brouillon.mode === 'new' || brouillon.mode === 'forward'}
+        />
+        <ChampAdresses label="Cc" value={cc} onChange={setCc} contacts={contacts} />
+        <ChampAdresses label="Cci" value={bcc} onChange={setBcc} contacts={contacts} />
         <label className="mail__champ-ligne">
           <span>Objet</span>
           <input value={subject} onChange={(e) => setSubject(e.target.value)} />

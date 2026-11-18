@@ -108,3 +108,6 @@ export async function envoyer(ecoleId, b, fichiers) {
   }
   return reponse.json()
 }
+
+// Suggestions pour À, Cc, Cci : gens de l'école et adresses déjà échangées.
+export const contacts = (ecoleId) => requete(`${base(ecoleId)}/contacts`)

@@ -12,7 +12,9 @@ from datetime import datetime
 from urllib.parse import quote
 
 from comptes import Compte, rbac, roles
+from comptes.models import Compte as Fiche
 from ecoles.models import Ecole
+from sqlalchemy import select
 from fastapi import Depends, FastAPI, Form, HTTPException, Response, UploadFile
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -113,6 +115,7 @@ class MailReceiver:
         app.delete(f"{base}/messages/{{folder}}/{{uid}}", dependencies=reader)(self.delete)
         app.post(f"{base}/bulk", dependencies=reader)(self.bulk)
         app.post(f"{base}/send", dependencies=reader)(self.send)
+        app.get(f"{base}/contacts", dependencies=reader)(self.contacts)
 
     def _status(self, db: Session, ecole_id: int, appelant: Compte | None) -> StatusOut:
         account = self.connection.account(db, ecole_id)
@@ -248,3 +251,32 @@ class MailReceiver:
             )
 
         return self._call(db, ecole_id, envoyer)
+
+    def contacts(self, ecole_id: int, db: Session = Depends(get_db)):
+        """Suggestions pour À, Cc, Cci (Seb, 18 novembre) : les fiches de
+        l'école (saison affichée, saisons/portee.py), puis les adresses de la
+        dernière page de la réception et des envoyés. Le tri par lettres tapées
+        se fait à l'écran."""
+        vus, contacts = set(), []
+        account = self.connection.account(db, ecole_id)
+        if account is not None:
+            vus.add(account.address.lower())
+
+        def ajouter(name: str, address: str) -> None:
+            if address and address.lower() not in vus:
+                vus.add(address.lower())
+                contacts.append({"name": name, "address": address})
+
+        fiches = db.scalars(select(Fiche).where(Fiche.ecole_id == ecole_id).order_by(Fiche.nom, Fiche.prenom))
+        for fiche in fiches:
+            for address in fiche.emails:
+                ajouter(f"{fiche.prenom} {fiche.nom}".strip(), address)
+        try:
+            pages = self._call(db, ecole_id, lambda w: [w.list("inbox", None, ""), w.list("sent", None, "")])
+        except HTTPException:
+            pages = []  # boîte coupée ou injoignable : les gens de l'école suffisent
+        for page in pages:
+            for mail in page.get("messages", []):
+                for personne in mail.get("from", []) + mail.get("to", []):
+                    ajouter(personne.get("name") or "", personne.get("address") or "")
+        return {"contacts": contacts}
