@@ -51,6 +51,7 @@ import * as publicationsPartage from './modules/publications/partage.js'
 import Sparring from './modules/session-clips/Sparring.jsx'
 import FfstOnglet from './modules/ffst/FfstOnglet.jsx'
 import useNouveaux from './modules/session-clips/useNouveaux.js'
+import useMailNonLus from './modules/mail/useMailNonLus.js'
 import MesNotesDeFrais from './modules/notes-frais/MesNotesDeFrais.jsx'
 import SupervisionScreen from './screens/SupervisionScreen.jsx'
 
@@ -422,6 +423,8 @@ function App() {
   const modulesEteints = new Set(modules.filter((m) => !m.enabled).map((m) => m.key))
   // Fights : combats validés pas encore ouverts (Seb, 17/11).
   const nouveauxCombats = useNouveaux(Boolean(compteReel) && !modulesEteints.has('session_clips'), `${ecole.id}|${activeUser.id}|${activeTab}`)
+  // Non lus de la boîte mail du club (spec/modules/mail.md §2), ajoutés à la pastille de Messages.
+  const mailNonLus = useMailNonLus(Boolean(compteReel) && !modulesEteints.has('mail'), ecole.id)
   useEffect(() => {
     const onglets = ongletsAvec({ publications: blogs ?? [] })
     const eteint = (t) => modules.some((m) => m.key === t.module && !m.enabled)
@@ -1323,6 +1326,7 @@ function App() {
             compteId={activeUser.id}
             viewerRole={activeUser.type}
             ecoleId={ecole.id}
+            mailNonLus={mailNonLus}
             admins={admins}
             professeurs={professeurs}
             eleves={eleves}
@@ -1394,7 +1398,7 @@ function App() {
         onChange={setActiveTab}
         profil={activeUser}
         eteints={modulesEteints}
-        alertes={{ messagerie: totalNonLus, sparring: nouveauxCombats }}
+        alertes={{ messagerie: totalNonLus + mailNonLus, sparring: nouveauxCombats }}
         tabs={tabs}
       />
     </div>

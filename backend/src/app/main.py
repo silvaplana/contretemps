@@ -32,6 +32,7 @@ from db import Base, engine
 from documents_contretemps import DOSSIER_DOCUMENTS, membre_appelant
 from ecoles import EcoleExport, Ecoles, EcolesReceiver, mail_ecole
 from eleves import Eleves, ElevesReceiver, ImportExcel, ImportExcelReceiver, ImposedMembers
+from inscriptions.email_envoi import EmailEnvoi
 from inscriptions.stockage import DOSSIER_INSCRIPTIONS
 from ressources import Ressources, RessourcesReceiver
 from personnalisation.ia import detourage_ia_disponible
@@ -255,6 +256,8 @@ core = SimpleNamespace(
     message_attachments=pieces_jointes(),
     # Un mail au nom de l'école (ecoles/mail_ecole.py), pour les modules.
     mail_ecole=mail_ecole.envoyer,
+    # Envoi des mails (relais SMTP Brevo), pour les modules qui écrivent.
+    email_envoi=EmailEnvoi(),
 )
 registry.mount_all(app, MODULES, core)
 

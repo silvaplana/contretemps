@@ -88,6 +88,9 @@ ROUTES_PUBLIQUES = {
     ("GET", "/documents/public/orgs/{org_id}/pages/{slug}"),
     ("POST", "/documents/public/orgs/{org_id}/pages/{slug}/answers"),
     ("GET", "/documents/public/links/{token}"),
+    # La page d'essai de l'école (spec/modules/essai.md §2), sans compte.
+    ("GET", "/trials/public/orgs/{org_id}/page"),
+    ("POST", "/trials/public/orgs/{org_id}/registrations"),
     ("POST", "/documents/public/links/{token}/answers"),
     # Le lien du signataire d'un document à signer (signature-documents.md §2.4).
     ("GET", "/documents/public/signing/{token}"),

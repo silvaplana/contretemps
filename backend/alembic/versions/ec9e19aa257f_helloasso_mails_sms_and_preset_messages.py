@@ -3,7 +3,7 @@ helloasso.md §7.6, §7.9). Only the three new tables (autogenerate also saw
 older differences of the models, left alone).
 
 Revision ID: ec9e19aa257f
-Revises: e4a6c8b0d2f3
+Revises: d4e6f8a0b2c4
 Create Date: 2026-11-18 15:33:10.426291
 
 """
@@ -14,7 +14,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = 'ec9e19aa257f'
-down_revision: Union[str, Sequence[str], None] = 'e4a6c8b0d2f3'
+down_revision: Union[str, Sequence[str], None] = 'd4e6f8a0b2c4'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

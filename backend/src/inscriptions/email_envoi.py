@@ -17,6 +17,7 @@ import logging
 import os
 import smtplib
 from email.mime.application import MIMEApplication
+from email.mime.image import MIMEImage
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
@@ -59,6 +60,8 @@ class EmailEnvoi:
         corps_html: str | None = None,
         copie: str | None = None,
         expediteur: tuple[str | None, str | None] | None = None,
+        images: list[tuple[str, bytes]] | None = None,
+        repondre_a: str | None = None,
     ) -> None:
         """`pieces_jointes` : liste de (nom_fichier, contenu_bytes).
         Lève une exception en cas d'échec (voir inscriptions.py qui
@@ -76,8 +79,10 @@ class EmailEnvoi:
         nom_expediteur = nom_expediteur or self.nom_expediteur
         adresse_expediteur = adresse_expediteur or self.expediteur
         message["From"] = f"{nom_expediteur} <{adresse_expediteur}>"
-        if self.repondre_a:
-            message["Reply-To"] = self.repondre_a
+        # `repondre_a` : les réponses vont à l'école (ex. son email de
+        # contact) plutôt qu'à l'adresse du serveur.
+        if repondre_a or self.repondre_a:
+            message["Reply-To"] = repondre_a or self.repondre_a
         message["To"] = destinataire
         # `copie` : adresse en copie visible (Cc), ignorée si c'est déjà le
         # destinataire.
@@ -96,6 +101,17 @@ class EmailEnvoi:
             variantes = MIMEMultipart("alternative")
             variantes.attach(MIMEText(corps, "plain", "utf-8"))
             variantes.attach(MIMEText(corps_html, "html", "utf-8"))
+            if images:
+                # Images dans le corps (`<img src="cid:qr-0">`), ex. les QR
+                # codes du module Essai.
+                lies = MIMEMultipart("related")
+                lies.attach(variantes)
+                for cid, contenu in images:
+                    image = MIMEImage(contenu, "png")
+                    image["Content-ID"] = f"<{cid}>"
+                    image["Content-Disposition"] = f'inline; filename="{cid}.png"'
+                    lies.attach(image)
+                variantes = lies
             message.attach(variantes)
 
         for nom_fichier, contenu in pieces_jointes:

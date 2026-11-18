@@ -26,6 +26,9 @@ a plus de 12 h ; prévient les trésoriers une semaine avant la fin de l'accès.
 Sans clé Enable Banking sur ce conteneur (voir docker-compose.yml, volume
 /run/secrets), rien n'est lu.
 
+Supprime aussi, toutes les heures, les élèves à l'essai sans activité depuis
+un an (spec/modules/essai.md §7).
+
 Usage :
     python -m app.relance_worker
 """
@@ -50,6 +53,7 @@ from publications.publications import Publications
 from publications.storage import publications_storage
 from notifications import Notifications
 from securite.chiffrement import chiffrer, dechiffrer
+from trials.trials import Trials
 from videos import Videos
 
 INTERVALLE_SECONDES = 60
@@ -57,6 +61,7 @@ DELAI_MINUTES = 15
 HELLOASSO_TOURS = 5  # une synchronisation HelloAsso tous les 5 tours (5 min)
 INSTAGRAM_TOURS = 5  # les posts Instagram tous les 5 tours (5 min)
 BANQUE_TOURS = 15  # la banque tous les 15 tours (15 min) ; relue si > 12 h
+ESSAIS_TOURS = 60  # les élèves à l'essai d'il y a plus d'un an, toutes les heures
 
 
 def run() -> None:
@@ -72,6 +77,8 @@ def run() -> None:
     banque = Bank(client=_client_bancaire(), finances=Finances(), encrypt=chiffrer, decrypt=dechiffrer, warn=prevenir_tresoriers(Notifications()))
     if banque.client is None:
         print("Connexion bancaire non configurée sur ce conteneur : pas de lecture automatique.")
+    # Seule la suppression au bout d'un an sert ici : ni mail ni adresse.
+    essais = Trials(send=None, school_address=None)
     tour = 0
     print(
         f"Relance auto démarrée (vérifie toutes les {INTERVALLE_SECONDES}s, "
@@ -107,6 +114,14 @@ def run() -> None:
                 except Exception as erreur:  # noqa: BLE001 (la boucle continue)
                     db.rollback()
                     print(f"Relais Instagram en échec : {erreur}")
+            if tour % ESSAIS_TOURS == 0:
+                try:
+                    supprimes = essais.purge_expired(db)
+                    if supprimes:
+                        print(f"Essais : {supprimes} inscrit(s) supprimé(s) au bout d'un an.")
+                except Exception as erreur:  # noqa: BLE001 (la boucle continue)
+                    db.rollback()
+                    print(f"Suppression des essais en échec : {erreur}")
             if tour % BANQUE_TOURS == 0 and banque.client is not None:
                 try:
                     bilan = banque.automatic(db)

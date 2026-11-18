@@ -22,6 +22,8 @@ const paths = {
   copy: 'M8 8h12v12H8z M16 8V4H4v12h4',
   paperclip: 'M15 7l-6.5 6.5a1.5 1.5 0 0 0 3 3L18 10a3 3 0 0 0-6-6l-6.5 6.5a4.5 4.5 0 0 0 9 9L21 13',
   trash: 'M4 7h16 M9 7V4h6v3 M6 7l1 13h10l1-13 M10 11v6 M14 11v6',
+  // Archiver (boîte mail, spec/modules/mail.md §5) : une boîte de rangement.
+  archive: 'M3 4h18v5H3z M5 9v11h14V9 M10 13h4',
   chevronDown: 'M6 9l6 6 6-6',
   chevronRight: 'M9 6l6 6-6 6',
   chevronLeft: 'M15 6l-6 6 6 6',
