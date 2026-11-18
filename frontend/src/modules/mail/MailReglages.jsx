@@ -69,15 +69,24 @@ function Connectee({ etat, onReconnecter, onChanger, onDeconnecter }) {
 
 export default function MailReglages({ ecole, enabled }) {
   const [etat, setEtat] = useState(null)
+  // L'état n'a pas pu être lu : la raison s'affiche sous la ligne.
+  const [erreur, setErreur] = useState(null)
   const [ecran, setEcran] = useState(null) // null | 'fournisseur' | 'gmail' | 'infomaniak' | 'connectee'
   const [toast, setToast] = useState(null)
   const avant = useRef(enabled)
   const minuteur = useRef(null)
 
   async function relire() {
-    const lu = await api.etat(ecole.id).catch(() => null)
-    setEtat(lu)
-    return lu
+    try {
+      const lu = await api.etat(ecole.id)
+      setEtat(lu)
+      setErreur(null)
+      return lu
+    } catch (e) {
+      setEtat(null)
+      setErreur(e.message)
+      return null
+    }
   }
 
   // Sous-module éteint : ses routes répondent « introuvable », rien à lire.
@@ -135,17 +144,19 @@ export default function MailReglages({ ecole, enabled }) {
   return (
     <>
       <small className="helloasso__etat">{petit}</small>
-      {enabled && etat && (
+      {enabled && erreur && <small className="helloasso__etat login-screen__erreur">{erreur}</small>}
+      {enabled && (
         <button
           type="button"
           className="helloasso__lien"
-          onClick={(e) => {
+          onClick={async (e) => {
             // Le bouton est dans l'étiquette de la case : ne pas la décocher.
             e.preventDefault()
-            setEcran(connecte ? 'connectee' : 'fournisseur')
+            const lu = etat ?? (await relire())
+            if (lu) setEcran(lu.connected ? 'connectee' : 'fournisseur')
           }}
         >
-          {connecte ? 'Voir' : 'Connecter'}
+          {connecte ? 'Voir la boîte' : 'Connecter la boîte'}
         </button>
       )}
       {ecran &&

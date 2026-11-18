@@ -4500,11 +4500,14 @@ a.btn {
   font-size: 15px;
 }
 
+/* Ce qui se règle dans Fonctionnalités, au-delà de la case : un vrai bouton
+   (Seb, 18 novembre : « Fonctionnalités doit être explicite »). */
 .helloasso__lien {
   min-height: 48px;
   margin-left: auto;
-  padding: 0 4px;
-  border: 0;
+  padding: 0 16px;
+  border: 2px solid var(--accent);
+  border-radius: 24px;
   background: transparent;
   color: var(--accent);
   font: inherit;
