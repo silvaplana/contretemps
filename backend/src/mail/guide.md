@@ -43,8 +43,9 @@ Un mail (toucher la ligne)
 - En bas : « Répondre » (bouton principal) et « Transférer » ; « Répondre à tous » est dans ⋮.
 
 Écrire (bouton « Nouveau message » en bas à droite de la boîte, ou Répondre / Transférer)
-- « De : » l'adresse du club (le nom de l'école apparaît chez le destinataire), « À », lien
-  « Cc / Cci » qui ouvre les deux lignes, « Objet », le message.
+- « De : » l'adresse du club (le nom de l'école apparaît chez le destinataire), « À », « Cc »,
+  « Cci », « Objet », le message. Dès 2 lettres tapées dans À, Cc ou Cci, les adhérents, profs,
+  administrateurs et adresses déjà échangées qui correspondent s'affichent : un toucher ajoute l'adresse.
 - « Joindre un fichier » (18 Mo au total au plus), croix pour retirer. Transférer garde les pièces
   jointes du mail.
 - « Envoyer » : l'écran se ferme et « Mail envoyé » s'affiche avec « Annuler » pendant 10 secondes ;

@@ -114,7 +114,11 @@ principal) et **Transférer**.
 
 ## 7. Écrire
 
-Écran plein : « De : adresse du club », **À**, lien **Cc / Cci** qui ouvre les deux lignes,
+Écran plein : « De : adresse du club », **À**, **Cc** et **Cci** toujours affichés (Seb, 18 novembre : le lien « Cc / Cci » passait inaperçu), avec
+suggestions d'adresses (Seb, 18 novembre) : dès 2 lettres, jusqu'à 6 lignes nom et adresse, tirées
+des fiches de l'école (saison affichée) puis des adresses de la dernière page de la réception et des
+envoyés (route `GET …/mail/contacts`, droit `mail.read`, rien gardé en base) ; un toucher ajoute
+l'adresse,
 **Objet**, message, pièces jointes (**Joindre un fichier**, croix pour retirer ; 18 Mo au plus),
 bouton principal **Envoyer**. Répondre met « Re: » et le texte cité ; Transférer met « Fwd: » et
 garde les pièces jointes. Sans destinataire : « Indiquez à qui envoyer le mail ».
