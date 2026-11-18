@@ -23,6 +23,10 @@ Contretemps et Le Beausset compris. Il ne dépend d'aucun autre module.
 Adresse : `https://<école>/essai` (ex. `alliance-sambo-combat-la-ciotat.assofight.silvaplana.cloud/essai`),
 aux couleurs et avec le logo de l'école. Page introuvable si le module est éteint.
 
+Bascule (Seb, 18 novembre) : cette page a sa propre adresse et **n'est branchée à rien** au départ.
+La page d'essai de Sambo Admin, liée depuis le vrai site du club, reste en service sans qu'on y
+touche. Seb changera lui-même le lien sur le site du club quand il le décidera.
+
 Dans l'ordre : nom et logo de l'école ; titre et sous-titre ; texte d'accueil ; **Modalités** (les
 lignes des réglages, puis « Les mineurs sont accueillis à partir de N ans et inscrits par un parent
 ou représentant légal ») ; **Horaires d'entraînement** ; les salles avec **Voir sur la carte** (lien
