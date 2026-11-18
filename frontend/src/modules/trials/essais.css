@@ -499,3 +499,52 @@ textarea.essais__champ {
   font-size: 15px;
   padding: 16px 0 32px;
 }
+
+/* Scanner les QR codes. */
+.essais__camera {
+  width: 100%;
+  max-width: 480px;
+  aspect-ratio: 1;
+  margin: 8px auto 12px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #000;
+}
+
+.essais__camera video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.essais__scans {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.essais__scan {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 14px;
+  border-radius: 12px;
+}
+
+.essais__scan--vert {
+  background: var(--success-bg);
+  color: var(--success-text);
+}
+
+.essais__scan--orange {
+  background: var(--warning-bg);
+  color: var(--warning-text);
+}
+
+.essais__scan--rouge {
+  background: var(--danger-bg);
+  color: var(--danger-text);
+}

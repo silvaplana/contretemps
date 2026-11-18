@@ -430,6 +430,25 @@ class Trials:
         db.commit()
         return row
 
+    def check_in(self, db: Session, org_id: int, scanned: str) -> tuple[str, int | None, TrialStudent | None]:
+        """Scan d'un QR code au début du cours (§4) : (statut, n° du cours,
+        inscrit). Statuts : « added » (cours du jour noté), « today » (déjà
+        noté aujourd'hui, rien d'ajouté), « full » (les 2 cours sont faits),
+        « unknown » (code d'une autre école ou inconnu)."""
+        match = re.search(r"[?&]essai=([A-Za-z0-9_-]+)", scanned or "")
+        token = match.group(1) if match else (scanned or "").strip()
+        row = db.scalar(select(TrialStudent).where(TrialStudent.org_id == org_id, TrialStudent.token == token)) if token else None
+        if row is None:
+            return "unknown", None, None
+        day = today()
+        if day in (row.course1_date, row.course2_date):
+            return "today", 1 if row.course1_date == day else 2, row
+        if row.course1_date and row.course2_date:
+            return "full", None, row
+        number = 1 if row.course1_date is None else 2
+        self.add_course(db, org_id, row.id, mode="qr")
+        return "added", number, row
+
     def remove(self, db: Session, org_id: int, student_id: int) -> None:
         row = self._student(db, org_id, student_id)
         db.delete(row)

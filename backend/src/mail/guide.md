@@ -7,10 +7,11 @@ Qui le voit
   Groupes). Les autres voient Messages comme avant, sans puce.
 - Je ne lis pas les mails du club : je peux seulement dire où aller.
 
-Connecter la boîte (Admin › École › Personnalisation › Fonctionnalités, ligne Mail)
+Connecter la boîte (Admin › École › Connexions, ligne « Boîte mail du club » ; dans Messages ›
+Mail, « Connecter la boîte mail » y mène)
 - Seul l'Administrateur principal la connecte, même sans être dans « Boîte mail du club ». La
-  ligne Mail dit « Connectée : adresse » ou « Pas encore connectée », avec le bouton « Connecter la boîte » ou « Voir la boîte ».
-- Seules les boîtes Gmail et Infomaniak peuvent être connectées pour l'instant. « Connecter la boîte » :
+  ligne dit « Connectée : adresse » ou « Pas encore connectée », avec « Connecter » ou « Voir ».
+- Seules les boîtes Gmail et Infomaniak peuvent être connectées pour l'instant. « Connecter » :
   choisir Gmail ou Infomaniak, taper l'adresse du club, puis « Ouvrir Google » ou « Ouvrir
   Infomaniak ».
 - Gmail : page des mots de passe des applications, appuyer sur Créer, copier le code de 16 lettres
@@ -19,7 +20,7 @@ Connecter la boîte (Admin › École › Personnalisation › Fonctionnalités,
   Ajouter un appareil, choisir IMAP / SMTP, copier le mot de passe. Autre adresse Infomaniak :
   Manager › Service Mail › le domaine › l'adresse › Appareils › Ajouter un appareil.
 - Revenir, « Coller », puis « Connecter ». « Code refusé » : recoller en entier ou en créer un nouveau.
-- « Voir la boîte » : adresse, Gmail ou Infomaniak, date ; « Connecter une autre boîte » ; « Déconnecter la
+- « Voir » : adresse, Gmail ou Infomaniak, date ; « Connecter une autre boîte » ; « Déconnecter la
   boîte » (Annuler pendant 10 s).
 - Dans Messages › Mail, une boîte pas connectée affiche où la connecter.
 
@@ -46,4 +47,4 @@ Un mail (toucher la ligne)
 - « Envoyer » : l'écran se ferme et « Mail envoyé » s'affiche avec « Annuler » pendant 10 secondes ;
   Annuler rouvre le mail tel quel. Sans destinataire : « Indiquez à qui envoyer le mail ».
 - « La boîte mail n'est plus connectée » : Google ou Infomaniak a coupé l'accès ; l'Administrateur
-  principal touche « Reconnecter » sur la ligne Mail de Fonctionnalités (« Voir la boîte »).
+  principal touche « Reconnecter la boîte mail » (ou « Voir » sur sa ligne d'Admin › École › Connexions).

@@ -60,7 +60,10 @@ function Identifiants({ ecoleId, onEnregistre }) {
             id="ffst-password"
             className="field-input"
             type={voir ? 'text' : 'password'}
-            autoComplete="off"
+            // « new-password » : le navigateur ne remplit pas tout seul les
+            // identifiants de connexion à l'appli (l'email arrivait dans la
+            // 3e case de l'identifiant, Seb 18/11).
+            autoComplete="new-password"
             spellCheck="false"
             value={champs.password}
             onChange={changer('password')}

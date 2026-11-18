@@ -43,14 +43,16 @@ personnes cochées les voient. »
 Le droit donne tout : lire, envoyer au nom du club, ranger, supprimer. L'Assistant n'a **aucun
 outil** sur les mails (il ne les lit pas) ; il sait seulement guider vers l'écran.
 
-## 4. Connecter la boîte (Fonctionnalités, ligne Mail)
+## 4. Connecter la boîte (Admin › École › Connexions depuis le 18 novembre ; avant, Fonctionnalités, ligne Mail)
 
 Seb, 18 novembre : la connexion se fait dans **Admin › École › Personnalisation ›
 Fonctionnalités**, sur la ligne Mail (comme HelloAsso et FFST), et non plus dans Messages. Réservé
 à l'**Administrateur principal** et au Super User, **sans avoir besoin du droit** « Boîte mail du
 club » (connecter ne montre aucun mail ; lire en demande toujours le droit). La ligne dit
 « Connectée : adresse », « adresse : à reconnecter » ou « Pas encore connectée. Seules les boîtes
-Gmail et Infomaniak peuvent être connectées pour l'instant. », avec un bouton **Connecter la boîte** ou **Voir la boîte** (bordé, comme ceux de HelloAsso et FFST : Seb, 18 novembre, « Fonctionnalités doit être explicite »).
+Gmail et Infomaniak peuvent être connectées pour l'instant. », avec le bouton **Connecter** ou **Voir**, toujours affiché
+(entouré comme les autres boutons de réglage, Seb 18 novembre ; s'il ne peut pas lire l'état, le
+bouton le relit et la ligne dit pourquoi).
 Cocher Mail sans boîte ouvre directement le choix du fournisseur. Dans Messages › Mail, une boîte
 pas connectée affiche : « La boîte mail du club n'est pas encore connectée. » et, pour
 l'Administrateur principal, où la connecter.

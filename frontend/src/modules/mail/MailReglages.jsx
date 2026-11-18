@@ -156,7 +156,7 @@ export default function MailReglages({ ecole, enabled }) {
             if (lu) setEcran(lu.connected ? 'connectee' : 'fournisseur')
           }}
         >
-          {connecte ? 'Voir la boîte' : 'Connecter la boîte'}
+          {connecte ? 'Voir' : 'Connecter'}
         </button>
       )}
       {ecran &&

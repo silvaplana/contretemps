@@ -23,6 +23,7 @@ export const fiche = (ecoleId, id) => requete(`${base(ecoleId)}/students/${id}`)
 export const modifier = (ecoleId, id, champs) => requete(`${base(ecoleId)}/students/${id}`, json('PATCH', champs))
 export const supprimer = (ecoleId, id) => requete(`${base(ecoleId)}/students/${id}`, { method: 'DELETE' })
 export const coursAujourdhui = (ecoleId, id) => requete(`${base(ecoleId)}/students/${id}/courses`, { method: 'POST' })
+export const scanner = (ecoleId, code) => requete(`${base(ecoleId)}/checkin`, json('POST', { code }))
 
 // Page publique, sans compte.
 export const pagePublique = (orgId) => requete(`/trials/public/orgs/${orgId}/page`)
