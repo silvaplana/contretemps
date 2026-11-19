@@ -31,7 +31,9 @@ export const reprendre = (ecoleId) => requete(`/ecoles/${ecoleId}/helloasso/repr
 // La campagne de la saison affichée (spec §3) : tout admin la lit ;
 // la choisir est réservé à l'Administrateur principal, toute saison.
 // → { connected, can_change, form, forms: [{ form_type, form_slug, name, state }], error }
-export const campagne = (ecoleId) => requete(`/ecoles/${ecoleId}/helloasso/campagne`)
+// `relire` : redemande la liste à HelloAsso (sinon gardée 10 minutes).
+export const campagne = (ecoleId, relire = false) =>
+  requete(`/ecoles/${ecoleId}/helloasso/campagne${relire ? '?relire=1' : ''}`)
 export const choisirCampagne = (ecoleId, form) => requete(`/ecoles/${ecoleId}/helloasso/campagne`, json('PUT', form))
 export const nosChamps = (ecoleId) => requete(`/ecoles/${ecoleId}/helloasso/campagne`, { method: 'DELETE' })
 // « Synchroniser maintenant » (spec §4) : tout admin, saison affichée.

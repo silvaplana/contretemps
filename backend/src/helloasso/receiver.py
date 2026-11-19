@@ -361,7 +361,12 @@ class HelloAssoReceiver:
             raise HTTPException(status_code=404, detail="Pas de saison")
         return season_id
 
-    def campagne(self, ecole_id: int, db: Session = Depends(get_db), appelant: Compte = Depends(rbac.compte_appelant)):
+    def campagne(
+        self, ecole_id: int, relire: bool = False, db: Session = Depends(get_db),
+        appelant: Compte = Depends(rbac.compte_appelant),
+    ):
+        """`relire` : redemande la liste des campagnes à HelloAsso (sinon
+        gardée 10 minutes)."""
         rbac.require_admin(appelant, ecole_id)
         if self.client.current(db, ecole_id) is None:
             return CampaignOut(connected=False)
@@ -384,7 +389,7 @@ class HelloAssoReceiver:
         )
         if can_change:
             try:
-                out.forms = [FormOut(**vars(f)) for f in self.campaigns.list_forms(db, ecole_id)]
+                out.forms = [FormOut(**vars(f)) for f in self.campaigns.list_forms(db, ecole_id, fresh=relire)]
             except HelloAssoError as erreur:
                 out.error = str(erreur)
         return out
@@ -400,7 +405,7 @@ class HelloAssoReceiver:
             db.rollback()
             raise HTTPException(status_code=422, detail=str(erreur)) from None
         db.commit()
-        return self.campagne(ecole_id, db, appelant)
+        return self.campagne(ecole_id, db=db, appelant=appelant)
 
     def nos_champs(self, ecole_id: int, db: Session = Depends(get_db)):
         self.campaigns.clear(db, ecole_id, self._saison(db, ecole_id))

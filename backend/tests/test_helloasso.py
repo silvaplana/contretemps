@@ -171,6 +171,7 @@ def campagnes(monkeypatch, helloasso):
     from helloasso.api import Form
 
     campaigns = main.core.helloasso_campaigns
+    monkeypatch.setattr(campaigns, "_lists", {})
     monkeypatch.setattr(campaigns, "forms", lambda client_id, secret, slug: [
         Form("Membership", "adhesion", "Adhésion 2026-2027", "Public"),
         Form("Event", "stage", "Stage d'été", "Private"),
@@ -239,7 +240,9 @@ def test_campagne_inconnue_ou_helloasso_muet(client, db_session, ecole, campagne
         raise HelloAssoError("HelloAsso ne répond pas : réessayez dans un moment.")
 
     monkeypatch.setattr(main.core.helloasso_campaigns, "forms", muet)
-    etat = client.get(url).json()
+    # La liste gardée 10 minutes répond encore ; « Relire la liste » demande à HelloAsso.
+    assert client.get(url).json()["error"] is None
+    etat = client.get(url, params={"relire": 1}).json()
     assert etat["form"]["name"] == "Adhésion 2026-2027" and "ne répond pas" in etat["error"]
 
 
@@ -1173,3 +1176,28 @@ def test_jeton_garde_et_429_reessaye(monkeypatch):
     assert [f.name for f in api.forms("id-429", "secret", "asso")] == ["Adhésion"]
     assert [f.name for f in api.forms("id-429", "secret", "asso")] == ["Adhésion"]
     assert jetons == ["id-429"] and len(appels) == 3
+
+
+def test_liste_des_campagnes_gardee_10_minutes(client, db_session, ecole, campagnes, monkeypatch):
+    """Moins de requêtes à HelloAsso (Seb 19/11) : la liste des campagnes
+    est gardée 10 minutes ; « Relire la liste » (`relire=1`) la redemande."""
+    from app import main
+    from helloasso import campaign
+    from helloasso.api import Form
+
+    lectures = []
+
+    def forms(client_id, secret, slug):
+        lectures.append(slug)
+        return [Form("Membership", "adhesion", f"Adhésion {len(lectures)}", "Public")]
+
+    monkeypatch.setattr(main.core.helloasso_campaigns, "forms", forms)
+    client.put(f"/ecoles/{ecole.id}/helloasso", json=CLES)
+    url = f"/ecoles/{ecole.id}/helloasso/campagne"
+    assert [f["name"] for f in client.get(url).json()["forms"]] == ["Adhésion 1"]
+    assert [f["name"] for f in client.get(url).json()["forms"]] == ["Adhésion 1"]
+    assert [f["name"] for f in client.get(url, params={"relire": 1}).json()["forms"]] == ["Adhésion 2"]
+    maintenant = campaign.time.time()
+    monkeypatch.setattr(campaign.time, "time", lambda: maintenant + campaign.FORMS_KEPT + 1)
+    assert [f["name"] for f in client.get(url).json()["forms"]] == ["Adhésion 3"]
+    assert len(lectures) == 3
