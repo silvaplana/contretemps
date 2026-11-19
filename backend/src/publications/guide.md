@@ -22,6 +22,9 @@ Le fil
   « Plus tôt ». Une carte : le texte, puis la photo ou la vidéo (à plusieurs, un carrousel : faire
   glisser du doigt). La vidéo se lit sur place (▶). Un document joint s'ouvre en le touchant ; la
   flèche ← ramène au fil.
+- Qui publie : sous une publication publiée, « Partager ». Sur le téléphone, il ouvre le partage
+  habituel (WhatsApp, Messenger, mail…) avec le texte et le lien de l'appli ; on choisit le groupe du
+  club ou une personne. Sur un ordinateur sans ce partage, il ouvre WhatsApp Web.
 - Sous chaque publication : prénom de qui l'a publiée et le jour. « Nouveau » marque ce que la personne
   n'avait pas encore vu.
 - Réagir (toute personne qui voit le blog) : sous une publication, les emojis déjà donnés avec leur

@@ -28,6 +28,13 @@ export function analyser(texte) {
 // Le texte sans ses balises (nom d'un brouillon, recherche…).
 export const sansBalises = (texte) => (texte ?? '').replace(BALISE, '')
 
+// Pour WhatsApp, qui écrit le gras *ainsi* et n'a ni souligné ni tailles.
+export const pourWhatsApp = (texte) =>
+  analyser(texte)
+    // Ligne par ligne : WhatsApp ne met pas en gras d'une ligne à l'autre.
+    .map((m) => (m.g ? m.texte.replace(/^([ \t]*)(\S.*?)([ \t]*)$/gm, '$1*$2*$3') : m.texte))
+    .join('')
+
 // --- L'éditeur (un bloc modifiable du navigateur) ---
 
 // Les tailles de execCommand('fontSize') : 2 petit, 3 normal, 5 grand.
