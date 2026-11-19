@@ -15,6 +15,8 @@ import * as partage from './partage.js'
 import * as api from './api.js'
 import AdressesEssai from './AdressesEssai.jsx'
 import DocumentsSpecifiques from './DocumentsSpecifiques.jsx'
+import { EditeurTexte, TexteRiche } from './TexteRiche.jsx'
+import { sansBalises } from './texteRiche.js'
 import Categories, { ChoixCategorie } from './Categories.jsx'
 import { EditeurSondage, Sondage, manqueSondage, sondageEnApercu, sondageVide } from '../../components/Sondage.jsx'
 import './publications.css'
@@ -350,7 +352,7 @@ export function CarteActu({ actu, lieu, mediaEnHaut = false, onModifier = null, 
   const texte = sansTexte ? (entete || null) : (
     <>
       {entete}
-      <p className="actu__texte">{actu.texte || '…'}</p>
+      <TexteRiche className="actu__texte" texte={actu.texte || '…'} />
     </>
   )
   if (actu.niveau === 'brief') {
@@ -358,7 +360,7 @@ export function CarteActu({ actu, lieu, mediaEnHaut = false, onModifier = null, 
       <article className="actu actu--breve">
         <span className="actu__point" aria-hidden="true" />
         <div>
-          <p className="actu__texte">{actu.texte || '…'}</p>
+          <TexteRiche className="actu__texte" texte={actu.texte || '…'} />
           {signature}
           {reactions}
         </div>
@@ -802,8 +804,9 @@ function Editeur({ actu, auteur, lieu, blog, mediaEnHaut, onRetour, onEnregistre
       // Nouvelle actu : la notification suit le niveau (§4.2).
       ...(actu.id ? {} : { notifier: niveau === 'important' }),
       enHautJusquau: brouillon.enHautJusquau ?? dansJours(7),
-      // Une brève n'a ni photo, ni vidéo, ni document (§4.2).
-      ...(niveau === 'brief' ? { media: [], document: null } : {}),
+      // Une brève n'a ni photo, ni vidéo, ni document (§4.2),
+      // ni mise en forme (§12.15).
+      ...(niveau === 'brief' ? { media: [], document: null, texte: sansBalises(brouillon.texte) } : {}),
     })
   }
   // Le texte est facultatif dès qu'il y a une photo, une vidéo, un lien ou
@@ -1040,13 +1043,10 @@ function Editeur({ actu, auteur, lieu, blog, mediaEnHaut, onRetour, onEnregistre
         </div>
         )}
         {blog.avecNiveaux && <p className="editeur__aide">{aide}</p>}
-        <textarea
-          id="actu-texte"
-          className="editeur__texte"
-          aria-label="Texte"
-          placeholder="Écrivez…"
-          value={brouillon.texte}
-          onChange={(e) => changer({ texte: e.target.value })}
+        <EditeurTexte
+          valeur={brouillon.texte}
+          simple={brouillon.niveau === 'brief'}
+          onChange={(texte) => changer({ texte })}
         />
         {blog.avecCategories && (
           <ChoixCategorie

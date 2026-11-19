@@ -1392,3 +1392,125 @@
   font-size: 15px;
   color: var(--text-muted);
 }
+
+/* Texte mis en forme (§12.15, Seb 19 novembre) : une barre B, U, Taille, ☺. */
+.texte--grand {
+  font-size: 1.35em;
+  font-weight: 700;
+  line-height: 1.3;
+}
+.texte--petit {
+  font-size: 0.88em;
+}
+.texte-riche {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.texte-riche__barre {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.texte-riche__barre button,
+.texte-riche__tailles button {
+  min-width: 52px;
+  min-height: 48px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card-bg);
+  color: var(--text-h);
+  font: inherit;
+  font-size: 17px;
+  cursor: pointer;
+}
+.texte-riche__barre button[aria-pressed='true'],
+.texte-riche__barre button[aria-expanded='true'],
+.texte-riche__tailles button[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+}
+.texte-riche__barre .texte-riche__gras {
+  font-size: 20px;
+  font-weight: 800;
+}
+.texte-riche__barre .texte-riche__souligne {
+  font-size: 20px;
+  text-decoration: underline;
+}
+.texte-riche__barre .texte-riche__taille {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 14px;
+}
+.texte-riche__barre .texte-riche__emoji {
+  display: grid;
+  place-items: center;
+  margin-left: auto;
+}
+.texte-riche__tailles {
+  display: flex;
+  gap: 6px;
+}
+.texte-riche__tailles button {
+  flex: 1;
+}
+.texte-riche__emojis {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--card-bg);
+}
+.texte-riche__emojis-entete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-left: 6px;
+  font-size: 17px;
+}
+.texte-riche__emojis-entete button {
+  min-height: 48px;
+  padding: 0 8px;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 17px;
+  font-weight: 700;
+}
+.texte-riche__emojis-grille {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+.texte-riche__emojis-grille button {
+  height: 48px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  font-size: 26px;
+}
+.texte-riche__bloc {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+  outline: none;
+}
+.texte-riche__bloc:focus {
+  border-color: var(--accent);
+}
+.texte-riche__bloc:empty::before {
+  content: attr(data-placeholder);
+  color: var(--text-muted);
+}
+.texte-riche__bloc font[size='5'] {
+  font-size: 1.35em;
+  font-weight: 700;
+  line-height: 1.3;
+}
+.texte-riche__bloc font[size='2'] {
+  font-size: 0.88em;
+}

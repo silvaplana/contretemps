@@ -12,6 +12,7 @@ from assistant.modifications import Ligne, Refus
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from . import formatting
 from .models import Blog
 from .publications import InvalidMedia, Publications, can_publish, normalized
 
@@ -34,6 +35,11 @@ class DeleteNews(BaseModel):
     news_id: int = Field(description="Numéro de la publication.")
     blog: str | None = Field(None, description="Nom de l'onglet ; par défaut le premier.")
 
+
+
+def _apercu(body: str) -> str:
+    texte = formatting.plain(body)
+    return texte if len(texte) <= 60 else texte[:59] + "…"
 
 def _blog(client: Publications, db: Session, org_id: int, name: str | None) -> Blog:
     blogs = client.blogs(db, org_id)
@@ -59,7 +65,7 @@ def actions(client: Publications) -> list[Action]:
             raise Refus(f"dans {blog.name}, il faut un nom et une catégorie")
         notify = p.notify if p.notify is not None else level == "important"
         until = (p.on_top_until or date.today() + timedelta(days=7)) if level == "important" else None
-        apercu = p.title or (p.body if len(p.body) <= 60 else p.body[:59] + "…")
+        apercu = p.title or _apercu(p.body)
         nature = f" {LABELS[level]}" if LABELS[level] else ""
         blog_id = blog.id
 
@@ -80,7 +86,7 @@ def actions(client: Publications) -> list[Action]:
         if post is None:
             raise Refus(f"publication introuvable dans {blog.name}")
         post_id, blog_id = post.id, blog.id
-        apercu = post.title or (post.body if len(post.body) <= 60 else post.body[:59] + "…") or "sans texte"
+        apercu = post.title or _apercu(post.body) or "sans texte"
         return Ligne(f"Supprimer de {blog.name} « {apercu} »",
                      lambda db: client.delete(db, client.get(db, db.get(Blog, blog_id), post_id)))
 
