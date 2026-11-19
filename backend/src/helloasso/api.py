@@ -6,6 +6,7 @@ Sandbox (`api.helloasso-sandbox.com`) avec HELLOASSO_SANDBOX=1."""
 from __future__ import annotations
 
 import os
+import time
 from dataclasses import dataclass
 
 import requests
@@ -31,13 +32,29 @@ def _base() -> str:
     return SANDBOX if os.environ.get("HELLOASSO_SANDBOX") == "1" else PRODUCTION
 
 
-def _get(path: str, token: str, params: dict | None = None) -> dict | list:
+# « Trop de requêtes » (429, Seb 19/11) : une seule nouvelle tentative,
+# après la pause que HelloAsso demande (Retry-After), 5 s au plus.
+PAUSE_MAX = 5
+
+
+def _une_fois_de_plus(appel):
     try:
-        reponse = requests.get(
-            f"{_base()}{path}", headers={"Authorization": f"Bearer {token}"}, params=params, timeout=DELAI
-        )
+        reponse = appel()
+        if reponse.status_code == 429:
+            attente = str(getattr(reponse, "headers", {}).get("Retry-After", "2"))
+            time.sleep(min(int(attente) if attente.isdigit() else 2, PAUSE_MAX))
+            reponse = appel()
     except requests.RequestException as erreur:
         raise HelloAssoError("HelloAsso ne répond pas : réessayez dans un moment.") from erreur
+    return reponse
+
+
+def _get(path: str, token: str, params: dict | None = None) -> dict | list:
+    reponse = _une_fois_de_plus(
+        lambda: requests.get(
+            f"{_base()}{path}", headers={"Authorization": f"Bearer {token}"}, params=params, timeout=DELAI
+        )
+    )
     if reponse.status_code in (401, 403):
         raise HelloAssoError("Ces clés n’ont pas accès à l’association : vérifiez leurs droits dans HelloAsso.")
     if not reponse.ok:
@@ -45,15 +62,23 @@ def _get(path: str, token: str, params: dict | None = None) -> dict | list:
     return reponse.json()
 
 
+# Jetons gardés jusqu'à leur expiration (moins 30 s), comme Sambo Admin :
+# en redemander un à chaque appel faisait répondre HelloAsso « 429 ».
+_jetons: dict[tuple[str, str], tuple[str, float]] = {}
+
+
 def _token(client_id: str, client_secret: str) -> str:
-    try:
-        reponse = requests.post(
+    cle = (client_id, client_secret)
+    garde = _jetons.get(cle)
+    if garde and time.time() < garde[1]:
+        return garde[0]
+    reponse = _une_fois_de_plus(
+        lambda: requests.post(
             f"{_base()}/oauth2/token",
             data={"grant_type": "client_credentials", "client_id": client_id, "client_secret": client_secret},
             timeout=DELAI,
         )
-    except requests.RequestException as erreur:
-        raise HelloAssoError("HelloAsso ne répond pas : réessayez dans un moment.") from erreur
+    )
     if reponse.status_code in (400, 401, 403):
         raise HelloAssoError(
             "HelloAsso refuse ces clés. Vérifiez qu’elles ont été copiées en entier, sans espace, "
@@ -61,7 +86,9 @@ def _token(client_id: str, client_secret: str) -> str:
         )
     if not reponse.ok:
         raise HelloAssoError(f"HelloAsso a répondu par une erreur ({reponse.status_code}) : réessayez plus tard.")
-    return reponse.json()["access_token"]
+    corps = reponse.json()
+    _jetons[cle] = (corps["access_token"], time.time() + max(int(corps.get("expires_in") or 0) - 30, 0))
+    return corps["access_token"]
 
 
 def _data(reponse: dict | list) -> list:

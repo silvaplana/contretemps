@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useApparence } from '../../api/apparence.js'
+import { useSaisonConsultee } from '../../api/saison.js'
 import { MODULES, listeImposee } from '../../app/modules.js'
 import * as sessionApi from '../../api/session.js'
 import SegmentedTabs from '../../components/SegmentedTabs.jsx'
@@ -57,14 +58,17 @@ export default function AdminScreen({
   // Saison imposée par un module (HelloAsso) : « Élèves (n) » compte comme
   // le titre d'Admin > Élèves, sans les résiliées (Seb, 19 novembre 2026).
   // Admin > Élèves redonne son nombre (`onCompte`) après un Rafraîchir.
+  // Tout est relu quand on change de saison affichée (Seb, 19 novembre 2026).
+  const saisonId = useSaisonConsultee()?.id ?? null
   const [imposee, setImposee] = useState(null)
   const [compteImpose, setCompteImpose] = useState(null)
   useEffect(() => {
     if (!ecole?.id) return
+    setCompteImpose(null)
     listeImposee(ecole.id)
       .then(setImposee)
       .catch(() => setImposee(null))
-  }, [ecole?.id])
+  }, [ecole?.id, saisonId])
   const nombreEleves = compteImpose ?? (imposee ? imposee.liste.compte(imposee.donnees, eleves) : eleves.length)
   // Repart du dernier sous-onglet affiché sur cet appareil.
   const [subTab, setSubTab] = useState(() => {
@@ -82,7 +86,7 @@ export default function AdminScreen({
         .then((n) => setPastilles((p) => ({ ...p, [o.value]: n })))
         .catch(() => null)
     }
-  }, [ecole?.id, ongletsModules, subTab])
+  }, [ecole?.id, ongletsModules, subTab, saisonId])
 
   // Effectif affiché directement dans l'onglet, "Élèves (179)" (demande
   // utilisateur). Compté sur `eleves`, la liste réellement chargée : le

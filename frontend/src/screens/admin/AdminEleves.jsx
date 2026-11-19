@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
 import * as champsApi from '../../api/champs.js'
 import * as elevesApi from '../../api/eleves.js'
+import { useSaisonConsultee } from '../../api/saison.js'
 import { colonnesModules, listeImposee, rafraichirColonnes } from '../../app/modules.js'
 import Badge from '../../components/Badge.jsx'
 import Icon from '../../components/Icon.jsx'
@@ -123,6 +124,7 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId, onCompt
     imposee: null,
     modules: [],
   })
+  const saisonId = useSaisonConsultee()?.id ?? null
   const relireColonnes = useCallback(async () => {
     try {
       const [colonnes, champs, reponses, choix, imposee, modules] = await Promise.all([
@@ -138,7 +140,8 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId, onCompt
     } catch {
       // Hors ligne : les colonnes d'origine restent affichées.
     }
-  }, [ecoleId])
+    // Relu quand on change de saison affichée (Seb, 19 novembre 2026).
+  }, [ecoleId, saisonId])
   useEffect(() => {
     relireColonnes()
   }, [relireColonnes])
