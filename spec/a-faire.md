@@ -23,6 +23,8 @@ module. Rayer ce qui est fait.
   FFST (`modules/ffst.md`). Module Essai (`modules/essai.md`, 18 novembre) : étapes 1 à 3 codées ; reste à
   lancer la reprise des inscrits de Sambo Admin sur le VPS. Client mail de la Messagerie : sous-module Mail (`modules/mail.md`), à coder en trois
   étapes.
+- Import auto pièces (`modules/import-auto-pieces.md`, Seb 19 novembre) : drives du club dans
+  Connexions, puis l'écran Pièces › ⋯ › Import auto pièces ; six étapes.
 - Saisons en module optionnel (fil du 24 octobre).
 - Signature de documents : retours de Seb après ses tests (`modules/signature-documents.md`).
 - `SPEC.md` à réduire à ce qui est propre à Contretemps.
