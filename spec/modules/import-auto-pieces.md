@@ -80,6 +80,9 @@ Flèche ← en haut à gauche, retour au tableau. Enregistré au fil de la saisi
 - **Regarder s'il y a de nouvelles pièces** : chaque heure, chaque jour, chaque semaine ou chaque
   mois, et à quelle heure (sauf « chaque heure ») ; heure de Paris. « L'appli regarde la source à
   ce rythme et crée une pièce pour chaque nouveau fichier. »
+  Bouton **« Regarder maintenant »** (Seb, 19 novembre) : lance le passage de cet import tout de
+  suite, puis dit ce qu'il a trouvé (« 1 nouvelle pièce, À valider dans Pièces » ou « Rien de
+  nouveau »).
 - **Statut de la pièce créée** : « À valider », seul choix pour l'instant (Seb) ; d'autres
   viendront peut-être.
 
