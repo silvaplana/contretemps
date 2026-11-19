@@ -112,6 +112,21 @@ class KDrive:
     def read(self, path: str) -> bytes:
         return self._send("GET", path).content
 
+    def folder(self, path: str) -> str:
+        """Creates the folders of `path` that are missing; returns it."""
+        done = ""
+        for name in [p for p in path.strip("/").split("/") if p]:
+            done = join(done, name)
+            try:
+                reponse = self.http.request("MKCOL", self._url(done))
+            except httpx.HTTPError as erreur:
+                raise DriveError("Le kDrive ne répond pas. Réessayez dans un moment.") from erreur
+            if reponse.status_code in (401, 403):
+                raise DriveRefused("Infomaniak n'a pas accepté l'adresse ou le mot de passe d'application.")
+            if reponse.status_code not in (201, 405):  # 405: already there
+                raise DriveError(f"Le kDrive a répondu {reponse.status_code}.")
+        return done
+
     def write(self, folder: str, name: str, content: bytes, mime: str = "application/octet-stream") -> str:
         path = join(folder, name)
         self._send("PUT", path, content=content, headers={"Content-Type": mime})
@@ -235,6 +250,35 @@ class GoogleDrive:
         if file_id is None:
             raise DriveNotFound("Introuvable sur Google Drive.")
         return self._get(f"{API}/files/{file_id}", alt="media", supportsAllDrives="true").content
+
+    def folder(self, path: str) -> str:
+        """Creates the folders of `path` that are missing, under a folder
+        shared with the app; returns it."""
+        current, done = None, ""
+        for name in [p for p in path.strip("/").split("/") if p]:
+            done = join(done, name)
+            safe = name.replace("\\", "\\\\").replace("'", "\\'")
+            where = "sharedWithMe" if current is None else f"'{current}' in parents"
+            found = self._files(f"{where} and name = '{safe}' and mimeType = '{FOLDER}' and trashed = false")
+            if found:
+                current = found[0]["id"]
+                continue
+            if current is None:
+                raise DriveError("Choisissez un dossier partagé, pas la racine.")
+            try:
+                reponse = self.http.post(
+                    f"{API}/files", params={"supportsAllDrives": "true"},
+                    json={"name": name, "mimeType": FOLDER, "parents": [current]},
+                    headers={"Authorization": f"Bearer {self._access_token()}"},
+                )
+            except httpx.HTTPError as erreur:
+                raise DriveError("Google Drive ne répond pas. Réessayez dans un moment.") from erreur
+            if reponse.status_code in (401, 403):
+                raise DriveRefused("Google Drive refuse d'écrire : partagez le dossier en « Éditeur ».")
+            if reponse.status_code >= 400:
+                raise DriveError(f"Google Drive a répondu {reponse.status_code}.")
+            current = reponse.json()["id"]
+        return done
 
     def write(self, folder: str, name: str, content: bytes, mime: str = "application/octet-stream") -> str:
         parent = self._id(folder)

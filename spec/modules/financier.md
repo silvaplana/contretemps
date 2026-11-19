@@ -1338,7 +1338,8 @@ Puis prévenir le fil Import auto pièces (étape 6, HelloAsso).
 Maquette : https://claude.ai/artifact/32JWw7Ga3jbpetgCXGbYMQ. Demande de Seb : le rangement des pièces
 saisies avec « + » (photo ou fichier), aujourd'hui en dur (§8, `notes_frais/service.py` `DOSSIERS`),
 devient réglable par nature, dans Docs ou sur un drive du club (Admin › École › Connexions, « Drives
-du club », `core.md` §3). **Pas codé.**
+du club », `core.md` §3). **Codé le 19 novembre 2026** (`notes_frais` : `StoragePlace`, routes
+`/notes-frais/emplacements` ; écran `notes-frais/Emplacements.jsx`).
 
 - **Où** : Financier › Pièces › ⋯ › **« Emplacement des pièces manuelles »**, pour qui a l'Accès au
   Financier. Plein écran, croix en haut à droite pour revenir à Pièces.
@@ -1352,8 +1353,9 @@ du club », `core.md` §3). **Pas codé.**
   vont directement dans le dossier choisi (Seb, 19 novembre).
   Un exemple de chemin complet est affiché. « Revenir à l'emplacement par défaut » quand il a changé.
   Chaque changement : « … : emplacement changé. », Annuler 10 s.
-- **Saison** : dans Docs, le dossier choisi est relatif au dossier de chaque saison (Docs › Privé ›
-  2025-2026 › …), comme aujourd'hui. Sur un drive, l'appli ajoute **un dossier par saison** sous le
+- **Saison** : dans Docs, le dossier se choisit **dans le dossier Financier** de chaque saison (Docs ›
+  Privé › 2025-2026 › Financier › …), comme aujourd'hui : Financier est réservé aux trésoriers, une
+  pièce n'en sort pas. Sur un drive, l'appli ajoute **un dossier par saison** sous le
   dossier choisi (« COMPTA › ACHATS › 2025-2026 › 08.2026 ») (Seb, 19 novembre : « Oui »).
 - **Par défaut** : l'emplacement d'aujourd'hui (FINANCIER › ACHATS, HONORAIRES, Notes de frais,
   VENTES). Tant que personne ne change rien, **rien ne bouge** (Contretemps, Le Beausset) : aucune
@@ -1364,8 +1366,10 @@ du club », `core.md` §3). **Pas codé.**
   pièces d'Import auto pièces gardent leur propre destination.
 - **Données** : une ligne par école et par nature changée (`nf_storage_places` : organisation,
   nature, `target_kind` docs | drive, `target_ref` = le drive, `target_path`, `by_month` pour les achats). Le dépôt sur un drive
-  réutilise celui d'Import auto pièces (`drives`). Drive déconnecté : la pièce est rangée à
-  l'emplacement par défaut dans Docs, et la fiche le signale.
+  réutilise celui d'Import auto pièces (`drives`, plus la création des dossiers manquants) ; le
+  fichier déposé est **lié** à la pièce comme pour Import auto pièces (`linked`) : l'appli ne le
+  déplace ni ne l'efface plus, et la fiche montre « Drive › … ». Drive injoignable : la pièce est
+  rangée à l'emplacement par défaut dans Docs. Une pièce mise de côté (A TRAITER) reste dans Docs.
 
 **Étape de code**, une PR, sur le « vas-y » de Seb : table, écran et rangement par `_chemin`.
 

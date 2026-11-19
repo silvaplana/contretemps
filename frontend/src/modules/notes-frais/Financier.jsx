@@ -16,6 +16,7 @@ import Previsionnel, { requestNewForecast } from '../finances/Previsionnel.jsx'
 import MesNotesDeFrais from './MesNotesDeFrais.jsx'
 import { Compte } from './commun.jsx'
 import Exterieurs from './Exterieurs.jsx'
+import Emplacements from './Emplacements.jsx'
 import ImportAuto from '../auto-import/ImportAuto.jsx'
 import * as autoImportApi from '../auto-import/api.js'
 import Pieces, { AnnulerImportModal, ChoixPersonneModal, NoteModal } from './Pieces.jsx'
@@ -115,6 +116,7 @@ export default function Financier({ docs = null }) {
   const [choix, setChoix] = useState(null) // null | 'depense' | 'note'
   const [exterieurs, setExterieurs] = useState(false)
   const [importAuto, setImportAuto] = useState(false)
+  const [emplacements, setEmplacements] = useState(false)
   // L’entrée « Import auto pièces » du menu ⋯ : seulement si le sous-module est allumé.
   const [importAutoDispo, setImportAutoDispo] = useState(false)
   useEffect(() => {
@@ -201,10 +203,12 @@ export default function Financier({ docs = null }) {
                 { label: 'Annuler le dernier import', icon: 'trash', onClick: () => setAnnulerImport(true) },
                 // Sous-module Import auto pièces, allumé seulement là où il sert (ASC).
                 ...(importAutoDispo ? [{ label: 'Import auto pièces', icon: 'paperclip', onClick: () => setImportAuto(true) }] : []),
+                { label: 'Emplacement des pièces manuelles', icon: 'folder', onClick: () => setEmplacements(true) },
               ]
         }
       />
       {exterieurs && <Exterieurs onClose={() => setExterieurs(false)} />}
+      {emplacements && <Emplacements onClose={() => setEmplacements(false)} />}
       {importAuto && (
         <ImportAuto
           onClose={() => {

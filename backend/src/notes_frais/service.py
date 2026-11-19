@@ -46,6 +46,7 @@ from .models import (
     Payer,
     PieceJustificative,
     Rib,
+    StoragePlace,
 )
 from .ports import LectureImpossible, Membre, OperationBancaire, Personne, Ports, TicketLu
 from . import externals, recapitulatif
@@ -66,6 +67,8 @@ JOURNAUX = {ACHAT: "AC", HONORAIRES: "HO", FRAIS: "NF", VENTE: "VE"}
 DOSSIERS = {FRAIS: "Notes de frais", HONORAIRES: "HONORAIRES", ACHAT: "ACHATS", VENTE: "VENTES"}
 # Les natures sans personne : l'achat a un fournisseur, la vente « de qui ou quoi » (`supplier`).
 SANS_PERSONNE = (ACHAT, VENTE)
+# Natures whose place can be set, in screen order (financier.md §8.13).
+NATURES_RANGEES = (ACHAT, HONORAIRES, FRAIS, VENTE)
 A_TRAITER = "A TRAITER"  # « plus tard » et refusées, le temps de décider (Seb, 6/11)
 VIREMENTS_SANS_FACTURE = "VIREMENTS SANS FACTURE"  # l'avis de virement reçu sans facture, gardé sur la transaction (§7 octies)
 ECARTS = ("refund", "pay_rest", "write_off")
@@ -851,7 +854,12 @@ class NotesDeFrais:
             ligne["ecart_centimes"] = self._ecart(db, note)
             ligne["ecart_regle"] = note.gap_settlement
             chemin = self._chemin_docs(db, note)
-            ligne["rangement"] = " › ".join(["Financier", *chemin]) if chemin else None
+            # File put on a club drive (financier.md §8.13): its folder there.
+            sur_drive = next((p.drive_path for d in note.depenses for p in d.pieces if p.drive_path), None)
+            if sur_drive:
+                ligne["rangement"] = " › ".join(["Drive", *sur_drive.split("/")[:-1]])
+            else:
+                ligne["rangement"] = " › ".join(["Financier", *chemin]) if chemin else None
             # Le compte de tiers des écritures de la pièce (revue de l'import et fiche, Seb 10/11).
             tiers = self.ports.tiers and note.statut != REFUSEE and self.ports.tiers(db, note.org_id, note.nature, self._nom_tiers(note, personnes))
             ligne["tiers"] = {"numero": tiers[0], "libelle": tiers[1]} if tiers else None
@@ -1691,7 +1699,72 @@ class NotesDeFrais:
 
     # --- Rangement dans Docs (§7 bis, financier.md §8.3 bis) ---
 
-    def _chemin_docs(self, db: Session, note: NoteFrais) -> list[str] | None:
+    # --- Emplacement des pièces manuelles (financier.md §8.13) ---
+
+    def _place(self, db: Session, org_id: int, nature: str) -> StoragePlace | None:
+        return db.scalar(select(StoragePlace).where(StoragePlace.org_id == org_id, StoragePlace.nature == nature))
+
+    @staticmethod
+    def _emplacement_dict(nature: str, place: StoragePlace | None) -> dict:
+        if place is None:
+            return {"nature": nature, "kind": "docs", "drive_id": None, "path": DOSSIERS[nature], "by_month": True, "default": True}
+        return {
+            "nature": nature, "kind": place.target_kind, "drive_id": place.drive_id, "path": place.path,
+            "by_month": place.by_month, "default": False,
+        }
+
+    def emplacements(self, db: Session, membre: Membre) -> list[dict]:
+        """Where each nature's files go; today's folders when nothing is set."""
+        self._exiger_tresorier(membre)
+        places = {p.nature: p for p in db.scalars(select(StoragePlace).where(StoragePlace.org_id == membre.org_id))}
+        return [self._emplacement_dict(n, places.get(n)) for n in NATURES_RANGEES]
+
+    def regler_emplacement(
+        self, db: Session, membre: Membre, nature: str, kind: str, drive_id: int | None, path: str, by_month: bool = True,
+    ) -> dict:
+        """Sets one nature's place. Back to today's folders = no row. Files
+        already put somewhere stay there; only new receipts go to the new place."""
+        self._exiger_tresorier(membre)
+        if nature not in NATURES_RANGEES:
+            raise ValueError("Nature inconnue.")
+        if kind not in ("docs", "drive"):
+            raise ValueError("Choisissez Docs ou un drive.")
+        if kind == "drive" and (drive_id is None or self.ports.deposer is None):
+            raise ValueError("Choisissez un drive du club.")
+        dossiers = [p.strip() for p in (path or "").split("/") if p.strip()]
+        if not dossiers:
+            raise ValueError("Choisissez un dossier.")
+        by_month = bool(by_month) if nature == ACHAT else True
+        place = self._place(db, membre.org_id, nature)
+        if kind == "docs" and [d.lower() for d in dossiers] == [DOSSIERS[nature].lower()] and by_month:
+            if place is not None:
+                db.delete(place)
+            db.commit()
+            return self._emplacement_dict(nature, None)
+        if place is None:
+            place = StoragePlace(org_id=membre.org_id, nature=nature)
+            db.add(place)
+        place.target_kind, place.drive_id = kind, drive_id if kind == "drive" else None
+        place.path, place.by_month, place.updated_at = "/".join(dossiers), by_month, _maintenant()
+        db.commit()
+        return self._emplacement_dict(nature, place)
+
+    def dossiers_financier(self, db: Session, membre: Membre, chemin: list[str]) -> list[str]:
+        """The folders under Financier › `chemin` (current season), to choose a place in Docs."""
+        self._exiger_tresorier(membre)
+        if self.ports.classeur is None:
+            return []
+        return self.ports.classeur.sous_dossiers(db, membre, [c for c in chemin if c])
+
+    def _racine(self, db: Session, note: NoteFrais, defaut: bool = False) -> tuple[list[str], StoragePlace | None]:
+        """The Docs folders of the note's nature under Financier, and its place
+        (None: today's folders)."""
+        place = None if defaut else self._place(db, note.org_id, note.nature)
+        if place is not None and place.target_kind == "docs":
+            return place.path.split("/"), place
+        return [DOSSIERS[note.nature]], place
+
+    def _chemin_docs(self, db: Session, note: NoteFrais, defaut: bool = False) -> list[str] | None:
         """Dossiers sous Financier (Seb, 30/10) : ACHATS › mois de la pièce
         (« 08.2026 ») ; HONORAIRES › PRENOM NOM du prof › la note ; Notes de
         frais › personne › la note, datée de la pièce, pas du jour où on l'a
@@ -1700,22 +1773,25 @@ class NotesDeFrais:
         encore pour qui)."""
         if note.deferred_at is not None or (note.statut == REFUSEE and note.established_by is not None):
             return [A_TRAITER]
+        racine, place = self._racine(db, note, defaut)
         if note.nature == ACHAT:
-            return [DOSSIERS[ACHAT], f"{self._date_docs(note):%m.%Y}"]
+            if place is not None and not place.by_month:
+                return racine
+            return [*racine, f"{self._date_docs(note):%m.%Y}"]
         if note.nature == VENTE:
             dossier = self.dossier_vente(note)
-            return [DOSSIERS[VENTE], dossier] if dossier else [DOSSIERS[VENTE]]
+            return [*racine, dossier] if dossier else racine
         if note.person_id == PERSONNE_A_CHOISIR:
             return None
         personne = self.annuaire.personnes(db, note.org_id, {note.person_id}).get(note.person_id)
         if note.nature == HONORAIRES:
             return [
-                DOSSIERS[HONORAIRES],
+                *racine,
                 nom_dossier(personne.nom if personne else "?"),
                 f"{self._date_docs(note).isoformat()} {nom_propre(note.titre)} ({note.id})",
             ]
         return [
-            DOSSIERS[note.nature],
+            *racine,
             self.stockage.dossier_personne(note.org_id, note.person_id, personne.nom if personne else "?"),
             f"{self._date_docs(note).isoformat()} {nom_propre(note.titre)} ({note.id})",
         ]
@@ -1762,9 +1838,17 @@ class NotesDeFrais:
         classeur = self.ports.classeur
         chemin = self._chemin_docs(db, note)
         a_ranger = [(d, p) for d in note.depenses for p in d.pieces if p.doc_node_id is None and not p.linked]
-        if classeur is None or chemin is None or not a_ranger:
+        if chemin is None or not a_ranger:
             return
         personne = self._nom_personne(db, note)
+        if chemin != [A_TRAITER] and self._ranger_sur_drive(db, note, chemin, a_ranger, personne):
+            return
+        a_ranger = [(d, p) for d, p in a_ranger if not p.linked]
+        if classeur is None or not a_ranger:
+            return
+        _, place = self._racine(db, note)
+        if place is not None and place.target_kind == "drive":
+            chemin = self._chemin_docs(db, note, defaut=True)  # drive unreachable: today's folder in Docs
         fichiers = [(self._nom_dans_docs(note, d, p, personne), self.stockage.chemin(note.org_id, p.chemin)) for d, p in a_ranger]
         try:
             ids = classeur.classer(db, membre, chemin, fichiers, le=self._date_docs(note))
@@ -1781,6 +1865,38 @@ class NotesDeFrais:
         db.commit()
         for ancien in anciens:
             self.stockage.delete(note.org_id, ancien)
+
+    def _ranger_sur_drive(self, db: Session, note: NoteFrais, chemin: list[str], a_ranger: list, personne: str) -> bool:
+        """Puts the files on the club drive chosen for this nature (financier.md
+        §8.13): its folder › season › the usual sub-folders. They are then
+        linked, like Import auto pièces: the app never moves nor deletes them.
+        False: no drive for this nature, or it failed (then Docs)."""
+        _, place = self._racine(db, note)
+        if place is None or place.target_kind != "drive" or self.ports.deposer is None or place.drive_id is None:
+            return False
+        sous_dossiers = chemin[len(self._racine(db, note, defaut=True)[0]):]
+        deposes = []
+        try:
+            for d, p in a_ranger:
+                nom = self._nom_dans_docs(note, d, p, personne)
+                contenu = self.stockage.chemin(note.org_id, p.chemin).read_bytes()
+                chemin_drive = self.ports.deposer(
+                    db, note.org_id, place.drive_id, place.path, sous_dossiers, nom, contenu, p.type_mime,
+                    self._date_docs(note),
+                )
+                deposes.append((p, nom, chemin_drive))
+        except Exception:
+            logger.exception("Note de frais %s : dépôt sur le drive impossible, rangée dans Docs", note.id)
+            if not deposes:
+                return False
+        anciens = []
+        for piece, nom, chemin_drive in deposes:
+            anciens.append(piece.chemin)
+            piece.linked, piece.drive_id, piece.drive_path, piece.chemin = True, place.drive_id, chemin_drive, nom
+        db.commit()
+        for ancien in anciens:
+            self.stockage.delete(note.org_id, ancien)
+        return len(deposes) == len(a_ranger)
 
     def _declasser(self, db: Session, membre: Membre, note: NoteFrais, node_ids: list[int]) -> None:
         """Note reprise ou supprimée : son dossier (ou, dans Achats, ses

@@ -320,8 +320,24 @@ class ClasseurContretemps:
         for dossier_id in quittes:
             dossier = db.get(DocNode, dossier_id)
             vide = db.scalar(select(DocNode.id).where(DocNode.parent_id == dossier_id, DocNode.deleted_at.is_(None))) is None
-            if dossier is not None and dossier.name not in self.DOSSIERS and vide:
+            # A folder right under Financier may be a chosen place (financier.md §8.13): kept.
+            if dossier is not None and dossier.name not in self.DOSSIERS and dossier.parent_id != racine.id and vide:
                 self.documents.delete(db, qui, dossier_id)
+
+    def sous_dossiers(self, db: Session, membre: Membre, chemin: list[str]) -> list[str]:
+        from documents.models import KIND_FOLDER, DocNode
+
+        racine, _ = self._acces(db, membre)
+        if racine is None:
+            return []
+        noeud = racine
+        for nom in chemin:
+            noeud = self._enfant(db, noeud.id, nom)
+            if noeud is None:
+                return []
+        return sorted(db.scalars(select(DocNode.name).where(
+            DocNode.parent_id == noeud.id, DocNode.kind == KIND_FOLDER, DocNode.deleted_at.is_(None),
+        )), key=str.lower)
 
     def contenu(self, db: Session, membre: Membre, node_id: int) -> Path:
         from documents.service import DocError

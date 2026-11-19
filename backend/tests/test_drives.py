@@ -129,3 +129,21 @@ def test_google_drive_propose_quand_le_serveur_a_la_cle(client, ecole, monkeypat
     cle.write_text('{"client_email": "appli@club.iam.gserviceaccount.com", "private_key": "x"}')
     monkeypatch.setattr(providers, "KEY_FILE", str(cle))
     assert client.get(url).json()["google_address"] == "appli@club.iam.gserviceaccount.com"
+
+
+def test_kdrive_cree_les_dossiers_manquants():
+    """Emplacement des pièces manuelles (financier.md §8.13): COMPTA is
+    there (405), 2025-2026 is created (201)."""
+    import httpx
+
+    from drives.providers import KDrive
+
+    vus = []
+
+    def repondre(requete):
+        vus.append((requete.method, requete.url.path))
+        return httpx.Response(405 if requete.url.path.endswith("COMPTA") else 201)
+
+    drive = KDrive("club@ik.me", "x", "812345", http=httpx.Client(transport=httpx.MockTransport(repondre)))
+    assert drive.folder("COMPTA/2025-2026") == "COMPTA/2025-2026"
+    assert vus == [("MKCOL", "/COMPTA"), ("MKCOL", "/COMPTA/2025-2026")]

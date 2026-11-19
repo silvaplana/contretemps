@@ -49,6 +49,31 @@ def _lecteur_drive(core):
     return lire
 
 
+def _deposeur_drive(core):
+    """Emplacement des pièces manuelles (financier.md §8.13): a receipt put
+    on a club drive, under the chosen folder › season of its date › …"""
+    drives = getattr(core, "drives", None)
+    if drives is None:
+        return None
+
+    def deposer(db, org_id: int, drive_id: int, racine: str, sous_dossiers: list[str], nom: str, contenu: bytes, mime: str, le) -> str:
+        from documents_contretemps.adapter import _saison_courante
+        from saisons.models import Saison
+        from saisons.portee import toutes_saisons
+
+        from .adapter import _saison_contenant
+
+        saison = _saison_contenant(db, org_id, le)
+        if saison is None:
+            with toutes_saisons(db):
+                courante = _saison_courante(db, org_id)
+                saison = courante and db.get(Saison, courante)
+        dossier = "/".join([racine, *([saison.nom] if saison else []), *sous_dossiers])
+        return drives.call(db, org_id, drive_id, lambda client: client.write(client.folder(dossier), nom, contenu, mime))
+
+    return deposer
+
+
 def mount(app, core) -> None:
     ressources = core.ressources_client
     core.notes_frais_client = NotesDeFrais(
@@ -72,6 +97,8 @@ def mount(app, core) -> None:
             tiers=compte_de_tiers,
             # Justificatif resté sur un drive du club (Import auto pièces).
             drive=_lecteur_drive(core),
+            # Receipts put on a club drive (Emplacement des pièces manuelles).
+            deposer=_deposeur_drive(core),
         ),
         stockage=StockageEnveloppes(DOSSIER_NOTES_FRAIS, 20 * 1024 * 1024),
     )

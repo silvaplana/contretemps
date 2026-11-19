@@ -115,6 +115,13 @@ class PayeursEntree(BaseModel):
     person_ids: list[int]
 
 
+class EmplacementEntree(BaseModel):
+    kind: str = Field(pattern="^(docs|drive)$")
+    drive_id: int | None = None
+    path: str = Field(min_length=1, max_length=1000)
+    by_month: bool = True
+
+
 class CategoriesEntree(BaseModel):
     libelles: list[str]
 
@@ -279,6 +286,21 @@ class NotesDeFraisReceiver:
         def tresorerie(filtre: str = "a_valider", db: Session = db_dep, m: Membre = membre):
             notes = appeler(nf.tresorerie, db, m, filtre)
             return {"notes": notes, "compteurs": nf.compteurs_tresorerie(db, m)}
+
+        # --- Emplacement des pièces manuelles (financier.md §8.13) ---
+
+        @app.get("/notes-frais/emplacements")
+        def emplacements(db: Session = db_dep, m: Membre = membre):
+            return {"org_id": m.org_id, "places": appeler(nf.emplacements, db, m)}
+
+        @app.put("/notes-frais/emplacements/{nature}")
+        def regler_emplacement(nature: str, corps: EmplacementEntree, db: Session = db_dep, m: Membre = membre):
+            return appeler(nf.regler_emplacement, db, m, nature, corps.kind, corps.drive_id, corps.path, corps.by_month)
+
+        @app.get("/notes-frais/emplacements-docs")
+        def dossiers_financier(chemin: str = "", db: Session = db_dep, m: Membre = membre):
+            """Folders under Financier › `chemin` (« / » between names), current season."""
+            return appeler(nf.dossiers_financier, db, m, chemin.split("/"))
 
         @app.get("/notes-frais/tresorerie/notes/{note_id}")
         def note_tresorerie(note_id: int, db: Session = db_dep, m: Membre = membre):
