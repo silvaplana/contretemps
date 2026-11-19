@@ -1019,7 +1019,7 @@ class NotesDeFrais:
         ou adressée à une autre personne = sa note de frais, sinon achat. La preuve d'un virement
         n'est pas une dépense : elle est rapprochée de la pièce qu'elle paie
         (`Preuve`). `valider` : tout est saisi, validé en même temps.
-        `lien` (Import auto pièces) : le fichier reste où il est, dans un
+        `lien` (Importation automatique de pièces) : le fichier reste où il est, dans un
         dossier du club ({"doc_node_id"} ou {"drive_id", "drive_path"}) ;
         jamais rangé, déplacé ni effacé par l'appli.
         Vente (financier.md §8.12) : `lignes` = (catégorie, montant) de chaque

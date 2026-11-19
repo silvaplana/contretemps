@@ -1,4 +1,4 @@
-// Import auto pièces (spec/modules/import-auto-pieces.md) — voir
+// Importation automatique de pièces (spec/modules/import-auto-pieces.md) — voir
 // backend/src/auto_import/. Accès au Financier seulement ; sous-module
 // éteint : 404.
 

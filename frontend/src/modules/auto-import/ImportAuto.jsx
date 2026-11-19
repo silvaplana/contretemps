@@ -5,7 +5,7 @@ import * as drivesApi from '../drives/api.js'
 import * as api from './api.js'
 import './import-auto.css'
 
-// Financier › Pièces › ⋯ › Import auto pièces (spec/modules/import-auto-pieces.md
+// Financier › Pièces › ⋯ › Importation automatique de pièces (spec/modules/import-auto-pieces.md
 // §3, §4 ; maquette https://claude.ai/artifact/PetMSgswm6ZVCH9Wnthqbe) :
 // le tableau des imports, la fiche d'un import, « Voir » ses pièces.
 
@@ -401,9 +401,9 @@ export default function ImportAuto({ onClose }) {
   }
 
   return createPortal(
-    <div className="creer-saison ai-ecran" role="dialog" aria-label="Import auto pièces">
+    <div className="creer-saison ai-ecran" role="dialog" aria-label="Importation automatique de pièces">
       <div className="thread-screen__header">
-        <h2 className="creer-saison__titre">Import auto pièces</h2>
+        <h2 className="creer-saison__titre">Importation automatique de pièces</h2>
         <button type="button" className="icon-btn ai__fermer" onClick={onClose} aria-label="Fermer">
           <Icon name="x" size={22} />
         </button>

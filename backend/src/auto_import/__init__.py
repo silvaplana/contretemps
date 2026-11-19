@@ -1,4 +1,4 @@
-"""Import auto pièces (spec/modules/import-auto-pieces.md) : des fichiers
+"""Importation automatique de pièces (spec/modules/import-auto-pieces.md) : des fichiers
 qui arrivent dans un dossier du club deviennent des pièces de Financier ›
 Pièces, À valider."""
 

@@ -1159,7 +1159,7 @@ n'attend jamais une pièce : une ligne sans pièce reçoit son compte à la main
 
 ### 8.11 Sources de pièces : kDrive et versements HelloAsso (Seb, 19 novembre 2026)
 
-Le même jour, Seb a généralisé ces sources dans le sous-module **Import auto pièces**
+Le même jour, Seb a généralisé ces sources dans le sous-module **Importation automatique de pièces**
 (`import-auto-pieces.md`) : la connexion kDrive devient une ligne « Drives du club » de Connexions
 (`core.md` §3, avec Google Drive) et la lecture des dossiers un import réglé dans Pièces › ⋯. Ce qui
 suit reste valable pour la paie, HelloAsso, le plan comptable et le dépôt du bilan.
@@ -1237,7 +1237,7 @@ paie complète ; 4. dépôt du bilan dans le kDrive.
 Maquette validée par Seb (« ok, c'est bon ») : https://claude.ai/artifact/6BYVCSzcdbKPEx7rw8TYAD.
 Demande de Seb : « il faut déjà que la vente unitaire marche » (il croyait qu'elle existait). Jusqu'ici
 la puce Ventes n'affichait qu'un texte d'attente et une recette n'était qu'une ligne de banque dont on
-confirme le compte de produits (§8.3 ter). Préalable à la source HelloAsso d'Import auto pièces
+confirme le compte de produits (§8.3 ter). Préalable à la source HelloAsso d'Importation automatique de pièces
 (`import-auto-pieces.md` étape 6, `helloasso.md` §9).
 
 **Une vente est une pièce comme les autres**, de nature **Vente** : même « + » que les dépenses
@@ -1285,12 +1285,12 @@ au crédit. Journal **VE**, numéro de pièce « VE-2025-001 » (§8.7). Une lig
 garde son compte confirmé dans Comptes, comme aujourd'hui : rien ne change pour les recettes déjà
 classées, ni pour une école qui ne saisit pas de ventes.
 
-**Versements HelloAsso** (Seb, 19/11, fil Import auto pièces) : un versement = une vente à plusieurs
+**Versements HelloAsso** (Seb, 19/11, fil Importation automatique de pièces) : un versement = une vente à plusieurs
 lignes, ventilée par formule (la trésorière dit une fois où va chaque formule). Une adhésion payée **en
 plusieurs fois** tombe dans plusieurs versements, mêlée à d'autres personnes : on compte **par
 paiement** (échéance, `cash_out_date`), chacune répartie au prorata de l'adhésion. Exemple : 300 € dont
 72 € de licence, en 3 fois : chaque échéance donne 76 € en 756 et 24 € en 4671 ; les trois versements
-additionnés font le total. Codé avec l'étape 6 d'Import auto pièces, pas ici.
+additionnés font le total. Codé avec l'étape 6 d'Importation automatique de pièces, pas ici.
 
 **Plus tard, étape à part** : la remise de chèques détaillée chèque par chèque (une sous-ligne par
 chèque rapprochée d'une famille, §8.3).
@@ -1331,7 +1331,7 @@ crédit rattaché (étape 2) ; journal VE (§8.6, `JOURNALS`). Le compte de tier
    - Port `Banque` (`notes_frais/ports.py`) : `credits`, `tous_credits`, `ventiler`, `deventiler`,
      `entrer_en_caisse`, `sortir_de_caisse`, faits par `notes_frais_contretemps` sur les tables du
      Financier (`fin_operation_accounts`, `fin_cash_lines`). Pas de table ni de colonne nouvelles.
-Puis prévenir le fil Import auto pièces (étape 6, HelloAsso).
+Puis prévenir le fil Importation automatique de pièces (étape 6, HelloAsso).
 
 ## 9. Reste à faire
 
