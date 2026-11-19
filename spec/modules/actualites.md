@@ -783,3 +783,35 @@ Comme dans WhatsApp (maquette « Sondage », https://claude.ai/artifact/DRaBaxfS
   `PUT …/posts/{id}/vote` `{options: [ids]}` (vide : retirer son vote).
 - Ensuite (une autre PR) : le même sondage dans une discussion de la messagerie (+ › Sondage).
 
+### 12.13 Envoyer une publication par mail (Seb, 19 novembre 2026)
+
+Comme les lettres de Substack ou Ghost (maquette « Actu envoyée par mail »,
+https://claude.ai/artifact/Nyjz67cSVg7jo8CdBgggsL).
+
+- Dans l'éditeur, interrupteur « Envoyer par mail ». Dessous : « Publier aussi dans <blog> » (décoché :
+  un mail seul, rien dans le blog, pas de notification) ; « Aux adhérents de la saison (N adresses) »
+  ou « Pour essayer, à une ou plusieurs adresses : ». Le bouton principal dit ce qui se passe :
+  « Publier et envoyer », « Enregistrer et envoyer », « Envoyer le mail », « Envoyer l'essai ».
+- Destinataires : les membres de la saison courante de l'école qui peuvent lire le blog, une adresse
+  par famille (adresses en double retirées), sans ceux qui ont demandé « Ne plus recevoir les actus
+  par mail ».
+- Un mail par adresse, par le service du core `mail_ecole.envoyer_a_chacun` (Brevo, expéditeur de
+  l'enseigne au nom de l'école, `spec/core.md` §9 bis). **Les réponses vont à l'adresse de contact
+  du club** (Admin › École › Coordonnées), jamais à Brevo qui ne reçoit rien (Seb) ; sans adresse
+  de contact, pas d'envoi.
+- Le mail : sujet « <blog> · <titre ou 1re ligne> » (80 caractères au plus), le texte, la première
+  photo dans le mail, les liens, « Lire sur l'appli » (seulement si la publication est publiée), et en
+  bas « Ne plus recevoir les actus par mail » (lien signé, page publique avec « Annuler »).
+- Comme la notification : le mail part 10 s après, « Annuler » le retient (dépublier aussi). Une
+  publication ne part par mail qu'une fois ; la modifier ensuite ne renvoie rien. Sa carte porte
+  « Envoyée par mail à N adresses », vu seulement par qui publie.
+- L'essai (Seb : « une adresse libre ») part tout de suite, ne publie et ne marque rien. Plusieurs
+  adresses, en pastilles comme dans Gmail ; en tapant quelques lettres, la case propose les gens de
+  l'école de la saison (administrateurs, profs, élèves : prénom, nom, adresse), le prénom ou le nom
+  qui commence par ces lettres d'abord.
+- Données : `pub_posts.mail_requested_at`, `mail_sent_at`, `mailed_to` (nombre d'adresses) ;
+  `pub_mail_optouts` (école, adresse). Migration d2f7a4c9e1b6.
+- API : `GET …/blogs/{id}/mail` (qui publie : `recipients`, `reply_to`, `people`) ;
+  `POST …/posts/{id}/mail` `{test_address}` (une ou plusieurs adresses séparées par des virgules ;
+  vide : aux adhérents) ; `DELETE …/posts/{id}/mail` (Annuler) ; `GET`/`POST
+  /publications/desinscription/{jeton}` (public).

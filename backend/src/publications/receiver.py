@@ -12,7 +12,7 @@ from datetime import date
 
 from comptes import Compte, rbac
 from fastapi import Depends, FastAPI, HTTPException, UploadFile
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from storage import FileTooLarge
@@ -20,18 +20,22 @@ from videos.schemas import VideoSortie
 
 from db import get_db
 
+from . import mailing
 from .instagram import InstagramError, InstagramRelay
 from .links import LinkError
+from ecoles.models import Ecole
+
 from .models import Blog, Category, Post
 from .publications import EMOJIS, InvalidBlog, InvalidMedia, Publications, can_publish, can_read, on_top
 from .schemas import (
     BlogChange, BlogIn, BlogOut, CategoryIn, CategoryOut, CategoryRef, DocumentOut, FeedOut, InstagramIn,
-    InstagramOut, LinkIn, LinkOut, LoginOut, MediaOut, PersonOut, PhotoOut, PollOptionOut, PollOut, PostIn, PostOut, ReactionIn, ReactionOut, SettingsIn, SettingsOut, SignerIn, VideoIn, VoteIn,
+    InstagramOut, LinkIn, LinkOut, LoginOut, MailIn, MailInfoOut, MailOut, MediaOut, PersonOut, PhotoOut, PollOptionOut, PollOut, PostIn, PostOut, ReactionIn, ReactionOut, SettingsIn, SettingsOut, SignerIn, VideoIn, VoteIn,
 )
 
 BASE = "/ecoles/{ecole_id}/publications/blogs"
 BLOG = BASE + "/{blog_id}"
 POST = BLOG + "/posts/{post_id}"
+OPTOUT = "/publications/desinscription/{token}"
 
 
 def _out(client: Publications, db: Session, blog: Blog, post: Post, seen=None, me: int | None = None) -> PostOut:
@@ -55,6 +59,8 @@ def _out(client: Publications, db: Session, blog: Blog, post: Post, seen=None, m
         title=post.title if blog.with_categories else None, categories=categories,
         reactions=[ReactionOut(name=r.name, emoji=r.emoji, mine=r.member_id == me) for r in post.reactions],
         poll=_poll_out(post, me),
+        mailed_to=post.mailed_to,
+        mail_pending=post.mail_requested_at is not None and post.mail_sent_at is None,
     )
 
 
@@ -106,6 +112,13 @@ class PublicationsReceiver:
         app.put(POST + "/vote", response_model=PostOut)(self.vote)
         app.delete(POST, status_code=204)(self.delete)
         app.get(POST + "/photos/{sha}")(self.photo)
+        # By mail (§12.13); the link of « Ne plus recevoir les actus par
+        # mail » is public, signed.
+        app.get(BLOG + "/mail", response_model=MailInfoOut)(self.mail_info)
+        app.post(POST + "/mail", response_model=MailOut)(self.mail)
+        app.delete(POST + "/mail", status_code=204)(self.cancel_mail)
+        app.get(OPTOUT, response_class=HTMLResponse)(self.opt_out)
+        app.post(OPTOUT, response_class=HTMLResponse)(self.opt_in)
 
     # --- Access ---
 
@@ -236,6 +249,47 @@ class PublicationsReceiver:
                appelant: Compte = Depends(rbac.compte_appelant)):
         blog = self._publisher(db, appelant, ecole_id, blog_id)
         self.client.delete(db, self._post(db, blog, post_id))
+
+    # --- By mail (§12.13) ---
+
+    def mail_info(self, ecole_id: int, blog_id: int, db: Session = Depends(get_db),
+                  appelant: Compte = Depends(rbac.compte_appelant)):
+        blog = self._publisher(db, appelant, ecole_id, blog_id)
+        count, reply_to = self.client.mail_info(db, blog)
+        people = [{"name": n, "email": e} for n, e in mailing.people(db, blog.org_id)]
+        return MailInfoOut(recipients=count, reply_to=reply_to, people=people)
+
+    def mail(self, ecole_id: int, blog_id: int, post_id: int, data: MailIn, db: Session = Depends(get_db),
+             appelant: Compte = Depends(rbac.compte_appelant)):
+        blog = self._publisher(db, appelant, ecole_id, blog_id)
+        post = self._post(db, blog, post_id)
+        if data.test_address is None and post.mail_requested_at is not None:
+            raise HTTPException(status_code=409, detail="Déjà envoyée par mail")
+        try:
+            count = self.client.request_mail(db, blog, post, data.test_address)
+        except mailing.InvalidMail as erreur:
+            raise HTTPException(status_code=400, detail=str(erreur)) from erreur
+        return MailOut(recipients=count, test=data.test_address is not None)
+
+    def cancel_mail(self, ecole_id: int, blog_id: int, post_id: int, db: Session = Depends(get_db),
+                    appelant: Compte = Depends(rbac.compte_appelant)):
+        blog = self._publisher(db, appelant, ecole_id, blog_id)
+        if not self.client.cancel_mail(db, self._post(db, blog, post_id)):
+            raise HTTPException(status_code=409, detail="Le mail est déjà parti")
+
+    def _optout(self, db: Session, token: str, out: bool) -> str:
+        found = mailing.read_token(token)
+        ecole = db.get(Ecole, found[0]) if found else None
+        if ecole is None:
+            raise HTTPException(status_code=404, detail="Lien inconnu")
+        mailing.opt_out(db, ecole.id, found[1], out)
+        return mailing.optout_page(ecole.nom, out)
+
+    def opt_out(self, token: str, db: Session = Depends(get_db)):
+        return self._optout(db, token, True)
+
+    def opt_in(self, token: str, db: Session = Depends(get_db)):
+        return self._optout(db, token, False)
 
     def _save(self, db: Session, blog: Blog, appelant: Compte | None, post: Post | None, data: PostIn):
         try:

@@ -707,7 +707,12 @@ MODULE = Module(
   jamais un autre module : l'appli les relie dans `<module>_contretemps/`. Le service email est
   `core.mail_ecole(db, ecole_id, a, sujet, texte, html)` (18 novembre 2026, `ecoles/mail_ecole.py`) :
   un mail au nom de l'école, expéditeur de son enseigne, réponse et copie à l'adresse de contact de
-  l'école ; il rend cette copie, ou lève une erreur si le mail ne part pas.
+  l'école ; il rend cette copie, ou lève une erreur si le mail ne part pas. Pour beaucoup de
+  destinataires, `mail_ecole.envoyer_a_chacun(db, ecole_id, adresses, contenu, repondre_a=None,
+  images=None)` (19 novembre 2026, accord de Seb) : un mail par adresse, sans copie, `contenu(adresse)`
+  rend (sujet, texte, html) pour mettre un lien propre à chacun ; réponse à `repondre_a`, sinon à
+  l'adresse de contact ; une adresse en échec est notée et les autres partent ; il rend les adresses
+  servies. Servi aux Publications (§12.13) et au futur sous-module Mail de la Messagerie.
 - `actions` : la liste de l'assistant, prise telle quelle dans `actions.py`
   (`spec/modules/assistant-ia.md` §3). Un bouton de l'écran = une action de l'assistant.
 - `rights`, `groups` *(cible, étude du 26 octobre)* : ce que le module apporte au core ; le core

@@ -107,9 +107,10 @@ class EmailEnvoi:
                 lies = MIMEMultipart("related")
                 lies.attach(variantes)
                 for cid, contenu in images:
-                    image = MIMEImage(contenu, "png")
+                    # Une photo (Publications) est en JPEG, un QR code en PNG.
+                    image = MIMEImage(contenu, "jpeg" if contenu[:3] == b"\xff\xd8\xff" else "png")
                     image["Content-ID"] = f"<{cid}>"
-                    image["Content-Disposition"] = f'inline; filename="{cid}.png"'
+                    image["Content-Disposition"] = f'inline; filename="{cid}.{image.get_content_subtype()}"'
                     lies.attach(image)
                 variantes = lies
             message.attach(variantes)

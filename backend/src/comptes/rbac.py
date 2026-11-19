@@ -57,6 +57,9 @@ ROUTES_PUBLIQUES = {
     ("POST", "/auth/liens/{jeton}/mot-de-passe"),
     # Appelée par Brevo (remise des mails) : protégée par une clé dans l'adresse.
     ("POST", "/mails/brevo/{cle}"),
+    # « Ne plus recevoir les actus par mail » (Publications) : lien signé.
+    ("GET", "/publications/desinscription/{token}"),
+    ("POST", "/publications/desinscription/{token}"),
     # Retour de la banque (connexion bancaire du Financier) : protégé par le
     # `state` aléatoire, valable 30 minutes (finances/bank.py).
     ("GET", "/finances/bank/return"),

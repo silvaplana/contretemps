@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import logging
 import os
+from collections.abc import Callable
 from copy import copy
 
 from sqlalchemy.orm import Session
@@ -39,3 +40,41 @@ def envoyer(db: Session, ecole_id: int, a: str, sujet: str, texte: str, html: st
         a, sujet, texte, [], html, copie=contact, expediteur=(ecole.nom, brands.of_nature(ecole.nature).sender_email)
     )
     return contact
+
+
+def envoyer_a_chacun(
+    db: Session,
+    ecole_id: int,
+    adresses: list[str],
+    contenu: Callable[[str], tuple[str, str, str]],
+    repondre_a: str | None = None,
+    images: list[tuple[str, bytes]] | None = None,
+) -> list[str]:
+    """Un mail par adresse, au nom de l'école (personne ne voit les autres) :
+    pour écrire aux adhérents (Publications, Mail ; Seb, 19 novembre 2026).
+    `contenu(adresse)` rend (sujet, texte, html), propre à chacun (lien de
+    désinscription). Les réponses vont à `repondre_a`, sinon à l'email de
+    contact de l'école, jamais à l'expéditeur de l'enseigne (Brevo, qui ne
+    reçoit rien). Une adresse refusée n'arrête pas les autres. Rend les
+    adresses servies ; lève une exception si l'envoi n'est pas configuré."""
+    from personnalisation import brands
+
+    ecole = db.get(Ecole, ecole_id)
+    reponse = repondre_a or (ecole.email_contact or "").strip() or None
+    if not _envoi.actif:
+        if os.environ.get("MAILS_DANS_LES_JOURNAUX") == "1":
+            logger.warning("Mails non envoyés (pas de SMTP) à %s adresses", len(adresses))
+            return list(adresses)
+        raise RuntimeError("L’envoi de mails n’est pas configuré sur ce serveur")
+    expediteur = (ecole.nom, brands.of_nature(ecole.nature).sender_email)
+    servies = []
+    for adresse in adresses:
+        sujet, texte, html = contenu(adresse)
+        try:
+            _envoi.envoyer_confirmation(
+                adresse, sujet, texte, [], html, expediteur=expediteur, images=images, repondre_a=reponse
+            )
+            servies.append(adresse)
+        except Exception:  # noqa: BLE001 - une adresse refusée n'arrête pas les autres
+            logger.exception("Mail non envoyé à une adresse de l'école %s", ecole_id)
+    return servies

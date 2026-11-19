@@ -78,6 +78,11 @@ class Post(Base):
     document_id: Mapped[int | None] = mapped_column(ForeignKey("doc_nodes.id"), nullable=True)
     # Set once the push notification has gone (10 s after publishing).
     notified_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # « Envoyer par mail » (§12.13): asked at, sent at (10 s later, unless
+    # « Annuler »), and to how many addresses. Once per post.
+    mail_requested_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    mail_sent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    mailed_to: Mapped[int | None] = mapped_column(Integer, nullable=True)
     # The member's record of the season it was written in; the first name is
     # kept so that the post still shows it once that season is over.
     author_id: Mapped[int | None] = mapped_column(ForeignKey("comptes.id"), nullable=True)
@@ -217,3 +222,13 @@ class InstagramLink(Base):
     last_sync_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
 
+
+class MailOptOut(Base):
+    """An address that clicked « Ne plus recevoir les actus par mail »
+    (§12.13): no more posts by mail from this organization."""
+
+    __tablename__ = "pub_mail_optouts"
+
+    org_id: Mapped[int] = mapped_column(ForeignKey("ecoles.id"), primary_key=True)
+    email: Mapped[str] = mapped_column(String(255), primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)

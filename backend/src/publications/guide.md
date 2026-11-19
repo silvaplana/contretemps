@@ -76,6 +76,22 @@ Nouvelle publication / Modifier
   « Réponses » (2 à 10, ✕ en retire une, « + Ajouter une réponse »), « Plusieurs réponses possibles ».
   Le texte devient facultatif.
 - « En haut jusqu'au » (Important seulement). « Envoyer une notification ».
+- « Envoyer par mail » (interrupteur, qui publie) : chaque personne de la saison qui lit le blog
+  reçoit son propre mail (photo, texte, liens, bouton « Lire sur l'appli »). Les réponses arrivent à
+  l'adresse mail du club (Admin › École › Coordonnées, « Adresse mail de contact ») ; sans elle, le
+  bouton dit de l'ajouter. Dessous :
+  - « Publier aussi dans <blog> » (nouvelle publication) : décoché, c'est seulement un mail, rien
+    n'apparaît dans le blog ; bouton « Envoyer le mail ».
+  - « Aux adhérents de la saison (N adresses) » ; bouton « Publier et envoyer » (« Enregistrer et
+    envoyer » si déjà publiée).
+  - « Pour essayer, à une ou plusieurs adresses : » : une case où l'on tape un nom ou une adresse ;
+    elle propose les gens de l'école (administrateurs, profs, élèves), on en touche un. Chaque adresse
+    devient une pastille (✕ la retire) ; une virgule ou Entrée valide une adresse tapée. Bouton
+    « Envoyer l'essai » : rien n'est publié, l'éditeur reste ouvert.
+  - Après l'envoi : « Annuler » pendant 10 s retient le mail. Ensuite la carte porte « Envoyée par
+    mail à N adresses » (seulement pour qui publie) et le mail ne peut plus repartir.
+- Dans le mail, « Ne plus recevoir les actus par mail » ouvre une page qui le confirme, avec
+  « Annuler ».
 - Dessous, la publication telle que les autres la verront.
 - Boutons « Brouillon » et « Publier » (« Enregistrer » si déjà publiée). Après Publier, retour au fil
   et « Annuler » pendant 10 s : elle repasse en brouillon et la notification ne part pas.
