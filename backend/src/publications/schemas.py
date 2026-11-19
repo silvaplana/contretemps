@@ -116,6 +116,31 @@ class PostOut(BaseModel):
     # One per person, the oldest first (Seb, 13 November).
     reactions: list[ReactionOut] = []
     poll: PollOut | None = None
+    # By mail (§12.13), for those who publish: to how many addresses once
+    # sent; `mail_pending` during the 10 s.
+    mailed_to: int | None = None
+    mail_pending: bool = False
+
+
+class MailPersonOut(BaseModel):
+    name: str
+    email: str
+
+
+class MailInfoOut(BaseModel):
+    recipients: int
+    reply_to: str | None = None
+    people: list[MailPersonOut] = []
+
+
+class MailIn(BaseModel):
+    # A test to this one address; none: every member.
+    test_address: str | None = None
+
+
+class MailOut(BaseModel):
+    recipients: int
+    test: bool
 
 
 class PhotoOut(BaseModel):

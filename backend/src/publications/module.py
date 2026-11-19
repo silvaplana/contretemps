@@ -4,6 +4,7 @@ spec/modules/actualites.md §12) : un onglet par blog de l'organisation
 coché comme « Accès au Financier » dans Admin > École > Administrateurs."""
 
 from db import SessionLocal
+from ecoles import mail_ecole
 from registry import Module, guide_file
 
 from .actions import actions
@@ -18,6 +19,8 @@ def mount(app, core) -> None:
         notifications=core.notifications_client, storage=publications_storage(), videos=core.videos_client,
         session_factory=SessionLocal,
     )
+    core.publications_client.send_mails = mail_ecole.envoyer_a_chacun
+    core.publications_client.org_url = _org_url
     core.publications_instagram = InstagramRelay(core.publications_client, app=InstagramApp.from_env())
     PublicationsReceiver(client=core.publications_client, instagram=core.publications_instagram, app=app,
                          org_url=_org_url)

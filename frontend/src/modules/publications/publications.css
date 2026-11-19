@@ -1252,3 +1252,117 @@
 .editeur__ajouts .editeur__ajout-sondage {
   grid-column: span 2;
 }
+/* Par mail (§12.13, Seb 19 novembre). */
+.editeur__mail {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.editeur__mail-choix {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px 14px 12px;
+  border-radius: 14px;
+  background: var(--card-bg);
+}
+.editeur__mail-case {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  font-size: 17px;
+}
+.editeur__mail-case input {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  accent-color: var(--accent);
+}
+.editeur__mail-note,
+.editeur__par-mail {
+  margin: 0;
+  font-size: 15px;
+  color: var(--text);
+}
+.editeur__par-mail,
+.actu__par-mail {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.actu__par-mail {
+  flex-basis: 100%;
+  font-size: 15px;
+  color: var(--text);
+}
+/* Les adresses d'un essai, en pastilles comme dans Gmail (Seb, 19 novembre). */
+.adresses-essai__case {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-height: 48px;
+  padding: 6px 10px;
+  box-sizing: border-box;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+}
+.adresses-essai__case input {
+  flex: 1 1 140px;
+  min-width: 0;
+  min-height: 36px;
+  border: 0;
+  outline: 0;
+  background: none;
+  color: var(--text-h);
+  font-size: 17px;
+}
+.adresses-essai__pastille {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  max-width: 100%;
+  padding-left: 12px;
+  border-radius: 18px;
+  background: var(--accent-bg);
+  color: var(--text-h);
+  font-size: 16px;
+  overflow-wrap: anywhere;
+}
+.adresses-essai__pastille button {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  background: none;
+  color: inherit;
+}
+.adresses-essai__propositions {
+  margin: 4px 0 0;
+  padding: 4px 0;
+  list-style: none;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--card-bg);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.25);
+}
+.adresses-essai__propositions button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  min-height: 52px;
+  padding: 6px 14px;
+  border: 0;
+  background: none;
+  color: var(--text-h);
+  font-size: 17px;
+  text-align: left;
+}
+.adresses-essai__propositions button span {
+  font-size: 15px;
+  color: var(--text-muted);
+}

@@ -45,6 +45,9 @@ export function versEcran(n) {
     publieeLe: n.published_at ? new Date(`${n.published_at}Z`) : null,
     modifieeLe: new Date(`${n.updated_at}Z`),
     nouveau: n.is_new,
+    // Par mail (§12.13) : à combien d'adresses, ou en partance (10 s).
+    envoyeeParMail: n.mailed_to ?? null,
+    mailEnPartance: Boolean(n.mail_pending),
     // Le carrousel, dans l'ordre : chaque élément est une photo (son
     // empreinte), une vidéo ou un lien (avec son titre et l'image du site
     // en photo).
@@ -172,6 +175,16 @@ export const voter = async (lieu, id, options) =>
 
 export const reagir = async (lieu, id, emoji) =>
   versEcran(await appel(`${blog(lieu)}/posts/${id}/reaction`, json('PUT', { emoji })))
+// Par mail (§12.13) : { destinataires, repondreA } ; l'envoi rend le nombre
+// d'adresses ; `essai` : une seule adresse, tout de suite, rien n'est marqué.
+export async function infoMail(lieu) {
+  const r = await appel(`${blog(lieu)}/mail`)
+  return { destinataires: r.recipients, repondreA: r.reply_to, gens: r.people.map((p) => ({ nom: p.name, email: p.email })) }
+}
+export const envoyerMail = async (lieu, id, essai = null) =>
+  (await appel(`${blog(lieu)}/posts/${id}/mail`, json('POST', { test_address: essai }))).recipients
+export const annulerMail = (lieu, id) => appel(`${blog(lieu)}/posts/${id}/mail`, { method: 'DELETE' })
+
 export const depublier = (lieu, id) => appel(`${blog(lieu)}/posts/${id}/unpublish`, { method: 'POST' })
 export const supprimer = (lieu, id) => appel(`${blog(lieu)}/posts/${id}`, { method: 'DELETE' })
 

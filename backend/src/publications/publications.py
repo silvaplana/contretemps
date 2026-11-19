@@ -28,7 +28,7 @@ from storage import FileTooLarge, LocalStorage, make_thumbnail
 from videos import Videos
 from videos.models import Video
 
-from . import links
+from . import links, mailing
 from .models import (
     BRIEF, ICONS, IMPORTANT, NORMAL, Blog, Category, InstagramLink, Poll, PollOption, PollVote, Post, PostMedia,
     Reaction, Seen,
@@ -136,6 +136,11 @@ class Publications:
         # nothing is scheduled, `send_notification` is called by hand.
         self.session_factory = session_factory
         self.delay_seconds = delay_seconds
+        # « Envoyer par mail » (§12.13), set by module.py: the core's
+        # envoyer_a_chacun (ecoles/mail_ecole.py), and org_url(db, org_id),
+        # the address of the school's app.
+        self.send_mails = None
+        self.org_url = None
 
     # --- Blogs (§12.2, §12.3) ---
 
@@ -545,8 +550,10 @@ class Publications:
 
     def unpublish(self, db: Session, post: Post) -> Post:
         """« Annuler » right after Publier: back to the drafts, and the
-        notification, not sent yet, will not leave."""
+        notification and the mail, not sent yet, will not leave."""
         post.published_at = None
+        if post.mail_sent_at is None:
+            post.mail_requested_at = None
         db.commit()
         db.refresh(post)
         return post
@@ -560,6 +567,83 @@ class Publications:
         db.commit()
         self._prune(db, blog)
         self._forget(db, org_id, photos, videos)
+
+    # --- By mail (§12.13) ---
+
+    def mail_info(self, db: Session, blog: Blog) -> tuple[int, str | None]:
+        """How many addresses a mail would reach, and where replies go."""
+        ecole = db.get(Ecole, blog.org_id)
+        return len(mailing.recipients(db, blog, can_read)), (ecole.email_contact or "").strip() or None
+
+    def request_mail(self, db: Session, blog: Blog, post: Post, test_address: str | None = None) -> int:
+        """A test goes at once to those addresses, and marks nothing. Otherwise
+        the mail leaves 10 s later, like the notification (« Annuler »), once
+        per post. Returns how many addresses. Raises mailing.InvalidMail."""
+        count, reply_to = self.mail_info(db, blog)
+        if reply_to is None:
+            raise mailing.InvalidMail(
+                "Ajoutez l’adresse mail du club dans Admin › École › Coordonnées : les réponses y arriveront"
+            )
+        if test_address is not None:
+            addresses = mailing.clean_addresses(test_address)
+            self._mail(db, blog, post, addresses)
+            return len(addresses)
+        if post.mail_requested_at is not None:
+            raise mailing.InvalidMail("Déjà envoyée par mail")
+        post.mail_requested_at = _now()
+        db.commit()
+        self._schedule_mail(post.id)
+        return count
+
+    def cancel_mail(self, db: Session, post: Post) -> bool:
+        """« Annuler » during the 10 s; False once it has left."""
+        if post.mail_sent_at is not None:
+            return False
+        post.mail_requested_at = None
+        db.commit()
+        return True
+
+    def send_mail(self, db: Session, post_id: int) -> int:
+        """Sends a requested mail not sent yet, to every address of the
+        season; returns how many took it."""
+        post = db.get(Post, post_id)
+        if post is None or post.mail_requested_at is None or post.mail_sent_at is not None:
+            return 0
+        post.mail_sent_at = _now()
+        db.commit()
+        blog = db.get(Blog, post.blog_id)
+        sent = self._mail(db, blog, post, mailing.recipients(db, blog, can_read))
+        post.mailed_to = len(sent)
+        db.commit()
+        return len(sent)
+
+    def _mail(self, db: Session, blog: Blog, post: Post, addresses: list[str]) -> list[str]:
+        ecole = db.get(Ecole, post.org_id)
+        app_url = self.org_url(db, post.org_id) if self.org_url else ""
+        sha = next((m.photo_sha for m in post.media if m.photo_sha), None)
+        path = self.storage.thumbnail_path(post.org_id, sha) if sha else None
+        images = [("photo", path.read_bytes())] if path is not None and path.exists() else None
+        return self.send_mails(
+            db, post.org_id, addresses,
+            lambda address: mailing.content(blog, post, ecole.nom, app_url, address, images is not None),
+            images=images,
+        )
+
+    def _schedule_mail(self, post_id: int) -> None:
+        if self.session_factory is None or self.delay_seconds is None:
+            return
+        timer = threading.Timer(self.delay_seconds, self._mail_later, args=(post_id,))
+        timer.daemon = True
+        timer.start()
+
+    def _mail_later(self, post_id: int) -> None:
+        db = self.session_factory()
+        try:
+            self.send_mail(db, post_id)
+        except Exception:  # noqa: BLE001 - logged, the post stays as it is
+            logger.exception("Publication mail not sent (post %s)", post_id)
+        finally:
+            db.close()
 
     # --- Notification (§5) ---
 
