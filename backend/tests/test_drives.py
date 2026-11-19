@@ -179,17 +179,21 @@ def test_google_drive_propose_quand_le_serveur_a_la_cle(client, ecole, monkeypat
 
 def test_kdrive_cree_les_dossiers_manquants():
     """Emplacement des pièces manuelles (financier.md §8.13): COMPTA is
-    there (405), 2025-2026 is created (201)."""
+    there, 2025-2026 is created under it."""
     import httpx
 
     from drives.providers import KDrive
 
-    vus = []
+    crees = []
 
     def repondre(requete):
-        vus.append((requete.method, requete.url.path))
-        return httpx.Response(405 if requete.url.path.endswith("COMPTA") else 201)
+        if requete.method == "POST":
+            crees.append((requete.url.path, requete.content))
+            return httpx.Response(200, json={"result": "success", "data": {"id": 30, "name": "2025-2026", "type": "dir"}})
+        dossier = int(requete.url.path.split("/")[5])
+        enfants = {1: [{"id": 20, "name": "COMPTA", "type": "dir"}]}.get(dossier, [])
+        return httpx.Response(200, json={"result": "success", "data": enfants, "has_more": False})
 
-    drive = KDrive("club@ik.me", "x", "812345", http=httpx.Client(transport=httpx.MockTransport(repondre)))
+    drive = KDrive("club@ik.me", "jeton", "812345", http=httpx.Client(transport=httpx.MockTransport(repondre)))
     assert drive.folder("COMPTA/2025-2026") == "COMPTA/2025-2026"
-    assert vus == [("MKCOL", "/COMPTA"), ("MKCOL", "/COMPTA/2025-2026")]
+    assert crees == [("/3/drive/812345/files/20/directory", b'{"name":"2025-2026"}')]

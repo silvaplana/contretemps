@@ -127,18 +127,13 @@ class KDrive:
 
     def folder(self, path: str) -> str:
         """Creates the folders of `path` that are missing; returns it."""
-        done = ""
+        current = KDRIVE_ROOT
         for name in [p for p in path.strip("/").split("/") if p]:
-            done = join(done, name)
-            try:
-                reponse = self.http.request("MKCOL", self._url(done))
-            except httpx.HTTPError as erreur:
-                raise DriveError("Le kDrive ne répond pas. Réessayez dans un moment.") from erreur
-            if reponse.status_code in (401, 403):
-                raise DriveRefused("Infomaniak n'a pas accepté l'adresse ou le mot de passe d'application.")
-            if reponse.status_code not in (201, 405):  # 405: already there
-                raise DriveError(f"Le kDrive a répondu {reponse.status_code}.")
-        return done
+            found = next((i for i in self._children(current) if i.get("name") == name and i.get("type") == "dir"), None)
+            if found is None:
+                found = self._send("POST", f"/3/drive/{self.drive}/files/{current}/directory", json={"name": name}).json()["data"]
+            current = found["id"]
+        return path.strip("/")
 
     def write(self, folder: str, name: str, content: bytes, mime: str = "application/octet-stream") -> str:
         self._send(
@@ -284,8 +279,8 @@ class GoogleDrive:
         for name in [p for p in path.strip("/").split("/") if p]:
             done = join(done, name)
             safe = name.replace("\\", "\\\\").replace("'", "\\'")
-            where = "sharedWithMe" if current is None else f"'{current}' in parents"
-            found = self._files(f"{where} and name = '{safe}' and mimeType = '{FOLDER}' and trashed = false")
+            found = [f for f in self._roots() if f["name"] == name] if current is None else self._files(
+                f"'{current}' in parents and name = '{safe}' and mimeType = '{FOLDER}' and trashed = false")
             if found:
                 current = found[0]["id"]
                 continue
