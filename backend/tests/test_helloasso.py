@@ -1103,3 +1103,38 @@ def test_echeances_a_venir(client, db_session, ecole, campagnes, monkeypatch):
         ("Benali", "Tom", 8000, "2099-01-02", 3, False),
     ]
     assert lu["upcoming"][0]["member_id"] is not None
+
+
+def test_campagne_d_une_saison_passee(client, db_session, ecole, campagnes, monkeypatch):
+    """Toutes les saisons se branchent à leur campagne (Seb 19/11) : une
+    saison passée, ouverte aux modifications, choisit sa campagne et se
+    recopie sur « Synchroniser maintenant » ; ses fiches restent dans sa
+    saison ; pas de recopie automatique (`current` faux)."""
+    import datetime as dt
+
+    from app import main
+    from saisons import Saison
+
+    passee = Saison(ecole_id=ecole.id, nom="2025-2026", date_debut=dt.date(2025, 9, 1),
+                    date_fin=dt.date(2026, 8, 31), ouverte=True)
+    db_session.add(passee)
+    db_session.commit()
+    entete = {"X-Saison-Id": str(passee.id)}
+    client.put(f"/ecoles/{ecole.id}/helloasso", json=CLES)
+
+    lu = client.get(f"/ecoles/{ecole.id}/helloasso/saison", headers=entete).json()
+    assert (lu["season_name"], lu["can_change"], lu["current"]) == ("2025-2026", True, False)
+    choisie = client.put(
+        f"/ecoles/{ecole.id}/helloasso/campagne", json={"form_type": "Membership", "form_slug": "adhesion"},
+        headers=entete,
+    )
+    assert choisie.status_code == 200
+    assert (choisie.json()["can_sync"], choisie.json()["current"]) == (True, False)
+    monkeypatch.setattr(main.core.helloasso_sync, "orders", lambda *_: [_inscrit("1", "Léa", "Martin", "p@test.fr")])
+    assert client.post(f"/ecoles/{ecole.id}/helloasso/synchroniser", headers=entete).json()["created"] == 1
+
+    assert [e["nom"] for e in client.get("/eleves", params={"ecole_id": ecole.id}, headers=entete).json()] == ["Martin"]
+    assert client.get("/eleves", params={"ecole_id": ecole.id}).json() == []
+    # La saison en cours n'a pas de campagne : rien n'a changé pour elle.
+    assert client.get(f"/ecoles/{ecole.id}/helloasso/saison").json()["mode"] == "none"
+    assert client.get(f"/ecoles/{ecole.id}/helloasso/saison").json()["current"] is True

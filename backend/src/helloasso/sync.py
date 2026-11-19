@@ -133,10 +133,13 @@ class Sync:
         member = self.add_member(db, org_id, item["last_name"], item["first_name"], item["payer_email"])
         return member, found is None or member.id != found.id
 
-    def run(self, db: Session, org_id: int) -> Result:
-        """Synchronise la saison en cours (HelloAssoError si ce n'est pas
-        possible). Valide (commit)."""
-        season_id = saison_courante_id(db, org_id)
+    def run(self, db: Session, org_id: int, season_id: int | None = None) -> Result:
+        """Synchronise la saison `season_id`, la saison en cours par défaut
+        (HelloAssoError si ce n'est pas possible). Valide (commit). Une
+        saison passée (Seb, 19 novembre 2026) : pas d'annonce des nouveaux
+        adhérents."""
+        current_id = saison_courante_id(db, org_id)
+        season_id = season_id or current_id
         campaign = Campaigns.current(db, season_id) if season_id else None
         if campaign is None:
             raise api.HelloAssoError("Choisissez d’abord la campagne HelloAsso de la saison (Élèves > Champs).")
@@ -207,7 +210,7 @@ class Sync:
         # Famille = même email du payeur (spec/core.md §4.4).
         Comptes().recalculer_familles(db, org_id)
         db.commit()
-        for on_new in self.on_new if new else ():
+        for on_new in self.on_new if new and season_id == current_id else ():
             try:
                 on_new(db, org_id, new)
             except Exception as erreur:  # noqa: BLE001 (the sync is done all the same)

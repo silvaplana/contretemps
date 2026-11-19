@@ -152,7 +152,12 @@ export default function HelloAssoSaison({ ecoleId, onChange, onToast }) {
             <button type="button" className="btn btn--secondary" onClick={synchroniser}>
               Synchroniser maintenant
             </button>
-            <p className="creer-saison__note">{synchro || 'Synchronisé toutes les 5 minutes.'}</p>
+            <p className="creer-saison__note">
+              {synchro ||
+                (lu.current
+                  ? 'Synchronisé toutes les 5 minutes.'
+                  : 'Saison passée : pas de recopie automatique. Cliquez sur « Synchroniser maintenant » pour recopier.')}
+            </p>
           </>
         )}
       </Carte>

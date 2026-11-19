@@ -50,15 +50,17 @@ class FormOut(BaseModel):
 
 class CampaignOut(BaseModel):
     connected: bool
-    # Administrateur principal et Super User, saison courante.
+    # Administrateur principal et Super User, toute saison (Seb, 19 novembre 2026).
     can_change: bool = False
     form: FormOut | None = None
     forms: list[FormOut] = []
     # HelloAsso n'a pas répondu : la campagne choisie reste affichée.
     error: str | None = None
     synced_at: datetime | None = None
-    # Tout admin synchronise la saison en cours.
+    # Tout admin synchronise la saison affichée (« Synchroniser maintenant »).
     can_sync: bool = False
+    # La saison en cours : la seule recopiée toutes les 5 minutes.
+    current: bool = False
 
 
 class PlanOut(BaseModel):
@@ -156,7 +158,7 @@ class MembersOut(BaseModel):
     # (spec §7), le tableau perd « + », l'import et la corbeille.
     imposed: bool
     form_name: str | None = None
-    # « Rafraîchir » : la saison en cours seulement.
+    # « Rafraîchir » : toute saison qui a sa campagne (Seb, 19 novembre 2026).
     can_refresh: bool = False
     # « Résilier » (spec §7.7) : droit Accès au Financier.
     can_cancel: bool = False
@@ -232,9 +234,11 @@ class SeasonOut(BaseModel):
     # HelloAsso encaisse », `none` « Sans HelloAsso ».
     mode: str = "none"
     season_name: str | None = None
-    # Administrateur principal et Super User, saison en cours.
+    # Administrateur principal et Super User, toute saison (Seb, 19 novembre 2026).
     can_change: bool = False
     form: FormOut | None = None
+    # La saison en cours : la seule recopiée toutes les 5 minutes.
+    current: bool = False
 
 
 class SeasonIn(BaseModel):
@@ -347,13 +351,15 @@ class HelloAssoReceiver:
     # --- La campagne de la saison (spec §3) ---
 
     @staticmethod
-    def _courante(db: Session, ecole_id: int) -> int:
-        """Choisir une campagne : la saison courante seulement."""
-        courante = saison_courante_id(db, ecole_id)
-        demandee = saison_demandee()
-        if courante is None or (demandee is not None and demandee != courante):
-            raise HTTPException(status_code=403, detail="Seule la saison en cours se modifie")
-        return courante
+    def _saison(db: Session, ecole_id: int) -> int:
+        """La saison affichée, quelle qu'elle soit (Seb, 19 novembre 2026 :
+        chaque saison se branche à sa campagne). Une ancienne saison non
+        ouverte reste en lecture seule (saisons/portee.py)."""
+        season_id = saison_demandee() or saison_courante_id(db, ecole_id)
+        season = db.get(Saison, season_id) if season_id else None
+        if season is None or season.ecole_id != ecole_id:
+            raise HTTPException(status_code=404, detail="Pas de saison")
+        return season_id
 
     def campagne(self, ecole_id: int, db: Session = Depends(get_db), appelant: Compte = Depends(rbac.compte_appelant)):
         rbac.require_admin(appelant, ecole_id)
@@ -362,7 +368,7 @@ class HelloAssoReceiver:
         season_id = saison_demandee() or saison_courante_id(db, ecole_id)
         try:
             rbac.require_owner(appelant, ecole_id)
-            can_change = season_id == saison_courante_id(db, ecole_id)
+            can_change = season_id is not None
         except HTTPException:
             can_change = False
         current = self.campaigns.current(db, season_id)
@@ -373,7 +379,8 @@ class HelloAssoReceiver:
             if current
             else None,
             synced_at=current.synced_at if current else None,
-            can_sync=current is not None and season_id == saison_courante_id(db, ecole_id),
+            can_sync=current is not None,
+            current=season_id == saison_courante_id(db, ecole_id),
         )
         if can_change:
             try:
@@ -386,7 +393,7 @@ class HelloAssoReceiver:
         self, ecole_id: int, data: CampaignIn, db: Session = Depends(get_db),
         appelant: Compte = Depends(rbac.compte_appelant),
     ):
-        season_id = self._courante(db, ecole_id)
+        season_id = self._saison(db, ecole_id)
         try:
             self.campaigns.choose(db, ecole_id, season_id, data.form_type, data.form_slug)
         except (HelloAssoError, ValueError) as erreur:
@@ -396,7 +403,7 @@ class HelloAssoReceiver:
         return self.campagne(ecole_id, db, appelant)
 
     def nos_champs(self, ecole_id: int, db: Session = Depends(get_db)):
-        self.campaigns.clear(db, ecole_id, self._courante(db, ecole_id))
+        self.campaigns.clear(db, ecole_id, self._saison(db, ecole_id))
         db.commit()
         return Response(status_code=204)
 
@@ -410,11 +417,12 @@ class HelloAssoReceiver:
         season = db.get(Saison, season_id) if season_id else None
         try:
             rbac.require_owner(appelant, ecole_id)
-            can_change = season_id is not None and season_id == saison_courante_id(db, ecole_id)
+            can_change = season_id is not None
         except HTTPException:
             can_change = False
         return SeasonOut(
             connected=True,
+            current=season_id == saison_courante_id(db, ecole_id),
             mode=row.mode if row is not None else "none",
             season_name=season.nom if season else None,
             can_change=can_change,
@@ -428,8 +436,8 @@ class HelloAssoReceiver:
         appelant: Compte = Depends(rbac.compte_appelant),
     ):
         """« L'appli fait tout, HelloAsso encaisse » ou « Sans HelloAsso »
-        pour la saison en cours ; la campagne éventuelle est retirée."""
-        season_id = self._courante(db, ecole_id)
+        pour la saison affichée ; la campagne éventuelle est retirée."""
+        season_id = self._saison(db, ecole_id)
         if self.client.current(db, ecole_id) is None:
             raise HTTPException(status_code=422, detail="HelloAsso n’est pas connecté")
         self.campaigns.set_payment(db, ecole_id, season_id, data.mode == "payment")
@@ -439,11 +447,11 @@ class HelloAssoReceiver:
     def synchroniser(
         self, ecole_id: int, db: Session = Depends(get_db), appelant: Compte = Depends(rbac.compte_appelant)
     ):
-        """« Synchroniser maintenant » : tout admin, saison en cours."""
+        """« Synchroniser maintenant » : tout admin, la saison affichée."""
         rbac.require_admin(appelant, ecole_id)
-        self._courante(db, ecole_id)
+        season_id = self._saison(db, ecole_id)
         try:
-            return SyncOut(**vars(self.sync.run(db, ecole_id)))
+            return SyncOut(**vars(self.sync.run(db, ecole_id, season_id)))
         except HelloAssoError as erreur:
             db.rollback()
             raise HTTPException(status_code=422, detail=str(erreur)) from None
@@ -476,7 +484,7 @@ class HelloAssoReceiver:
             can_cancel=roles.has_right(appelant, roles.DROIT_FINANCIER),
             checks_on=bool(connection and connection.check_files),
             form_name=current.form_name,
-            can_refresh=season_id == saison_courante_id(db, ecole_id),
+            can_refresh=True,
             members=imposed_members.table(db, ecole_id, season_id),
         )
 

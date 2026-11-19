@@ -29,12 +29,12 @@ export const deconnecter = (ecoleId) => requete(`/ecoles/${ecoleId}/helloasso`, 
 export const reprendre = (ecoleId) => requete(`/ecoles/${ecoleId}/helloasso/reprendre`, { method: 'POST' })
 
 // La campagne de la saison affichée (spec §3) : tout admin la lit ;
-// la choisir est réservé à l'Administrateur principal, saison courante.
+// la choisir est réservé à l'Administrateur principal, toute saison.
 // → { connected, can_change, form, forms: [{ form_type, form_slug, name, state }], error }
 export const campagne = (ecoleId) => requete(`/ecoles/${ecoleId}/helloasso/campagne`)
 export const choisirCampagne = (ecoleId, form) => requete(`/ecoles/${ecoleId}/helloasso/campagne`, json('PUT', form))
 export const nosChamps = (ecoleId) => requete(`/ecoles/${ecoleId}/helloasso/campagne`, { method: 'DELETE' })
-// « Synchroniser maintenant » (spec §4) : tout admin, saison en cours.
+// « Synchroniser maintenant » (spec §4) : tout admin, saison affichée.
 // → { created, completed, updated, gone }
 // Les tarifs de la campagne de la saison affichée, en lecture seule.
 // → { campaign, form_name, plans, options, codes, error }

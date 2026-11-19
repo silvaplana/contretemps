@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useApparence } from '../../api/apparence.js'
-import { MODULES } from '../../app/modules.js'
+import { MODULES, listeImposee } from '../../app/modules.js'
 import * as sessionApi from '../../api/session.js'
 import SegmentedTabs from '../../components/SegmentedTabs.jsx'
 import AdminCours from './AdminCours.jsx'
@@ -54,6 +54,18 @@ export default function AdminScreen({
   // Pastille d'un sous-onglet de module (`badge(ecoleId)` → nombre, ex. les
   // impayés de « Paiements HelloAsso ») : relue à chaque changement d'onglet.
   const [pastilles, setPastilles] = useState({})
+  // Saison imposée par un module (HelloAsso) : « Élèves (n) » compte comme
+  // le titre d'Admin > Élèves, sans les résiliées (Seb, 19 novembre 2026).
+  // Admin > Élèves redonne son nombre (`onCompte`) après un Rafraîchir.
+  const [imposee, setImposee] = useState(null)
+  const [compteImpose, setCompteImpose] = useState(null)
+  useEffect(() => {
+    if (!ecole?.id) return
+    listeImposee(ecole.id)
+      .then(setImposee)
+      .catch(() => setImposee(null))
+  }, [ecole?.id])
+  const nombreEleves = compteImpose ?? (imposee ? imposee.liste.compte(imposee.donnees, eleves) : eleves.length)
   // Repart du dernier sous-onglet affiché sur cet appareil.
   const [subTab, setSubTab] = useState(() => {
     const dernier = sessionApi.lireEcran('admin')
@@ -80,7 +92,7 @@ export default function AdminScreen({
   // (Personnalisation de l'application > Vocabulaire).
   const { motEcole, motEleves, motProfs, motCours } = useApparence()
   const sousOnglets = useMemo(() => {
-    const mots = { ecole: motEcole, eleves: `${motEleves} (${eleves.length})`, professeurs: motProfs, cours: motCours }
+    const mots = { ecole: motEcole, eleves: `${motEleves} (${nombreEleves})`, professeurs: motProfs, cours: motCours }
     const libelle = ({ value, label }) => ({
       value,
       label: pastilles[value] > 0 ? (
@@ -97,7 +109,7 @@ export default function AdminScreen({
       ...SUB_TABS.flatMap((onglet) => [mots[onglet.value] ? { ...onglet, label: mots[onglet.value] } : onglet, ...apres(onglet.value)]),
       ...ongletsModules.filter((o) => !SUB_TABS.some((s) => s.value === o.after)).map(libelle),
     ]
-  }, [eleves.length, motEcole, motEleves, motProfs, motCours, ongletsModules, pastilles])
+  }, [nombreEleves, motEcole, motEleves, motProfs, motCours, ongletsModules, pastilles])
 
   // Un module éteint depuis : retour aux élèves.
   const onglet = sousOnglets.some((o) => o.value === subTab) ? subTab : 'eleves'
@@ -132,7 +144,7 @@ export default function AdminScreen({
         />
       )}
       {onglet === 'eleves' && (
-        <AdminEleves eleves={eleves} setEleves={setEleves} cours={cours} ecoleId={ecole.id} />
+        <AdminEleves eleves={eleves} setEleves={setEleves} cours={cours} ecoleId={ecole.id} onCompte={setCompteImpose} />
       )}
       {onglet === 'professeurs' && (
         <AdminProfesseurs
