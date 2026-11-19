@@ -1346,8 +1346,10 @@ du club », `core.md` §3). **Pas codé.**
   **Ventes**, avec le chemin où vont les nouveaux fichiers. Toucher une ligne ouvre sa fiche (← revient).
 - **La fiche** : **Où** (Docs ou un des drives connectés) et **Dossier**, choisi dans un sélecteur
   de dossiers (descendre, ←, « Nouveau dossier », bouton principal « Choisir ce dossier »). Dessous,
-  les sous-dossiers automatiques ne changent pas : ACHATS par mois « MM.AAAA », HONORAIRES par prof
-  puis par note, Notes de frais par personne puis par note, VENTES par compte de recettes (§8.12).
+  les sous-dossiers automatiques ne changent pas : HONORAIRES par prof puis par note, Notes de frais
+  par personne puis par note, VENTES par compte de recettes (§8.12). **Achats** : case « Un
+  sous-dossier par mois (08.2026) », cochée par défaut (comme aujourd'hui) ; décochée, les factures
+  vont directement dans le dossier choisi (Seb, 19 novembre).
   Un exemple de chemin complet est affiché. « Revenir à l'emplacement par défaut » quand il a changé.
   Chaque changement : « … : emplacement changé. », Annuler 10 s.
 - **Saison** : dans Docs, le dossier choisi est relatif au dossier de chaque saison (Docs › Privé ›
@@ -1361,7 +1363,7 @@ du club », `core.md` §3). **Pas codé.**
 - **Hors du réglage** : A TRAITER, VIREMENTS SANS FACTURE et RELEVES BANCAIRES restent en dur. Les
   pièces d'Import auto pièces gardent leur propre destination.
 - **Données** : une ligne par école et par nature changée (`nf_storage_places` : organisation,
-  nature, `target_kind` docs | drive, `target_ref` = le drive, `target_path`). Le dépôt sur un drive
+  nature, `target_kind` docs | drive, `target_ref` = le drive, `target_path`, `by_month` pour les achats). Le dépôt sur un drive
   réutilise celui d'Import auto pièces (`drives`). Drive déconnecté : la pièce est rangée à
   l'emplacement par défaut dans Docs, et la fiche le signale.
 
