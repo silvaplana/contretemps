@@ -1514,3 +1514,20 @@
 .texte-riche__bloc font[size='2'] {
   font-size: 0.88em;
 }
+/* « Partager » (Seb, 19 novembre), pour qui publie. */
+.actu__partager {
+  display: inline-flex;
+  flex-basis: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: inherit;
+  cursor: pointer;
+  align-items: center;
+  gap: 6px;
+  min-height: 48px;
+  color: var(--accent);
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: none;
+}

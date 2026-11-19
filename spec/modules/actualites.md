@@ -844,3 +844,11 @@ Maquette « Texte mis en forme », https://claude.ai/artifact/KDK3qdUPJaSYaygiL7
   « Envoyer à… », l'aperçu de l'assistant.
 - L'éditeur est un bloc modifiable du navigateur (gras, souligné, taille par ses commandes) ; un
   collage n'y apporte que le texte.
+
+### 12.16 Partager une publication (Seb, 19 novembre 2026)
+
+Ni SMS ni envoi WhatsApp automatique (Seb : « pas de SMS » ; WhatsApp Business demande un compte
+Meta et coûte à chaque message). À la place, sous une publication publiée, pour qui publie, un
+bouton « Partager » : le partage du téléphone (`navigator.share`) avec le texte (le gras écrit
+`*ainsi*`, à la façon de WhatsApp ; ni souligné ni tailles) et le lien de l'appli ; sans ce partage
+(un ordinateur), WhatsApp Web (`wa.me/?text=`). Rien côté serveur.

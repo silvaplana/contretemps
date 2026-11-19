@@ -16,7 +16,7 @@ import * as api from './api.js'
 import AdressesEssai from './AdressesEssai.jsx'
 import DocumentsSpecifiques from './DocumentsSpecifiques.jsx'
 import { EditeurTexte, TexteRiche } from './TexteRiche.jsx'
-import { sansBalises } from './texteRiche.js'
+import { pourWhatsApp, sansBalises } from './texteRiche.js'
 import Categories, { ChoixCategorie } from './Categories.jsx'
 import { EditeurSondage, Sondage, manqueSondage, sondageEnApercu, sondageVide } from '../../components/Sondage.jsx'
 import './publications.css'
@@ -83,6 +83,25 @@ const IconeLien = () => (
     <path d="M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1" />
   </svg>
 )
+// « Partager » (Seb, 19 novembre) : sur le téléphone, le partage habituel
+// (WhatsApp, Messenger, mail…) avec le texte et le lien de l'appli ; là où il
+// n'existe pas (un ordinateur), WhatsApp Web. Le gras s'écrit *ainsi*, à la
+// façon de WhatsApp. Gratuit, sans compte Meta.
+async function partager(actu) {
+  const titre = actu.titre ? `*${actu.titre}*\n` : ''
+  const texte = `${titre}${pourWhatsApp(actu.texte)}`.trim()
+  const lien = window.location.origin
+  if (navigator.share) {
+    try {
+      await navigator.share({ text: texte, url: lien })
+    } catch {
+      // Partage refermé sans rien choisir.
+    }
+    return
+  }
+  window.open(`https://wa.me/?text=${encodeURIComponent(`${texte}\n\n${lien}`.trim())}`, '_blank', 'noopener')
+}
+
 const IconeSondage = ({ taille = 20 }) => (
   <svg viewBox="0 0 24 24" width={taille} height={taille} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <path d="M4 6h10M4 12h16M4 18h7" />
@@ -308,6 +327,13 @@ export function CarteActu({ actu, lieu, mediaEnHaut = false, onModifier = null, 
           <Icon name="mail" size={16} />
           {actu.envoyeeParMail != null ? `Envoyée par mail à ${actu.envoyeeParMail} ${actu.envoyeeParMail > 1 ? 'adresses' : 'adresse'}` : 'Envoi par mail…'}
         </span>
+      )}
+      {/* Partager (Seb, 19 novembre) : qui publie l'envoie au groupe WhatsApp du club, ou ailleurs. */}
+      {onModifier && actu.publieeLe && avecReactions && (
+        <button type="button" className="actu__partager" onClick={() => partager(actu)}>
+          <Icon name="partager" size={18} />
+          Partager
+        </button>
       )}
     </div>
   )
