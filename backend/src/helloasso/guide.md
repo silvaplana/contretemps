@@ -18,7 +18,7 @@ Case : Admin › École › Personnalisation › Fonctionnalités. Connexion : A
 Comment chaque saison utilise HelloAsso : Admin › École › Saisons › « Éditer la saison », sous les
 dates (administrateur principal et super user, toute saison qu'on édite, HelloAsso connecté), trois choix
 qui s'enregistrent tout de suite (« Valider » ne sert qu'au nom et aux dates) :
-- « HelloAsso fait tout » : on choisit la campagne HelloAsso dans la carte ; les adhérents viennent
+- « HelloAsso fait tout » : on choisit la campagne HelloAsso dans la carte (liste gardée 10 minutes, « Relire la liste » la redemande à HelloAsso) ; les adhérents viennent
   de HelloAsso (voir plus bas). « Synchroniser maintenant ».
 - « L'appli fait tout, HelloAsso encaisse » : inscriptions, champs, tarifs et adhérents dans l'appli ;
   le paiement par carte de l'inscription en ligne arrive sur le compte HelloAsso de l'association.

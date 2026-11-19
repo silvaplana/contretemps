@@ -6,6 +6,7 @@ retire tous."""
 
 from __future__ import annotations
 
+import time
 from collections.abc import Callable
 
 from members import fields as member_fields
@@ -20,6 +21,9 @@ from .models import OrgHelloAsso, SeasonHelloAsso
 SOURCE = "helloasso"
 # Le choix de la saison (spec §8.1).
 MASTER, PAYMENT = "master", "payment"
+# La liste des campagnes est gardée 10 minutes (moins de requêtes à
+# HelloAsso, Seb 19/11) ; « Relire la liste » la redemande.
+FORMS_KEPT = 600
 
 
 class Campaigns:
@@ -33,6 +37,8 @@ class Campaigns:
         self.forms = forms
         self.form_fields = form_fields
         self.form_prices = form_prices
+        # {organisation: (identifiant client, lue à, liste)}.
+        self._lists: dict[int, tuple[str, float, list[api.Form]]] = {}
 
     @staticmethod
     def _keys(connection: OrgHelloAsso) -> tuple[str, str, str]:
@@ -52,11 +58,16 @@ class Campaigns:
         row = cls.row(db, season_id)
         return row if row is not None and row.mode == MASTER else None
 
-    def list_forms(self, db: Session, org_id: int) -> list[api.Form]:
+    def list_forms(self, db: Session, org_id: int, fresh: bool = False) -> list[api.Form]:
         connection = Connection.row(db, org_id)
         if connection is None or not connection.active:
             return []
-        return self.forms(*self._keys(connection))
+        kept = self._lists.get(org_id)
+        if not fresh and kept and kept[0] == connection.client_id and time.time() - kept[1] < FORMS_KEPT:
+            return kept[2]
+        forms = self.forms(*self._keys(connection))
+        self._lists[org_id] = (connection.client_id, time.time(), forms)
+        return forms
 
     def choose(self, db: Session, org_id: int, season_id: int, form_type: str, form_slug: str) -> SeasonHelloAsso:
         """Lit le formulaire, met ses questions sur la fiche de la saison et

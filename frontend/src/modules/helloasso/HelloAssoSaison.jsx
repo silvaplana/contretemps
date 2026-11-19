@@ -49,10 +49,11 @@ export default function HelloAssoSaison({ ecoleId, onChange, onToast }) {
     return etat
   }
 
-  useEffect(() => {
-    relire().catch((e) => setErreur(e.message))
-    api
-      .campagne(ecoleId)
+  // La liste des campagnes, gardée 10 minutes par le serveur ; « Relire la
+  // liste » la redemande à HelloAsso (Seb, 19 novembre 2026).
+  function chargerListe(relireListe = false) {
+    return api
+      .campagne(ecoleId, relireListe)
       .then((c) => {
         setFormulaires(c.can_change ? c.forms : null)
         setErreurListe(c.error ?? '')
@@ -61,6 +62,11 @@ export default function HelloAssoSaison({ ecoleId, onChange, onToast }) {
         setFormulaires([])
         setErreurListe(e.message)
       })
+  }
+
+  useEffect(() => {
+    relire().catch((e) => setErreur(e.message))
+    chargerListe()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ecoleId])
 
@@ -137,6 +143,9 @@ export default function HelloAssoSaison({ ecoleId, onChange, onToast }) {
             </option>
           ))}
         </select>
+        <button type="button" className="btn btn--secondary" onClick={() => chargerListe(true)}>
+          Relire la liste
+        </button>
         {erreurListe && <p className="login-screen__erreur">{erreurListe}</p>}
         {!erreurListe && formulaires?.length === 0 && (
           <p className="muted">Aucune campagne d’adhésion ou d’événement trouvée sur HelloAsso.</p>
