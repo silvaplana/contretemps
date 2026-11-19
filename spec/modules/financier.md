@@ -1158,6 +1158,65 @@ n'attend jamais une pièce : une ligne sans pièce reçoit son compte à la main
    port `AgPorts.deposit` = `deposer_bilan_financier`), trésorier seulement, refusé avant la clôture.
 7. Comparaison appli / contre-calcul / EBP sur la saison 2025-26 et corrections.
 
+### 8.11 Sources de pièces : kDrive et versements HelloAsso (Seb, 19 novembre 2026)
+
+Proposition, **pas codée** (maquette https://claude.ai/artifact/WSnkg4UEoszQxfLDCEctB6). Demande de
+Seb : ASC La Ciotat range déjà tout sur un kDrive (Infomaniak : bulletins de salaire du coach, avis
+URSSAF, factures) et reçoit chaque mois un virement HelloAsso qui additionne les licences payées.
+
+**Un seul parcours** (Seb : « factoriser ») : Pièces › **Rapprocher** (`notes-de-frais.md`
+§7 septies) puis Bilan › Préparer (§8.10). Le kDrive et HelloAsso ne sont que **deux sources de
+pièces de plus** à côté de la saisie à la main ; leurs pièces arrivent dans les mêmes
+« Suggestions de rattachement », avec le même bouton « Rattacher à cette transaction bancaire »
+et le même Annuler. Sous le titre de chaque pièce, en gris, d'où elle vient : « Saisie à la main »,
+« kDrive › SALAIRES », « HelloAsso ». Rien d'autre ne change dans Rapprocher ni dans le Bilan.
+
+**Contrainte ferme (Seb) : rien ne change pour Contretemps**, dont la saisie se fait à la main sur
+pièces papier. Les deux sources sont **éteintes par défaut** et allumées seulement à ASC La Ciotat ;
+éteintes, aucun écran ne bouge (pas de ligne, pas de mention de la source). Tests à chaque PR :
+une école sans source garde exactement ses écrans et ses écritures.
+
+**Source kDrive** (sous-module à part, éteint par défaut ; nouveau point de branchement « source
+de pièces » à valider par Seb avant le code, CLAUDE.md) :
+- **Connexion** : une ligne **kDrive** dans Admin › École › Connexions (`core.md`), mêmes droits
+  que les autres. On donne l'e-mail du compte Infomaniak, un **mot de passe d'application** (créé
+  dans Infomaniak › Sécurité, pas le mot de passe habituel) et le numéro du kDrive ; l'appli lit
+  par WebDAV. Les identifiants sont chiffrés comme ceux de HelloAsso, jamais montrés.
+- **Dossiers** : on coche les dossiers à lire (« Que doit lire l'appli ? »). L'appli **lit
+  seulement** : elle n'écrit dans le kDrive que sur le bouton « Déposer » (plus bas).
+- **Lecture** : chaque nouveau fichier d'un dossier coché est lu une fois (même lecteur que les
+  factures) et reconnu d'après son contenu : bulletin de salaire, avis URSSAF, facture ; un fichier
+  non reconnu est ignoré et listé à part. Le fichier reste dans le kDrive : **rien n'est copié dans
+  Docs** (règle de Seb du 10/11) ; la pièce garde le chemin et « Voir le fichier » l'ouvre.
+- **Paie complète, comme EBP** : un bulletin donne brut, cotisations du salarié, net payé,
+  cotisations de l'employeur. Écritures : 641 Salaires au débit (brut), 645 Charges sociales au
+  débit (part employeur), 421 Salaire à payer au crédit (net), 431 URSSAF à payer au crédit
+  (les deux cotisations). Le virement du net solde 421, le prélèvement URSSAF solde 431 (l'avis
+  URSSAF tranche le rapprochement, l'appli vérifie qu'il égale les cotisations des bulletins). Un
+  bulletin pas encore payé entre quand même en charge à sa date (« Valider : à payer »), comme une
+  facture non payée (§8.10 étape 4). Voir plus bas pour les comptes qui manquent. Au niveau Simple : seul le virement compte, comme aujourd'hui.
+
+**Source HelloAsso** (module HelloAsso ; case « Rapprocher les versements dans le Financier »,
+éteinte par défaut, voir `helloasso.md` §9) : chaque versement HelloAsso devient une pièce
+explicative.
+
+**Plan comptable** (question de Seb : faut-il un plan pour ASC ? Non) : l'école garde son plan
+(plan de base de 25 comptes pour une nouvelle association, §8.2). Quand une source est allumée, ou
+qu'une pièce de paie ou un versement HelloAsso arrive et qu'un compte manque, l'appli le dit une
+fois : « Il manque 4 comptes pour la paie : 641 Salaires, 645 Charges sociales, 421 Salaire à
+payer, 431 URSSAF à payer » (pour HelloAsso : 4671 Licences FFST à reverser, et un compte de frais
+seulement si la campagne en a) ; **« Ajouter ces comptes »** en un geste, Annuler 10 s. Rien n'est
+ajouté sans ce toucher ; Contretemps, sans source allumée, ne voit jamais la question.
+
+**Dépôt du bilan** : à l'étape 7, « Déposer les documents » demande **où** quand le kDrive est
+connecté : kDrive (dossier choisi une fois, par exemple FINANCIER › BILAN <saison>) ou Docs comme
+aujourd'hui ; sans kDrive, la question n'apparaît pas. C'est toujours la trésorière qui touche le
+bouton.
+
+Étapes de code, une PR chacune, sur le « vas-y » de Seb : 1. versements HelloAsso dans Rapprocher ;
+2. connexion kDrive et lecture des dossiers (factures seulement) ; 3. bulletins et avis URSSAF,
+paie complète ; 4. dépôt du bilan dans le kDrive.
+
 ## 9. Reste à faire
 
 - Connexion bancaire (§3.5) : relevés PDF du CIC.
