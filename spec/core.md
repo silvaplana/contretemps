@@ -144,8 +144,9 @@ nouveau, toute table nouvelle est en anglais.
   « fais exactement comme les mails ») : chaque drive connecté avec son nom court et « Voir »,
   « Connecter » sans drive, « Ajouter un drive » ensuite ; « Voir » montre ✓ Drive connecté (nom,
   adresse, drive, depuis le), Renommer, Remplacer par un autre drive, Déconnecter le drive
-  (Annuler 10 s). **kDrive** : adresse Infomaniak et mot de passe d'application (lecture et
-  écriture par WebDAV). **Google Drive** : le club partage son dossier avec l'adresse de l'appli
+  (Annuler 10 s). **kDrive** : adresse Infomaniak, jeton d'API Infomaniak (droit « drive »,
+  créé dans le manager › Développeur › Jetons d'API) et numéro du kDrive ; lecture et écriture
+  par l'API d'Infomaniak (Seb, 19 novembre : WebDAV est fermé avec my kSuite, l'offre d'ASC). **Google Drive** : le club partage son dossier avec l'adresse de l'appli
   (compte de service Google ; « Lecteur », « Éditeur » s'il sert de destination) : pas
   d'autorisation Google à faire valider (lire tout un Drive par OAuth demanderait un audit payant
   chaque année) ; l'appli ne voit que les dossiers partagés. Plusieurs drives par école. Les drives

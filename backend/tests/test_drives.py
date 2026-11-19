@@ -5,7 +5,7 @@ les dossiers. Aucun appel réseau : le client du drive est remplacé."""
 import pytest
 from ecoles import Ecoles
 
-from drives.providers import DriveRefused, Entry
+from drives.providers import DriveNotFound, DriveRefused, Entry
 
 KDRIVE = {"provider": "kdrive", "address": "club@ik.me", "code": "bon-mot-de-passe", "drive_ref": "812345"}
 
@@ -84,35 +84,52 @@ def test_ecoles_etanches(client, db_session, ecole):
     assert client.get(f"/ecoles/{autre.id}/drives/{drive}/list").status_code == 409
 
 
-def test_kdrive_webdav_lit_un_dossier():
+def test_kdrive_par_l_api_d_infomaniak():
+    """Seb, 19 novembre : my kSuite ferme WebDAV ; le kDrive passe par l'API
+    d'Infomaniak avec un jeton. Lire, ouvrir, écrire ; jeton refusé."""
     import httpx
 
     from drives.providers import KDrive
 
-    xml = b"""<?xml version="1.0"?><d:multistatus xmlns:d="DAV:">
-    <d:response><d:href>/FINANCIER/</d:href><d:propstat><d:prop><d:resourcetype><d:collection/></d:resourcetype></d:prop></d:propstat></d:response>
-    <d:response><d:href>/FINANCIER/SALAIRES/</d:href><d:propstat><d:prop><d:resourcetype><d:collection/></d:resourcetype></d:prop></d:propstat></d:response>
-    <d:response><d:href>/FINANCIER/Bulletin%20octobre.pdf</d:href><d:propstat><d:prop><d:resourcetype/>
-      <d:getcontentlength>1234</d:getcontentlength><d:getlastmodified>Mon, 10 Nov 2025 08:00:00 GMT</d:getlastmodified></d:prop></d:propstat></d:response>
-    </d:multistatus>"""
+    enfants = {
+        1: [{"id": 5, "name": "Private", "type": "dir"}],
+        5: [{"id": 7, "name": "FINANCIER", "type": "dir"}],
+        7: [{"id": 9, "name": "SALAIRES", "type": "dir"},
+            {"id": 11, "name": "Bulletin octobre.pdf", "type": "file", "size": 1234, "last_modified_at": 1762761600}],
+    }
     vus = []
 
     def repondre(requete):
-        vus.append((requete.method, requete.url.path, requete.headers.get("Depth")))
-        if requete.method == "PUT":
-            return httpx.Response(201)
-        return httpx.Response(207, content=xml) if requete.url.path.startswith("/FINANCIER") else httpx.Response(401)
+        vus.append((requete.method, requete.url.path, requete.headers.get("Authorization")))
+        if requete.headers.get("Authorization") != "Bearer bon-jeton":
+            return httpx.Response(401, json={"result": "error", "error": {"code": "not_authorized"}})
+        morceaux = requete.url.path.split("/")
+        if requete.url.path.endswith("/download"):
+            return httpx.Response(200, content=b"%PDF bulletin")
+        if requete.url.path.endswith("/upload"):
+            assert requete.url.params["directory_id"] == "7" and requete.url.params["file_name"] == "a b.pdf"
+            assert requete.content == b"%PDF"
+            return httpx.Response(200, json={"result": "success", "data": {"id": 12}})
+        if requete.url.path.endswith("/files") and len(morceaux) == 7:
+            return httpx.Response(200, json={"result": "success", "data": enfants.get(int(morceaux[5]), []), "has_more": False})
+        return httpx.Response(200, json={"result": "success", "data": {"id": 1}})
 
-    drive = KDrive("club@ik.me", "x", "812345", http=httpx.Client(transport=httpx.MockTransport(repondre)))
-    entrees = drive.list("FINANCIER")
+    client = httpx.Client(transport=httpx.MockTransport(repondre))
+    drive = KDrive("club@ik.me", "bon-jeton", "1262779", http=client)
+    drive.check()
+    entrees = drive.list("Private/FINANCIER")
     assert [(e.name, e.path, e.is_dir, e.size) for e in entrees] == [
-        ("SALAIRES", "FINANCIER/SALAIRES", True, 0),
-        ("Bulletin octobre.pdf", "FINANCIER/Bulletin octobre.pdf", False, 1234),
+        ("SALAIRES", "Private/FINANCIER/SALAIRES", True, 0),
+        ("Bulletin octobre.pdf", "Private/FINANCIER/Bulletin octobre.pdf", False, 1234),
     ]
-    assert vus[0] == ("PROPFIND", "/FINANCIER", "1")
-    assert drive.write("FINANCIER", "a b.pdf", b"%PDF") == "FINANCIER/a b.pdf"
+    assert entrees[1].modified.year == 2025
+    assert vus[0][1] == "/3/drive/1262779/files/1"
+    assert drive.read("Private/FINANCIER/Bulletin octobre.pdf") == b"%PDF bulletin"
+    assert drive.write("Private/FINANCIER", "a b.pdf", b"%PDF") == "Private/FINANCIER/a b.pdf"
+    with pytest.raises(DriveNotFound):
+        drive.list("Private/ABSENT")
     with pytest.raises(DriveRefused):
-        drive.check()
+        KDrive("club@ik.me", "faux", "1262779", http=client).check()
 
 
 def test_google_drive_propose_quand_le_serveur_a_la_cle(client, ecole, monkeypatch, tmp_path):

@@ -91,19 +91,19 @@ function Connexion({ ecoleId, fournisseur, drive, nom, google, onConnecte }) {
       {kdrive ? (
         <>
           <ol className="mail__etapes">
-            <li>Infomaniak s’ouvre : touchez votre profil, puis Sécurité, Mots de passe d’application, Créer.</li>
-            <li>Copiez le mot de passe donné.</li>
+            <li>Infomaniak s’ouvre sur les jetons d’API : touchez « Créer un jeton », application « Default application », droit « drive ».</li>
+            <li>Copiez le jeton donné.</li>
             <li>Revenez ici et collez-le.</li>
           </ol>
           <button
             type="button"
             className="mail__lien"
-            onClick={() => window.open('https://manager.infomaniak.com', '_blank', 'noopener')}
+            onClick={() => window.open('https://manager.infomaniak.com/v3/ng/profile/user/token/list', '_blank', 'noopener')}
           >
             Ouvrir Infomaniak
           </button>
           <label className="mail__champ">
-            <span>Mot de passe Infomaniak</span>
+            <span>Jeton Infomaniak</span>
             <input value={code} onChange={(e) => setCode(e.target.value)} autoComplete="off" autoCapitalize="none" spellCheck={false} />
           </label>
           <label className="mail__champ">
@@ -112,7 +112,7 @@ function Connexion({ ecoleId, fournisseur, drive, nom, google, onConnecte }) {
           </label>
           <p className="mail__discret">
             Le numéro est dans l’adresse du kDrive ouvert dans le navigateur, après « /drive/ ». Infomaniak ne montre le
-            mot de passe qu’une fois : s’il est perdu, créez-en un autre.
+            jeton qu’une fois : s’il est perdu, créez-en un autre.
           </p>
         </>
       ) : (
