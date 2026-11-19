@@ -467,18 +467,35 @@
 }
 
 /* Connexions : une boîte par ligne, son état et « Voir » (spec §4 bis). */
+/* Une ligne par boîte (ou par drive) : l'état à gauche, « Voir » à droite,
+   dans la même colonne que le « Voir » de HelloAsso ou de la FFST ; « Ajouter… »
+   en dessous, à gauche (Seb, 19/11 : « des fois à droite, des fois à gauche »). */
 .connexions__ligne > .mail__reglage-boite {
-  grid-column: 1;
-  display: flex;
-  flex-wrap: wrap;
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  column-gap: 16px;
   align-items: center;
-  gap: 4px 12px;
+  padding: 4px 0;
 }
 .mail__reglage-boite > .helloasso__etat {
-  flex-basis: auto;
-  flex: 1;
+  grid-column: 1;
+  grid-row: 1;
+  order: 0;
   min-width: 0;
   overflow-wrap: anywhere;
+}
+.mail__reglage-boite > .helloasso__lien {
+  grid-column: 2;
+  grid-row: 1;
+  margin-left: 0;
+}
+.connexions__ligne:has(> .mail__reglage-boite) > .helloasso__lien {
+  grid-column: 1;
+  grid-row: auto;
+  justify-self: start;
+  order: 3;
+  margin-top: 8px;
 }
 
 /* Écrire aux adhérents (spec §7 bis) : tous, ou des cours. */
