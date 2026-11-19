@@ -535,7 +535,9 @@ Conséquences :
   ouverte, les admins y travaillent comme dans la courante (élèves, cours, notes de frais…),
   son nom et ses dates se modifient, et **aucun mail ni notification ne part** (on saisit le
   passé, personne n'est prévenu). Ses fiches ne se connectent toujours pas. Les tarifs d'une
-  ancienne saison restent en lecture seule ;
+  ancienne saison restent en lecture seule. Une phrase sous le bouton dit ce qu'il fait
+  (Seb, 19 novembre 2026) : refermer = lecture seule, rien n'est effacé, ce n'est pas la
+  clôture des comptes du Financier ;
 - toutes les autres saisons sont en **lecture seule, partout** (aucun ajout, modification ou
   suppression, aucun message envoyé). **C'est le serveur qui l'impose** sur chaque écriture,
   sans faire confiance au navigateur.
