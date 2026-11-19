@@ -149,28 +149,37 @@ l'adresse,
 bouton principal **Envoyer**. Répondre met « Re: » et le texte cité ; Transférer met « Fwd: » et
 garde les pièces jointes. Sans destinataire : « Indiquez à qui envoyer le mail ».
 
-## 7 bis. Écrire aux adhérents (Seb, 19 novembre)
+## 7 bis. Écrire à un groupe (Seb, 19 novembre)
 
-Seb : envoyer un mail à tous les adhérents sans que chacun voie l'adresse des autres ; « on utilise
-Brevo déjà ». Maquette validée le 19 novembre : https://claude.ai/artifact/CymmDAMxGZG5syXEjuekF8
+Seb : envoyer un mail à tout le monde sans que chacun voie l'adresse des autres ; « on utilise
+Brevo déjà ». Maquette validée le 19 novembre : https://claude.ai/artifact/CymmDAMxGZG5syXEjuekF8.
+Puis (Seb, 19 novembre) : « c'est à tout le monde : adhérents, administrateurs et professeurs » ;
+garder une trace du mail dans la boîte (Gmail ou Infomaniak).
 
-- Dans **Nouveau message**, sous « À », le lien **👥 Écrire aux adhérents** ouvre « Écrire aux
-  adhérents » : **Tous les adhérents** (saison courante, nombre de personnes) ou **un ou plusieurs
-  cours** (une personne inscrite à deux cours ne reçoit qu'un mail), bouton principal **Choisir**.
-- « À » devient une pastille « Tous les adhérents · 84 » (✕ pour revenir à un mail normal) ; Cc,
-  Cci et pièces jointes disparaissent (« Pas de pièce jointe dans un mail aux adhérents pour
-  l'instant »). Phrase : « Chacun reçoit son propre mail : personne ne voit l'adresse des autres.
-  Les réponses et une copie arrivent dans cette boîte. » et le nombre d'adhérents sans adresse.
-- Bouton **Envoyer à 84 adhérents** ; toast « Envoi à 84 adhérents » avec **Annuler** 10 s (§8).
+- Dans **Nouveau message**, sous « À », le lien **👥 Écrire à un groupe** ouvre « Écrire à un
+  groupe » : **Tout le monde** (« Adhérents, administrateurs et professeurs », saison courante,
+  nombre de personnes), ou des **cours** et des **groupes** d'Admin › École › Administrateurs
+  (« Ou des groupes » : Bureau, Profs, groupes faits à la main ; pas les droits 🔒 ; Seb,
+  19 novembre), à cocher, une personne dans deux d'entre eux ne recevant qu'un mail ; bouton
+  principal **Choisir**. Les groupes de Chat (messagerie instantanée) : plus tard.
+- « À » devient une pastille « Tout le monde · 84 » (✕ pour revenir à un mail normal) ; Cc, Cci et
+  pièces jointes disparaissent (« Pas de pièce jointe dans un mail à un groupe pour l'instant »).
+  Phrase : « Chacun reçoit son propre mail : personne ne voit l'adresse des autres. Les réponses
+  arrivent dans cette boîte, et le mail est rangé dans ses Envoyés. » et le nombre de personnes
+  sans adresse.
+- Bouton **Envoyer à 84 personnes** ; toast « Envoi à 84 personnes » avec **Annuler** 10 s (§8).
 - Envoi : `ecoles.mail_ecole.envoyer_a_chacun` (core, Brevo, `core.md` §9 bis), un mail par adresse
-  au nom de l'école ; une famille qui partage une adresse reçoit un mail. **Adhérents** = toutes les
-  fiches de la saison courante de l'école (comme les actus par mail). Réponses (`Reply-To`) à la
-  boîte du « De » ; une copie y arrive aussi (« Copie du mail envoyé à N adhérents »), Brevo ne
-  pouvant pas la ranger dans Envoyés. Pied du mail : « Vous recevez ce mail parce que vous êtes
-  adhérent de … Pour répondre, répondez à ce mail. » Pas de désinscription : ce ne sont pas les
-  actus, ce sont les mails du club.
+  au nom de l'école ; une famille qui partage une adresse reçoit un mail. **Tout le monde** = toutes
+  les fiches de la saison courante de l'école (adhérents, administrateurs, professeurs, comme les
+  actus par mail). Réponses (`Reply-To`) à la boîte du « De ». Pied du mail : « Mail de … Pour
+  répondre, répondez à ce mail. » Pas de désinscription : ce sont les mails du club, pas les actus.
+- **Trace** : le mail est rangé (IMAP `APPEND`, lu) dans **Envoyés** de la boîte du « De », Gmail
+  comme Infomaniak, « De : » l'école, « À : Tout le monde · 84 » (un groupe sans adresse, comme une
+  liste de diffusion ; « Sambo adultes, MMA · 27 » pour des cours). Si la boîte ne répond pas, les
+  mails partent quand même (`filed: false`).
 - Routes : `GET …/mail/members` (saison, personnes, sans adresse, cours) et
-  `POST …/mail/members/send?box=` (`courses` vide = tous, `subject`, `body`), droit `mail.read`.
+  `POST …/mail/members/send?box=` (`courses` et `groups` vides = tout le monde, `subject`, `body`),
+  droit `mail.read`. Un groupe compte ses sous-groupes (Bureau › Président·e…).
 
 ## 8. Annuler plutôt que confirmer
 
@@ -236,3 +245,6 @@ Messagerie. `guide.md` du module mis à jour dans la même PR que les écrans.
    droit, une puce par boîte, « De » au choix.
 5. Écrire aux adhérents (§7 bis ; Seb, 19 novembre).
    **Fait (19 novembre 2026)** : `mail/members.py`, un mail chacun par Brevo, copie à la boîte.
+6. Écrire à un groupe : tout le monde (administrateurs et profs compris), groupes d'Admin, trace dans
+   Envoyés (§7 bis).
+   **Fait (19 novembre 2026)**.

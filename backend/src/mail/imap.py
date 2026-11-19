@@ -177,11 +177,18 @@ def _address_list(message, header: str) -> list[dict]:
         value = message[header]
         if value is None:
             return []
-        return [
-            {"name": address.display_name or "", "address": address.addr_spec}
-            for address in value.addresses
-            if address.addr_spec and address.addr_spec != "<>"
-        ]
+        found = []
+        for group in value.groups:
+            # Groupe sans adresse (« Tous les adhérents · 84:; », mail aux
+            # adhérents rangé dans Envoyés, spec §7 bis) : son nom seul.
+            if group.display_name and not group.addresses:
+                found.append({"name": group.display_name, "address": ""})
+            found += [
+                {"name": address.display_name or "", "address": address.addr_spec}
+                for address in group.addresses
+                if address.addr_spec and address.addr_spec != "<>"
+            ]
+        return found
     except Exception:  # en-tete mal forme
         raw = message.get(header, "")
         return [{"name": name, "address": address} for name, address in getaddresses([str(raw)]) if address]
@@ -837,3 +844,23 @@ class Webmail:
             except (WebmailError, imaplib.IMAP4.error, OSError):
                 pass  # le mail est parti : le rangement n'est qu'un plus
         return {"sent": True, "messageId": message["Message-ID"]}
+
+    def file_sent(self, to_label: str, subject: str, body: str) -> None:
+        """Range dans « Envoyés » la trace d'un mail parti ailleurs (aux
+        adhérents par Brevo, spec §7 bis) : « À : » le nom du groupe, sans
+        adresse, comme une liste de diffusion."""
+        if "\n" in subject or "\r" in subject:
+            raise WebmailError("En-tête invalide")
+        message = EmailMessage()
+        message["From"] = formataddr((self.sender_name, self.address)) if self.sender_name else self.address
+        label = " ".join(to_label.replace(":", " ").replace(";", " ").replace('"', " ").split())
+        message["To"] = f'"{label}":;'
+        message["Subject"] = subject.strip()
+        message["Date"] = formatdate(localtime=True)
+        message["Message-ID"] = make_msgid(domain=self.address.rsplit("@", 1)[-1])
+        message.set_content(body or "")
+        with self._session() as conn:
+            sent = self._folder_names(conn).get("sent")
+            if not sent:
+                raise WebmailError("Dossier « Envoyés » introuvable")
+            conn.append(_quote(sent), "(\\Seen)", None, message.as_bytes())

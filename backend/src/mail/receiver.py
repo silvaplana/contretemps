@@ -68,9 +68,12 @@ class StatusOut(BaseModel):
 
 
 class MembersIn(BaseModel):
-    """« Écrire aux adhérents » (§7 bis) : des cours, ou tous (liste vide)."""
+    """« Écrire à un groupe » (§7 bis) : des cours ou des groupes, ou tout le
+    monde (listes vides)."""
 
     courses: list[int] = []
+    # Groupes d'Admin (Bureau, Profs, faits à la main), Seb 19 novembre.
+    groups: list[int] = []
     subject: str = Field("", max_length=300)
     body: str = Field(min_length=1, max_length=50000)
 
@@ -353,25 +356,31 @@ class MailReceiver:
         return members.choices(db, ecole_id)
 
     def send_to_members(self, ecole_id: int, data: MembersIn, box: int | None = None, db: Session = Depends(get_db)):
-        """Un mail à chaque adhérent (ou à ceux des cours), au nom de l'école ;
-        les réponses et une copie vont à la boîte du « De ». L'Annuler de
-        10 s est à l'écran : la demande part à la fin."""
+        """Un mail à chacun (tout le monde, ou ceux des cours), au nom de
+        l'école ; les réponses vont à la boîte du « De », qui le range dans
+        « Envoyés » (« À : Tout le monde · 84 »). L'Annuler de 10 s est à
+        l'écran : la demande part à la fin."""
         account = self.connection.account(db, ecole_id, box)
         if account is None:
             raise HTTPException(status_code=409, detail="La boîte mail du club n'est pas connectée")
-        chosen = members.recipients(db, ecole_id, data.courses)
+        chosen = members.recipients(db, ecole_id, data.courses, data.groups)
         if not chosen.addresses:
             raise HTTPException(status_code=400, detail="Aucun adhérent avec une adresse mail")
         ecole = db.get(Ecole, ecole_id)
-        addresses = [a for a in chosen.addresses if a.lower() != account.address.lower()] + [account.address]
+        addresses = [a for a in chosen.addresses if a.lower() != account.address.lower()]
+        mail = members.content(ecole.nom, data.subject, data.body)
         try:
-            sent = self.send_to_each(
-                db, ecole_id, addresses,
-                lambda address: members.content(
-                    ecole.nom, data.subject, data.body, address, account.address, chosen.people
-                ),
-                repondre_a=account.address,
-            )
+            sent = self.send_to_each(db, ecole_id, addresses, lambda _address: mail, repondre_a=account.address)
         except RuntimeError as erreur:
             raise HTTPException(status_code=502, detail=str(erreur)) from None
-        return {"people": chosen.people, "sent": len([a for a in sent if a != account.address])}
+
+        def ranger(w: Webmail):
+            w.sender_name = ecole.nom
+            w.file_sent(chosen.label, data.subject, data.body)
+
+        try:
+            self._call(db, ecole_id, box, ranger)
+            filed = True
+        except HTTPException:
+            filed = False  # les mails sont partis : la trace n'est qu'un plus
+        return {"people": chosen.people, "sent": len(sent), "filed": filed}
