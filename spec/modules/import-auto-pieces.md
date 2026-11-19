@@ -61,13 +61,20 @@ Flèche ← en haut à gauche, retour au tableau. Enregistré au fil de la saisi
 - **Nature des pièces créées** : Facture d'achat, Vente, Note de frais, Honoraires (les natures de
   Pièces).
 - **Source** : Docs, un des drives (« Drive « Club » (kDrive) »), HelloAsso ou une des boîtes
-  mail, puis le **dossier** (pour Docs et un drive). HelloAsso : ses versements.
+  mail, puis le **dossier** (pour Docs et un drive). **HelloAsso** : les versements de la
+  campagne de la saison (Seb, 19 novembre).
 - **Destination** : Aucune, Docs ou un des drives, puis le dossier. **N'importe quel dossier**
   (Seb, 19 novembre) : les dossiers imposés du Financier ne servent qu'au rangement des pièces
   saisies avec « + », à « Reprendre les soldes » et au dépôt du bilan ; la compta ne dépend pas
   d'eux (la base garde où est le fichier). « Aucune » : la pièce garde le lien vers son fichier dans
   la source, rien n'est copié. **Source boîte mail : destination obligatoire** (Seb), « Aucune »
   n'est pas proposé : la pièce jointe y est déposée.
+  **Source HelloAsso** : l'appli **reconstitue** une pièce par versement (PDF : date, campagne,
+  montant, détail des paiements) ; avec une destination, ce PDF y est déposé sous le nom
+  « … (reconstituée par l'appli).pdf ». La fiche le dit : « Pièces reconstituées par l'appli à
+  partir des versements HelloAsso. Pour garder les vraies pièces, prenez comme source le dossier
+  où elles sont déposées. » **Seule exception** à la règle du 10 novembre (l'appli n'invente
+  jamais de fichier dans Docs), à confirmer par Seb.
 - **Regarder s'il y a de nouvelles pièces** : chaque heure, chaque jour, chaque semaine ou chaque
   mois, et à quelle heure (sauf « chaque heure ») ; heure de Paris. « L'appli regarde la source à
   ce rythme et crée une pièce pour chaque nouveau fichier. »
