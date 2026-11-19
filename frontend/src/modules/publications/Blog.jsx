@@ -14,6 +14,7 @@ import * as sessionApi from '../../api/session.js'
 import * as partage from './partage.js'
 import * as api from './api.js'
 import AdressesEssai from './AdressesEssai.jsx'
+import DocumentsSpecifiques from './DocumentsSpecifiques.jsx'
 import Categories, { ChoixCategorie } from './Categories.jsx'
 import { EditeurSondage, Sondage, manqueSondage, sondageEnApercu, sondageVide } from '../../components/Sondage.jsx'
 import './publications.css'
@@ -780,6 +781,7 @@ function Editeur({ actu, auteur, lieu, blog, mediaEnHaut, onRetour, onEnregistre
   const [photoEnvoi, setPhotoEnvoi] = useState(0) // photos en cours d'envoi
   const numero = useRef(0)
   const [choixDocument, setChoixDocument] = useState(false)
+  const [specifiques, setSpecifiques] = useState(false) // « Documents spécifiques » déroulé
   const champPhoto = useRef(null)
   const champVideo = useRef(null)
   // Le lien en train d'être collé, ou null ; un lien partagé depuis une autre
@@ -1073,6 +1075,24 @@ function Editeur({ actu, auteur, lieu, blog, mediaEnHaut, onRetour, onEnregistre
               <IconeFichier />
               Document
             </button>
+            <button
+              type="button"
+              className="editeur__ajout-large"
+              aria-expanded={specifiques}
+              onClick={() => setSpecifiques((x) => !x)}
+            >
+              <IconeFichier />
+              Documents spécifiques
+            </button>
+            {specifiques && (
+              <DocumentsSpecifiques
+                ecoleId={lieu.ecoleId}
+                onChoisir={(document) => {
+                  changer({ document })
+                  setSpecifiques(false)
+                }}
+              />
+            )}
             <button
               type="button"
               className="editeur__ajout-sondage"

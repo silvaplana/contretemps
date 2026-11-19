@@ -1249,8 +1249,34 @@
 }
 
 /* Sondage : le bouton de l'éditeur (la carte est dans components/Sondage.css). */
-.editeur__ajouts .editeur__ajout-sondage {
+.editeur__ajouts .editeur__ajout-sondage,
+.editeur__ajouts .editeur__ajout-large {
   grid-column: span 2;
+}
+.editeur__ajouts .editeur__ajout-large[aria-expanded='true'] {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+  font-weight: 700;
+}
+/* « Documents spécifiques » déroulé (Seb, 19 novembre). */
+.specifiques {
+  grid-column: span 2;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.specifiques__fichiers {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 6px 0 0 16px;
+}
+.editeur__ajouts .specifiques .choix__ligne {
+  width: 100%;
+  justify-content: space-between;
+  border: 1px solid var(--border);
+  padding: 0 14px;
+  text-align: left;
 }
 /* Par mail (§12.13, Seb 19 novembre). */
 .editeur__mail {
