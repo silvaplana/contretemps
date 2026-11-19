@@ -293,6 +293,14 @@ export default function SaisonsSection({ ecoleId, documents, peutOuvrir, onSaiso
               </button>
             )}
           </div>
+          {/* Seb, 19/11/2026 : dire ce que fait le bouton (spec/SPEC.md, saisons). */}
+          {peutOuvrir && affichee && !affichee.courante && (
+            <p className="muted admin-saisons__aide">
+              {affichee.ouverte
+                ? 'Refermer la saison : elle repasse en lecture seule. On la consulte toujours, rien n’est effacé, et « Ouvrir aux modifications » la rouvre. Les comptes du Financier ne sont pas clôturés pour autant.'
+                : 'Ouvrir aux modifications : les admins peuvent de nouveau y changer élèves, cours et notes de frais, sans qu’aucun mail ne parte.'}
+            </p>
+          )}
         </div>
       )}
       {panneau === 'suppression' && (
