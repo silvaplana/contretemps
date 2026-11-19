@@ -74,7 +74,9 @@ Flèche ← en haut à gauche, retour au tableau. Enregistré au fil de la saisi
   « … (reconstituée par l'appli).pdf ». La fiche le dit : « Pièces reconstituées par l'appli à
   partir des versements HelloAsso. Pour garder les vraies pièces, prenez comme source le dossier
   où elles sont déposées. » **Seule exception** à la règle du 10 novembre (l'appli n'invente
-  jamais de fichier dans Docs), à confirmer par Seb.
+  jamais de fichier dans Docs), **accordée par Seb le 19 novembre** à condition que ce soit dit :
+  le nom du fichier et une mention en tête du PDF (« Pièce reconstituée par l'appli à partir du
+  versement HelloAsso »).
 - **Regarder s'il y a de nouvelles pièces** : chaque heure, chaque jour, chaque semaine ou chaque
   mois, et à quelle heure (sauf « chaque heure ») ; heure de Paris. « L'appli regarde la source à
   ce rythme et crée une pièce pour chaque nouveau fichier. »
