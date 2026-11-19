@@ -681,7 +681,7 @@ class Webmail:
         }
 
     def peek(self, folder: str, uid: int) -> dict:
-        """Message complet sans le marquer lu (Import auto pièces)."""
+        """Message complet sans le marquer lu (Importation automatique de pièces)."""
         with self._session() as conn:
             name, _criteria = self._target(conn, folder)
             self._select(conn, name, readonly=True)

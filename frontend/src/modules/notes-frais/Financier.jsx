@@ -117,7 +117,7 @@ export default function Financier({ docs = null }) {
   const [exterieurs, setExterieurs] = useState(false)
   const [importAuto, setImportAuto] = useState(false)
   const [emplacements, setEmplacements] = useState(false)
-  // L’entrée « Import auto pièces » du menu ⋯ : seulement si le sous-module est allumé.
+  // L’entrée « Importation automatique de pièces » du menu ⋯ : seulement si le sous-module est allumé.
   const [importAutoDispo, setImportAutoDispo] = useState(false)
   useEffect(() => {
     autoImportApi.disponible().then(setImportAutoDispo)
@@ -201,8 +201,8 @@ export default function Financier({ docs = null }) {
                 { label: 'Envoyer une note pour quelqu’un', icon: 'send', onClick: () => setChoix('note') },
                 { label: 'Extérieurs', icon: 'users', onClick: () => setExterieurs(true) },
                 { label: 'Annuler le dernier import', icon: 'trash', onClick: () => setAnnulerImport(true) },
-                // Sous-module Import auto pièces, allumé seulement là où il sert (ASC).
-                ...(importAutoDispo ? [{ label: 'Import auto pièces', icon: 'paperclip', onClick: () => setImportAuto(true) }] : []),
+                // Sous-module Importation automatique de pièces, allumé seulement là où il sert (ASC).
+                ...(importAutoDispo ? [{ label: 'Importation automatique de pièces', icon: 'paperclip', onClick: () => setImportAuto(true) }] : []),
                 { label: 'Emplacement des pièces manuelles', icon: 'folder', onClick: () => setEmplacements(true) },
               ]
         }

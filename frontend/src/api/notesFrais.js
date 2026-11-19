@@ -151,6 +151,9 @@ export const detacher = (noteId) => appel(`/notes/${noteId}/detacher`, { method:
 // Vente encaissée en espèces : elle entre dans la caisse (financier.md §8.12).
 export const especes = (noteId) => appel(`/notes/${noteId}/especes`, { method: 'POST' })
 export const definirCategories = (libelles) => appel('/categories', json('PUT', { libelles }))
+// La paie (financier.md §8.11) : « L'association a des salariés », éteinte par défaut.
+export const paie = () => appel('/paie')
+export const reglerPaie = (active) => appel('/paie', json('PUT', { active }))
 
 export const urlJustificatifs = (noteId) => `${BASE}/notes/${noteId}/justificatifs.zip`
 

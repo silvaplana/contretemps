@@ -495,6 +495,51 @@ def comptes_de_produits(db: Session, org_id: int) -> list[tuple[str, str]]:
 
 
 
+# Les comptes d'un bulletin de salaire (financier.md §8.11) : numéro, libellé, nature.
+_COMPTES_PAIE = (("641", "Salaires", "depense"), ("645", "Charges sociales", "depense"), ("431", "URSSAF à payer", "tiers"))
+
+
+def comptes_paie_manquants(db: Session, org_id: int) -> list[tuple[str, str]]:
+    """Les comptes de la paie absents (ou inactifs) du plan comptable."""
+    from finances.models import FinChartAccount
+
+    actifs = set(db.scalars(select(FinChartAccount.number).where(FinChartAccount.org_id == org_id, FinChartAccount.active.is_(True))))
+    return [(numero, libelle) for numero, libelle, _ in _COMPTES_PAIE if numero not in actifs]
+
+
+def ajouter_comptes_paie(db: Session, org_id: int) -> None:
+    """Ajoute (ou réactive) les comptes de la paie. Le prélèvement de
+    l'URSSAF solde 431 : le mot URSSAF passe de 645 à 431 pour que l'appli
+    propose 431 sur ce prélèvement (sinon les cotisations compteraient deux fois)."""
+    from finances.models import FinChartAccount
+
+    comptes = {a.number: a for a in db.scalars(select(FinChartAccount).where(FinChartAccount.org_id == org_id))}
+    for numero, libelle, nature in _COMPTES_PAIE:
+        compte = comptes.get(numero)
+        if compte is None:
+            compte = FinChartAccount(org_id=org_id, number=numero, label=libelle, nature=nature, keywords=[])
+            db.add(compte)
+            comptes[numero] = compte
+        compte.active = True
+    if "URSSAF" not in (comptes["431"].keywords or []):
+        comptes["431"].keywords = [*(comptes["431"].keywords or []), "URSSAF"]
+    comptes["645"].keywords = [k for k in (comptes["645"].keywords or []) if k.upper() != "URSSAF"]
+    db.commit()
+
+
+def retirer_comptes_paie(db: Session, org_id: int) -> None:
+    """« L'association a des salariés » : non. 431 devient inactif (jamais
+    supprimé : il a pu servir) et le mot URSSAF revient sur 645."""
+    from finances.models import FinChartAccount
+
+    comptes = {a.number: a for a in db.scalars(select(FinChartAccount).where(FinChartAccount.org_id == org_id))}
+    if "431" in comptes:
+        comptes["431"].active = False
+    if "645" in comptes and "URSSAF" not in [k.upper() for k in comptes["645"].keywords or []]:
+        comptes["645"].keywords = [*(comptes["645"].keywords or []), "URSSAF"]
+    db.commit()
+
+
 def compte_de_tiers(db: Session, org_id: int, nature: str, nom: str) -> tuple[str, str] | None:
     """Le compte de tiers d'une pièce au niveau Complet, comme le Grand livre
     le prendra (financier.md §8.7) : 401 pour un achat, le 467n au nom de la

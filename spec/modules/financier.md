@@ -1159,7 +1159,7 @@ n'attend jamais une pièce : une ligne sans pièce reçoit son compte à la main
 
 ### 8.11 Sources de pièces : kDrive et versements HelloAsso (Seb, 19 novembre 2026)
 
-Le même jour, Seb a généralisé ces sources dans le sous-module **Import auto pièces**
+Le même jour, Seb a généralisé ces sources dans le sous-module **Importation automatique de pièces**
 (`import-auto-pieces.md`) : la connexion kDrive devient une ligne « Drives du club » de Connexions
 (`core.md` §3, avec Google Drive) et la lecture des dossiers un import réglé dans Pièces › ⋯. Ce qui
 suit reste valable pour la paie, HelloAsso, le plan comptable et le dépôt du bilan.
@@ -1186,7 +1186,11 @@ de pièces » à valider par Seb avant le code, CLAUDE.md) :
   que les autres. On donne l'e-mail du compte Infomaniak, un **mot de passe d'application** (créé
   dans Infomaniak › Sécurité, pas le mot de passe habituel) et le numéro du kDrive ; l'appli lit
   par WebDAV. Les identifiants sont chiffrés comme ceux de HelloAsso, jamais montrés.
-- **Dossiers** : on coche les dossiers à lire (« Que doit lire l'appli ? »). L'appli **lit
+- **Dossiers** : on coche les dossiers à lire (« Que doit lire l'appli ? »). Rien n'est supposé sur
+  l'arborescence (Seb, 19/11 : il ne sait pas encore où sont les pièces). Juste après la connexion,
+  l'appli parcourt tout le kDrive une fois et écrit à côté de chaque dossier ce qu'elle y a
+  reconnu (« 14 bulletins de salaire », « 3 factures », rien si rien) ; les dossiers qui en ont
+  sont en haut. Elle ne garde de ce parcours que ces comptes. L'appli **lit
   seulement** : elle n'écrit dans le kDrive que sur le bouton « Déposer » (plus bas).
 - **Lecture** : chaque nouveau fichier d'un dossier coché est lu une fois (même lecteur que les
   factures) et reconnu d'après son contenu : bulletin de salaire, avis URSSAF, facture ; un fichier
@@ -1223,6 +1227,25 @@ payer, 431 URSSAF à payer » (pour HelloAsso : 4671 Licences FFST à reverser, 
 seulement si la campagne en a) ; **« Ajouter ces comptes »** en un geste, Annuler 10 s. Rien n'est
 ajouté sans ce toucher ; Contretemps, sans source allumée, ne voit jamais la question.
 
+**Paie : décision et code (Seb, 19/11, « code ce que tu peux » ; étape 3 ci-dessous)**. Un bulletin
+de salaire est une pièce de nature **Bulletin de salaire** (`salaire`, journal SA, dossier Docs ›
+Financier › SALAIRES › MM.AAAA), à plusieurs lignes comme une vente (§8.12) : 641 Salaires = le brut,
+645 Charges sociales = la part de l'employeur, 431 URSSAF à payer = **en moins** les cotisations du
+salarié et de l'employeur ; la somme des lignes est le net payé. La fiche demande seulement Salarié,
+Date, Salaire brut, Cotisations du salarié, Cotisations de l'employeur, et montre le net, le coût pour
+l'association et les écritures. Rattaché au virement du net, le bulletin **ventile** la ligne de
+banque (641 et 645 au débit, 431 au crédit) ; le prélèvement de l'URSSAF se classe dans 431 (proposé
+par le mot-clé URSSAF), qui revient à zéro. Pas de 421 : le net est payé par la banque le jour du
+virement (le bulletin non payé au 31/08 reste dans « Fournisseurs à payer », pas encore en charge au
+Complet). Le lecteur ne reconnaît pas encore les bulletins : une pièce lue (par exemple du kDrive)
+change de nature en « Bulletin de salaire » et les montants se saisissent.
+**Éteint par défaut, rien ne change pour Contretemps** : « L'association a des salariés » (non par
+défaut) sur la ligne Financier de Fonctionnalités ; « Oui » ajoute au plan 641, 645 et 431 (le mot
+URSSAF passe de 645 à 431), et Pièces montre la puce Salaires et la nature Bulletin de salaire ;
+« Non » rend 431 inactif. L'état est simplement « 431 actif dans le plan » : pas de réglage stocké.
+Routes : `GET|PUT /notes-frais/paie` ({active}), `GET|POST /notes-frais/paie/comptes`, `paie`
+({brut, salarie, employeur} en centimes) sur `POST /notes-frais/etablir` et `PATCH /notes-frais/notes/{id}`.
+
 **Dépôt du bilan** : à l'étape 7, « Déposer les documents » demande **où** quand le kDrive est
 connecté : kDrive (dossier choisi une fois, par exemple FINANCIER › BILAN <saison>) ou Docs comme
 aujourd'hui ; sans kDrive, la question n'apparaît pas. C'est toujours la trésorière qui touche le
@@ -1237,7 +1260,7 @@ paie complète ; 4. dépôt du bilan dans le kDrive.
 Maquette validée par Seb (« ok, c'est bon ») : https://claude.ai/artifact/6BYVCSzcdbKPEx7rw8TYAD.
 Demande de Seb : « il faut déjà que la vente unitaire marche » (il croyait qu'elle existait). Jusqu'ici
 la puce Ventes n'affichait qu'un texte d'attente et une recette n'était qu'une ligne de banque dont on
-confirme le compte de produits (§8.3 ter). Préalable à la source HelloAsso d'Import auto pièces
+confirme le compte de produits (§8.3 ter). Préalable à la source HelloAsso d'Importation automatique de pièces
 (`import-auto-pieces.md` étape 6, `helloasso.md` §9).
 
 **Une vente est une pièce comme les autres**, de nature **Vente** : même « + » que les dépenses
@@ -1285,12 +1308,12 @@ au crédit. Journal **VE**, numéro de pièce « VE-2025-001 » (§8.7). Une lig
 garde son compte confirmé dans Comptes, comme aujourd'hui : rien ne change pour les recettes déjà
 classées, ni pour une école qui ne saisit pas de ventes.
 
-**Versements HelloAsso** (Seb, 19/11, fil Import auto pièces) : un versement = une vente à plusieurs
+**Versements HelloAsso** (Seb, 19/11, fil Importation automatique de pièces) : un versement = une vente à plusieurs
 lignes, ventilée par formule (la trésorière dit une fois où va chaque formule). Une adhésion payée **en
 plusieurs fois** tombe dans plusieurs versements, mêlée à d'autres personnes : on compte **par
 paiement** (échéance, `cash_out_date`), chacune répartie au prorata de l'adhésion. Exemple : 300 € dont
 72 € de licence, en 3 fois : chaque échéance donne 76 € en 756 et 24 € en 4671 ; les trois versements
-additionnés font le total. Codé avec l'étape 6 d'Import auto pièces, pas ici.
+additionnés font le total. Codé avec l'étape 6 d'Importation automatique de pièces, pas ici.
 
 **Plus tard, étape à part** : la remise de chèques détaillée chèque par chèque (une sous-ligne par
 chèque rapprochée d'une famille, §8.3).
@@ -1331,7 +1354,7 @@ crédit rattaché (étape 2) ; journal VE (§8.6, `JOURNALS`). Le compte de tier
    - Port `Banque` (`notes_frais/ports.py`) : `credits`, `tous_credits`, `ventiler`, `deventiler`,
      `entrer_en_caisse`, `sortir_de_caisse`, faits par `notes_frais_contretemps` sur les tables du
      Financier (`fin_operation_accounts`, `fin_cash_lines`). Pas de table ni de colonne nouvelles.
-Puis prévenir le fil Import auto pièces (étape 6, HelloAsso).
+Puis prévenir le fil Importation automatique de pièces (étape 6, HelloAsso).
 
 ### 8.13 Emplacement des pièces manuelles (Seb, 19 novembre 2026)
 
@@ -1362,7 +1385,8 @@ du club », `core.md` §3). **Codé le 19 novembre 2026** (`notes_frais` : `Stor
   ligne en base, même chemin. Tests à chaque PR.
 - **Fichiers déjà rangés** : ils restent où ils sont (la base garde où est chaque fichier) ; seules
   les nouvelles pièces vont dans le nouvel emplacement, comme pour un compte renommé (§8.12).
-- **Hors du réglage** : A TRAITER, VIREMENTS SANS FACTURE et RELEVES BANCAIRES restent en dur. Les
+- **Hors du réglage** : A TRAITER, VIREMENTS SANS FACTURE, RELEVES BANCAIRES et SALAIRES (§8.11) restent
+  en dur. Les
   pièces d'Import auto pièces gardent leur propre destination.
 - **Données** : une ligne par école et par nature changée (`nf_storage_places` : organisation,
   nature, `target_kind` docs | drive, `target_ref` = le drive, `target_path`, `by_month` pour les achats). Le dépôt sur un drive

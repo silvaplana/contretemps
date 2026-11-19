@@ -41,7 +41,9 @@ ACHAT = "achat"
 # Une recette avec sa pièce (financier.md §8.12) : une ligne (`Depense`) par
 # compte de produits ; À valider → À encaisser (validée) → Encaissée.
 VENTE = "vente"
-NATURES = (FRAIS, HONORAIRES, ACHAT, VENTE)
+# Bulletin de salaire (financier.md §8.11) : 641 brut + 645 part employeur − 431 cotisations = net payé.
+SALAIRE = "salaire"
+NATURES = (FRAIS, HONORAIRES, ACHAT, VENTE, SALAIRE)
 # person_id d'une note d'honoraires dont le prof n'est pas encore reconnu.
 PERSONNE_A_CHOISIR = 0
 
@@ -166,7 +168,7 @@ class PieceJustificative(Base):
     sha256: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     # Preuve du virement qui paie la pièce (avis d'opération CIC, mail de la banque) : pas une facture.
     is_proof: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
-    # Import auto pièces (spec/modules/import-auto-pieces.md §6) : le fichier
+    # Importation automatique de pièces (spec/modules/import-auto-pieces.md §6) : le fichier
     # reste dans le dossier du club (Docs : `doc_node_id` ; drive : `drive_id`
     # et `drive_path`) ; l'appli ne le déplace ni ne l'efface jamais.
     linked: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")

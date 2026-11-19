@@ -1,4 +1,4 @@
-"""Import auto pièces, étape 2 (spec/modules/import-auto-pieces.md) : éteint
+"""Importation automatique de pièces, étape 2 (spec/modules/import-auto-pieces.md) : éteint
 par défaut, un import dont la source est un dossier de Docs crée une pièce
 À valider par nouveau fichier, reliée au fichier sans le déplacer ; « Voir »,
 la poubelle qui garde les pièces, les écoles étanches."""

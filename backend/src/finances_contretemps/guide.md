@@ -40,6 +40,13 @@ Pièces
   « Pas encore encaissée », « Encaissée en espèces » (lignes dans la Caisse) ; une fois encaissée : les écritures
   (journal VE) et « Détacher ». Dans Rapprocher, les ventes à encaisser et, si l'école saisit des ventes, la partie
   « Crédits sans vente ».
+  Puce Salaires (seulement si « L'association a des salariés » est sur oui, Admin › École › Personnalisation ›
+  Fonctionnalités, ligne Financier) : « + » › Saisir à la main › Bulletin de salaire, ou une pièce dont on change la
+  nature en « Bulletin de salaire ». Fiche : Salarié, Date du bulletin, Salaire brut, Cotisations du salarié,
+  Cotisations de l'employeur ; l'appli montre le net payé, le coût pour l'association et les écritures (641, 645,
+  431, 512) ; « Valider : À payer ». Bloc « Paiement du net » : « Rattacher à cette transaction bancaire » (le
+  virement du net prend les comptes du bulletin), « Autre transaction… », « Détacher ». Le prélèvement de l'URSSAF
+  se classe dans 431 URSSAF à payer (proposé par l'appli). Rangé dans Docs › Financier › SALAIRES › mois.
   Les transactions bancaires sans compte se classent dans Comptes (filtre « Sans compte »), badge
   bleu sur le sous-onglet Comptes.
 - « + » : Saisir une dépense. Prendre en photo (enchaîner : Pièce suivante, Encore une page de celle-ci), Choisir des
@@ -89,13 +96,15 @@ Pièces
   avec avis de virement » et ne rattachent pas seuls ; au « Rattacher », l'avis devient la page
   « - Virement » de la facture et la justification s'efface. Badge bleu = suggestions +
   pièces « déjà payées » sans ligne.
-- Menu ⋯ : Créer une dépense pour quelqu'un ; Envoyer une note pour quelqu'un ; Extérieurs ; Annuler le dernier import ; Import auto pièces (si allumé) ; Emplacement des pièces manuelles.
+- Menu ⋯ : Créer une dépense pour quelqu'un ; Envoyer une note pour quelqu'un ; Extérieurs ; Annuler le dernier import ; Importation automatique de pièces (si allumée) ; Emplacement des pièces manuelles.
 - ⋯ › Emplacement des pièces manuelles : où va le fichier d'une pièce saisie avec « + », une ligne par nature (Factures d'achat, Honoraires, Notes de frais, Ventes). Toucher une ligne : Où (Docs ou un drive du club), Dossier (choisir dans la liste, ou écrire un nouveau dossier puis « Choisir ce dossier ») ; pour les achats, la case « Un sous-dossier par mois (08.2026) ». Sur un drive, l'appli ajoute un dossier par saison. « Revenir à l'emplacement par défaut ». Les fichiers déjà rangés ne bougent pas.
 - Sous la liste, « Du … au … » puis Excel (une ligne par dépense) et Rapprochement : le PDF pour le validateur comptable,
   à tout moment : pièces payées avec la transaction bancaire qui les paie (et l'écart), pièces sans paiement rattaché avec leur
   état, lignes de débit sans pièce.
 - « Pour qui ? » : les membres, puis les extérieurs (payés sans être membres) ; « + Quelqu'un d'extérieur » (nom, mail et téléphone facultatifs, RIB). ⋯ › Extérieurs : corriger, « Demander le RIB par mail », retirer de la liste.
 - Réglage « Qui paie » : Admin › École › Personnalisation › Fonctionnalités, ligne Financier.
+- Réglage « L'association a des salariés » (non par défaut) : même ligne ; « Oui » ajoute au plan 641 Salaires,
+  645 Charges sociales et 431 URSSAF à payer, et fait apparaître la puce Salaires.
 
 Bilan
 - En haut, le choix de la saison, puis les étapes du bilan (Préparer). Plus d'onglets Documents ni Clôture.

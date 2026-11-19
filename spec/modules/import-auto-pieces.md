@@ -1,6 +1,6 @@
-# AppBase — Sous-module `auto_import` (Financier › Pièces) : Import auto pièces
+# AppBase — Sous-module `auto_import` (Financier › Pièces) : Importation automatique de pièces
 
-Version 0.1 du 19 novembre 2026. Demande de Seb (fil « Sous-module : Import auto pièces ») :
+Version 0.1 du 19 novembre 2026. Demande de Seb (fil « Sous-module : Importation automatique de pièces ») :
 des pièces (factures, ventes, notes de frais, honoraires) qui **arrivent toutes seules** : un
 fichier déposé dans un dossier de Docs ou d'un drive, un mail reçu dans la boîte du club, un
 versement HelloAsso devient une pièce de Financier › Pièces, sans la saisir. Maquettes validées
@@ -23,17 +23,17 @@ le sous-module garde exactement ses écrans et ses pièces.
 
 ## 2. Où il se trouve
 
-- **Financier › Pièces › ⋯** : entrée **« Import auto pièces »**, pour qui a l'Accès au Financier
+- **Financier › Pièces › ⋯** : entrée **« Importation automatique de pièces »**, pour qui a l'Accès au Financier
   (Seb, 19 novembre).
-- **Admin › École › Personnalisation › Fonctionnalités** : case « Import auto pièces » en retrait
+- **Admin › École › Personnalisation › Fonctionnalités** : case « Importation automatique de pièces » en retrait
   sous Financier (`requires=("finances",)`).
 - Les sources viennent des connexions de l'école (Admin › École › Connexions) : **Drives du club**
   (`core.md` §3), **Boîte mail du club** (`mail.md` §4), **HelloAsso** (`helloasso.md`). Une source
   pas connectée n'est pas proposée.
 
-## 3. L'écran Import auto pièces
+## 3. L'écran Importation automatique de pièces
 
-Plein écran, titre « Import auto pièces », **croix en haut à droite** pour revenir à Pièces.
+Plein écran, titre « Importation automatique de pièces », **croix en haut à droite** pour revenir à Pièces.
 
 Un tableau, une ligne par import :
 
@@ -184,7 +184,7 @@ Tables préfixées `autoimport_`, liées par `organization_id` (écoles étanche
    `drives`, éteint par défaut, allumé pour les écoles « combat »), `core.drives` pour les autres
    modules ; kDrive demande aussi le numéro du kDrive ; Google Drive codé, proposé seulement quand
    le serveur a la clé du compte de service (étape 4).
-2. **Écran Import auto pièces** et source **Docs** : tableau, fiche, worker, création des pièces
+2. **Écran Importation automatique de pièces** et source **Docs** : tableau, fiche, worker, création des pièces
    À valider, Voir, 🗑.
    **Fait (19 novembre)** : `backend/src/auto_import/` (module `auto_import`, éteint par défaut,
    allumé pour les écoles « combat ») ; tables `autoimport_rules`, `autoimport_seen` ; `nf_pieces`
@@ -223,6 +223,7 @@ Tables préfixées `autoimport_`, liées par `organization_id` (écoles étanche
 ## 10. Reste à décider
 
 - D'autres statuts de pièce créée que « À valider ».
-- Bulletins de salaire et avis URSSAF (paie complète, `financier.md` §8.11) : une nature de plus,
-  ou l'étape 3 de §8.11 telle quelle.
+- Bulletins de salaire : décidé le 19/11, une nature de plus (« Bulletin de salaire », `financier.md`
+  §8.11) ; une fiche d'import ne la propose pas encore (le lecteur ne lit pas les bulletins) : la pièce
+  arrive en Achat et la trésorière change sa nature.
 - Rendre réglables les dossiers imposés du Financier, si un club les refuse (chantier à part).

@@ -495,7 +495,7 @@ def test_rafale_d_achats_lue_rangee_dans_achats(client, ecole, monkeypatch):
 
     puce = client.get("/notes-frais/tresorerie?filtre=achat", headers=entetes_session(tresorier)).json()
     assert [n["id"] for n in puce["notes"]] == [note["id"]]
-    assert puce["compteurs"] == {"frais": 0, "honoraires": 0, "achat": 1, "vente": 0, "virements": 0, "a_trancher": 0, "rapprocher": 0}
+    assert puce["compteurs"] == {"frais": 0, "honoraires": 0, "achat": 1, "vente": 0, "salaire": 0, "virements": 0, "a_trancher": 0, "rapprocher": 0}
     # Rien des achats dans la puce Notes de frais.
     assert client.get("/notes-frais/tresorerie?filtre=frais", headers=entetes_session(tresorier)).json()["notes"] == []
 
@@ -1030,7 +1030,7 @@ def test_aide_au_virement_et_faire_payer_par_quelqu_un(client, db_session, ecole
     [ligne] = liste["virements"]
     assert ligne["beneficiaire"] == "L MARTIN" and ligne["libelle_virement"] == "Contretemps honoraires oct 2026"
     assert [p["nom"] for p in liste["payeurs"]] == ["Julia Dho"]
-    assert _a_faire(client, tresorier) == {"frais": 0, "honoraires": 0, "achat": 0, "vente": 0, "virements": 1, "a_trancher": 0, "rapprocher": 0}
+    assert _a_faire(client, tresorier) == {"frais": 0, "honoraires": 0, "achat": 0, "vente": 0, "salaire": 0, "virements": 1, "a_trancher": 0, "rapprocher": 0}
 
     # « Qui paie » : Ana, qui a l'appli de la banque.
     reglage = client.put("/notes-frais/payeurs", json={"person_ids": [admin.id]}, headers=entetes_session(tresorier))
@@ -2148,3 +2148,72 @@ def test_drive_injoignable_rangee_dans_docs(client, ecole, monkeypatch):
     financier = _enfant(client, org, tresorier, saison["id"], "Financier")
     mois = _enfant(client, org, tresorier, _enfant(client, org, tresorier, financier["id"], "ACHATS")["id"], "02.2025")
     assert [i["name"] for i in _parcourir(client, org, tresorier, mois["id"]).json()["items"]] == ["2025-02-09 Facture Amazon 39,90.jpg"]
+
+
+# --- Paie (financier.md §8.11, Seb 19/11) ---
+
+
+def test_bulletin_de_salaire_ventile_le_virement_du_net_et_l_urssaf_solde_431(client, db_session, ecole):
+    """Un bulletin : 641 le brut, 645 la part de l'employeur, 431 en moins les
+    cotisations ; leur somme est le net. Le compte 431 manque au plan : l'appli
+    le dit, la trésorière l'ajoute d'un toucher. Rattaché au virement du net,
+    le bulletin ventile la ligne de banque ; le prélèvement de l'URSSAF se
+    propose alors sur 431 (plus sur 645), et 431 revient à zéro."""
+    import json
+
+    tresorier = ecole["tresorier"]
+    t = entetes_session(tresorier)
+    org = ecole["ecole"].id
+    client.get("/finances/chart", headers=t)
+    assert client.get("/notes-frais/paie/comptes", headers=t).json()["manquants"] == [{"numero": "431", "libelle": "URSSAF à payer"}]
+    assert client.post("/notes-frais/paie/comptes", headers=entetes_session(ecole["eleve"])).status_code == 403
+    assert client.post("/notes-frais/paie/comptes", headers=t).json()["manquants"] == []
+
+    paie = json.dumps({"brut": 180000, "salarie": 41000, "employeur": 52000})
+    bulletin = _etablir(client, tresorier, "salaire", contenu=None, fournisseur="Coach Dupont", date="2026-10-31", paie=paie, valider="true")
+    assert bulletin["nature"] == "salaire" and bulletin["titre"] == "Salaire Coach Dupont octobre 2026"
+    assert [(d["categorie"]["code"], d["montant_centimes"]) for d in bulletin["depenses"]] == [("641", 180000), ("645", 52000), ("431", -93000)]
+    assert bulletin["total_centimes"] == 139000
+
+    net = _operation(db_session, org, -139000, "2026-10-31", "VIR SEPA SALAIRE OCTOBRE")
+    urssaf = _operation(db_session, org, -93000, "2026-11-15", "PRLV URSSAF")
+    bulletin = client.get("/notes-frais/tresorerie?filtre=salaire", headers=t).json()["notes"][0]
+    assert bulletin["paiement_propose"]["id"] == net.id
+    paye = client.post(f"/notes-frais/notes/{bulletin['id']}/payee", json={"operation_id": net.id}, headers=t)
+    assert paye.status_code == 200, paye.text
+    assert paye.json()["statut"] == "remboursee"
+    fiche = client.get(f"/finances/operations/{net.id}", headers=t).json()
+    assert sorted((l["number"], l["amount"]) for l in fiche["lines"]) == [("431", 930.0), ("641", -1800.0), ("645", -520.0)]
+    proposition = client.get(f"/finances/operations/{urssaf.id}", headers=t).json()
+    assert proposition["proposal"]["number"] == "431", proposition
+
+    detache = client.post(f"/notes-frais/notes/{bulletin['id']}/detacher", headers=t)
+    assert detache.status_code == 200
+    assert client.get(f"/finances/operations/{net.id}", headers=t).json()["lines"] == []
+
+
+def test_bulletin_de_salaire_refuse_des_cotisations_plus_grandes_que_le_brut(client, ecole):
+    import json
+
+    tresorier = ecole["tresorier"]
+    client.get("/finances/chart", headers=entetes_session(tresorier))
+    reponse = client.post(
+        "/notes-frais/etablir",
+        data={"nature": "salaire", "fournisseur": "Coach", "date": "2026-10-31", "paie": json.dumps({"brut": 1000, "salarie": 1000, "employeur": 0})},
+        headers=entetes_session(tresorier),
+    )
+    assert reponse.status_code == 400
+
+
+def test_la_paie_est_eteinte_par_defaut_et_s_allume_dans_fonctionnalites(client, ecole):
+    """Rien ne change pour une école sans salariés (Contretemps) : la paie est
+    éteinte tant que 431 n'est pas au plan ; « oui » l'ajoute, « non » le retire."""
+    t = entetes_session(ecole["tresorier"])
+    client.get("/finances/chart", headers=t)
+    assert client.get("/notes-frais/paie", headers=t).json() == {"active": False}
+    assert client.put("/notes-frais/paie", json={"active": True}, headers=t).json() == {"active": True}
+    plan = {a["number"]: a for a in client.get("/finances/chart", headers=t).json()["accounts"]}
+    assert "URSSAF" in plan["431"]["keywords"] and "URSSAF" not in plan["645"]["keywords"]
+    assert client.put("/notes-frais/paie", json={"active": False}, headers=t).json() == {"active": False}
+    plan = {a["number"]: a for a in client.get("/finances/chart", headers=t).json()["accounts"]}
+    assert not plan["431"]["active"] and "URSSAF" in plan["645"]["keywords"]

@@ -1,4 +1,4 @@
-/* Import auto pièces (spec/modules/import-auto-pieces.md §3) : gros et simple. */
+/* Importation automatique de pièces (spec/modules/import-auto-pieces.md §3) : gros et simple. */
 .ai-ecran .thread-screen__header { justify-content: space-between; }
 .ai { display: flex; flex-direction: column; gap: 12px; font-size: 17px; max-width: 720px; }
 .ai__table { width: 100%; border-collapse: collapse; }

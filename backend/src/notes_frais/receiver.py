@@ -84,8 +84,21 @@ class LigneVente(BaseModel):
     montant_centimes: int = Field(gt=0)
 
 
+class PaieEntree(BaseModel):
+    """Un bulletin de salaire (financier.md §8.11), en centimes."""
+
+    brut: int = Field(gt=0)
+    salarie: int = Field(ge=0)  # cotisations du salarié
+    employeur: int = Field(ge=0)  # cotisations de l'employeur
+
+
+class PaieReglage(BaseModel):
+    active: bool
+
+
 class CorrectionEntree(BaseModel):
     nature: str | None = None
+    paie: PaieEntree | None = None  # un bulletin de salaire : ses lignes 641 / 645 / 431
     lignes: list[LigneVente] | None = None  # une vente : ses comptes et montants (financier.md §8.12)
     person_id: int | None = None
     fournisseur: str | None = None
@@ -335,13 +348,18 @@ class NotesDeFraisReceiver:
             batch_id: str | None = Form(None),
             numero_piece: str | None = Form(None),
             lignes: str | None = Form(None),  # JSON [{categorie_id, montant_centimes}] : une vente à plusieurs comptes
+            paie: str | None = Form(None),  # JSON {brut, salarie, employeur} : un bulletin de salaire
             db: Session = db_dep,
             m: Membre = membre,
         ):
             try:
                 lues = [LigneVente(**l) for l in json.loads(lignes)] if lignes else None
+                bulletin = PaieEntree(**json.loads(paie)) if paie else None
             except (ValueError, TypeError) as erreur:
-                raise HTTPException(status_code=400, detail="Lignes de la vente illisibles.") from erreur
+                raise HTTPException(status_code=400, detail="Lignes de la pièce illisibles.") from erreur
+            if bulletin is not None:
+                lues = None
+                lignes_paie = appeler(nf.lignes_paie, db, m.org_id, bulletin.brut, bulletin.salarie, bulletin.employeur)
             contenu = None
             if fichier is not None:
                 donnees = await fichier.read(TAILLE_MAX_PIECE + 1)
@@ -352,7 +370,7 @@ class NotesDeFraisReceiver:
                 nf.etablir, db, m, nature=nature, fichier=contenu, person_id=person_id, fournisseur=fournisseur,
                 jour=date, montant_centimes=montant_centimes, description=description, valider=valider,
                 categorie_id=categorie_id, batch_id=batch_id, numero_piece=numero_piece,
-                lignes=[(l.categorie_id, l.montant_centimes) for l in lues] if lues else None,
+                lignes=lignes_paie if bulletin is not None else [(l.categorie_id, l.montant_centimes) for l in lues] if lues else None,
             )
             if isinstance(note, Preuve):
                 return nf.preuve_dict(db, m, note)
@@ -374,6 +392,10 @@ class NotesDeFraisReceiver:
                 champs["jour"] = champs.pop("date")
             if champs.get("lignes"):
                 champs["lignes"] = [(l["categorie_id"], l["montant_centimes"]) for l in champs["lignes"]]
+            if champs.get("paie"):
+                paie = champs.pop("paie")
+                champs["lignes"] = appeler(nf.lignes_paie, db, m.org_id, paie["brut"], paie["salarie"], paie["employeur"])
+            champs.pop("paie", None)
             return nf.notes_dicts(db, m, [appeler(nf.corriger, db, m, note_id, **champs)])[0]
 
         @app.delete("/notes-frais/notes/{note_id}", status_code=204)
@@ -455,6 +477,24 @@ class NotesDeFraisReceiver:
         @app.post("/notes-frais/remboursements")
         def rembourser(corps: RemboursementEntree, db: Session = db_dep, m: Membre = membre):
             return [nf.note_dict(n) for n in appeler(nf.rembourser, db, m, corps.note_ids)]
+
+        @app.get("/notes-frais/paie")
+        def paie(db: Session = db_dep, m: Membre = membre):
+            """« L'association a des salariés » (financier.md §8.11) : la paie est-elle allumée ?"""
+            return {"active": nf.paie_active(db, m.org_id)}
+
+        @app.put("/notes-frais/paie")
+        def regler_paie(corps: PaieReglage, db: Session = db_dep, m: Membre = membre):
+            return {"active": appeler(nf.regler_paie, db, m, corps.active)}
+
+        @app.get("/notes-frais/paie/comptes")
+        def comptes_paie(db: Session = db_dep, m: Membre = membre):
+            """Les comptes d'un bulletin de salaire qui manquent au plan (financier.md §8.11)."""
+            return {"manquants": [{"numero": n, "libelle": l} for n, l in nf.comptes_paie_manquants(db, m.org_id)]}
+
+        @app.post("/notes-frais/paie/comptes")
+        def ajouter_comptes_paie(db: Session = db_dep, m: Membre = membre):
+            return {"manquants": [{"numero": n, "libelle": l} for n, l in appeler(nf.ajouter_comptes_paie, db, m)]}
 
         @app.get("/notes-frais/categories")
         def categories(ventes: bool = False, db: Session = db_dep, m: Membre = membre):

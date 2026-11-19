@@ -1,7 +1,7 @@
 """Routes des drives du club (spec/core.md §3, « Drives du club »).
 Connecter, renommer, déconnecter : Administrateur principal ou Super User
 (Admin › École › Connexions). Parcourir les dossiers d'un drive : eux, et
-les personnes qui ont l'Accès au Financier (Import auto pièces). Routes
+les personnes qui ont l'Accès au Financier (Importation automatique de pièces). Routes
 synchrones (réseau bloquant) : FastAPI les exécute dans un thread à part."""
 
 from __future__ import annotations
