@@ -1,0 +1,115 @@
+"""Drives du club (spec/core.md §3) : éteint par défaut, connexion d'un
+kDrive comme une boîte mail, plusieurs drives, écoles étanches, parcourir
+les dossiers. Aucun appel réseau : le client du drive est remplacé."""
+
+import pytest
+from ecoles import Ecoles
+
+from drives.providers import DriveRefused, Entry
+
+KDRIVE = {"provider": "kdrive", "address": "club@ik.me", "code": "bon-mot-de-passe", "drive_ref": "812345"}
+
+
+class FauxDrive:
+    def __init__(self, provider, address, secret, drive_ref):
+        self.secret = secret
+
+    def check(self):
+        if self.secret not in ("bon-mot-de-passe", ""):
+            raise DriveRefused("Infomaniak n'a pas accepté l'adresse ou le mot de passe d'application.")
+
+    def list(self, path=""):
+        if self.secret == "":
+            raise DriveRefused("coupé")
+        return [Entry(name="SALAIRES", path="FINANCIER/SALAIRES", is_dir=True)]
+
+
+@pytest.fixture()
+def ecole(db_session):
+    return Ecoles().create(db_session, nom="Sambo La Ciotat", code_postal="13600")
+
+
+@pytest.fixture(autouse=True)
+def faux(monkeypatch):
+    from app import main
+
+    monkeypatch.setattr(main.core.drives, "factory", FauxDrive)
+
+
+def test_eteint_par_defaut(db_session, ecole):
+    from registry import activation
+
+    assert "drives" in activation.disabled(db_session, ecole.id)
+
+
+def test_connecter_renommer_deconnecter(client, db_session, ecole):
+    from drives import DriveAccount
+
+    url = f"/ecoles/{ecole.id}/drives"
+    assert client.get(url).json()["connected"] is False
+    refus = client.put(url, json={**KDRIVE, "code": "faux"})
+    assert refus.status_code == 422 and "Infomaniak" in refus.json()["detail"]
+    sans_numero = client.put(url, json={**KDRIVE, "drive_ref": ""})
+    assert sans_numero.status_code == 422
+
+    etat = client.put(url, json=KDRIVE).json()
+    assert [(d["name"], d["provider"], d["address"]) for d in etat["drives"]] == [("Club", "kdrive", "club@ik.me")]
+    ligne = db_session.query(DriveAccount).one()
+    assert "bon-mot-de-passe" not in ligne.secret_encrypted
+
+    # Un second drive, nommé.
+    etat = client.put(url, json={**KDRIVE, "name": "Trésorerie"}).json()
+    assert [d["name"] for d in etat["drives"]] == ["Club", "Trésorerie"]
+    second = etat["drives"][1]["id"]
+    etat = client.patch(f"{url}?drive={second}", json={"name": "Compta"}).json()
+    assert [d["name"] for d in etat["drives"]] == ["Club", "Compta"]
+
+    assert client.delete(f"{url}?drive={second}").status_code == 204
+    assert [d["name"] for d in client.get(url).json()["drives"]] == ["Club"]
+
+
+def test_parcourir_un_drive(client, ecole):
+    url = f"/ecoles/{ecole.id}/drives"
+    drive = client.put(url, json=KDRIVE).json()["drives"][0]["id"]
+    liste = client.get(f"{url}/{drive}/list", params={"path": "FINANCIER"}).json()
+    assert liste[0]["path"] == "FINANCIER/SALAIRES" and liste[0]["is_dir"] is True
+    assert client.get(f"{url}/999/list").status_code == 409
+
+
+def test_ecoles_etanches(client, db_session, ecole):
+    url = f"/ecoles/{ecole.id}/drives"
+    drive = client.put(url, json=KDRIVE).json()["drives"][0]["id"]
+    autre = Ecoles().create(db_session, nom="Le Beausset", code_postal="83330")
+    assert client.get(f"/ecoles/{autre.id}/drives").json()["drives"] == []
+    assert client.get(f"/ecoles/{autre.id}/drives/{drive}/list").status_code == 409
+
+
+def test_kdrive_webdav_lit_un_dossier():
+    import httpx
+
+    from drives.providers import KDrive
+
+    xml = b"""<?xml version="1.0"?><d:multistatus xmlns:d="DAV:">
+    <d:response><d:href>/FINANCIER/</d:href><d:propstat><d:prop><d:resourcetype><d:collection/></d:resourcetype></d:prop></d:propstat></d:response>
+    <d:response><d:href>/FINANCIER/SALAIRES/</d:href><d:propstat><d:prop><d:resourcetype><d:collection/></d:resourcetype></d:prop></d:propstat></d:response>
+    <d:response><d:href>/FINANCIER/Bulletin%20octobre.pdf</d:href><d:propstat><d:prop><d:resourcetype/>
+      <d:getcontentlength>1234</d:getcontentlength><d:getlastmodified>Mon, 10 Nov 2025 08:00:00 GMT</d:getlastmodified></d:prop></d:propstat></d:response>
+    </d:multistatus>"""
+    vus = []
+
+    def repondre(requete):
+        vus.append((requete.method, requete.url.path, requete.headers.get("Depth")))
+        if requete.method == "PUT":
+            return httpx.Response(201)
+        return httpx.Response(207, content=xml) if requete.url.path.startswith("/FINANCIER") else httpx.Response(401)
+
+    drive = KDrive("club@ik.me", "x", "812345", http=httpx.Client(transport=httpx.MockTransport(repondre)))
+    entrees = drive.list("FINANCIER")
+    assert [(e.name, e.path, e.is_dir, e.size) for e in entrees] == [
+        ("SALAIRES", "FINANCIER/SALAIRES", True, 0),
+        ("Bulletin octobre.pdf", "FINANCIER/Bulletin octobre.pdf", False, 1234),
+    ]
+    assert vus[0] == ("PROPFIND", "/FINANCIER", "1")
+    assert drive.write("FINANCIER", "a b.pdf", b"%PDF") == "FINANCIER/a b.pdf"
+    with pytest.raises(DriveRefused):
+        drive.check()

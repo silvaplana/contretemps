@@ -162,7 +162,11 @@ Tables préfixées `autoimport_`, liées par `organization_id` (écoles étanche
 ## 9. Étapes de code (chacune une PR, sur le « vas-y » de Seb)
 
 1. **Drives du club** dans Connexions, kDrive d'abord (`core.md` §3) : connexion, liste des dossiers,
-   lecture d'un fichier. Nouveau point de branchement du core, à valider par Seb.
+   lecture d'un fichier. Nouveau point de branchement du core, accordé par Seb (19 novembre :
+   « code tout et merge toi-même »). **Fait (19 novembre)** : `backend/src/drives/` (module
+   `drives`, éteint par défaut, allumé pour les écoles « combat »), `core.drives` pour les autres
+   modules ; kDrive demande aussi le numéro du kDrive ; Google Drive codé, proposé seulement quand
+   le serveur a la clé du compte de service (`GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE` dans `backend/.env`).
 2. **Écran Import auto pièces** et source **Docs** : tableau, fiche, worker, création des pièces
    À valider, Voir, 🗑.
 3. Source et destination **drive** (kDrive), ouverture du fichier depuis le drive (§6).
