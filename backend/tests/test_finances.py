@@ -359,7 +359,8 @@ def test_routes(client, db_session, ecole):
     financier = main.documents_client.reserved_folder(db_session, ecole["ecole"].id, "Financier", None)
     racines = enfants(financier.id)
     assert {"RELEVES BANCAIRES", "ACHATS", "HONORAIRES", "VENTES"} <= racines.keys()
-    assert set(enfants(racines["VENTES"])) == {"COTISATIONS", "COURS", "PARTICIPATION GALA"}
+    # Les sous-dossiers de VENTES viennent avec la première vente de chaque compte (Seb, 19/11).
+    assert enfants(racines["VENTES"]) == {}
     assert set(enfants(racines["RELEVES BANCAIRES"])) == {"COMPTE COURANT", "LIVRET BLEU"}
     assert set(enfants(racines["HONORAIRES"])) == {"AGNES PESENTI"}
     # Réimporter range les PDF déjà importés (relevés d'avant le rangement),

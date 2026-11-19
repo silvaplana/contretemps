@@ -40,7 +40,9 @@ Règles :
 - Recopie ce qui est écrit, sans rien inventer. Ce qui est illisible ou absent vaut null.
 - `sorte` : « facture » pour tout ce qui réclame ou prouve une dépense (facture, reçu, ticket, \
 avis d'échéance, justificatif de paiement d'un commerçant) ; « virement » pour la preuve d'un \
-virement bancaire fait par l'association ; « autre » sinon.
+virement bancaire fait par l'association ; « vente » pour une recette de l'association \
+(bordereau de remise de chèques ou d'espèces, reçu ou facture émis par l'association, \
+billetterie, attestation de subvention ou de don reçu) ; « autre » sinon.
 - `date` : date de la pièce (achat, facture, ou exécution du virement), au format AAAA-MM-JJ. \
 Les dates sont écrites à la française (jour/mois/année). Il faut toujours trouver une date : si la \
 pièce ne porte qu'un mois (« Janvier 2025 »), prends le dernier jour de ce mois ; si le nom du \
@@ -139,7 +141,7 @@ class LecteurClaude:
         montant = round(lu.montant_ttc * 100) if lu.montant_ttc is not None else None
         return TicketLu(
             date=lu.date, montant_centimes=montant, commercant=lu.commercant, categorie=lu.categorie, description=lu.description,
-            sorte=lu.sorte if lu.sorte in ("facture", "virement", "autre") else "facture",
+            sorte=lu.sorte if lu.sorte in ("facture", "virement", "vente", "autre") else "facture",
             emetteur_personne=lu.emetteur_personne, client=lu.client,
             beneficiaire=lu.beneficiaire, iban=lu.iban, motif=lu.motif,
         )

@@ -6,6 +6,7 @@ renvoie un `Membre`) ; les droits sont vérifiés par le service.
 from __future__ import annotations
 
 import io
+import json
 from urllib.parse import quote
 from collections.abc import Callable
 import datetime as dt
@@ -78,8 +79,14 @@ class RemboursementEntree(BaseModel):
     note_ids: list[int]
 
 
+class LigneVente(BaseModel):
+    categorie_id: int | None = None
+    montant_centimes: int = Field(gt=0)
+
+
 class CorrectionEntree(BaseModel):
     nature: str | None = None
+    lignes: list[LigneVente] | None = None  # une vente : ses comptes et montants (financier.md §8.12)
     person_id: int | None = None
     fournisseur: str | None = None
     date: dt.date | None = None
@@ -305,9 +312,14 @@ class NotesDeFraisReceiver:
             categorie_id: int | None = Form(None),
             batch_id: str | None = Form(None),
             numero_piece: str | None = Form(None),
+            lignes: str | None = Form(None),  # JSON [{categorie_id, montant_centimes}] : une vente à plusieurs comptes
             db: Session = db_dep,
             m: Membre = membre,
         ):
+            try:
+                lues = [LigneVente(**l) for l in json.loads(lignes)] if lignes else None
+            except (ValueError, TypeError) as erreur:
+                raise HTTPException(status_code=400, detail="Lignes de la vente illisibles.") from erreur
             contenu = None
             if fichier is not None:
                 donnees = await fichier.read(TAILLE_MAX_PIECE + 1)
@@ -318,6 +330,7 @@ class NotesDeFraisReceiver:
                 nf.etablir, db, m, nature=nature, fichier=contenu, person_id=person_id, fournisseur=fournisseur,
                 jour=date, montant_centimes=montant_centimes, description=description, valider=valider,
                 categorie_id=categorie_id, batch_id=batch_id, numero_piece=numero_piece,
+                lignes=[(l.categorie_id, l.montant_centimes) for l in lues] if lues else None,
             )
             if isinstance(note, Preuve):
                 return nf.preuve_dict(db, m, note)
@@ -337,6 +350,8 @@ class NotesDeFraisReceiver:
             champs = corps.model_dump(exclude_unset=True)
             if "date" in champs:
                 champs["jour"] = champs.pop("date")
+            if champs.get("lignes"):
+                champs["lignes"] = [(l["categorie_id"], l["montant_centimes"]) for l in champs["lignes"]]
             return nf.notes_dicts(db, m, [appeler(nf.corriger, db, m, note_id, **champs)])[0]
 
         @app.delete("/notes-frais/notes/{note_id}", status_code=204)
@@ -415,8 +430,8 @@ class NotesDeFraisReceiver:
             return [nf.note_dict(n) for n in appeler(nf.rembourser, db, m, corps.note_ids)]
 
         @app.get("/notes-frais/categories")
-        def categories(db: Session = db_dep, m: Membre = membre):
-            return [{"id": c.id, "libelle": c.libelle, "code": c.code} for c in nf.categories(db, m.org_id)]
+        def categories(ventes: bool = False, db: Session = db_dep, m: Membre = membre):
+            return [{"id": c.id, "libelle": c.libelle, "code": c.code} for c in nf.categories(db, m.org_id, ventes=ventes)]
 
         @app.put("/notes-frais/categories")
         def definir_categories(corps: CategoriesEntree, db: Session = db_dep, m: Membre = membre):

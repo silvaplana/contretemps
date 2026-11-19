@@ -12,11 +12,12 @@ import Virements from './Virements.jsx'
 import Saisie from './Saisie.jsx'
 import Revue, { Ecritures } from './Revue.jsx'
 import Rapprocher from './Rapprocher.jsx'
+import VenteModal from './Vente.jsx'
 
 // Financier › Pièces (spec/modules/financier.md §8.3 et §8.3 bis) : notes de
 // frais, honoraires et achats sont une seule structure « dépense », avec une
 // nature ; chaque puce en est un filtre. Ventes = les pièces de recette
-// (pas encore saisies dans l'appli). Les lignes de banque, elles, se
+// (nature « vente », financier.md §8.12). Les lignes de banque, elles, se
 // traitent dans Comptes (Seb, 31/10 : une pièce n'est pas une ligne).
 // Un seul bouton principal, « + ».
 const PUCES = [
@@ -25,7 +26,7 @@ const PUCES = [
   { value: 'frais', label: 'Notes de frais' },
   { value: 'honoraires', label: 'Honoraires' },
   { value: 'achat', label: 'Achats' },
-  { value: 'ventes', label: 'Ventes' },
+  { value: 'vente', label: 'Ventes' },
   { value: 'a_trancher', label: 'À trancher' }, // « plus tard » et refusées (Seb, 6/11)
 ]
 
@@ -50,7 +51,6 @@ export default function Pieces({ aFaire, onCompteurs, onChange, onPour }) {
   const [version, setVersion] = useState(0) // relire la puce après une saisie
   const [survol, setSurvol] = useState(false)
 
-  const ventes = puce === 'ventes'
   const glisser = SUR_ORDINATEUR
 
   function finDeRevue() {
@@ -106,15 +106,10 @@ export default function Pieces({ aFaire, onCompteurs, onChange, onPour }) {
           </button>
         ))}
       </div>
-      {glisser && !ventes && puce !== 'virements' && puce !== 'rapprocher' && (
+      {glisser && puce !== 'virements' && puce !== 'rapprocher' && (
         <p className="muted">Glissez ici des factures depuis l’ordinateur : une par fichier.</p>
       )}
-      {ventes ? (
-        <p className="muted">
-          Les pièces de recette (remise de chèques, facture émise, reçu HelloAsso) ne se saisissent pas encore ici. Les
-          recettes vues sur le compte se classent dans Comptes, filtre « Sans compte ».
-        </p>
-      ) : puce === 'virements' ? (
+      {puce === 'virements' ? (
         <Virements key={version} onChange={onChange} />
       ) : puce === 'rapprocher' ? (
         <Rapprocher key={version} onChange={onChange} onOuvrir={(note) => setFiche({ note, apres: () => setVersion((v) => v + 1) })} />
@@ -235,9 +230,9 @@ function ListeNature({ nature, onCompteurs, plus, onPlusFerme, onPour }) {
             <span className="nf-ligne__corps">
               <span className="nf-ligne__titre">{qui(n)}</span>
               <span className="muted">
-                {n.nature === 'achat' ? '' : `${n.titre} · `}
+                {n.nature === 'achat' || n.nature === 'vente' ? '' : `${n.titre} · `}
                 {api.dateCourte(n.depenses[0]?.date ?? n.envoyee_le)}
-                {n.depenses.length > 1 ? ` · ${n.depenses.length} dépenses` : ''}
+                {n.depenses.length > 1 ? ` · ${n.depenses.length} ${n.nature === 'vente' ? 'lignes' : 'dépenses'}` : ''}
                 {n.depenses[0]?.date_approximative ? ' · date à vérifier' : ''}
                 {n.doublon_de ? ` · même fichier que la pièce n° ${n.doublon_de}` : ''}
                 {n.paiement_propose ? ' · vu sur le compte' : n.paiements_possibles?.length ? ' · paiement possible' : ''}
@@ -331,7 +326,13 @@ function ListeNature({ nature, onCompteurs, plus, onPlusFerme, onPour }) {
 // une pièce payée rattachée à la banque (Détacher d'abord).
 const ETAPE_AVANT = { viree: 'À payer', preparee: 'À payer', validee: 'À valider' }
 
-export function NoteModal({ note, nature, onClose, onFait }) {
+// Une vente a sa propre fiche (financier.md §8.12) ; toute pièce ouverte passe par ici.
+export function NoteModal(props) {
+  if ((props.note?.nature ?? props.nature) === 'vente') return <VenteModal note={props.note} onClose={props.onClose} onFait={props.onFait} />
+  return <NoteModalDepense {...props} />
+}
+
+function NoteModalDepense({ note, nature, onClose, onFait }) {
   const corrigeable =
     note === null || ((note.nature !== 'frais' || note.etablie) && ['envoyee', 'validee'].includes(note.statut))
   const natureModifiable = note !== null && corrigeable && note.statut === 'envoyee'
@@ -499,7 +500,8 @@ export function NoteModal({ note, nature, onClose, onFait }) {
               type="button"
               className={value === genre ? 'filter-chip filter-chip-active' : 'filter-chip'}
               aria-pressed={value === genre}
-              onClick={() => setGenre(value)}
+              // Vente : sa propre fiche ; la pièce change de nature et rejoint la puce Ventes.
+              onClick={() => (value === 'vente' ? agir(() => api.corriger(note.id, { nature: 'vente' })) : setGenre(value))}
             >
               {label}
             </button>

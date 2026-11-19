@@ -89,12 +89,15 @@ const ETATS = {
   viree: ['Envoyé', ''],
   remboursee: ['Payé', 'badge--success'],
 }
+// Une vente s'encaisse (financier.md §8.12) : À valider → À encaisser → Encaissée.
+const ETATS_VENTE = { ...ETATS, validee: ['À encaisser', ''], remboursee: ['Encaissée', 'badge--success'] }
 
 // `proposition` (vu du trésorier, Seb 1er/11) : une pièce à valider dit
 // l'état qu'un toucher lui donnera — Payé si la banque a déjà payé, sinon À payer.
 export function BadgeEtat({ note, proposition = false }) {
-  let [label, classe] = note.don && note.statut === 'validee' ? ['Don', 'badge--success'] : ETATS[note.statut]
-  if (proposition && note.statut === 'envoyee') label = `À valider → ${note.operation ? 'Payé' : 'À payer'}`
+  const etats = note.nature === 'vente' ? ETATS_VENTE : ETATS
+  let [label, classe] = note.don && note.statut === 'validee' ? ['Don', 'badge--success'] : etats[note.statut]
+  if (proposition && note.statut === 'envoyee' && note.nature !== 'vente') label = `À valider → ${note.operation ? 'Payé' : 'À payer'}`
   if (note.plus_tard && note.statut === 'envoyee') label = 'À trancher'
   // « Déjà payée » (§7 septies) : validée, la ligne du compte reste à trouver dans Rapprocher.
   if (note.a_rapprocher && note.statut === 'validee') label = 'À rapprocher'
@@ -114,13 +117,14 @@ export function Compte({ n, banque = false }) {
   )
 }
 
-export const NATURES = { frais: 'Note de frais', honoraires: 'Honoraires', achat: 'Achat' }
+export const NATURES = { frais: 'Note de frais', honoraires: 'Honoraires', achat: 'Achat', vente: 'Vente' }
 
 // Pourquoi l'appli propose cette nature (notes-de-frais.md §7 quinquies) :
 // un prof lu sur la pièce = honoraires, une autre personne = note de frais,
 // personne = achat de l'association.
 export function raisonProposee(note) {
   if (!note.depenses[0]?.lue_par_ia) return null
+  if (note.nature === 'vente') return 'une recette de l’association (remise, reçu ou facture émis).'
   if (note.nature === 'achat') return 'une société, facturée à l’association.'
   if (!note.personne) return note.fournisseur ? `${note.fournisseur} n’est pas dans ${mots().lEcole} : choisissez pour qui, ou ajoutez-le.` : 'nom illisible ou inconnu, choisissez pour qui.'
   if (note.nature === 'honoraires') return `${note.personne.nom} est prof ${mots().deLEcole}.`
@@ -130,6 +134,7 @@ export function raisonProposee(note) {
 // Qui est derrière une pièce : la personne, ou le fournisseur d'un achat.
 export function qui(note) {
   if (note.nature === 'achat') return note.fournisseur || 'Fournisseur à lire'
+  if (note.nature === 'vente') return note.fournisseur || 'De qui ?'
   // Sans fiche reconnue, le nom lu sur la pièce, à confirmer.
   return note.personne?.nom ?? (note.fournisseur ? `${note.fournisseur} ?` : 'Pour qui ?')
 }

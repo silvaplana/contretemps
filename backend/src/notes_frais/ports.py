@@ -53,8 +53,9 @@ class Organisation:
 class TicketLu:
     """Ce que la lecture d'un justificatif renvoie (§12) ; tout peut manquer.
     `sorte` : « facture » (facture, reçu, ticket, avis d'échéance),
-    « virement » (preuve d'un virement fait : ordre, avis d'opération) ou
-    « autre ». `commercant` = qui a émis la pièce ; `emetteur_personne` :
+    « virement » (preuve d'un virement fait : ordre, avis d'opération),
+    « vente » (une recette : remise de chèques, reçu ou facture émis par
+    l'association) ou « autre ». `commercant` = qui a émis la pièce ; `emetteur_personne` :
     c'est une personne (auto-entrepreneur), pas une société ; `client` : à qui
     elle est adressée. Pour un virement : `beneficiaire`, `iban`, `motif`."""
 
@@ -195,6 +196,9 @@ class Ports:
     # Le plan comptable de l'hôte : (numéro, libellé) des comptes de charges
     # actifs. Quand il est là, les catégories en sont le reflet (§4.6).
     plan: Callable[[Session, int], list[tuple[str, str]]] | None = None
+    # Les comptes d'une vente (financier.md §8.12) : (numéro, libellé) des
+    # comptes de produits actifs ; ils deviennent des catégories à part.
+    plan_ventes: Callable[[Session, int], list[tuple[str, str]]] | None = None
     # Le compte de tiers (numéro, libellé) d'une pièce de cette nature pour ce
     # nom (401 Fournisseurs, 467n Honoraires Nom ; numéro vide = créé à la
     # validation), None si l'hôte ne passe pas par les tiers. Il fait montrer

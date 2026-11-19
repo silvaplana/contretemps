@@ -38,7 +38,10 @@ STATUTS = (ENVOYEE, VALIDEE, REFUSEE, PREPAREE, VIREE, REMBOURSEE)
 FRAIS = "frais"
 HONORAIRES = "honoraires"
 ACHAT = "achat"
-NATURES = (FRAIS, HONORAIRES, ACHAT)
+# Une recette avec sa pièce (financier.md §8.12) : une ligne (`Depense`) par
+# compte de produits ; À valider → À encaisser (validée) → Encaissée.
+VENTE = "vente"
+NATURES = (FRAIS, HONORAIRES, ACHAT, VENTE)
 # person_id d'une note d'honoraires dont le prof n'est pas encore reconnu.
 PERSONNE_A_CHOISIR = 0
 
