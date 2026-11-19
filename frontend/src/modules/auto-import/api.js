@@ -31,3 +31,5 @@ export const regarder = (id) => requete(`/auto-import/${id}/run`, { method: 'POS
 export const pieces = (id) => requete(`/auto-import/${id}/pieces`)
 // Dossiers de Docs → [{ id, name, space }]
 export const dossiersDocs = (parent) => requete(`/auto-import-docs-folders${parent ? `?parent=${parent}` : ''}`)
+// Source HelloAsso → { formulas: [nom], accounts: [{ id, libelle, code }] }
+export const helloasso = (saison) => requete(`/auto-import-helloasso${saison ? `?season_id=${saison}` : ''}`)

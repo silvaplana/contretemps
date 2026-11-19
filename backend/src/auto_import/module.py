@@ -68,6 +68,47 @@ def _reader(notes):
     return check
 
 
+def _helloasso_payments(db, org_id: int, season_id: int | None):
+    """Les paiements versés de la copie HelloAsso (§4.2) : payés en ligne,
+    versés (`CashedOut`), avec leur jour de versement."""
+    from datetime import date
+
+    from helloasso.contact import PAID
+    from helloasso.models import HelloAssoRegistration
+    from helloasso.money import CASHED_OUT, ONLINE_MEANS
+    from sqlalchemy import select
+
+    from .helloasso_source import Payment
+
+    query = select(HelloAssoRegistration).where(HelloAssoRegistration.org_id == org_id)
+    if season_id is not None:
+        query = query.where(HelloAssoRegistration.season_id == season_id)
+    payments = []
+    for r in db.scalars(query.order_by(HelloAssoRegistration.id)):
+        for p in r.payments or []:
+            if p.get("state") not in PAID or p.get("means") not in ONLINE_MEANS or p.get("cash_out_state") != CASHED_OUT:
+                continue
+            try:
+                day = date.fromisoformat((p.get("cash_out_date") or "")[:10])
+            except ValueError:
+                continue
+            payments.append(Payment(
+                name=f"{r.first_name} {r.last_name}".strip(), formula=r.tier_name or "", amount=p.get("amount") or 0,
+                installment=p.get("installment"), paid_on=p.get("date") or "", cash_out_date=day,
+            ))
+    return payments
+
+
+def _helloasso_formulas(db, org_id: int, season_id: int | None) -> list[str]:
+    from helloasso.models import HelloAssoRegistration
+    from sqlalchemy import select
+
+    query = select(HelloAssoRegistration.tier_name).where(HelloAssoRegistration.org_id == org_id).distinct()
+    if season_id is not None:
+        query = query.where(HelloAssoRegistration.season_id == season_id)
+    return sorted({f or "" for f in db.scalars(query)})
+
+
 def mount(app, core) -> None:
     from notes_frais_contretemps.adapter import membre_appelant
 
@@ -76,11 +117,15 @@ def mount(app, core) -> None:
     sources = {}
     if getattr(core, "mail_connection", None) is not None:
         sources["mail"] = mail_source(core.mail_connection, _who, _reader(core.notes_frais_client))
+    from .helloasso_source import helloasso_source
+
+    sources["helloasso"] = helloasso_source(_helloasso_payments)
     core.auto_import = AutoImport(
         notes=core.notes_frais_client, documents=core.documents_client, drives=getattr(core, "drives", None),
         sources=sources,
     )
-    AutoImportReceiver(client=core.auto_import, app=app, membre_courant=membre_appelant, places=_places(core))
+    AutoImportReceiver(client=core.auto_import, app=app, membre_courant=membre_appelant, places=_places(core),
+                       formulas=_helloasso_formulas)
 
 
 def start_loop(core, every_seconds: int = 300) -> None:

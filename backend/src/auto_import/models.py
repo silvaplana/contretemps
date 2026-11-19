@@ -4,7 +4,7 @@ Effacer un import efface ses lignes vues, jamais les pièces créées."""
 
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from db import Base
@@ -41,6 +41,9 @@ class AutoImportRule(Base):
     mail_senders: Mapped[str] = mapped_column(String(500), nullable=False, default="")
     mail_words: Mapped[str] = mapped_column(String(500), nullable=False, default="")
     mail_need_amount: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # Source HelloAsso (§4.2) : formule de la campagne → compte de produits
+    # (catégorie des ventes), dit une fois par la trésorière.
+    helloasso_accounts: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     # La personne qui a créé l'import : les pièces sont établies en son nom.
     created_by: Mapped[int | None] = mapped_column(Integer, nullable=True)
     last_run_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

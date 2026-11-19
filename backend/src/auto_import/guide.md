@@ -11,3 +11,7 @@
   maintenant », Statut de la pièce créée (À valider).
 - Les pièces créées arrivent dans Pièces, À valider, comme une pièce du « + ». Leur fichier reste dans
   le dossier du club : l'appli ne le déplace ni ne l'efface.
+- Source HelloAsso : la fiche montre les formules de la campagne de la saison, chacune avec son compte
+  de produits à choisir une fois (« À choisir »). Chaque versement HelloAsso devient une vente À
+  valider, une ligne par compte ; avec une destination, le détail du versement y est déposé en PDF
+  « … (reconstituée par l'appli) ».
