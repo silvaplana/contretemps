@@ -125,3 +125,9 @@ export async function envoyer(ecoleId, boite, b, fichiers) {
 
 // Suggestions pour À, Cc, Cci : gens de l'école et adresses déjà échangées.
 export const contacts = (ecoleId, boite) => requete(`${base(ecoleId)}/contacts?${avecBoite(boite)}`)
+
+// Écrire aux adhérents (spec §7 bis) : → { season, people, without, courses: [{ id, name, people }] }
+export const adherents = (ecoleId) => requete(`${base(ecoleId)}/members`)
+// Un mail à chacun par Brevo ; `courses` vide : tous. → { people, sent }
+export const ecrireAuxAdherents = (ecoleId, boite, { courses, subject, body }) =>
+  requete(`${base(ecoleId)}/members/send?${avecBoite(boite)}`, json('POST', { courses, subject, body }))

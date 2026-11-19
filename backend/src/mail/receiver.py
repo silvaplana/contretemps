@@ -13,6 +13,7 @@ from urllib.parse import quote
 
 from comptes import Compte, rbac, roles
 from comptes.models import Compte as Fiche
+from ecoles import mail_ecole
 from ecoles.models import Ecole
 from sqlalchemy import select
 from fastapi import Depends, FastAPI, Form, HTTPException, Response, UploadFile
@@ -21,6 +22,7 @@ from sqlalchemy.orm import Session
 
 from db import get_db
 
+from . import members
 from .connection import Connection, NotConnected
 from .gmail import MailError, MailRefused
 from .imap import SEND_MAX_BYTES, Webmail, WebmailError, WebmailNotFoundError, WebmailRefusedError
@@ -63,6 +65,14 @@ class StatusOut(BaseModel):
     # Toutes les boîtes de l'école (§4 bis) ; les champs ci-dessus décrivent
     # la première.
     boxes: list[BoxOut] = []
+
+
+class MembersIn(BaseModel):
+    """« Écrire aux adhérents » (§7 bis) : des cours, ou tous (liste vide)."""
+
+    courses: list[int] = []
+    subject: str = Field("", max_length=300)
+    body: str = Field(min_length=1, max_length=50000)
 
 
 class FlagsIn(BaseModel):
@@ -117,6 +127,8 @@ def _can_connect(appelant: Compte | None) -> bool:
 class MailReceiver:
     def __init__(self, connection: Connection, app: FastAPI) -> None:
         self.connection = connection
+        # Un mail par adresse, par Brevo (core) ; remplacé dans les tests.
+        self.send_to_each = mail_ecole.envoyer_a_chacun
         app.get("/ecoles/{ecole_id}/mail", response_model=StatusOut, dependencies=[Depends(_reader_or_owner)])(self.status)
         owner = [Depends(_owner)]
         app.put("/ecoles/{ecole_id}/mail", response_model=StatusOut, dependencies=owner)(self.connect)
@@ -135,6 +147,8 @@ class MailReceiver:
         app.post(f"{base}/bulk", dependencies=reader)(self.bulk)
         app.post(f"{base}/send", dependencies=reader)(self.send)
         app.get(f"{base}/contacts", dependencies=reader)(self.contacts)
+        app.get(f"{base}/members", dependencies=reader)(self.members)
+        app.post(f"{base}/members/send", dependencies=reader)(self.send_to_members)
 
     def _status(self, db: Session, ecole_id: int, appelant: Compte | None) -> StatusOut:
         accounts = self.connection.accounts(db, ecole_id)
@@ -331,3 +345,33 @@ class MailReceiver:
                 for personne in mail.get("from", []) + mail.get("to", []):
                     ajouter(personne.get("name") or "", personne.get("address") or "")
         return {"contacts": contacts}
+
+    # --- Écrire aux adhérents (§7 bis) -------------------------------------
+
+    def members(self, ecole_id: int, db: Session = Depends(get_db)):
+        """La saison et ses cours, avec le nombre de personnes."""
+        return members.choices(db, ecole_id)
+
+    def send_to_members(self, ecole_id: int, data: MembersIn, box: int | None = None, db: Session = Depends(get_db)):
+        """Un mail à chaque adhérent (ou à ceux des cours), au nom de l'école ;
+        les réponses et une copie vont à la boîte du « De ». L'Annuler de
+        10 s est à l'écran : la demande part à la fin."""
+        account = self.connection.account(db, ecole_id, box)
+        if account is None:
+            raise HTTPException(status_code=409, detail="La boîte mail du club n'est pas connectée")
+        chosen = members.recipients(db, ecole_id, data.courses)
+        if not chosen.addresses:
+            raise HTTPException(status_code=400, detail="Aucun adhérent avec une adresse mail")
+        ecole = db.get(Ecole, ecole_id)
+        addresses = [a for a in chosen.addresses if a.lower() != account.address.lower()] + [account.address]
+        try:
+            sent = self.send_to_each(
+                db, ecole_id, addresses,
+                lambda address: members.content(
+                    ecole.nom, data.subject, data.body, address, account.address, chosen.people
+                ),
+                repondre_a=account.address,
+            )
+        except RuntimeError as erreur:
+            raise HTTPException(status_code=502, detail=str(erreur)) from None
+        return {"people": chosen.people, "sent": len([a for a in sent if a != account.address])}

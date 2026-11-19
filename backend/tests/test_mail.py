@@ -365,3 +365,56 @@ def test_plusieurs_boites(client, db_session, ecole, boite):
     autre = Ecoles().create(db_session, nom="Le Beausset", code_postal="83330")
     assert client.get(f"/ecoles/{autre.id}/mail/messages", params={"box": id_tres}).status_code == 409
     assert client.patch(f"/ecoles/{autre.id}/mail", params={"box": id_tres}, json={"name": "X"}).status_code == 404
+
+
+def test_ecrire_aux_adherents(client, db_session, ecole, boite, monkeypatch):
+    """Seb, 19 novembre (§7 bis) : tous les adhérents de la saison ou ceux de
+    cours, un mail chacun par Brevo ; réponses et copie à la boîte du « De »."""
+    from app import main
+    from cours.cours import CoursService as LesCours
+    from groups import courses
+
+    comptes = Comptes()
+    lina = comptes.create(db_session, ecole_id=ecole.id, role="eleve", nom="Roux", prenom="Lina", email="lina@ex.fr")
+    leo = comptes.create(db_session, ecole_id=ecole.id, role="eleve", nom="Roux", prenom="Léo", email="LINA@ex.fr")
+    karim = comptes.create(db_session, ecole_id=ecole.id, role="eleve", nom="B", prenom="Karim", email="karim@ex.fr")
+    comptes.create(db_session, ecole_id=ecole.id, role="eleve", nom="Sans", prenom="Mail")
+    autre = Ecoles().create(db_session, nom="Le Beausset", code_postal="83330")
+    comptes.create(db_session, ecole_id=autre.id, role="eleve", nom="Ailleurs", prenom="Zoé", email="zoe@ex.fr")
+    sambo = LesCours().create(db_session, ecole.id, "Sambo adultes")
+    mma = LesCours().create(db_session, ecole.id, "MMA")
+    for qui in (lina, leo):
+        courses.add(db_session, sambo.group_id, qui.id)
+    courses.add(db_session, mma.group_id, lina.id)
+    courses.add(db_session, mma.group_id, karim.id)
+    db_session.commit()
+
+    url = f"/ecoles/{ecole.id}/mail/members"
+    choix = client.get(url).json()
+    assert (choix["people"], choix["without"]) == (4, 1)
+    assert [(c["name"], c["people"]) for c in choix["courses"]] == [("Sambo adultes", 2), ("MMA", 2)]
+
+    envois = []
+    monkeypatch.setattr(
+        main.core.mail_receiver, "send_to_each",
+        lambda db, org, adresses, contenu, repondre_a=None: (
+            envois.append((adresses, [contenu(a) for a in adresses], repondre_a)) or adresses
+        ),
+    )
+    reponse = client.post(f"{url}/send", json={"subject": "Reprise", "body": "Bonjour <à tous>"}).json()
+    adresses, contenus, repondre_a = envois[-1]
+    # Une adresse par famille, jamais l'autre école ; la copie à la boîte en dernier.
+    assert adresses == ["karim@ex.fr", "lina@ex.fr", "club.sambo@gmail.com"]
+    assert repondre_a == "club.sambo@gmail.com" and reponse == {"people": 4, "sent": 2}
+    sujet, texte, html = contenus[0]
+    assert sujet == "Reprise" and "adhérent de Sambo La Ciotat" in texte and "&lt;à tous&gt;" in html
+    assert "Copie du mail envoyé à 4 adhérents" in contenus[-1][1]
+
+    # Un cours (une personne dans deux cours : un seul mail).
+    client.post(f"{url}/send", json={"courses": [sambo.id, mma.id], "body": "Salut"})
+    assert envois[-1][0] == ["karim@ex.fr", "lina@ex.fr", "club.sambo@gmail.com"]
+    client.post(f"{url}/send", json={"courses": [sambo.id], "body": "Salut"})
+    assert envois[-1][0] == ["lina@ex.fr", "club.sambo@gmail.com"]
+    # Le cours d'une autre école ne donne personne.
+    assert client.post(f"{url}/send", json={"courses": [999], "body": "x"}).status_code == 400
+    assert client.post(f"/ecoles/{autre.id}/mail/members/send", json={"body": "x"}).status_code == 409
