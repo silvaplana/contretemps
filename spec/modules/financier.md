@@ -1160,6 +1160,11 @@ n'attend jamais une pièce : une ligne sans pièce reçoit son compte à la main
 
 ### 8.11 Sources de pièces : kDrive et versements HelloAsso (Seb, 19 novembre 2026)
 
+Le même jour, Seb a généralisé ces sources dans le sous-module **Import auto pièces**
+(`import-auto-pieces.md`) : la connexion kDrive devient une ligne « Drives du club » de Connexions
+(`core.md` §3, avec Google Drive) et la lecture des dossiers un import réglé dans Pièces › ⋯. Ce qui
+suit reste valable pour la paie, HelloAsso, le plan comptable et le dépôt du bilan.
+
 Proposition, **pas codée** (maquette https://claude.ai/artifact/WSnkg4UEoszQxfLDCEctB6). Demande de
 Seb : ASC La Ciotat range déjà tout sur un kDrive (Infomaniak : bulletins de salaire du coach, avis
 URSSAF, factures) et reçoit chaque mois un virement HelloAsso qui additionne les licences payées.

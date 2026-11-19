@@ -139,6 +139,21 @@ nouveau, toute table nouvelle est en anglais.
   connexions : Financier, Publications). Un module pas connecté y renvoie : « Connecter le site de
   la FFST » (onglet FFST), « Connecter la boîte mail » (Messages › Mail), pour l'Administrateur
   principal ; les autres lisent que c'est à lui de le faire.
+- **Drives du club** (Seb 19 novembre, maquette https://claude.ai/artifact/4iDZBj38yrRLm31RR9ERyt ;
+  **pas codé**) : ligne de Connexions faite **exactement comme « Boîte mail du club »** (Seb :
+  « fais exactement comme les mails ») : chaque drive connecté avec son nom court et « Voir »,
+  « Connecter » sans drive, « Ajouter un drive » ensuite ; « Voir » montre ✓ Drive connecté (nom,
+  adresse, drive, depuis le), Renommer, Remplacer par un autre drive, Déconnecter le drive
+  (Annuler 10 s). **kDrive** : adresse Infomaniak et mot de passe d'application (lecture et
+  écriture par WebDAV). **Google Drive** : le club partage son dossier avec l'adresse de l'appli
+  (compte de service Google ; « Lecteur », « Éditeur » s'il sert de destination) : pas
+  d'autorisation Google à faire valider (lire tout un Drive par OAuth demanderait un audit payant
+  chaque année) ; l'appli ne voit que les dossiers partagés. Plusieurs drives par école. Les drives
+  sont une **ressource de l'école, utilisable par plusieurs modules** (Seb) : un service du core
+  (lister les dossiers, lire et déposer un fichier, retrouver un fichier par son empreinte), table
+  `drive_accounts` (comme `mail_accounts`, identifiants chiffrés) ; nouveau point de branchement
+  à valider par Seb avant le code. Premier utilisateur : Import auto pièces
+  (`modules/import-auto-pieces.md`).
 - **Personnalisation de l'application** (Admin > École), trois parties dans cet ordre :
   **Apparence visuelle** (logo, nom, slogan, couleurs, polices, adresse), **Fonctionnalités** (une
   case par module, §11.3) et **Vocabulaire** (§2). Apparence et Vocabulaire : tout admin ;
