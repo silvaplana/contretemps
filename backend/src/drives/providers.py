@@ -207,7 +207,7 @@ class GoogleDrive:
     def _files(self, q: str) -> list[dict]:
         files, page = [], None
         while True:
-            params = {"q": q, "fields": "nextPageToken,files(id,name,mimeType,size,modifiedTime)", "pageSize": 1000,
+            params = {"q": q, "fields": "nextPageToken,files(id,name,mimeType,size,modifiedTime,parents)", "pageSize": 1000,
                       "supportsAllDrives": "true", "includeItemsFromAllDrives": "true"}
             if page:
                 params["pageToken"] = page
@@ -217,13 +217,23 @@ class GoogleDrive:
             if not page:
                 return files
 
+    def _roots(self) -> list[dict]:
+        """Les dossiers partagés avec l'appli : ceux qu'elle voit et dont le
+        parent ne lui est pas visible. Plus sûr que `sharedWithMe`, que Google
+        ne remplit pas toujours pour un compte de service (Seb, 19 novembre)."""
+        folders = self._files(f"mimeType = '{FOLDER}' and trashed = false")
+        ids = {f["id"] for f in folders}
+        return [f for f in folders if not set(f.get("parents") or []) & ids]
+
     def _id(self, path: str) -> str | None:
         """L'identifiant Google d'un chemin ; None pour la racine."""
         current = None
         for name in [p for p in path.strip("/").split("/") if p]:
-            safe = name.replace("\\", "\\\\").replace("'", "\\'")
-            where = "sharedWithMe" if current is None else f"'{current}' in parents"
-            found = self._files(f"{where} and name = '{safe}' and trashed = false")
+            if current is None:
+                found = [f for f in self._roots() if f["name"] == name]
+            else:
+                safe = name.replace("\\", "\\\\").replace("'", "\\'")
+                found = self._files(f"'{current}' in parents and name = '{safe}' and trashed = false")
             if not found:
                 raise DriveNotFound("Introuvable sur Google Drive.")
             current = found[0]["id"]
@@ -231,14 +241,14 @@ class GoogleDrive:
 
     def check(self) -> None:
         if not self.list(""):
-            raise DriveRefused("Aucun dossier n'est encore partagé avec l'adresse de l'appli.")
+            raise DriveRefused(
+                "Google Drive ne montre aucun dossier partagé avec l'adresse de l'appli : partagez un dossier "
+                "(pas un fichier) avec cette adresse, puis réessayez dans une minute.")
 
     def list(self, path: str = "") -> list[Entry]:
         folder = self._id(path)
-        q = f"mimeType = '{FOLDER}' and sharedWithMe and trashed = false" if folder is None else (
-            f"'{folder}' in parents and trashed = false")
         entries = []
-        for f in self._files(q):
+        for f in self._roots() if folder is None else self._files(f"'{folder}' in parents and trashed = false"):
             modified = None
             if f.get("modifiedTime"):
                 modified = datetime.fromisoformat(f["modifiedTime"].replace("Z", "+00:00"))

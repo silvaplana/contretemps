@@ -132,6 +132,35 @@ def test_kdrive_par_l_api_d_infomaniak():
         KDrive("club@ik.me", "faux", "1262779", http=client).check()
 
 
+def test_google_drive_racine_sans_shared_with_me():
+    """Seb, 19 novembre : dossier partagé, mais « Aucun dossier » ; la racine
+    = les dossiers visibles dont le parent ne l'est pas, sans `sharedWithMe`."""
+    import time
+
+    import httpx
+
+    from drives.providers import FOLDER, GoogleDrive
+
+    dossiers = [
+        {"id": "a", "name": "ASC", "mimeType": FOLDER, "parents": ["mon-drive-du-club"]},
+        {"id": "b", "name": "FACTURES", "mimeType": FOLDER, "parents": ["a"]},
+    ]
+
+    def repondre(requete):
+        q = requete.url.params["q"]
+        assert "sharedWithMe" not in q
+        if "'a' in parents" in q:
+            return httpx.Response(200, json={"files": [dossiers[1]]})
+        return httpx.Response(200, json={"files": dossiers})
+
+    drive = GoogleDrive({"client_email": "appli@x.iam.gserviceaccount.com"},
+                        http=httpx.Client(transport=httpx.MockTransport(repondre)))
+    drive._token = ("jeton", time.time() + 3600)
+    drive.check()
+    assert [e.name for e in drive.list("")] == ["ASC"]
+    assert [e.path for e in drive.list("ASC")] == ["ASC/FACTURES"]
+
+
 def test_google_drive_propose_quand_le_serveur_a_la_cle(client, ecole, monkeypatch, tmp_path):
     """Étape 4 (import-auto-pieces.md) : sans clé, pas d'adresse à partager ;
     la clé posée par Seb sur le serveur suffit à proposer Google Drive."""
