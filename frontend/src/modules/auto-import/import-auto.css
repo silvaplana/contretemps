@@ -1,0 +1,23 @@
+/* Import auto pièces (spec/modules/import-auto-pieces.md §3) : gros et simple. */
+.ai-ecran .thread-screen__header { justify-content: space-between; }
+.ai { display: flex; flex-direction: column; gap: 12px; font-size: 17px; max-width: 720px; }
+.ai__table { width: 100%; border-collapse: collapse; }
+.ai__table th { text-align: left; font-weight: 500; font-size: 15px; color: var(--text-muted); padding: 6px 4px; }
+.ai__table td { padding: 4px; height: 56px; border-top: 1px solid var(--border); cursor: pointer; }
+.ai__table input[type='checkbox'] { width: 26px; height: 26px; }
+.ai__nombre { text-align: right; font-variant-numeric: tabular-nums; }
+.ai__eteint td { color: var(--text-muted); }
+.ai__plus {
+  position: fixed; right: max(20px, env(safe-area-inset-right, 0px)); bottom: max(20px, env(safe-area-inset-bottom, 0px));
+  width: 56px; height: 56px; border-radius: 50%; border: 0; font-size: 28px; font-weight: 600; cursor: pointer;
+  background: var(--accent); color: var(--accent-contrast); z-index: 2;
+}
+.ai__titre { font-size: 15px; text-transform: uppercase; letter-spacing: 0.06em; margin: 8px 0 0; color: var(--text-muted); }
+.ai__ligne { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.ai__chemin { font-size: 15px; }
+.ai__dossiers { display: flex; flex-direction: column; gap: 6px; }
+.ai__dossier { text-align: left; min-height: 48px; font: inherit; background: none; border: 0; border-bottom: 1px solid var(--border); cursor: pointer; color: inherit; }
+.ai__case { display: flex; gap: 10px; align-items: center; }
+.ai__case input { width: 24px; height: 24px; }
+.ai__piece { display: flex; flex-direction: column; min-height: 52px; justify-content: center; border-bottom: 1px solid var(--border); }
+.ai select, .ai input[type='time'] { font: inherit; min-height: 48px; }

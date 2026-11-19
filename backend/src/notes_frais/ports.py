@@ -200,3 +200,7 @@ class Ports:
     # validation), None si l'hôte ne passe pas par les tiers. Il fait montrer
     # les écritures de la pièce à la revue de l'import (Seb, 10/11).
     tiers: Callable[[Session, int, str, str], tuple[str, str] | None] | None = None
+    # Import auto pièces : le fichier d'un justificatif resté sur un drive du
+    # club (db, org_id, drive_id, chemin) → chemin d'une copie temporaire à
+    # servir. None : l'hôte n'a pas de drives.
+    drive: Callable[[Session, int, int, str], Path] | None = None

@@ -393,6 +393,10 @@ class NotesDeFrais:
         envoyée, sur le disque avant."""
         if piece.doc_node_id is not None and self.ports.classeur is not None:
             return self.ports.classeur.contenu(db, membre, piece.doc_node_id)
+        if piece.drive_id is not None:
+            if self.ports.drive is None:
+                raise LookupError("Fichier du justificatif introuvable.")
+            return self.ports.drive(db, membre.org_id, piece.drive_id, piece.drive_path or "")
         return self.stockage.chemin(membre.org_id, piece.chemin)
 
     def fichier_piece(self, db: Session, membre: Membre, piece_id: int) -> tuple[Path, str, str]:
@@ -986,6 +990,7 @@ class NotesDeFrais:
         categorie_id: int | None = None,
         batch_id: str | None = None,
         numero_piece: str | None = None,
+        lien: dict | None = None,
     ) -> NoteFrais | Preuve:
         """Une pièce établie par un trésorier : une photo (ou un fichier) =
         une note d'une dépense, créée aussitôt. La lecture remplit ce qu'elle
@@ -994,7 +999,10 @@ class NotesDeFrais:
         une facture d'un prof de l'école = honoraires, une facture faite par
         ou adressée à une autre personne = sa note de frais, sinon achat. La preuve d'un virement
         n'est pas une dépense : elle est rapprochée de la pièce qu'elle paie
-        (`Preuve`). `valider` : tout est saisi, validé en même temps."""
+        (`Preuve`). `valider` : tout est saisi, validé en même temps.
+        `lien` (Import auto pièces) : le fichier reste où il est, dans un
+        dossier du club ({"doc_node_id"} ou {"drive_id", "drive_path"}) ;
+        jamais rangé, déplacé ni effacé par l'appli."""
         self._exiger_tresorier(membre)
         if nature is not None and nature not in NATURES:
             raise ValueError("Nature inconnue.")
@@ -1008,7 +1016,7 @@ class NotesDeFrais:
                     lu = self.lire_ticket(db, membre, contenu, type_mime, nom)
                 except LectureImpossible:
                     lu = {}
-        if nature is None and lu.get("sorte") == "virement":
+        if nature is None and lu.get("sorte") == "virement" and lien is None:
             return self._preuve_de_virement(db, membre, lu, fichier)
         date_approximative = False
         if jour is None and lu.get("date"):
@@ -1071,7 +1079,16 @@ class NotesDeFrais:
         if valider:
             self._exiger_complete(note)
             self._numeroter(db, note)  # saisie à la main validée d'un coup : elle aussi a son numéro (Seb, 10/11)
-        if fichier is not None:
+        if fichier is not None and lien is not None:
+            depense.pieces.append(PieceJustificative(
+                chemin=(fichier[1] or "")[:500], type_mime=fichier[2], nom=(fichier[1] or "")[:200],
+                taille=len(fichier[0]), ordre=len(depense.pieces), sha256=hashlib.sha256(fichier[0]).hexdigest(),
+                linked=True, doc_node_id=lien.get("doc_node_id"), drive_id=lien.get("drive_id"),
+                drive_path=lien.get("drive_path"),
+            ))
+            db.flush()
+            note.duplicate_of_id = self._meme_fichier(db, note)
+        elif fichier is not None:
             self._poser_piece(
                 membre, depense, io.BytesIO(fichier[0]), fichier[1], fichier[2],
                 nom_personne=personne.nom if personne is not None and nature != ACHAT else membre.nom,
@@ -1390,7 +1407,7 @@ class NotesDeFrais:
         justificatifs déjà rangés vont dans le dossier et sous le nom qu'ils
         auraient eus, saison comprise. Un échec n'annule pas la correction."""
         chemin = self._chemin_docs(db, note)
-        rangees = [(d, p) for d in note.depenses for p in d.pieces if p.doc_node_id]
+        rangees = [(d, p) for d in note.depenses for p in d.pieces if p.doc_node_id and not p.linked]
         if self.ports.classeur is None or chemin is None or not rangees:
             return
         personne = self._nom_personne(db, note)
@@ -1474,8 +1491,8 @@ class NotesDeFrais:
             if auteur.notification_id is not None:
                 self._notifier(db, auteur.notification_id, "Note de frais annulée", f"« {titre} » ({euros(total)}) : vos dépenses sont de nouveau à envoyer.")
             return
-        rangees = [p.doc_node_id for d in note.depenses for p in d.pieces if p.doc_node_id]
-        sur_disque = [p.chemin for d in note.depenses for p in d.pieces if p.doc_node_id is None]
+        rangees = [p.doc_node_id for d in note.depenses for p in d.pieces if p.doc_node_id and not p.linked]
+        sur_disque = [p.chemin for d in note.depenses for p in d.pieces if p.doc_node_id is None and not p.linked]
         if rangees:
             self._declasser(db, membre, note, rangees)
         for depense in list(note.depenses):
@@ -1665,7 +1682,7 @@ class NotesDeFrais:
         échec n'annule pas l'action : les fichiers restent sur le disque."""
         classeur = self.ports.classeur
         chemin = self._chemin_docs(db, note)
-        a_ranger = [(d, p) for d in note.depenses for p in d.pieces if p.doc_node_id is None]
+        a_ranger = [(d, p) for d in note.depenses for p in d.pieces if p.doc_node_id is None and not p.linked]
         if classeur is None or chemin is None or not a_ranger:
             return
         personne = self._nom_personne(db, note)

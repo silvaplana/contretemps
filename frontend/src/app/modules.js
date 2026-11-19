@@ -16,6 +16,7 @@
 // Ecran, badge?(ecoleId) → nombre en pastille }, après Cours, module
 // allumé ; voir AdminScreen.jsx). Les onglets
 // du core (Admin, Supervision, Profil) sont dans data/nav.js.
+import autoImport from '../modules/auto-import/module.js'
 import choregraphies from '../modules/choregraphies/module.js'
 import documents from '../modules/documents/module.js'
 import drives from '../modules/drives/module.js'
@@ -30,7 +31,7 @@ import sessionClips from '../modules/session-clips/module.js'
 import trials from '../modules/trials/module.js'
 
 // Publications en premier : ses onglets (Actus…) viennent juste après Admin (Seb, 6 novembre).
-export const MODULES = [publications, presence, choregraphies, messagerie, mail, documents, finances, sessionClips, helloasso, ffst, trials, drives]
+export const MODULES = [publications, presence, choregraphies, messagerie, mail, documents, finances, sessionClips, helloasso, ffst, trials, drives, autoImport]
 
 // Le module qui impose les membres de la saison affichée (HelloAsso,
 // spec/modules/helloasso.md §7) : { module, liste: son `memberList`, donnees }, ou

@@ -163,6 +163,12 @@ class PieceJustificative(Base):
     sha256: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     # Preuve du virement qui paie la pièce (avis d'opération CIC, mail de la banque) : pas une facture.
     is_proof: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
+    # Import auto pièces (spec/modules/import-auto-pieces.md §6) : le fichier
+    # reste dans le dossier du club (Docs : `doc_node_id` ; drive : `drive_id`
+    # et `drive_path`) ; l'appli ne le déplace ni ne l'efface jamais.
+    linked: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
+    drive_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    drive_path: Mapped[str | None] = mapped_column(String(1000), nullable=True)
 
     depense: Mapped[Depense] = relationship(back_populates="pieces")
 
