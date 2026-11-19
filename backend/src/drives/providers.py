@@ -5,8 +5,8 @@ Un client par fournisseur, mêmes quatre gestes : `check()`, `list(path)`,
 de noms de dossiers séparés par « / », sans « / » au début (« FINANCIER/
 SALAIRES ») ; la racine est « ».
 
-- kDrive (Infomaniak) : WebDAV, adresse du compte et mot de passe
-  d'application, `https://<numéro>.connect.kdrive.infomaniak.com`.
+- kDrive (Infomaniak) : l'API d'Infomaniak avec un jeton (droit « drive »)
+  et le numéro du kDrive ; WebDAV est fermé avec my kSuite (Seb, 19 novembre).
 - Google Drive : un compte de service de l'appli (clé JSON du serveur,
   /run/secrets/google_drive.json ou la variable
   GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE, DEPLOY.md §4) ; le club partage ses dossiers
@@ -19,12 +19,9 @@ import base64
 import json
 import os
 import time
-import xml.etree.ElementTree as ET
 from dataclasses import dataclass
-from datetime import datetime
-from email.utils import parsedate_to_datetime
+from datetime import datetime, timezone
 from pathlib import Path
-from urllib.parse import quote, unquote, urlsplit
 
 import httpx
 
@@ -57,60 +54,76 @@ def join(folder: str, name: str) -> str:
     return f"{folder}/{name}" if folder else name
 
 
-# --- kDrive (WebDAV) ---------------------------------------------------------
+# --- kDrive (API d'Infomaniak) ------------------------------------------------
 
-DAV = "{DAV:}"
+KDRIVE_API = "https://api.infomaniak.com"
+KDRIVE_ROOT = 1  # la racine du kDrive : « Private » (Mon dossier), « Common documents »…
 
 
 class KDrive:
-    def __init__(self, address: str, password: str, drive_ref: str, http: httpx.Client | None = None) -> None:
-        self.base = f"https://{drive_ref.strip()}.connect.kdrive.infomaniak.com"
-        self.http = http or httpx.Client(auth=(address, password), timeout=TIMEOUT)
+    """kDrive par l'API d'Infomaniak avec un jeton (droit « drive ») : marche
+    avec toutes les offres, y compris my kSuite où WebDAV est fermé (Seb,
+    19 novembre). `secret` = le jeton, `drive_ref` = le numéro du kDrive."""
 
-    def _url(self, path: str) -> str:
-        parts = [quote(p) for p in path.strip("/").split("/") if p]
-        return self.base + "/" + "/".join(parts)
+    def __init__(self, address: str, token: str, drive_ref: str, http: httpx.Client | None = None) -> None:
+        self.drive = drive_ref.strip()
+        self.http = http or httpx.Client(timeout=TIMEOUT, follow_redirects=True)
+        self.headers = {"Authorization": f"Bearer {token.strip()}"}
 
-    def _send(self, method: str, path: str, **kwargs) -> httpx.Response:
+    def _send(self, method: str, url: str, headers: dict | None = None, **kwargs) -> httpx.Response:
         try:
-            reponse = self.http.request(method, self._url(path), **kwargs)
+            reponse = self.http.request(method, KDRIVE_API + url, headers={**self.headers, **(headers or {})}, **kwargs)
         except httpx.HTTPError as erreur:
             raise DriveError("Le kDrive ne répond pas. Réessayez dans un moment.") from erreur
         if reponse.status_code in (401, 403):
-            raise DriveRefused("Infomaniak n'a pas accepté l'adresse ou le mot de passe d'application.")
-        if reponse.status_code == 404:
+            raise DriveRefused("Infomaniak n'a pas accepté le jeton, ou il n'a pas le droit « drive » sur ce kDrive.")
+        code = ""
+        if reponse.headers.get("content-type", "").startswith("application/json"):
+            corps = reponse.json()
+            if isinstance(corps, dict) and corps.get("result") == "error":
+                code = (corps.get("error") or {}).get("code", "")
+        if reponse.status_code == 404 or code == "object_not_found":
             raise DriveNotFound("Introuvable sur le kDrive.")
-        if reponse.status_code >= 400:
-            raise DriveError(f"Le kDrive a répondu {reponse.status_code}.")
+        if code in ("not_authorized", "unauthorized", "forbidden", "access_denied"):
+            raise DriveRefused("Infomaniak n'a pas accepté le jeton, ou il n'a pas le droit « drive » sur ce kDrive.")
+        if reponse.status_code >= 400 or code:
+            raise DriveError(f"Le kDrive a répondu {reponse.status_code} {code}".strip() + ".")
         return reponse
 
+    def _children(self, folder_id: int) -> list[dict]:
+        items, cursor = [], None
+        while True:
+            params = {"limit": 1000, **({"cursor": cursor} if cursor else {})}
+            data = self._send("GET", f"/3/drive/{self.drive}/files/{folder_id}/files", params=params).json()
+            items += data.get("data") or []
+            cursor = data.get("cursor")
+            if not data.get("has_more") or not cursor:
+                return items
+
+    def _id(self, path: str) -> int:
+        current = KDRIVE_ROOT
+        for name in [p for p in path.strip("/").split("/") if p]:
+            found = next((i for i in self._children(current) if i.get("name") == name), None)
+            if found is None:
+                raise DriveNotFound("Introuvable sur le kDrive.")
+            current = found["id"]
+        return current
+
     def check(self) -> None:
-        self._send("PROPFIND", "", headers={"Depth": "0"})
+        self._send("GET", f"/3/drive/{self.drive}/files/{KDRIVE_ROOT}")
 
     def list(self, path: str = "") -> list[Entry]:
-        reponse = self._send("PROPFIND", path, headers={"Depth": "1"})
-        racine = urlsplit(self._url(path)).path.rstrip("/")
         entries = []
-        for r in ET.fromstring(reponse.content).iter(f"{DAV}response"):
-            href = unquote(urlsplit(r.findtext(f"{DAV}href", "")).path).rstrip("/")
-            if href == unquote(racine):
-                continue
-            prop = r.find(f"{DAV}propstat/{DAV}prop")
-            is_dir = prop is not None and prop.find(f"{DAV}resourcetype/{DAV}collection") is not None
-            size = int((prop.findtext(f"{DAV}getcontentlength") if prop is not None else None) or 0)
-            modified = None
-            texte = prop.findtext(f"{DAV}getlastmodified") if prop is not None else None
-            if texte:
-                try:
-                    modified = parsedate_to_datetime(texte)
-                except (TypeError, ValueError):
-                    modified = None
-            name = href.rsplit("/", 1)[-1]
-            entries.append(Entry(name=name, path=join(path, name), is_dir=is_dir, size=size, modified=modified))
+        for i in self._children(self._id(path)):
+            stamp = i.get("last_modified_at") or i.get("created_at")
+            entries.append(Entry(
+                name=i["name"], path=join(path, i["name"]), is_dir=i.get("type") == "dir", size=int(i.get("size") or 0),
+                modified=datetime.fromtimestamp(stamp, timezone.utc) if stamp else None,
+            ))
         return sorted(entries, key=lambda e: (not e.is_dir, e.name.lower()))
 
     def read(self, path: str) -> bytes:
-        return self._send("GET", path).content
+        return self._send("GET", f"/2/drive/{self.drive}/files/{self._id(path)}/download").content
 
     def folder(self, path: str) -> str:
         """Creates the folders of `path` that are missing; returns it."""
@@ -128,9 +141,12 @@ class KDrive:
         return done
 
     def write(self, folder: str, name: str, content: bytes, mime: str = "application/octet-stream") -> str:
-        path = join(folder, name)
-        self._send("PUT", path, content=content, headers={"Content-Type": mime})
-        return path
+        self._send(
+            "POST", f"/3/drive/{self.drive}/upload", content=content,
+            params={"file_name": name, "directory_id": self._id(folder), "total_size": len(content), "conflict": "version"},
+            headers={"Content-Type": "application/octet-stream"},
+        )
+        return join(folder, name)
 
 
 # --- Google Drive (compte de service) ----------------------------------------
@@ -206,7 +222,7 @@ class GoogleDrive:
     def _files(self, q: str) -> list[dict]:
         files, page = [], None
         while True:
-            params = {"q": q, "fields": "nextPageToken,files(id,name,mimeType,size,modifiedTime)", "pageSize": 1000,
+            params = {"q": q, "fields": "nextPageToken,files(id,name,mimeType,size,modifiedTime,parents)", "pageSize": 1000,
                       "supportsAllDrives": "true", "includeItemsFromAllDrives": "true"}
             if page:
                 params["pageToken"] = page
@@ -216,13 +232,23 @@ class GoogleDrive:
             if not page:
                 return files
 
+    def _roots(self) -> list[dict]:
+        """Les dossiers partagés avec l'appli : ceux qu'elle voit et dont le
+        parent ne lui est pas visible. Plus sûr que `sharedWithMe`, que Google
+        ne remplit pas toujours pour un compte de service (Seb, 19 novembre)."""
+        folders = self._files(f"mimeType = '{FOLDER}' and trashed = false")
+        ids = {f["id"] for f in folders}
+        return [f for f in folders if not set(f.get("parents") or []) & ids]
+
     def _id(self, path: str) -> str | None:
         """L'identifiant Google d'un chemin ; None pour la racine."""
         current = None
         for name in [p for p in path.strip("/").split("/") if p]:
-            safe = name.replace("\\", "\\\\").replace("'", "\\'")
-            where = "sharedWithMe" if current is None else f"'{current}' in parents"
-            found = self._files(f"{where} and name = '{safe}' and trashed = false")
+            if current is None:
+                found = [f for f in self._roots() if f["name"] == name]
+            else:
+                safe = name.replace("\\", "\\\\").replace("'", "\\'")
+                found = self._files(f"'{current}' in parents and name = '{safe}' and trashed = false")
             if not found:
                 raise DriveNotFound("Introuvable sur Google Drive.")
             current = found[0]["id"]
@@ -230,14 +256,14 @@ class GoogleDrive:
 
     def check(self) -> None:
         if not self.list(""):
-            raise DriveRefused("Aucun dossier n'est encore partagé avec l'adresse de l'appli.")
+            raise DriveRefused(
+                "Google Drive ne montre aucun dossier partagé avec l'adresse de l'appli : partagez un dossier "
+                "(pas un fichier) avec cette adresse, puis réessayez dans une minute.")
 
     def list(self, path: str = "") -> list[Entry]:
         folder = self._id(path)
-        q = f"mimeType = '{FOLDER}' and sharedWithMe and trashed = false" if folder is None else (
-            f"'{folder}' in parents and trashed = false")
         entries = []
-        for f in self._files(q):
+        for f in self._roots() if folder is None else self._files(f"'{folder}' in parents and trashed = false"):
             modified = None
             if f.get("modifiedTime"):
                 modified = datetime.fromisoformat(f["modifiedTime"].replace("Z", "+00:00"))

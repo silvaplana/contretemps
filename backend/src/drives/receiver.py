@@ -23,7 +23,7 @@ from .service import Drives, NotConnected, google_address
 class ConnectIn(BaseModel):
     provider: Literal["kdrive", "gdrive"]
     address: str = Field(min_length=3, max_length=255, pattern=r"^\s*[^@\s]+@[^@\s]+\.[^@\s]+\s*$")
-    # kDrive : mot de passe d'application et numéro du kDrive.
+    # kDrive : jeton d'API Infomaniak (droit « drive ») et numéro du kDrive.
     code: str = Field("", max_length=200)
     drive_ref: str = Field("", max_length=50, pattern=r"^\s*\d*\s*$")
     name: str = Field("", max_length=30)
@@ -114,7 +114,7 @@ class DrivesReceiver:
     ):
         """Sans `drive` : ajoute un drive ; avec : le reconnecte ou le remplace."""
         if data.provider == "kdrive" and not (data.code.strip() and data.drive_ref.strip()):
-            raise HTTPException(status_code=422, detail="Il faut le mot de passe d'application et le numéro du kDrive")
+            raise HTTPException(status_code=422, detail="Il faut le jeton Infomaniak et le numéro du kDrive")
         try:
             self.drives.connect(db, ecole_id, data.provider, data.address, data.code, data.drive_ref, drive, data.name)
         except NotConnected:

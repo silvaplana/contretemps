@@ -1,5 +1,5 @@
 """Table `drive_accounts` : les drives d'une organisation (spec/core.md §3).
-Le mot de passe d'application kDrive est chiffré (securite/chiffrement.py).
+Le jeton d'API kDrive est chiffré (securite/chiffrement.py).
 Aucun fichier n'est gardé en base."""
 
 from datetime import datetime, timezone
@@ -27,7 +27,7 @@ class DriveAccount(Base):
     address: Mapped[str] = mapped_column(String(255), nullable=False)
     # kDrive : numéro du kDrive (dans son adresse) ; Google Drive : vide.
     drive_ref: Mapped[str] = mapped_column(String(50), nullable=False, default="", server_default="")
-    # kDrive : mot de passe d'application ; Google Drive : vide (clé du serveur).
+    # kDrive : jeton d'API Infomaniak ; Google Drive : vide (clé du serveur).
     secret_encrypted: Mapped[str] = mapped_column(Text, nullable=False, default="", server_default="")
     connected_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)
     # Le drive a refusé l'accès : « à reconnecter », vidé à la reconnexion.
