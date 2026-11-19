@@ -124,3 +124,60 @@ def test_ecoles_etanches(client, db_session, asc):
     h = entetes_session(voisin)
     assert client.get("/auto-import", headers=h).json()["rules"] == []
     assert client.post(f"/auto-import/{regle['id']}/run", headers=h).status_code == 404
+
+
+class FauxKDrive:
+    """Un kDrive en mémoire, partagé par tous les clients du test."""
+
+    fichiers: dict = {}
+
+    def __init__(self, provider, address, secret, drive_ref):
+        pass
+
+    def check(self):
+        pass
+
+    def list(self, path=""):
+        from drives.providers import Entry
+
+        return [Entry(name=p.rsplit("/", 1)[-1], path=p, is_dir=False) for p in sorted(self.fichiers)
+                if p.rsplit("/", 1)[0] == path]
+
+    def read(self, path):
+        return self.fichiers[path]
+
+    def write(self, folder, name, content, mime="application/octet-stream"):
+        self.fichiers[f"{folder}/{name}"] = content
+        return f"{folder}/{name}"
+
+
+def test_un_drive_en_source_et_en_destination(client, db_session, asc, monkeypatch):
+    """Étape 3 : un dossier de kDrive en source, relié sans copie ; puis un
+    dossier de kDrive en destination d'une source Docs."""
+    from drives import DriveAccount
+    from notes_frais.models import PieceJustificative
+
+    monkeypatch.setattr(main.core.drives, "factory", FauxKDrive)
+    monkeypatch.setattr(FauxKDrive, "fichiers", {"FACTURES/Orange.pdf": b"%PDF-1.4 orange", "FACTURES/lisez.txt": b"x"})
+    drive = main.core.drives.connect(db_session, asc["ecole"].id, "kdrive", "club@ik.me", "code", "812345")
+    h = entetes_session(asc["tresorier"])
+
+    lu = client.post("/auto-import", headers=h, json={
+        "name": "kDrive", "source_kind": "drive", "source_ref": drive.id, "source_path": "FACTURES"}).json()
+    assert client.post(f"/auto-import/{lu['id']}/run", headers=h).json()["created"] == 1
+    piece = db_session.query(PieceJustificative).one()
+    assert (piece.linked, piece.drive_id, piece.drive_path, piece.doc_node_id) == (True, drive.id, "FACTURES/Orange.pdf", None)
+    assert list(FauxKDrive.fichiers) == ["FACTURES/Orange.pdf", "FACTURES/lisez.txt"]  # rien de déplacé
+    contenu = client.get(f"/notes-frais/pieces/{piece.id}", headers=h)
+    assert contenu.status_code == 200 and contenu.content == b"%PDF-1.4 orange"
+
+    copie = client.post("/auto-import", headers=h, json={
+        "name": "Vers le kDrive", "source_kind": "docs", "source_ref": asc["dossier"], "target_kind": "drive",
+        "target_ref": drive.id, "target_path": "ARCHIVES"}).json()
+    assert client.post(f"/auto-import/{copie['id']}/run", headers=h).json()["created"] == 1
+    assert FauxKDrive.fichiers["ARCHIVES/Facture Wix.pdf"] == b"%PDF-1.4 wix"
+
+    # Un drive déconnecté : l'import attend avec un message.
+    db_session.delete(db_session.get(DriveAccount, drive.id))
+    db_session.commit()
+    assert "drive" in client.post(f"/auto-import/{lu['id']}/run", headers=h).json()["message"]

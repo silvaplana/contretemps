@@ -178,6 +178,10 @@ Tables préfixées `autoimport_`, liées par `organization_id` (écoles étanche
    fichier. Nature « Vente » : l'import attend (« Les ventes ne se saisissent pas encore dans
    Pièces »), les ventes n'existant pas encore dans Pièces.
 3. Source et destination **drive** (kDrive), ouverture du fichier depuis le drive (§6).
+   **Fait (19 novembre)** : source drive reliée sans copie (`drive_id`, `drive_path` sur la pièce),
+   le fichier est relu sur le drive à chaque ouverture (copie de passage sous
+   `NOTES_FRAIS_DIR/_drive/<école>/`) ; destination drive = une copie écrite dans le dossier choisi ;
+   drive déconnecté ou coupé : l'import attend avec un message.
 4. **Google Drive** dans Drives du club (partage du dossier avec l'adresse de l'appli).
 5. Source **boîte mail** (§4.1).
 6. Source **HelloAsso** (versements, `financier.md` §8.11).
