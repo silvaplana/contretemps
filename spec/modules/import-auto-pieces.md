@@ -166,7 +166,7 @@ Tables préfixées `autoimport_`, liées par `organization_id` (écoles étanche
    « code tout et merge toi-même »). **Fait (19 novembre)** : `backend/src/drives/` (module
    `drives`, éteint par défaut, allumé pour les écoles « combat »), `core.drives` pour les autres
    modules ; kDrive demande aussi le numéro du kDrive ; Google Drive codé, proposé seulement quand
-   le serveur a la clé du compte de service (`GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE` dans `backend/.env`).
+   le serveur a la clé du compte de service (étape 4).
 2. **Écran Import auto pièces** et source **Docs** : tableau, fiche, worker, création des pièces
    À valider, Voir, 🗑.
    **Fait (19 novembre)** : `backend/src/auto_import/` (module `auto_import`, éteint par défaut,
@@ -183,6 +183,11 @@ Tables préfixées `autoimport_`, liées par `organization_id` (écoles étanche
    `NOTES_FRAIS_DIR/_drive/<école>/`) ; destination drive = une copie écrite dans le dossier choisi ;
    drive déconnecté ou coupé : l'import attend avec un message.
 4. **Google Drive** dans Drives du club (partage du dossier avec l'adresse de l'appli).
+   **Fait (19 novembre)** : codé à l'étape 1 ; la clé du compte de service se pose en fichier
+   `backend/secrets/google_drive.json` sur le VPS (`/run/secrets/` dans le conteneur, comme la clé
+   de la banque), marche à suivre dans DEPLOY.md §4 « Google Drive ». Tant que Seb ne l'a pas
+   posée, Google Drive reste « pas encore proposé ». Limite de Google : déposer une copie dans un
+   Google Drive personnel peut être refusé (compte de service sans espace) ; la lecture marche.
 5. Source **boîte mail** (§4.1).
 6. Source **HelloAsso** (versements, `financier.md` §8.11).
 
