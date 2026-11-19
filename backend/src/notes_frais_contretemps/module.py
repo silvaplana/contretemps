@@ -70,7 +70,7 @@ def mount(app, core) -> None:
             plan_ventes=comptes_de_produits,
             # Compte de tiers des écritures montrées à la revue de l'import.
             tiers=compte_de_tiers,
-            # Justificatif resté sur un drive du club (Import auto pièces).
+            # Justificatif resté sur un drive du club (Importation automatique de pièces).
             drive=_lecteur_drive(core),
         ),
         stockage=StockageEnveloppes(DOSSIER_NOTES_FRAIS, 20 * 1024 * 1024),

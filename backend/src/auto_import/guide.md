@@ -1,6 +1,6 @@
-# Import auto pièces
+# Importation automatique de pièces
 
-- Financier › Pièces › ⋯ › « Import auto pièces » (Accès au Financier) : plein écran, croix en haut à
+- Financier › Pièces › ⋯ › « Importation automatique de pièces » (Accès au Financier) : plein écran, croix en haut à
   droite pour revenir à Pièces.
 - Tableau : Actif (case) | Nom | Saison | Pièces (nombre créé) | Voir | 🗑. « + » en bas à droite :
   un nouvel import. 🗑 efface l'import, jamais les pièces déjà créées (Annuler pendant 10 s).

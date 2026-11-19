@@ -135,14 +135,14 @@ class AutoImport:
     def _membre(rule: AutoImportRule):
         from notes_frais.ports import Membre
 
-        return Membre(person_id=rule.created_by or 0, org_id=rule.organization_id, nom="Import auto pièces",
+        return Membre(person_id=rule.created_by or 0, org_id=rule.organization_id, nom="Importation automatique de pièces",
                       est_tresorier=True)
 
     @staticmethod
     def _docs_member(rule: AutoImportRule):
         from documents.ports import Member
 
-        return Member(person_id=rule.created_by or 0, org_id=rule.organization_id, display_name="Import auto pièces",
+        return Member(person_id=rule.created_by or 0, org_id=rule.organization_id, display_name="Importation automatique de pièces",
                       is_admin=True, groups=frozenset({"role:admin", "role:tresorier"}), writes_closed_periods=True)
 
     # --- Sources ----------------------------------------------------------

@@ -1,4 +1,4 @@
-"""Déclaration du sous-module Import auto pièces du Financier
+"""Déclaration du sous-module Importation automatique de pièces du Financier
 (spec/modules/import-auto-pieces.md). Éteint par défaut : allumé pour les
 écoles de nature « combat » (ASC) par la migration. Contretemps ne change pas."""
 
@@ -139,13 +139,13 @@ def start_loop(core, every_seconds: int = 300) -> None:
                 with SessionLocal() as db:
                     core.auto_import.run_due(db)
             except Exception:
-                logger.exception("Import auto pièces : passage impossible")
+                logger.exception("Importation automatique de pièces : passage impossible")
             time.sleep(every_seconds)
 
     threading.Thread(target=boucle, name="auto-import", daemon=True).start()
 
 
 MODULE = Module(
-    key="auto_import", label="Import auto pièces", mount=mount, requires=("expense_notes",),
+    key="auto_import", label="Importation automatique de pièces", mount=mount, requires=("expense_notes",),
     guide=guide_file(__file__), enabled_by_default=False,
 )

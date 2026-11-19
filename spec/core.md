@@ -152,7 +152,7 @@ nouveau, toute table nouvelle est en anglais.
   sont une **ressource de l'école, utilisable par plusieurs modules** (Seb) : un service du core
   (lister les dossiers, lire et déposer un fichier, retrouver un fichier par son empreinte), table
   `drive_accounts` (comme `mail_accounts`, identifiants chiffrés) ; nouveau point de branchement
-  à valider par Seb avant le code. Premier utilisateur : Import auto pièces
+  à valider par Seb avant le code. Premier utilisateur : Importation automatique de pièces
   (`modules/import-auto-pieces.md`).
 - **Personnalisation de l'application** (Admin > École), trois parties dans cet ordre :
   **Apparence visuelle** (logo, nom, slogan, couleurs, polices, adresse), **Fonctionnalités** (une

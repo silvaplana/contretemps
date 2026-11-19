@@ -1,4 +1,4 @@
-"""Routes de l'écran Financier › Pièces › ⋯ › Import auto pièces
+"""Routes de l'écran Financier › Pièces › ⋯ › Importation automatique de pièces
 (spec/modules/import-auto-pieces.md §3, §4) : trésoriers et Super User
 seulement (Accès au Financier). Sous-module éteint : « introuvable »."""
 
