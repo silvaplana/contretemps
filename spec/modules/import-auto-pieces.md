@@ -102,6 +102,23 @@ Cases modifiables ; vide = le critère par défaut (en gris à l'écran). La **n
 (un prof : Honoraires ; un adhérent qui demande un remboursement : Note de frais), sinon la nature
 de la fiche. Le mail reste dans la boîte, l'appli ne le déplace ni ne le marque lu.
 
+### 4.2 Source HelloAsso (Seb, 19 novembre : « HelloAsso est important »)
+
+- **Un versement** = les paiements versés le même jour (`cash_out_date` de la copie HelloAsso,
+  paiements en ligne payés et `CashedOut`). Une adhésion en plusieurs fois compte dans chaque
+  versement qui a versé une de ses échéances, pour le montant de cette échéance (Seb, 19 novembre).
+- **Une vente par versement**, À valider, fournisseur « HelloAsso », datée du jour du versement, une
+  ligne par compte de produits (financier.md §8.12). La fiche montre les **formules** de la campagne
+  de la saison ; la trésorière dit une fois le compte de chacune (« À choisir » : la ligne reste sans
+  compte, à compléter dans Pièces). L'encaissement se rattache à la transaction bancaire du
+  virement HelloAsso comme toute vente, jamais tout seul.
+- Avec une destination : le PDF du détail (« Pièce reconstituée par l'appli à partir du versement
+  HelloAsso », date, total, une ligne par paiement) est déposé sous « Versement HelloAsso AAAA-MM-JJ
+  (reconstituée par l'appli).pdf » et relié à la vente. Sans destination : pas de fichier.
+- Pas encore : la part Licence d'une formule vers 4671 (le compte n'est pas encore proposé dans les
+  ventes) et les remboursements (une ligne de vente est toujours positive) ; un écart avec la banque
+  se voit au rattachement.
+
 ## 5. Ce qui se passe à chaque passage
 
 1. Pour chaque import actif dont l'heure est venue : lister la source (fichiers du dossier, sans
@@ -199,11 +216,9 @@ Tables préfixées `autoimport_`, liées par `organization_id` (écoles étanche
    un prof de l'école → Honoraires, une autre personne de l'école → Note de frais, sinon la nature
    de la fiche.
 6. Source **HelloAsso** (versements, `financier.md` §8.11).
-   **En attente (19 novembre)** : un versement HelloAsso est une recette, donc une pièce de nature
-   Vente, et Pièces ne sait pas encore saisir de vente (natures : Facture d'achat, Note de frais,
-   Honoraires). La copie HelloAsso de l'appli connaît les paiements encaissés et versés
-   (`helloasso/money.py`), de quoi reconstituer un versement ; on code cette étape quand les ventes
-   existent dans Pièces. D'ici là, une fiche avec la source HelloAsso attend avec un message.
+   **Fait (19 novembre)**, une fois les ventes en ligne (§8.12, PR #401 et #402) :
+   `auto_import/helloasso_source.py`, §4.2 ; colonne `autoimport_rules.helloasso_accounts`
+   (formule → compte), route `GET /auto-import-helloasso` (formules et comptes de produits).
 
 ## 10. Reste à décider
 

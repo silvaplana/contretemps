@@ -36,6 +36,7 @@ class RuleIn(BaseModel):
     mail_senders: str = Field("", max_length=500)
     mail_words: str = Field("", max_length=500)
     mail_need_amount: bool = True
+    helloasso_accounts: dict[str, int | None] = Field(default_factory=dict)
 
 
 class RuleOut(RuleIn):
@@ -54,8 +55,12 @@ def _out(rule: AutoImportRule, pieces: int) -> RuleOut:
 
 
 class AutoImportReceiver:
-    def __init__(self, client: AutoImport, app: FastAPI, membre_courant: Callable, places: Callable) -> None:
+    def __init__(
+        self, client: AutoImport, app: FastAPI, membre_courant: Callable, places: Callable, formulas: Callable,
+    ) -> None:
         self.client = client
+        # (db, org_id, season_id) → les formules de la campagne HelloAsso.
+        self.formulas = formulas
         # (db, org_id) → sources et destinations possibles (drives, boîtes, saisons).
         self.places = places
         self._routes(app, membre_courant)
@@ -123,6 +128,16 @@ class AutoImportReceiver:
             notes = list(db.scalars(select(NoteFrais).where(NoteFrais.id.in_(ids), NoteFrais.org_id == m.org_id)))
             notes.sort(key=lambda n: ids.index(n.id))
             return {"notes": client.notes.notes_dicts(db, m, notes)}
+
+        @app.get("/auto-import-helloasso")
+        def helloasso(season_id: int | None = None, db: Session = db_dep, m=membre):
+            """Source HelloAsso (§4.2) : les formules de la campagne et les
+            comptes de produits où les envoyer."""
+            accounts = client.notes.categories(db, m.org_id, ventes=True)
+            return {
+                "formulas": self.formulas(db, m.org_id, season_id),
+                "accounts": [{"id": c.id, "libelle": c.libelle, "code": c.code} for c in accounts],
+            }
 
         @app.get("/auto-import-docs-folders")
         def docs_folders(parent: int | None = None, db: Session = db_dep, m=membre):

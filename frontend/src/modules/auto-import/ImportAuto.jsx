@@ -122,6 +122,7 @@ function Lieu({ etat, cote, regle, onChange }) {
             const { kind: k, ref: r } = versRegle(e.target.value)
             const suite = { [`${cote}_kind`]: k, [`${cote}_ref`]: r, [`${cote}_path`]: '' }
             if (cote === 'source' && k === 'mail' && regle.target_kind === 'none') suite.target_kind = 'docs'
+            if (cote === 'source' && k === 'helloasso') suite.nature = 'vente'
             onChange(suite)
           }}
         >
@@ -190,6 +191,42 @@ function Criteres({ regle, onChange }) {
   )
 }
 
+// Source HelloAsso (§4.2) : où va chaque formule de la campagne, dit une fois.
+function Formules({ regle, onChange }) {
+  const [infos, setInfos] = useState(null)
+  const [erreur, setErreur] = useState(null)
+  useEffect(() => {
+    api.helloasso(regle.season_id).then(setInfos, (e) => setErreur(e.message))
+  }, [regle.season_id])
+  const comptes = regle.helloasso_accounts ?? {}
+  if (erreur) return <p className="mail__discret">{erreur}</p>
+  if (!infos) return <p className="mail__discret">Lecture…</p>
+  return (
+    <>
+      <p className="mail__discret">
+        Un versement HelloAsso devient une vente, une ligne par compte. Dites une fois où va chaque formule.
+      </p>
+      {infos.formulas.length === 0 && <p className="mail__discret">Pas encore d’inscrit HelloAsso pour cette saison.</p>}
+      {infos.formulas.map((f) => (
+        <label key={f} className="mail__champ">
+          <span>{f || 'Sans formule'}</span>
+          <select
+            value={comptes[f] ?? ''}
+            onChange={(e) => onChange({ helloasso_accounts: { ...comptes, [f]: e.target.value ? Number(e.target.value) : null } })}
+          >
+            <option value="">À choisir</option>
+            {infos.accounts.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.code ? `${c.code} ${c.libelle}` : c.libelle}
+              </option>
+            ))}
+          </select>
+        </label>
+      ))}
+    </>
+  )
+}
+
 function Fiche({ etat, regle, onChange, onRetour }) {
   const [message, setMessage] = useState(null)
   const [enCours, setEnCours] = useState(false)
@@ -245,6 +282,7 @@ function Fiche({ etat, regle, onChange, onRetour }) {
         <h3 className="ai__titre">Source</h3>
         <Lieu etat={etat} cote="source" regle={regle} onChange={onChange} />
         {regle.source_kind === 'mail' && <Criteres regle={regle} onChange={onChange} />}
+        {regle.source_kind === 'helloasso' && <Formules regle={regle} onChange={onChange} />}
         <h3 className="ai__titre">Destination</h3>
         <Lieu etat={etat} cote="target" regle={regle} onChange={onChange} />
         <h3 className="ai__titre">Regarder s’il y a de nouvelles pièces</h3>

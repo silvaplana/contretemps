@@ -25,7 +25,7 @@ from .models import AutoImportRule, AutoImportSeen
 logger = logging.getLogger(__name__)
 PARIS = ZoneInfo("Europe/Paris")
 ACCEPTES = {"image/jpeg", "image/png", "image/webp", "image/gif", "image/heic", "image/heif", "application/pdf"}
-NATURES = {"achat": "achat", "frais": "frais", "honoraires": "honoraires", "vente": None}
+NATURES = {"achat": "achat", "frais": "frais", "honoraires": "honoraires", "vente": "vente"}
 MAX_PAR_PASSAGE = 50  # le reste au passage suivant (lecture des pièces payante)
 
 
@@ -44,6 +44,10 @@ class SourceFile:
     # Dernier tri, une fois le fichier lu : (db, rule, contenu, mime, nom) →
     # garder ? (mail : la pièce jointe montre-t-elle un montant…).
     check: Callable | None = None
+    # Vente reconstituée (HelloAsso) : (compte, montant, formules) par ligne.
+    sale_lines: list | None = None
+    supplier: str | None = None
+    description: str = ""
 
 
 class SkipRule(Exception):
@@ -193,7 +197,7 @@ class AutoImport:
             return self._drive_files(db, rule)
         source = self.sources.get(rule.source_kind)
         if source is None and rule.source_kind == "helloasso":
-            raise SkipRule("Les versements HelloAsso arriveront quand Pièces saura saisir les ventes : cet import attend.")
+            raise SkipRule("HelloAsso n'est pas allumé pour cette école.")
         if source is None:
             raise SkipRule("Cette source n'est pas encore proposée.")
         return source(db, rule)
@@ -255,8 +259,6 @@ class AutoImport:
         return created
 
     def _run(self, db: Session, rule: AutoImportRule) -> int:
-        if NATURES.get(rule.nature) is None and rule.source_kind != "helloasso":
-            raise SkipRule("Les ventes ne se saisissent pas encore dans Pièces : cet import attend.")
         files = self._files(db, rule)
         seen = set(db.scalars(select(AutoImportSeen.source_key).where(AutoImportSeen.rule_id == rule.id)))
         hashes = set(db.scalars(select(AutoImportSeen.sha256).where(
@@ -287,6 +289,12 @@ class AutoImport:
             if sha in hashes:  # le même fichier, déplacé ou renommé
                 self._seen(db, rule, f.key, sha, None)
                 continue
+            if f.sale_lines is not None:
+                note = self._sale(db, rule, f, content, mime)
+                self._seen(db, rule, f.key, sha, getattr(note, "id", None))
+                hashes.add(sha)
+                created += 1
+                continue
             link = self._deposit(db, rule, f, content)
             note = self.notes.etablir(
                 db, self._membre(rule), nature=f.nature or NATURES.get(rule.nature) or "achat",
@@ -296,6 +304,16 @@ class AutoImport:
             hashes.add(sha)
             created += 1
         return created
+
+    def _sale(self, db: Session, rule: AutoImportRule, f: SourceFile, content: bytes, mime: str):
+        """Une vente reconstituée : le PDF n'est déposé que s'il y a une
+        destination ; sans, la pièce garde le détail sans fichier (§4.2)."""
+        link = self._deposit(db, rule, f, content) if rule.target_kind != "none" else None
+        return self.notes.etablir(
+            db, self._membre(rule), nature="vente", fichier=(content, f.name, mime) if link else None, lien=link,
+            jour=f.day, lignes=[(account, amount) for account, amount, _ in f.sale_lines] or None,
+            fournisseur=f.supplier, description=f.description,
+        )
 
     @staticmethod
     def _seen(db: Session, rule: AutoImportRule, key: str, sha: str | None, note_id: int | None) -> None:

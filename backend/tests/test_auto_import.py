@@ -94,10 +94,14 @@ def test_destination_docs_et_boite_mail_sans_destination(client, db_session, asc
     assert refus.status_code == 422
 
 
-def test_ventes_attendent(client, db_session, asc):
+def test_une_vente_depuis_docs(client, db_session, asc):
+    """Les ventes existent dans Pièces (financier.md §8.12) : plus d'attente."""
+    from notes_frais.models import NoteFrais
+
     h = entetes_session(asc["tresorier"])
     regle = client.post("/auto-import", headers=h, json={"nature": "vente", "source_ref": asc["dossier"]}).json()
-    assert "ventes" in client.post(f"/auto-import/{regle['id']}/run", headers=h).json()["message"]
+    assert client.post(f"/auto-import/{regle['id']}/run", headers=h).json()["created"] == 1
+    assert db_session.query(NoteFrais).one().nature == "vente"
 
 
 def test_heure_du_passage():
@@ -235,7 +239,55 @@ def test_une_boite_mail_en_source(client, db_session, asc, monkeypatch):
     assert client.post(f"/auto-import/{regle['id']}/run", headers=h).json()["created"] == 0
 
 
-def test_helloasso_attend_les_ventes(client, db_session, asc):
+def test_versements_helloasso(client, db_session, asc):
+    """Étape 6 (§4.2) : un versement = les paiements versés le même jour ;
+    une vente À valider par versement, une ligne par compte d'après la
+    formule ; une adhésion en 3 fois compte dans chaque versement qui a versé
+    une échéance ; le PDF reconstitué n'est déposé qu'avec une destination."""
+    from documents.models import DocNode
+    from helloasso.models import HelloAssoRegistration
+    from notes_frais.models import Depense, NoteFrais
+
+    def paiement(montant, jour, versement, echeance=None, etat="CashedOut"):
+        return {"amount": montant, "date": jour, "state": "Authorized", "means": "Card", "installment": echeance,
+                "cash_out_state": etat, "cash_out_date": versement}
+
+    def inscrit(item, nom, formule, paiements):
+        db_session.add(HelloAssoRegistration(
+            org_id=asc["ecole"].id, season_id=1, item_id=item, order_id=item, first_name=nom, last_name="X",
+            tier_name=formule, amount=sum(p["amount"] for p in paiements), state="Processed", payments=paiements))
+
+    inscrit("1", "Ali", "Adhésion adulte", [paiement(10600, "2026-09-20", "2026-10-10")])
+    inscrit("2", "Bea", "Adhésion en 3 fois", [
+        paiement(10000, "2026-09-21", "2026-10-10", 1), paiement(10000, "2026-10-21", "2026-11-10", 2),
+        paiement(10000, "2026-11-21", None, 3, etat="MoneyIn")])
+    inscrit("3", "Cid", "Stage", [paiement(2000, "2026-10-25", "2026-11-10")])
+    db_session.commit()
+
     h = entetes_session(asc["tresorier"])
-    regle = client.post("/auto-import", headers=h, json={"source_kind": "helloasso", "nature": "vente"}).json()
-    assert "ventes" in client.post(f"/auto-import/{regle['id']}/run", headers=h).json()["message"]
+    client.get("/finances/chart", headers=h)  # le plan comptable de l'école
+    infos = client.get("/auto-import-helloasso", headers=h).json()
+    assert infos["formulas"] == ["Adhésion adulte", "Adhésion en 3 fois", "Stage"]
+    comptes = infos["accounts"]
+    cotisations = next(c["id"] for c in comptes if c["code"] == "756")
+    autre = next(c["id"] for c in comptes if c["code"] == "758")
+    regle = client.post("/auto-import", headers=h, json={
+        "name": "HelloAsso", "nature": "vente", "source_kind": "helloasso", "target_kind": "docs",
+        "target_ref": asc["dossier"],
+        "helloasso_accounts": {"Adhésion adulte": cotisations, "Adhésion en 3 fois": cotisations, "Stage": autre}}).json()
+
+    assert client.post(f"/auto-import/{regle['id']}/run", headers=h).json()["created"] == 2
+    ventes = db_session.query(NoteFrais).order_by(NoteFrais.id).all()
+    assert [v.nature for v in ventes] == ["vente", "vente"]
+    lignes = [sorted((d.categorie_id, d.montant_centimes) for d in db_session.query(Depense).filter_by(note_id=v.id))
+              for v in ventes]
+    assert lignes == [[(cotisations, 20600)], sorted([(cotisations, 10000), (autre, 2000)])]
+    noms = {n.name for n in db_session.query(DocNode).filter_by(parent_id=asc["dossier"])}
+    assert "Versement HelloAsso 2026-10-10 (reconstituée par l'appli).pdf" in noms
+    assert client.post(f"/auto-import/{regle['id']}/run", headers=h).json()["created"] == 0
+
+    # Sans destination : la vente, sans fichier inventé.
+    sans = client.post("/auto-import", headers=h, json={"name": "Sans", "nature": "vente", "source_kind": "helloasso"}).json()
+    avant = db_session.query(DocNode).count()
+    assert client.post(f"/auto-import/{sans['id']}/run", headers=h).json()["created"] == 2
+    assert db_session.query(DocNode).count() == avant
