@@ -93,7 +93,7 @@ FEC_COLUMNS = [
     "JournalCode", "JournalLib", "EcritureNum", "EcritureDate", "CompteNum", "CompteLib", "CompAuxNum", "CompAuxLib",
     "PieceRef", "PieceDate", "EcritureLib", "Debit", "Credit", "EcritureLet", "DateLet", "ValidDate", "Montantdevise", "Idevise",
 ]
-JOURNALS = {"AN": "A-nouveaux", "BQ": "Banque", "CA": "Caisse", "AC": "Achats", "HO": "Honoraires", "NF": "Notes de frais", "OD": "Opérations diverses"}
+JOURNALS = {"AN": "A-nouveaux", "BQ": "Banque", "CA": "Caisse", "AC": "Achats", "VE": "Ventes", "HO": "Honoraires", "NF": "Notes de frais", "OD": "Opérations diverses"}
 # Mise en page des états comptables (Grand livre, Balance) : bandeau, titre
 # centré, bloc par compte, totaux en gras ; sobre, le nom de l'association seul.
 _REPORT_CSS = """
@@ -328,6 +328,8 @@ class AgDocuments:
                 continue
             bank_number, bank_name = bank_numbers[r["accountId"]]
             journal = f"BQ{bank_number[-1]}"
+            if (r.get("piece") or {}).get("nature") == "vente":
+                journal = "VE"  # la banque contre les comptes de la vente, au journal des ventes (§8.12)
             # Colonne Pièce : le numéro donné à la validation (AC-2025-001), sinon le titre de la pièce.
             piece = (r["piece"].get("number") or r["piece"]["title"]) if r.get("piece") else ""
             account(bank_number, bank_name, "banque").lines.append(

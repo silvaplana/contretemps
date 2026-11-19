@@ -115,7 +115,7 @@ export default function Rapprocher({ onChange, onOuvrir }) {
                   </span>
                   <span className="nf-rapprocher__banque">
                     Transaction du {api.dateCourte(p.paire.operation.date)} · {p.paire.operation.libelle} ·{' '}
-                    {api.euros(-p.paire.operation.montant_centimes)}
+                    {api.euros(Math.abs(p.paire.operation.montant_centimes))}
                     {p.paire.operation.compte ? ` · ${p.paire.operation.compte}` : ''}
                   </span>
                   {p.paire.operation.sans_facture && <span className="badge badge--warning">{texteSansFacture(p.paire.operation.sans_facture)}</span>}
@@ -158,8 +158,8 @@ export default function Rapprocher({ onChange, onOuvrir }) {
                 </button>
                 <span className="nf-ligne__droite">
                   <span className="nf-ligne__montant">{api.euros(p.montant_centimes)}</span>
-                  <span className={`badge ${p.etat === 'À rapprocher' || p.etat === 'À valider' ? 'badge--warning' : ''}`}>{p.etat}</span>
-                  {p.etat !== 'Don' && etat.lignes_sans_piece.length > 0 && (
+                  <span className={`badge ${['À rapprocher', 'À valider', 'À encaisser'].includes(p.etat) ? 'badge--warning' : ''}`}>{p.etat}</span>
+                  {p.etat !== 'Don' && (p.nature_code === 'vente' ? etat.credits_sans_vente : etat.lignes_sans_piece).length > 0 && (
                     <button type="button" className="btn btn--link" disabled={enCours !== null} onClick={() => setChoisir(p)}>
                       Rattacher à une transaction bancaire…
                     </button>
@@ -206,6 +206,30 @@ export default function Rapprocher({ onChange, onOuvrir }) {
             ))}
           </div>
 
+          {etat.credits_sans_vente.length > 0 && (
+            // Dès que l'école saisit des ventes (financier.md §8.12) : les crédits qui n'ont pas la leur.
+            <>
+              <h3 className="nf-rapprocher__titre">
+                Crédits sans vente <span className="muted">· {etat.credits_sans_vente.length}</span>
+              </h3>
+              <p className="muted">Une vente saisie se rattache à son crédit ci-dessus. Le compte d’un crédit sans vente se choisit dans Comptes.</p>
+              <div className="nf-liste">
+                {etat.credits_sans_vente.map((l) => (
+                  <div key={l.id} className="nf-ligne">
+                    <span className="nf-ligne__corps">
+                      <span className="nf-ligne__titre">{l.libelle}</span>
+                      <span className="muted">
+                        {api.dateCourte(l.date)}
+                        {l.compte ? ` · ${l.compte}` : ''}
+                      </span>
+                    </span>
+                    <span className="nf-ligne__montant">{api.euros(l.montant_centimes)}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
           {etat.justifiees.length > 0 && (
             <>
               <h3 className="nf-rapprocher__titre">
@@ -244,7 +268,7 @@ export default function Rapprocher({ onChange, onOuvrir }) {
       {choisir && (
         <ChoixTransactionModal
           piece={choisir}
-          transactions={etat.lignes_sans_piece}
+          transactions={choisir.nature_code === 'vente' ? etat.credits_sans_vente : etat.lignes_sans_piece}
           onClose={() => setChoisir(null)}
           onChoisie={(transaction) => {
             const piece = choisir
@@ -342,13 +366,14 @@ export default function Rapprocher({ onChange, onOuvrir }) {
 // Lettrage à la main (Seb, 10/11) : la facture et la liste des transactions
 // bancaires sans facture de la période, les montants les plus proches en
 // premier ; un toucher rattache, l'écart éventuel reste à régler dans la fiche.
-function ChoixTransactionModal({ piece, transactions, onClose, onChoisie }) {
+// Une vente (financier.md §8.12) se rattache à un crédit : mêmes écarts, en valeur absolue.
+export function ChoixTransactionModal({ piece, transactions, onClose, onChoisie }) {
   const [filtre, setFiltre] = useState('')
   const mot = filtre.trim().toLowerCase()
   const liste = transactions
     .filter((t) => !mot || t.libelle.toLowerCase().includes(mot))
     .slice()
-    .sort((a, b) => Math.abs(-a.montant_centimes - piece.montant_centimes) - Math.abs(-b.montant_centimes - piece.montant_centimes))
+    .sort((a, b) => Math.abs(Math.abs(a.montant_centimes) - piece.montant_centimes) - Math.abs(Math.abs(b.montant_centimes) - piece.montant_centimes))
   return (
     <Modal title="Rattacher à une transaction bancaire" onClose={onClose}>
       <p>
@@ -363,7 +388,7 @@ function ChoixTransactionModal({ piece, transactions, onClose, onChoisie }) {
       />
       <div className="nf-liste">
         {liste.map((t) => {
-          const diff = -t.montant_centimes - piece.montant_centimes
+          const diff = Math.abs(t.montant_centimes) - piece.montant_centimes
           return (
             <button key={t.id} type="button" className="nf-ligne" onClick={() => onChoisie(t)}>
               <span className="nf-ligne__corps">
@@ -373,11 +398,13 @@ function ChoixTransactionModal({ piece, transactions, onClose, onChoisie }) {
                   {diff !== 0 && ` · écart ${ecart(diff)}`}
                 </span>
               </span>
-              <span className="nf-ligne__montant">{api.euros(-t.montant_centimes)}</span>
+              <span className="nf-ligne__montant">{api.euros(Math.abs(t.montant_centimes))}</span>
             </button>
           )
         })}
-        {liste.length === 0 && <p className="muted">Aucune transaction bancaire sans facture ne correspond.</p>}
+        {liste.length === 0 && (
+          <p className="muted">Aucune transaction bancaire {piece.nature_code === 'vente' ? 'sans vente' : 'sans facture'} ne correspond.</p>
+        )}
       </div>
     </Modal>
   )

@@ -175,6 +175,27 @@ class Banque(Protocol):
     def cloturee(self, db: Session, org_id: int, jour: date) -> bool:
         """La saison qui contient ce jour est clôturée : ses lignes ne bougent plus."""
 
+    # Ventes (financier.md §8.12) : encaisser = un crédit, ou la caisse.
+
+    def credits(self, db: Session, org_id: int, montant_centimes: int, depuis: date) -> list[OperationBancaire]:
+        """Les crédits de ce montant depuis cette date, tous comptes, hors virements internes."""
+
+    def tous_credits(self, db: Session, org_id: int, depuis: date) -> list[OperationBancaire]:
+        """Tous les crédits depuis cette date, tous comptes, hors virements internes."""
+
+    def ventiler(self, db: Session, org_id: int, operation_id: int, lignes: list[tuple[str, int]], person_id: int) -> None:
+        """La vente rattachée donne ses comptes (numéro, centimes) à la ligne
+        de banque, si elle n'en a pas encore et que la somme fait la banque."""
+
+    def deventiler(self, db: Session, org_id: int, operation_id: int, lignes: list[tuple[str, int]]) -> None:
+        """Vente détachée : retire les comptes de la ligne s'ils sont ceux de la vente."""
+
+    def entrer_en_caisse(self, db: Session, org_id: int, jour: date, libelle: str, lignes: list[tuple[str, int]], person_id: int) -> None:
+        """Vente encaissée en espèces : une ligne de caisse par compte."""
+
+    def sortir_de_caisse(self, db: Session, org_id: int, jour: date, libelle: str) -> None:
+        """Défait `entrer_en_caisse` (les lignes de ce jour à ce libellé)."""
+
 
 class LectureImpossible(Exception):
     """La lecture n'a pas eu lieu ; le formulaire se remplit à la main."""

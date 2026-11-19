@@ -577,9 +577,10 @@ class Accounting:
 
 def _from_piece(accounts: list, piece: dict | None, amount) -> Proposal | None:
     """Le compte de la catégorie de la pièce rattachée (une dépense classée
-    « 6063 Autres fournitures » dans sa note), pour une sortie d'argent."""
+    « 6063 Autres fournitures » dans sa note), pour une sortie d'argent ;
+    pour une entrée, le compte de la vente rattachée (§8.12)."""
     number = (piece or {}).get("account")
-    if not number or amount >= 0:
+    if not number or (amount > 0) != (piece.get("nature") == "vente"):
         return None
     account = next((a for a in accounts if a.number == number), None)
     if account is None:

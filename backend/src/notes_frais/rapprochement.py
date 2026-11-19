@@ -64,7 +64,7 @@ def pdf(donnees: dict) -> bytes:
         lignes = "".join(
             f"<tr><td>{_fr(p['date'])}</td><td>{e(p['nature'])}</td><td>{e(p['qui'])}</td><td class='n'>{_eur(p['montant_centimes'])}</td>"
             f"<td>{_fr(p['ligne']['date'])} · {e(p['ligne']['libelle'])}{' · ' + e(p['ligne']['compte']) if p['ligne']['compte'] else ''}</td>"
-            f"<td class='n'>{_eur(-p['ligne']['montant_centimes'])}</td><td class='n'>{_ecart(p)}</td></tr>"
+            f"<td class='n'>{_eur(abs(p['ligne']['montant_centimes']))}</td><td class='n'>{_ecart(p)}</td></tr>"
             for p in rattachees
         )
         parts.append(
