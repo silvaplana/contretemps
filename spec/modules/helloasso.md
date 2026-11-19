@@ -537,3 +537,30 @@ où ce parcours d'inscription existe.
 - Écran (depuis le 18 novembre 2026, §8.1) : Saisons › Éditer la saison, bloc
   `HelloAssoSaison.jsx`, trois cartes de la maquette ; au
   choix 1, la campagne se choisit dans la carte, puis « Synchroniser maintenant ».
+
+## 9. Versements dans le Financier (Seb, 19 novembre 2026)
+
+Proposition, **pas codée** (`financier.md` §8.11, maquette
+https://claude.ai/artifact/WSnkg4UEoszQxfLDCEctB6). HelloAsso ne verse pas chaque paiement : il
+vire une fois par mois la somme de ce qu'il a encaissé. Sur le relevé, « VIR HELLOASSO … +1 060 € »
+ne dit pas pour qui.
+
+- **La pièce explicative** : la synchronisation garde déjà, par paiement, `cash_out_state` et
+  `cash_out_date` (§7, étape 10). Les paiements versés le même jour forment **un versement** ; sa
+  somme est rapprochée du crédit HelloAsso de la banque de même montant (libellé qui finit par le
+  jour du versement). L'appli n'invente aucun fichier : la pièce est le détail affiché (« Voir le
+  détail des n paiements » : nom, formule, montant), téléchargeable en PDF à la demande, rien dans
+  Docs.
+- **Ventilation** : la trésorière dit une fois où va chaque formule de la campagne et chaque option
+  (par exemple Adhésion → 756 Cotisations, part Licence FFST → 4671 Licences FFST à reverser) ;
+  l'appli s'en souvient pour les versements suivants. Écriture : 512 Banque au débit (le versement),
+  les comptes ventilés au crédit. Un écart entre la somme et la banque (remboursement, pourboire mal
+  lu) est affiché, jamais corrigé seul.
+- **Où** : dans Financier › Pièces › Rapprocher, avec les autres pièces (« HelloAsso » en gris sous
+  le titre), même bouton « Rattacher à cette transaction bancaire ».
+- **Éteint par défaut** : case « Rapprocher les versements dans le Financier » sous la ligne
+  HelloAsso de Fonctionnalités, allumée seulement à ASC La Ciotat. Éteinte, le Financier reste
+  exactement comme aujourd'hui (Contretemps).
+- À vérifier au code : que l'API HelloAsso donne bien `cashOutDate` pour chaque paiement versé
+  (sinon, l'endpoint des versements de l'organisation).
+

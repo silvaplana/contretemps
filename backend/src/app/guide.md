@@ -24,7 +24,8 @@ Admin › École
 - Saisons (caché si le module Saisons est éteint) : « Saison affichée » pour consulter une ancienne
   saison ; Créer une saison ; Éditer la saison ; Supprimer une saison (taper son nom) ;
   « Ouvrir aux modifications » / « Refermer la saison » sur une ancienne saison (administrateur
-  principal et Super User).
+  principal et Super User), avec une phrase dessous qui dit ce que fait le bouton : refermer =
+  lecture seule, rien n'est effacé, ce n'est pas la clôture des comptes.
 - Créer une saison : un seul écran prérempli, nom et dates, puis une ligne par partie (structure
   des élèves « Regarder… », élèves, profs, cours, documents « Changer… »), puis « Créer la saison ».
 - Tarifs : Formules (« + Ajouter une formule ») et « Options et codes promo » ; dans une formule :

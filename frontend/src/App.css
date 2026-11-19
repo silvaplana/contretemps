@@ -715,10 +715,18 @@
   cursor: pointer;
 }
 
+/* La croix reste visible en haut pendant le défilement, pour quitter sans
+   valider (Seb, 19/11, Éditer la saison). */
 .modal-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  position: sticky;
+  top: -16px;
+  z-index: 1;
+  margin: -16px -16px 0;
+  padding: 16px 16px 8px;
+  background: var(--bg);
 }
 
 .modal-header h2 {
@@ -3228,6 +3236,12 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.admin-saisons__aide {
+  margin: 10px 0 0;
+  max-width: 640px;
+  font-size: 17px;
 }
 
 .saison-panneau__duplication {
