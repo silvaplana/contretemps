@@ -117,7 +117,20 @@ export function Compte({ n, banque = false }) {
   )
 }
 
-export const NATURES = { frais: 'Note de frais', honoraires: 'Honoraires', achat: 'Achat', vente: 'Vente' }
+export const NATURES = { frais: 'Note de frais', honoraires: 'Honoraires', achat: 'Achat', vente: 'Vente', salaire: 'Bulletin de salaire' }
+// Les natures à proposer : le bulletin de salaire seulement si l'association a des salariés (financier.md §8.11).
+export const naturesProposees = (salaries) => Object.entries(NATURES).filter(([value]) => value !== 'salaire' || salaries)
+// « L'association a des salariés » (Fonctionnalités › Financier), lu une fois : éteint tant qu'on ne sait pas.
+export function useSalaries() {
+  const [salaries, setSalaries] = useState(false)
+  useEffect(() => {
+    api
+      .paie()
+      .then((p) => setSalaries(p.active))
+      .catch(() => setSalaries(false))
+  }, [])
+  return salaries
+}
 
 // Pourquoi l'appli propose cette nature (notes-de-frais.md §7 quinquies) :
 // un prof lu sur la pièce = honoraires, une autre personne = note de frais,
@@ -135,6 +148,7 @@ export function raisonProposee(note) {
 export function qui(note) {
   if (note.nature === 'achat') return note.fournisseur || 'Fournisseur à lire'
   if (note.nature === 'vente') return note.fournisseur || 'De qui ?'
+  if (note.nature === 'salaire') return note.fournisseur || 'Salarié ?'
   // Sans fiche reconnue, le nom lu sur la pièce, à confirmer.
   return note.personne?.nom ?? (note.fournisseur ? `${note.fournisseur} ?` : 'Pour qui ?')
 }

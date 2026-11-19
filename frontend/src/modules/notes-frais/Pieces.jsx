@@ -5,7 +5,7 @@ import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
 import PlanComptable from '../finances/compta/PlanComptable.jsx'
 import { telechargerFichier } from '../../utils/telechargement.js'
-import { BadgeEtat, ChampsRib, Compte, NATURES, PaiementVu, Pieces as Vignettes, PreuveVirement, qui, raisonProposee, ribVide } from './commun.jsx'
+import { BadgeEtat, ChampsRib, Compte, naturesProposees, PaiementVu, Pieces as Vignettes, PreuveVirement, qui, raisonProposee, ribVide, useSalaries } from './commun.jsx'
 import { DetailDepenses } from './MesNotesDeFrais.jsx'
 import { masquerIban } from './EnvoiModal.jsx'
 import Virements from './Virements.jsx'
@@ -13,6 +13,7 @@ import Saisie from './Saisie.jsx'
 import Revue, { Ecritures } from './Revue.jsx'
 import Rapprocher from './Rapprocher.jsx'
 import VenteModal from './Vente.jsx'
+import SalaireModal from './Salaire.jsx'
 
 // Financier › Pièces (spec/modules/financier.md §8.3 et §8.3 bis) : notes de
 // frais, honoraires et achats sont une seule structure « dépense », avec une
@@ -27,6 +28,7 @@ const PUCES = [
   { value: 'honoraires', label: 'Honoraires' },
   { value: 'achat', label: 'Achats' },
   { value: 'vente', label: 'Ventes' },
+  { value: 'salaire', label: 'Salaires' }, // seulement si l'association a des salariés (financier.md §8.11)
   { value: 'a_trancher', label: 'À trancher' }, // « plus tard » et refusées (Seb, 6/11)
 ]
 
@@ -52,6 +54,8 @@ export default function Pieces({ aFaire, onCompteurs, onChange, onPour }) {
   const [survol, setSurvol] = useState(false)
 
   const glisser = SUR_ORDINATEUR
+  const salaries = useSalaries()
+  const puces = PUCES.filter((p) => p.value !== 'salaire' || salaries)
 
   function finDeRevue() {
     setRevue(null)
@@ -93,7 +97,7 @@ export default function Pieces({ aFaire, onCompteurs, onChange, onPour }) {
       ) : (
       <>
       <div className="filter-chips" role="group" aria-label="Pièces">
-        {PUCES.map((p) => (
+        {puces.map((p) => (
           <button
             key={p.value}
             type="button"
@@ -163,7 +167,7 @@ export default function Pieces({ aFaire, onCompteurs, onChange, onPour }) {
       {natureAChoisir && (
         <Modal title="Quelle pièce ?" onClose={() => setNatureAChoisir(false)}>
           <div className="nf-choix">
-            {Object.entries(NATURES).map(([value, label]) => (
+            {naturesProposees(salaries).map(([value, label]) => (
               <button
                 key={value}
                 type="button"
@@ -230,9 +234,9 @@ function ListeNature({ nature, onCompteurs, plus, onPlusFerme, onPour }) {
             <span className="nf-ligne__corps">
               <span className="nf-ligne__titre">{qui(n)}</span>
               <span className="muted">
-                {n.nature === 'achat' || n.nature === 'vente' ? '' : `${n.titre} · `}
+                {['achat', 'vente', 'salaire'].includes(n.nature) ? '' : `${n.titre} · `}
                 {api.dateCourte(n.depenses[0]?.date ?? n.envoyee_le)}
-                {n.depenses.length > 1 ? ` · ${n.depenses.length} ${n.nature === 'vente' ? 'lignes' : 'dépenses'}` : ''}
+                {n.depenses.length > 1 && n.nature !== 'salaire' ? ` · ${n.depenses.length} ${n.nature === 'vente' ? 'lignes' : 'dépenses'}` : ''}
                 {n.depenses[0]?.date_approximative ? ' · date à vérifier' : ''}
                 {n.doublon_de ? ` · même fichier que la pièce n° ${n.doublon_de}` : ''}
                 {n.paiement_propose ? ' · vu sur le compte' : n.paiements_possibles?.length ? ' · paiement possible' : ''}
@@ -329,10 +333,12 @@ const ETAPE_AVANT = { viree: 'À payer', preparee: 'À payer', validee: 'À vali
 // Une vente a sa propre fiche (financier.md §8.12) ; toute pièce ouverte passe par ici.
 export function NoteModal(props) {
   if ((props.note?.nature ?? props.nature) === 'vente') return <VenteModal note={props.note} onClose={props.onClose} onFait={props.onFait} />
+  if ((props.note?.nature ?? props.nature) === 'salaire') return <SalaireModal note={props.note} onClose={props.onClose} onFait={props.onFait} />
   return <NoteModalDepense {...props} />
 }
 
 function NoteModalDepense({ note, nature, onClose, onFait }) {
+  const salaries = useSalaries()
   const corrigeable =
     note === null || ((note.nature !== 'frais' || note.etablie) && ['envoyee', 'validee'].includes(note.statut))
   const natureModifiable = note !== null && corrigeable && note.statut === 'envoyee'
@@ -494,14 +500,14 @@ function NoteModalDepense({ note, nature, onClose, onFait }) {
       )}
       {natureModifiable && (
         <div className="filter-chips nf-natures" role="group" aria-label="Nature de la pièce">
-          {Object.entries(NATURES).map(([value, label]) => (
+          {naturesProposees(salaries).map(([value, label]) => (
             <button
               key={value}
               type="button"
               className={value === genre ? 'filter-chip filter-chip-active' : 'filter-chip'}
               aria-pressed={value === genre}
-              // Vente : sa propre fiche ; la pièce change de nature et rejoint la puce Ventes.
-              onClick={() => (value === 'vente' ? agir(() => api.corriger(note.id, { nature: 'vente' })) : setGenre(value))}
+              // Vente, bulletin de salaire : leur propre fiche ; la pièce change de nature et rejoint sa puce.
+              onClick={() => (value === 'vente' || value === 'salaire' ? agir(() => api.corriger(note.id, { nature: value })) : setGenre(value))}
             >
               {label}
             </button>

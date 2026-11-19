@@ -190,7 +190,9 @@ def propose(
     # Le mot-clé le plus long l'emporte (« FACT SGT » avant « FACT »).
     best: tuple[int, int, str] | None = None
     for account in accounts:
-        if account.nature != wanted:
+        # Un compte de tiers avec un mot-clé (431 URSSAF à payer, que solde le
+        # prélèvement, financier.md §8.11) se propose dans les deux sens.
+        if account.nature not in (wanted, THIRD_PARTY):
             continue
         for keyword in account.keywords or ():
             k = normalize(keyword)

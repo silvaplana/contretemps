@@ -80,7 +80,7 @@ def adresse_ecole(db: Session, ecole_id: int | None) -> str:
 
 
 # Libellés des natures de dépense (notes_frais/models.py) sur la ligne de Comptes.
-_NATURES = {"frais": "Note de frais", "honoraires": "Honoraires", "achat": "Achat", "vente": "Vente"}
+_NATURES = {"frais": "Note de frais", "honoraires": "Honoraires", "achat": "Achat", "vente": "Vente", "salaire": "Salaire"}
 
 
 def pieces_des_operations(db: Session, ecole_id: int) -> dict[int, dict]:
