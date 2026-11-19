@@ -72,6 +72,10 @@ Nouvelle publication / Modifier
 - Plus simple sur le téléphone : dans YouTube, Partager › Contretemps ; « Envoyer à… » propose
   « Nouvelle publication dans <blog> » ou « Ajouter à « <brouillon> » », et l'éditeur s'ouvre avec la
   vidéo ajoutée. Pour deux vidéos : garder en Brouillon, partager la deuxième vers ce brouillon.
+- « Documents spécifiques » (sous Document, pas pour une Brève) : déroule les documents à part de
+  Docs, aujourd'hui « Convocation à l'AG ». La toucher montre les convocations d'AG de Docs, la plus
+  récente d'abord ; en toucher une la joint comme « Document ». S'il n'y en a pas : « Préparez-la dans
+  Docs › + › Convoquer l'AG ».
 - « Sondage » (sous Photo, Vidéo, Lien, Document ; pas pour une Brève) : « Question », les
   « Réponses » (2 à 10, ✕ en retire une, « + Ajouter une réponse »), « Plusieurs réponses possibles ».
   Le texte devient facultatif.
