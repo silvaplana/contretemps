@@ -386,6 +386,71 @@ class BanqueContretemps:
     def cloturee(self, db: Session, org_id: int, jour) -> bool:
         return _cloturee(db, org_id, jour)
 
+    # --- Ventes (financier.md §8.12) ---
+
+    def credits(self, db: Session, org_id: int, montant_centimes: int, depuis) -> list[OperationBancaire]:
+        from finances.models import FinOperation
+
+        requete = self._requete(org_id).where(
+            FinOperation.amount == montant_centimes, FinOperation.date >= depuis, FinOperation.transfer_id.is_(None)
+        )
+        return [self._operation(o, c) for o, c in db.execute(requete.order_by(FinOperation.date))]
+
+    def tous_credits(self, db: Session, org_id: int, depuis) -> list[OperationBancaire]:
+        from finances.models import FinOperation
+
+        requete = self._requete(org_id).where(FinOperation.amount > 0, FinOperation.date >= depuis, FinOperation.transfer_id.is_(None))
+        return [self._operation(o, c) for o, c in db.execute(requete.order_by(FinOperation.date))]
+
+    @staticmethod
+    def _comptes(db: Session, org_id: int, lignes: list[tuple[str, int]]) -> list[tuple[int | None, int]]:
+        """(id du compte du plan, centimes) ; None pour une ligne sans compte connu."""
+        from finances.models import FinChartAccount
+
+        par_numero = {a.number: a.id for a in db.scalars(select(FinChartAccount).where(FinChartAccount.org_id == org_id))}
+        return [(par_numero.get(numero), montant) for numero, montant in lignes]
+
+    def ventiler(self, db: Session, org_id: int, operation_id: int, lignes, person_id: int) -> None:
+        from finances.models import FinOperation, FinOperationAccount
+
+        operation = db.get(FinOperation, operation_id)
+        if operation is None or db.scalar(select(FinOperationAccount.id).where(FinOperationAccount.operation_id == operation_id)):
+            return  # le compte déjà confirmé dans Comptes reste
+        comptes = self._comptes(db, org_id, lignes)
+        # Une ligne sans compte, ou une somme qui ne fait pas la banque : rien n'est confirmé, l'écart se voit.
+        if any(a is None for a, _ in comptes) or sum(m for _, m in comptes) != operation.amount:
+            return
+        db.add_all(FinOperationAccount(operation_id=operation_id, account_id=a, amount=m, confirmed_by=person_id) for a, m in comptes)
+        db.commit()
+
+    def deventiler(self, db: Session, org_id: int, operation_id: int, lignes) -> None:
+        from finances.models import FinOperationAccount
+
+        existantes = list(db.scalars(
+            select(FinOperationAccount).where(FinOperationAccount.operation_id == operation_id).order_by(FinOperationAccount.id)
+        ))
+        if sorted((l.account_id, l.amount) for l in existantes) != sorted(self._comptes(db, org_id, lignes), key=lambda c: (c[0] or 0, c[1])):
+            return  # changées depuis dans Comptes : on n'y touche pas
+        for ligne in existantes:
+            db.delete(ligne)
+        db.commit()
+
+    def entrer_en_caisse(self, db: Session, org_id: int, jour, libelle: str, lignes, person_id: int) -> None:
+        from finances.models import FinCashLine
+
+        db.add_all(
+            FinCashLine(org_id=org_id, date=jour, label=libelle[:120], amount=m, account_id=a, created_by=person_id)
+            for a, m in self._comptes(db, org_id, lignes)
+        )
+        db.commit()
+
+    def sortir_de_caisse(self, db: Session, org_id: int, jour, libelle: str) -> None:
+        from finances.models import FinCashLine
+
+        for ligne in db.scalars(select(FinCashLine).where(FinCashLine.org_id == org_id, FinCashLine.date == jour, FinCashLine.label == libelle[:120])):
+            db.delete(ligne)
+        db.commit()
+
 
 def comptes_de_charges(db: Session, org_id: int) -> list[tuple[str, str]]:
     """Les catégories des dépenses = les comptes de charges actifs du plan

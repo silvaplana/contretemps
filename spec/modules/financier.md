@@ -1298,7 +1298,7 @@ chèque rapprochée d'une famille, §8.3).
 **Données** : pas de table ni de colonne nouvelles. `nf_notes.nature = "vente"`, `supplier` = « De
 qui ou quoi » ; une ligne = une `nf_depenses` (compte = `nf_categories` reflet d'un compte de produits
 du plan, port `Ports.plan_ventes`, jamais mêlé aux catégories de dépense) ; `bank_operation_id` = le
-crédit rattaché (étape 2) ; journal VE. Le compte de tiers d'une ligne (4671) viendra avec HelloAsso :
+crédit rattaché (étape 2) ; journal VE (§8.6, `JOURNALS`). Le compte de tiers d'une ligne (4671) viendra avec HelloAsso :
 à l'étape 1, seuls les comptes de produits sont proposés.
 
 **Étapes de code**, une PR chacune, sur le « vas-y » de Seb :
@@ -1309,6 +1309,28 @@ crédit rattaché (étape 2) ; journal VE. Le compte de tiers d'une ligne (4671)
    jamais dans Virements, Rapprocher, « Fournisseurs à payer » ni « Mes notes de frais ».
 2. Encaisser : crédit proposé, Rattacher / Pas encore encaissée / Encaissée en espèces, ventes et
    crédits dans Rapprocher, ventilation de la ligne de banque, journal VE au Grand livre et à la Balance.
+   **Codée le 19 novembre 2026**, sur le « vas-y » de Seb. Précisions :
+   - **Crédit proposé** : même montant, hors virements internes, à partir de 15 jours avant la date de
+     la vente, le plus proche en date (au même nom d'abord). Sinon, jusqu'à trois crédits au même nom
+     à un autre montant, avec l'écart. « Autre transaction… » : les crédits sans vente des 60 jours
+     avant la vente. Jamais rattaché tout seul (pas de « la banque décide » pour une vente).
+   - **Rattacher** : la vente passe Encaissée et ses lignes deviennent les comptes confirmés de la
+     ligne de banque (Comptes), **seulement si leur somme fait la banque** et si la ligne n'avait pas
+     déjà un compte ; sinon la ligne reste à classer et l'écart se voit sur la fiche. La fiche montre
+     les écritures : 512x au débit, chaque ligne au crédit, journal VE.
+   - **Détacher** : la vente revient À encaisser ; les comptes de la ligne de banque sont retirés
+     s'ils sont encore ceux de la vente (changés depuis dans Comptes : on n'y touche pas).
+   - **Encaissée en espèces** : une ligne de caisse (§8.5) par ligne de la vente, au jour de la vente,
+     libellé « VE-2026-001 De qui ou quoi » ; Détacher ou Annuler la pièce les retirent.
+   - **Pas encore encaissée** : la vente reste (ou passe) À encaisser.
+   - **Rapprocher** : les ventes rejoignent les suggestions et les pièces sans paiement (« À
+     encaisser »), et le badge ; la partie **Crédits sans vente** n'apparaît que dans une école qui
+     saisit des ventes (rien ne change pour les autres).
+   - **Grand livre, Balance, FEC** : une ligne de banque qui porte une vente est au journal **VE**
+     (« Ventes ») au lieu de BQ. Les espèces restent au journal de caisse.
+   - Port `Banque` (`notes_frais/ports.py`) : `credits`, `tous_credits`, `ventiler`, `deventiler`,
+     `entrer_en_caisse`, `sortir_de_caisse`, faits par `notes_frais_contretemps` sur les tables du
+     Financier (`fin_operation_accounts`, `fin_cash_lines`). Pas de table ni de colonne nouvelles.
 Puis prévenir le fil Import auto pièces (étape 6, HelloAsso).
 
 ## 9. Reste à faire

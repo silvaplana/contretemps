@@ -823,7 +823,9 @@ class NotesDeFrais:
         if operation is None:
             return 0
         payees = db.scalars(select(NoteFrais).where(NoteFrais.org_id == note.org_id, NoteFrais.bank_operation_id == operation.id))
-        return -operation.montant_centimes - sum(self.total(n) for n in payees)
+        # Une vente est encaissée par un crédit (> 0), une dépense payée par un débit (< 0).
+        encaisse = operation.montant_centimes if note.nature == VENTE else -operation.montant_centimes
+        return encaisse - sum(self.total(n) for n in payees)
 
     def notes_dicts(self, db: Session, membre: Membre, notes: list[NoteFrais]) -> list[dict]:
         """Vu du trésorier : avec les noms, et l'opération du compte qui
@@ -841,6 +843,7 @@ class NotesDeFrais:
             ligne["operation_id"] = note.bank_operation_id
             ligne["paiements_possibles"] = [] if rattachee or operation else self.paiements_possibles(db, note, prises)
             ligne["detachable"] = rattachee is not None and self._detachable(db, note)
+            ligne["especes"] = self._en_especes(note)
             # Saison de la pièce clôturée au Financier : rangée dans la saison en cours.
             ligne["saison_cloturee"] = bool(self.ports.banque) and self.ports.banque.cloturee(db, note.org_id, self._date_docs(note))
             ligne["plus_tard"] = note.deferred_at is not None
@@ -913,7 +916,7 @@ class NotesDeFrais:
         a_rapprocher = [n for n in db.scalars(
             select(NoteFrais).where(
                 NoteFrais.org_id == membre.org_id, NoteFrais.don.is_(False), NoteFrais.bank_operation_id.is_(None),
-                NoteFrais.statut.in_((ENVOYEE,) + EN_PAIEMENT), NoteFrais.nature != VENTE,
+                NoteFrais.statut.in_((ENVOYEE,) + EN_PAIEMENT),
             )
         )]
         compteurs["rapprocher"] = sum(
@@ -1551,6 +1554,8 @@ class NotesDeFrais:
         note = self._note(db, membre.org_id, note_id)
         if note.statut == REMBOURSEE and note.bank_operation_id is not None:
             raise ValueError("Cette pièce est payée : détachez-la d'abord de sa transaction bancaire.")
+        if self._en_especes(note):
+            note = self._annuler_especes(db, membre, note)  # ses lignes de caisse partent avec elle
         if note.nature == FRAIS and note.established_by is None:
             auteur = self._personne_de_l_org(db, membre, note.person_id)
             titre, total = note.titre, self.total(note)
@@ -1957,8 +1962,8 @@ class NotesDeFrais:
     def beneficiaire(self, db: Session, note: NoteFrais) -> str:
         if note.rib_titulaire:
             return note.rib_titulaire
-        if note.nature == ACHAT:
-            return note.supplier or "Fournisseur"
+        if note.nature in SANS_PERSONNE:
+            return note.supplier or ("Fournisseur" if note.nature == ACHAT else "")
         personne = self.annuaire.personnes(db, note.org_id, {note.person_id}).get(note.person_id)
         return personne.nom if personne else "?"
 
@@ -2004,8 +2009,15 @@ class NotesDeFrais:
         facture), de préférence au nom du bénéficiaire. Proposé, jamais
         rattaché sans confirmation."""
         banque, total = self.ports.banque, self.total(note)
-        if banque is None or total <= 0 or note.don or note.statut not in (ENVOYEE,) + EN_PAIEMENT or note.nature == VENTE:
+        if banque is None or total <= 0 or note.don or note.statut not in (ENVOYEE,) + EN_PAIEMENT:
             return None
+        if note.nature == VENTE:
+            # L'encaissement (financier.md §8.12) : un crédit du même montant, à date proche.
+            reference = min((d.date for d in note.depenses), default=note.envoyee_le.date())
+            candidates = [o for o in banque.credits(db, note.org_id, total, reference - timedelta(days=15)) if o.id not in prises]
+            if not candidates:
+                return None
+            return min(candidates, key=lambda o: (not self._au_nom_de(db, note, o), abs((o.date - reference).days)))
         if note.statut == VIREE and note.transfer_sent_at is not None:
             reference = note.transfer_sent_at.date()
             depuis = reference - timedelta(days=3)
@@ -2024,9 +2036,19 @@ class NotesDeFrais:
         même personne encore à payer, ces pièces (« paie aussi »). Jamais
         rattaché sans « C'est ce paiement »."""
         banque, total = self.ports.banque, self.total(note)
-        if banque is None or total <= 0 or note.don or note.statut not in (ENVOYEE,) + EN_PAIEMENT or note.nature == VENTE:
+        if banque is None or total <= 0 or note.don or note.statut not in (ENVOYEE,) + EN_PAIEMENT:
             return []
         reference = min((d.date for d in note.depenses), default=note.envoyee_le.date())
+        if note.nature == VENTE:
+            # Un crédit au même nom, à un autre montant : l'écart est montré, jamais corrigé (§8.12).
+            credits = [
+                o for o in banque.tous_credits(db, note.org_id, reference - timedelta(days=15))
+                if o.id not in prises and o.montant_centimes != total and self._au_nom_de(db, note, o)
+            ]
+            return [
+                {"operation": self._operation_dict(o), "ecart_centimes": o.montant_centimes - total, "aussi": []}
+                for o in sorted(credits, key=lambda o: (abs(o.montant_centimes - total), abs((o.date - reference).days)))[:3]
+            ]
         candidates = [
             o for o in banque.tous_debits(db, note.org_id, reference - timedelta(days=45))
             if o.id not in prises and -o.montant_centimes != total and self._au_nom_de(db, note, o)
@@ -2079,6 +2101,8 @@ class NotesDeFrais:
         une pièce déjà validée (envoyée par un membre, virement fait) passe Payé."""
         if note.statut not in (ENVOYEE,) + EN_PAIEMENT or note.don or note.bank_operation_id is not None:
             return False
+        if note.nature == VENTE:
+            return False  # une vente n'est rattachée que d'un toucher (financier.md §8.12)
         if any(d.montant_centimes <= 0 for d in note.depenses):
             return False
         operation = self.paiement_propose(db, note, self._operations_prises(db, membre.org_id))
@@ -2104,6 +2128,9 @@ class NotesDeFrais:
         note.bank_operation_id, note.deferred_at, note.paid_unmatched_at = operation_id, None, None
         db.commit()
         db.refresh(note)
+        if note.nature == VENTE:
+            # La vente donne ses comptes à la ligne de banque (financier.md §8.12).
+            self.ports.banque.ventiler(db, note.org_id, operation_id, self._lignes_vente(note), membre.person_id)
         self._adopter_avis(db, membre, note, operation_id)
         self._reranger(db, membre, note)
         self._apres_paiement(db, membre, note, prevenir=prevenir)
@@ -2126,9 +2153,15 @@ class NotesDeFrais:
             raise LookupError("Opération introuvable sur les comptes.")
         if self.ports.banque.cloturee(db, membre.org_id, operation.date):
             raise ValueError("Saison clôturée : cette transaction bancaire est validée, rouvrez la saison (Financier › Bilan › Préparer, étape 7) pour y rattacher une pièce.")
-        if operation.montant_centimes >= 0:
+        vente = note.nature == VENTE
+        if any((n.nature == VENTE) != vente for n in notes):
+            raise ValueError("Une vente ne se rattache pas avec une dépense.")
+        if vente and operation.montant_centimes <= 0:
+            raise ValueError("Cette transaction bancaire est un débit : elle n'encaisse pas une vente.")
+        if not vente and operation.montant_centimes >= 0:
             raise ValueError("Cette transaction bancaire est un crédit : elle ne paie pas une pièce.")
-        if not manuel and operation.montant_centimes != -sum(self.total(n) for n in notes) and not self._au_nom_de(db, note, operation):
+        encaisse = operation.montant_centimes if vente else -operation.montant_centimes
+        if not manuel and encaisse != sum(self.total(n) for n in notes) and not self._au_nom_de(db, note, operation):
             raise ValueError("Le montant de l'opération n'est pas celui de la pièce.")
         if operation_id in self._operations_prises(db, membre.org_id):
             raise ValueError("Cette opération est déjà rattachée à une autre pièce.")
@@ -2177,12 +2210,18 @@ class NotesDeFrais:
         ou À payer. Impossible une fois la saison clôturée : la banque a décidé."""
         self._exiger_tresorier(membre)
         note = self._note(db, membre.org_id, note_id)
+        if self._en_especes(note):
+            return self._annuler_especes(db, membre, note)
         if note.statut not in (ENVOYEE, REMBOURSEE) or note.bank_operation_id is None:
             raise ValueError("Cette pièce n'est pas rattachée à une transaction bancaire.")
         if not self._detachable(db, note):
             raise ValueError("La saison de cette ligne est clôturée : on ne la détache plus.")
+        if note.nature == VENTE:
+            self.ports.banque.deventiler(db, note.org_id, note.bank_operation_id, self._lignes_vente(note))
         if note.statut == ENVOYEE:
             pass
+        elif note.nature == VENTE:
+            note.statut = VALIDEE  # À encaisser
         elif note.transfer_sent_at is not None:
             note.statut = VIREE
         elif note.established_by is not None:
@@ -2190,6 +2229,54 @@ class NotesDeFrais:
         else:
             note.statut = VALIDEE
         note.remboursee_le, note.remboursee_par, note.bank_operation_id = None, None, None
+        db.commit()
+        db.refresh(note)
+        return note
+
+    # --- Encaisser une vente (financier.md §8.12) ---
+
+    @staticmethod
+    def _lignes_vente(note: NoteFrais) -> list[tuple[str, int]]:
+        """(numéro du compte, centimes) de chaque ligne ; "" sans compte."""
+        return [((d.categorie.code or "") if d.categorie else "", d.montant_centimes) for d in note.depenses]
+
+    @staticmethod
+    def _en_especes(note: NoteFrais) -> bool:
+        return note.nature == VENTE and note.statut == REMBOURSEE and note.bank_operation_id is None
+
+    def _jour_et_libelle_caisse(self, note: NoteFrais) -> tuple[date, str]:
+        # Le numéro de pièce rend le libellé unique : il retrouve les lignes pour les défaire.
+        return self._date_docs(note), f"{note.piece_number} {note.supplier or 'Vente'}"
+
+    def encaisser_especes(self, db: Session, membre: Membre, note_id: int) -> NoteFrais:
+        """« Encaissée en espèces » : la vente passe Encaissée et entre dans la
+        caisse (§8.5), une ligne par compte, au jour de la vente."""
+        self._exiger_tresorier(membre)
+        note = self._note(db, membre.org_id, note_id)
+        if note.nature != VENTE or note.statut not in (ENVOYEE, VALIDEE) or note.bank_operation_id is not None:
+            raise ValueError("Cette vente n'est pas à encaisser.")
+        self._exiger_complete(note)
+        if self.ports.banque is None:
+            raise ValueError("Pas de caisse sans le module Financier.")
+        if self.ports.banque.cloturee(db, note.org_id, self._date_docs(note)):
+            raise ValueError("Saison clôturée : rouvrez-la pour encaisser cette vente.")
+        if note.statut == ENVOYEE:
+            note.traitee_le, note.traitee_par = _maintenant(), membre.person_id
+        self._numeroter(db, note)
+        note.statut, note.remboursee_le, note.remboursee_par, note.deferred_at = REMBOURSEE, _maintenant(), membre.person_id, None
+        jour, libelle = self._jour_et_libelle_caisse(note)
+        self.ports.banque.entrer_en_caisse(db, note.org_id, jour, libelle, self._lignes_vente(note), membre.person_id)
+        db.commit()
+        db.refresh(note)
+        self._reranger(db, membre, note)
+        return note
+
+    def _annuler_especes(self, db: Session, membre: Membre, note: NoteFrais) -> NoteFrais:
+        jour, libelle = self._jour_et_libelle_caisse(note)
+        if self.ports.banque.cloturee(db, note.org_id, jour):
+            raise ValueError("La saison de cette vente est clôturée : on ne la détache plus.")
+        self.ports.banque.sortir_de_caisse(db, note.org_id, jour, libelle)
+        note.statut, note.remboursee_le, note.remboursee_par = VALIDEE, None, None
         db.commit()
         db.refresh(note)
         return note
@@ -2229,17 +2316,17 @@ class NotesDeFrais:
         pièce). Une pièce est de la période par sa date, sinon par celle de
         son paiement."""
         self._exiger_tresorier(membre)
-        # Les ventes s'encaissent : elles viendront ici avec l'étape 2 (financier.md §8.12).
-        notes = list(db.scalars(select(NoteFrais).where(
-            NoteFrais.org_id == membre.org_id, NoteFrais.statut != REFUSEE, NoteFrais.nature != VENTE,
-        )))
+        # Les ventes et leurs crédits aussi (financier.md §8.12) ; une vente encaissée en espèces n'attend rien.
+        notes = [n for n in db.scalars(select(NoteFrais).where(
+            NoteFrais.org_id == membre.org_id, NoteFrais.statut != REFUSEE,
+        )) if not self._en_especes(n)]
         personnes = self.annuaire.personnes(db, membre.org_id, {n.person_id for n in notes} - {PERSONNE_A_CHOISIR})
         banque = self.ports.banque
         lignes = {}
         for note in notes:
             if note.bank_operation_id and banque and note.bank_operation_id not in lignes:
                 lignes[note.bank_operation_id] = banque.operation(db, membre.org_id, note.bank_operation_id)
-        natures = {FRAIS: "Note de frais", HONORAIRES: "Honoraires", ACHAT: "Achat"}
+        natures = {FRAIS: "Note de frais", HONORAIRES: "Honoraires", ACHAT: "Achat", VENTE: "Vente"}
         etats = {ENVOYEE: "À valider", VALIDEE: "À payer", PREPAREE: "Préparé", VIREE: "Envoyé", REMBOURSEE: "Payée hors banque"}
         prises = self._operations_prises(db, membre.org_id)
 
@@ -2247,7 +2334,7 @@ class NotesDeFrais:
             return min((d.date for d in note.depenses), default=note.envoyee_le.date())
 
         def qui(note: NoteFrais) -> str:
-            if note.nature == ACHAT:
+            if note.nature in SANS_PERSONNE:
                 return note.supplier or ""
             personne = personnes.get(note.person_id)
             return personne.nom if personne else (f"{note.supplier} ?" if note.supplier else "Pour qui ?")
@@ -2271,7 +2358,8 @@ class NotesDeFrais:
             else:
                 piece["etat"] = (
                     "Don" if note.don else "À trancher" if note.deferred_at
-                    else "À rapprocher" if note.paid_unmatched_at and note.statut == VALIDEE else etats.get(note.statut, note.statut)
+                    else "À rapprocher" if note.paid_unmatched_at and note.statut == VALIDEE
+                    else "À encaisser" if note.nature == VENTE and note.statut == VALIDEE else etats.get(note.statut, note.statut)
                 )
                 piece["a_rapprocher"] = bool(note.paid_unmatched_at) and note.statut == VALIDEE
                 # La paire que l'appli propose (§7 septies) : même montant (sûre si même nom), sinon même nom avec l'écart.
@@ -2288,7 +2376,8 @@ class NotesDeFrais:
                 sans_paiement.append(piece)
         # Une ligne qui ne fait pas le montant de ses pièces : l'écart, sur la première.
         for pieces in par_ligne.values():
-            ecart = -pieces[0]["ligne"]["montant_centimes"] - sum(p["montant_centimes"] for p in pieces)
+            montant = pieces[0]["ligne"]["montant_centimes"]
+            ecart = (montant if pieces[0]["nature_code"] == VENTE else -montant) - sum(p["montant_centimes"] for p in pieces)
             pieces[0]["ecart_centimes"] = ecart
         rattachees_ids = {n.bank_operation_id for n in notes if n.bank_operation_id}
         # Ce qu'on sait des transactions sans pièce (§7 octies) : justifiée sans facture, justificatif demandé.
@@ -2308,11 +2397,19 @@ class NotesDeFrais:
                 personne = demandees.get(su.requested_person_id)
                 ligne["demande"] = {"personne": personne.nom if personne else "?", "le": su.requested_at.date()}
             sans_piece.append(ligne)
+        # Les crédits sans vente, dès que l'école saisit des ventes (rien ne change pour les autres).
+        credits = []
+        if banque and any(n.nature == VENTE for n in notes):
+            credits = [
+                {"id": o.id, "date": o.date, "libelle": o.libelle, "montant_centimes": o.montant_centimes, "compte": o.compte}
+                for o in banque.tous_credits(db, membre.org_id, debut) if o.date <= fin and o.id not in rattachees_ids
+            ]
         paires = [p for p in sans_paiement if p.get("paire")]
         sans_paiement = [p for p in sans_paiement if not p.get("paire")]
         return {
             "debut": debut, "fin": fin, "rattachees": rattachees, "paires": paires,
             "sans_paiement": sans_paiement, "lignes_sans_piece": sans_piece, "justifiees": justifiees,
+            "credits_sans_vente": credits,
         }
 
     # --- Transactions bancaires sans pièce (§7 octies, Seb 10/11) ---

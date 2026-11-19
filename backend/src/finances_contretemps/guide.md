@@ -35,6 +35,11 @@ Pièces
   recette (remise de chèques, reçu, facture émise, subvention) : « + » › Saisir à la main › Vente, ou une photo lue
   comme une recette. Fiche d'une vente : De qui ou quoi, Date, Compte et montant (« Ajouter une ligne » pour plusieurs
   comptes), Pièce facultative ; « Valider : À encaisser ». Rangée dans Docs › Financier › VENTES › le nom du compte.
+  Bloc Encaissement de la fiche : « Transaction bancaire proposée » avec « Rattacher à cette transaction bancaire »
+  (la vente passe Encaissée, la ligne de banque prend ses comptes), « Autre transaction… » (choisir un crédit),
+  « Pas encore encaissée », « Encaissée en espèces » (lignes dans la Caisse) ; une fois encaissée : les écritures
+  (journal VE) et « Détacher ». Dans Rapprocher, les ventes à encaisser et, si l'école saisit des ventes, la partie
+  « Crédits sans vente ».
   Les transactions bancaires sans compte se classent dans Comptes (filtre « Sans compte »), badge
   bleu sur le sous-onglet Comptes.
 - « + » : Saisir une dépense. Prendre en photo (enchaîner : Pièce suivante, Encore une page de celle-ci), Choisir des

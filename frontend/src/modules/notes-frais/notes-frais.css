@@ -923,3 +923,9 @@
   text-align: right;
   min-width: 0;
 }
+
+/* Vente : la transaction proposée, le bouton dessous (financier.md §8.12). */
+.nf-encaissement {
+  flex-direction: column;
+  align-items: stretch;
+}

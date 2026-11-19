@@ -3,12 +3,14 @@ import * as api from '../../api/notesFrais.js'
 import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
 import { BadgeEtat, NATURES, Pieces as Vignettes } from './commun.jsx'
+import { ChoixTransactionModal } from './Rapprocher.jsx'
 
 // Fiche d'une vente (financier.md §8.12, maquette validée par Seb le 19/11) :
 // de qui ou quoi, date, une ou plusieurs lignes (compte de produits et
 // montant), la pièce facultative. `note` null = saisie à la main. Rangée dans
 // Docs › Financier › VENTES › le nom du compte de la première ligne.
-// L'encaissement (rattacher le crédit de la banque) vient avec l'étape 2.
+// Encaissement (étape 2) : le crédit proposé, « Rattacher à cette transaction
+// bancaire », « Autre transaction… », « Pas encore encaissée », « Encaissée en espèces ».
 export default function VenteModal({ note, onClose, onFait }) {
   const modifiable = note === null || ['envoyee', 'validee'].includes(note.statut)
   const aValider = note === null || note.statut === 'envoyee'
@@ -25,6 +27,7 @@ export default function VenteModal({ note, onClose, onFait }) {
   const galerie = useRef(null)
   const [erreur, setErreur] = useState('')
   const [enCours, setEnCours] = useState(false)
+  const [credits, setCredits] = useState(null) // « Autre transaction… » : les crédits sans vente
 
   useEffect(() => {
     api
@@ -197,6 +200,34 @@ export default function VenteModal({ note, onClose, onFait }) {
           <input ref={galerie} type="file" accept="image/*,application/pdf" hidden onChange={(e) => setJoint(e.target.files?.[0] ?? null)} />
         </>
       )}
+      {note && note.statut !== 'refusee' && (
+        <Encaissement
+          note={note}
+          enCours={enCours}
+          onRattacher={(op) => agir(() => api.payee(note.id, op.id))}
+          onAutre={() => {
+            const depuis = new Date(new Date(jour).getTime() - 60 * 86400000).toISOString().slice(0, 10)
+            api
+              .rapprochement(depuis, '')
+              .then((d) => setCredits(d.credits_sans_vente))
+              .catch((err) => setErreur(err.message))
+          }}
+          onPasEncore={() => (aValider ? agir(enregistrer) : onClose())}
+          onEspeces={() => agir(() => api.especes(note.id))}
+          onDetacher={() => agir(() => api.detacher(note.id))}
+        />
+      )}
+      {credits && (
+        <ChoixTransactionModal
+          piece={{ qui: qui || 'Vente', nature: 'Vente', nature_code: 'vente', date: jour, montant_centimes: total }}
+          transactions={credits}
+          onClose={() => setCredits(null)}
+          onChoisie={(t) => {
+            setCredits(null)
+            agir(() => api.payee(note.id, t.id, [], true))
+          }}
+        />
+      )}
       {note?.rangement && <p className="muted nf-rangement">Rangée dans Docs › {note.rangement}</p>}
       {note && refusable(note) && (
         <button type="button" className="btn btn--link nf-supprimer" disabled={enCours} onClick={() => agir(() => api.supprimerNote(note.id))}>
@@ -205,6 +236,106 @@ export default function VenteModal({ note, onClose, onFait }) {
       )}
       {erreur && <p className="login-screen__erreur">{erreur}</p>}
     </Modal>
+  )
+}
+
+// Le bloc Encaissement de la maquette (financier.md §8.12) : rien n'est rattaché sans un toucher ;
+// un écart avec la banque est signalé, jamais corrigé.
+function Encaissement({ note, enCours, onRattacher, onAutre, onPasEncore, onEspeces, onDetacher }) {
+  const ecart = (op) => op.montant_centimes - note.total_centimes
+  const texteEcart = (centimes) =>
+    centimes ? <p className="badge badge--warning">Écart de {api.euros(Math.abs(centimes))} avec la pièce : à vérifier</p> : null
+  if (note.statut === 'remboursee') {
+    return (
+      <>
+        <span className="nf-label">Encaissement</span>
+        {note.operation ? (
+          <p className="nf-ligne nf-paiement-vu">
+            <span className="nf-ligne__corps">
+              <span className="nf-ligne__titre">{note.operation.libelle}</span>
+              <span className="muted">
+                {api.dateCourte(note.operation.date)}
+                {note.operation.compte ? ` · ${note.operation.compte}` : ''} · +{api.euros(note.operation.montant_centimes)}
+              </span>
+            </span>
+          </p>
+        ) : (
+          <p>Encaissée en espèces (caisse).</p>
+        )}
+        {texteEcart(note.ecart_centimes)}
+        <EcrituresVente note={note} />
+        {(note.detachable || note.especes) && (
+          <button type="button" className="btn btn--link" disabled={enCours} onClick={onDetacher}>
+            Détacher
+          </button>
+        )}
+      </>
+    )
+  }
+  const op = note.paiement_propose ?? note.paiements_possibles?.[0]?.operation
+  return (
+    <>
+      <span className="nf-label">Encaissement</span>
+      {op ? (
+        <div className="nf-ligne nf-paiement-vu nf-encaissement">
+          <span className="nf-ligne__corps">
+            <span className="muted">Transaction bancaire proposée{note.paiement_propose ? ' (même montant, date proche)' : ''}</span>
+            <span className="nf-ligne__titre">{op.libelle}</span>
+            <span className="muted">
+              {api.dateCourte(op.date)}
+              {op.compte ? ` · ${op.compte}` : ''} · +{api.euros(op.montant_centimes)}
+            </span>
+            {texteEcart(ecart(op))}
+          </span>
+          <button type="button" className="btn btn--primary" disabled={enCours} onClick={() => onRattacher(op)}>
+            Rattacher à cette transaction bancaire
+          </button>
+        </div>
+      ) : (
+        <p className="muted">Aucun crédit de {api.euros(note.total_centimes)} trouvé sur les comptes pour l’instant.</p>
+      )}
+      <button type="button" className="btn btn--link" disabled={enCours} onClick={onAutre}>
+        Autre transaction…
+      </button>
+      <button type="button" className="btn btn--link" disabled={enCours} onClick={onPasEncore}>
+        Pas encore encaissée
+      </button>
+      <button type="button" className="btn btn--link" disabled={enCours} onClick={onEspeces}>
+        Encaissée en espèces
+      </button>
+    </>
+  )
+}
+
+// 512 (ou 530 Caisse) au débit, chaque ligne de la vente au crédit, journal VE.
+function EcrituresVente({ note }) {
+  const tresorerie = note.operation ? `${note.operation.compte_plan || '512'} ${note.operation.compte || 'Banque'}` : '530 Caisse'
+  return (
+    <div className="nf-revue__ecritures">
+      <table>
+        <thead>
+          <tr>
+            <th>Écritures (journal VE)</th>
+            <th>Débit</th>
+            <th>Crédit</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>{tresorerie}</td>
+            <td>{api.euros(note.total_centimes)}</td>
+            <td />
+          </tr>
+          {note.depenses.map((d) => (
+            <tr key={d.id}>
+              <td>{d.categorie ? `${d.categorie.code ? `${d.categorie.code} ` : ''}${d.categorie.libelle}` : 'Compte à choisir'}</td>
+              <td />
+              <td>{api.euros(d.montant_centimes)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   )
 }
 

@@ -1333,6 +1333,93 @@ def test_une_recette_lue_est_proposee_en_vente(client, ecole, monkeypatch):
     note = _etablir(client, ecole["tresorier"], None)
     assert note["nature"] == "vente" and note["fournisseur"] == "Famille Martin" and note["total_centimes"] == 36000
 
+def _vente_a_encaisser(client, tresorier, lignes, qui="Gala du 14 juin", jour="2026-10-16"):
+    import json
+
+    t = entetes_session(tresorier)
+    client.get("/finances/chart", headers=t)
+    comptes = {c["code"]: c["id"] for c in client.get("/notes-frais/categories?ventes=true", headers=t).json()}
+    corps = [{"categorie_id": comptes[code], "montant_centimes": montant} for code, montant in lignes]
+    return _etablir(client, tresorier, "vente", contenu=None, fournisseur=qui, date=jour, lignes=json.dumps(corps), valider="true")
+
+
+def test_vente_encaissee_par_le_credit_de_la_banque(client, db_session, ecole):
+    """Étape 2 (financier.md §8.12) : le crédit du même montant, à date proche,
+    est proposé ; « Rattacher » la passe Encaissée et donne ses comptes à la
+    ligne de banque (ventilée), au journal VE ; Détacher défait tout."""
+    tresorier = ecole["tresorier"]
+    t = entetes_session(tresorier)
+    org = ecole["ecole"].id
+    vente = _vente_a_encaisser(client, tresorier, [("756", 96000), ("758", 28000)])
+    _operation(db_session, org, -124000, "2026-10-18", "PRLV MEME MONTANT")  # un débit ne l'encaisse pas
+    credit = _operation(db_session, org, 124000, "2026-10-19", "REM CHQ 0004530")
+    from finances.models import FinAccount
+    db_session.query(FinAccount).filter_by(org_id=org).update({"bank_balance": 0})  # un solde connu : le Grand livre en part
+    db_session.commit()
+    vente = client.get("/notes-frais/tresorerie?filtre=vente", headers=t).json()["notes"][0]
+    assert vente["statut"] == "validee" and vente["paiement_propose"]["id"] == credit.id
+    assert client.get("/notes-frais/tresorerie/compteurs", headers=t).json()["rapprocher"] == 1
+    paire = client.get("/notes-frais/rapprochement?debut=2026-09-01", headers=t).json()["paires"]
+    assert [(p["id"], p["nature"], p["etat"], p["paire"]["operation"]["id"]) for p in paire] == [(vente["id"], "Vente", "À encaisser", credit.id)]
+
+    encaissee = client.post(f"/notes-frais/notes/{vente['id']}/payee", json={"operation_id": credit.id}, headers=t)
+    assert encaissee.status_code == 200, encaissee.text
+    assert encaissee.json()["statut"] == "remboursee" and encaissee.json()["operation"]["id"] == credit.id
+    assert encaissee.json()["ecart_centimes"] == 0
+    fiche = client.get(f"/finances/operations/{credit.id}", headers=t).json()
+    assert sorted((l["number"], l["amount"]) for l in fiche["lines"]) == [("756", 960.0), ("758", 280.0)]
+    ecritures = client.get(f"/finances/operations/{credit.id}/entries", headers=t).json()["entries"]
+    assert ecritures and all(e["journal"] == "VE" for e in ecritures)
+    assert client.get("/notes-frais/rapprochement?debut=2026-09-01", headers=t).json()["rattachees"][0]["ecart_centimes"] == 0
+
+    detachee = client.post(f"/notes-frais/notes/{vente['id']}/detacher", headers=t)
+    assert detachee.status_code == 200 and detachee.json()["statut"] == "validee"
+    assert client.get(f"/finances/operations/{credit.id}", headers=t).json()["lines"] == []
+
+
+def test_vente_a_un_autre_montant_l_ecart_est_montre_jamais_corrige(client, db_session, ecole):
+    tresorier = ecole["tresorier"]
+    t = entetes_session(tresorier)
+    org = ecole["ecole"].id
+    vente = _vente_a_encaisser(client, tresorier, [("756", 36000)], qui="Famille Martin")
+    credit = _operation(db_session, org, 34800, "2026-10-20", "VIR FAMILLE MARTIN")
+    vente = client.get("/notes-frais/tresorerie?filtre=vente", headers=t).json()["notes"][0]
+    assert vente["paiement_propose"] is None
+    assert [(p["operation"]["id"], p["ecart_centimes"]) for p in vente["paiements_possibles"]] == [(credit.id, -1200)]
+    encaissee = client.post(f"/notes-frais/notes/{vente['id']}/payee", json={"operation_id": credit.id}, headers=t).json()
+    assert encaissee["statut"] == "remboursee" and encaissee["ecart_centimes"] == -1200
+    # La somme ne fait pas la banque : rien n'est confirmé sur la ligne, la trésorière voit l'écart.
+    assert client.get(f"/finances/operations/{credit.id}", headers=t).json()["lines"] == []
+
+
+def test_vente_encaissee_en_especes_entre_dans_la_caisse(client, ecole):
+    tresorier = ecole["tresorier"]
+    t = entetes_session(tresorier)
+    vente = _vente_a_encaisser(client, tresorier, [("706", 30000), ("758", 6000)], qui="Stage de Pâques")
+    especes = client.post(f"/notes-frais/notes/{vente['id']}/especes", headers=t)
+    assert especes.status_code == 200, especes.text
+    assert especes.json()["statut"] == "remboursee" and especes.json()["especes"] and especes.json()["operation"] is None
+    caisse = client.get("/finances/cash", headers=t).json()
+    assert caisse["balance"] == 360.0
+    assert sorted((l["label"], l["account"]["number"], l["amount"]) for l in caisse["lines"]) == [
+        ("VE-2026-001 Stage de Pâques", "706", 300.0), ("VE-2026-001 Stage de Pâques", "758", 60.0),
+    ]
+    annulee = client.post(f"/notes-frais/notes/{vente['id']}/detacher", headers=t)
+    assert annulee.status_code == 200 and annulee.json()["statut"] == "validee"
+    assert client.get("/finances/cash", headers=t).json()["lines"] == []
+
+
+def test_credits_sans_vente_dans_rapprocher_seulement_si_l_ecole_saisit_des_ventes(client, db_session, ecole):
+    tresorier = ecole["tresorier"]
+    t = entetes_session(tresorier)
+    org = ecole["ecole"].id
+    credit = _operation(db_session, org, 4500, "2026-10-05", "VIR COTISATION DUPONT")
+    assert client.get("/notes-frais/rapprochement?debut=2026-09-01", headers=t).json()["credits_sans_vente"] == []
+    _vente_a_encaisser(client, tresorier, [("756", 9900)], qui="Famille Martin")
+    credits = client.get("/notes-frais/rapprochement?debut=2026-09-01", headers=t).json()["credits_sans_vente"]
+    assert [c["id"] for c in credits] == [credit.id]
+
+
 # --- Personnes extérieures (§7 quater) ---
 
 
