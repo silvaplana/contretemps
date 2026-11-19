@@ -102,7 +102,7 @@ function valeurCellule(el, champ, cours) {
 // après chaque appel réussi. Le surlignage rouge (appui long) est gardé en
 // base depuis le 2026-10-16 (`ligne_rouge`, `cellules_rouges` du profil) :
 // tous les admins le voient, et l'assistant peut le poser.
-export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
+export default function AdminEleves({ eleves, setEleves, cours, ecoleId, onCompte }) {
   const [search, setSearch] = useState('')
   // Accès à l'appli (spec §2.2) : colonnes « Inviter » et « Statut ».
   const acces = useAcces(ecoleId)
@@ -151,6 +151,12 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
   const [rafraichissement, setRafraichissement] = useState('')
   // Le menu ⋮ du module (photos masquées) redessine le tableau.
   const [, setDessin] = useState(0)
+  // Saison imposée : l'onglet « Élèves (n) » donne le même nombre que le
+  // titre (sans les résiliées, Seb 19/11) ; sinon il compte la liste.
+  const compteImpose = verrouille ? imposee.liste.compte(imposee.donnees, eleves) : null
+  useEffect(() => {
+    onCompte?.(compteImpose)
+  }, [onCompte, compteImpose])
 
   // Un élève peut être ajouté depuis un autre onglet (« Inscription élève
   // (OCR) » ouvre le formulaire à part) : la liste est relue dès qu'on
@@ -388,7 +394,7 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
       {verrouille && (
         <div className="adherents__entete">
           <h2>
-            {mots().Eleves} ({imposee.liste.compte(imposee.donnees, eleves)})
+            {mots().Eleves} ({compteImpose})
           </h2>
           {imposee.donnees.can_refresh && (
             <button type="button" className="btn btn--secondary" onClick={rafraichir} disabled={rafraichissement === '…'}>
