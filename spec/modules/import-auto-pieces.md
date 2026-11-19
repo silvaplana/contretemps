@@ -169,6 +169,14 @@ Tables préfixées `autoimport_`, liées par `organization_id` (écoles étanche
    le serveur a la clé du compte de service (`GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE` dans `backend/.env`).
 2. **Écran Import auto pièces** et source **Docs** : tableau, fiche, worker, création des pièces
    À valider, Voir, 🗑.
+   **Fait (19 novembre)** : `backend/src/auto_import/` (module `auto_import`, éteint par défaut,
+   allumé pour les écoles « combat ») ; tables `autoimport_rules`, `autoimport_seen` ; `nf_pieces`
+   gagne `linked`, `drive_id`, `drive_path` : une pièce reliée (`linked`) n'est jamais rangée,
+   déplacée ni mise à la corbeille par Pièces (`notes_frais/service.py`, `etablir(lien=…)`). Passages :
+   une boucle dans le serveur (`auto_import.module.start_loop`, toutes les 5 minutes, lancée par
+   `app.main.main()`, pas un conteneur de plus), 50 fichiers au plus par passage. Saison : date du
+   fichier. Nature « Vente » : l'import attend (« Les ventes ne se saisissent pas encore dans
+   Pièces »), les ventes n'existant pas encore dans Pièces.
 3. Source et destination **drive** (kDrive), ouverture du fichier depuis le drive (§6).
 4. **Google Drive** dans Drives du club (partage du dossier avec l'adresse de l'appli).
 5. Source **boîte mail** (§4.1).

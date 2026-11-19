@@ -16,6 +16,8 @@ import Previsionnel, { requestNewForecast } from '../finances/Previsionnel.jsx'
 import MesNotesDeFrais from './MesNotesDeFrais.jsx'
 import { Compte } from './commun.jsx'
 import Exterieurs from './Exterieurs.jsx'
+import ImportAuto from '../auto-import/ImportAuto.jsx'
+import * as autoImportApi from '../auto-import/api.js'
 import Pieces, { AnnulerImportModal, ChoixPersonneModal, NoteModal } from './Pieces.jsx'
 import './notes-frais.css'
 
@@ -112,6 +114,12 @@ export default function Financier({ docs = null }) {
   // mêmes écrans que Profil › « Mes notes de frais », à son nom.
   const [choix, setChoix] = useState(null) // null | 'depense' | 'note'
   const [exterieurs, setExterieurs] = useState(false)
+  const [importAuto, setImportAuto] = useState(false)
+  // L’entrée « Import auto pièces » du menu ⋯ : seulement si le sous-module est allumé.
+  const [importAutoDispo, setImportAutoDispo] = useState(false)
+  useEffect(() => {
+    autoImportApi.disponible().then(setImportAutoDispo)
+  }, [])
   const [annulerImport, setAnnulerImport] = useState(false)
   const [piecesVersion, setPiecesVersion] = useState(0) // relire les pièces après un import annulé
   const [pour, setPour] = useState(null) // { personne, action }
@@ -191,10 +199,21 @@ export default function Financier({ docs = null }) {
                 { label: 'Envoyer une note pour quelqu’un', icon: 'send', onClick: () => setChoix('note') },
                 { label: 'Extérieurs', icon: 'users', onClick: () => setExterieurs(true) },
                 { label: 'Annuler le dernier import', icon: 'trash', onClick: () => setAnnulerImport(true) },
+                // Sous-module Import auto pièces, allumé seulement là où il sert (ASC).
+                ...(importAutoDispo ? [{ label: 'Import auto pièces', icon: 'paperclip', onClick: () => setImportAuto(true) }] : []),
               ]
         }
       />
       {exterieurs && <Exterieurs onClose={() => setExterieurs(false)} />}
+      {importAuto && (
+        <ImportAuto
+          onClose={() => {
+            setImportAuto(false)
+            rechargerAFaire()
+            setPiecesVersion((v) => v + 1)
+          }}
+        />
+      )}
       {fichePiece && (
         <NoteModal
           key={fichePiece.id}

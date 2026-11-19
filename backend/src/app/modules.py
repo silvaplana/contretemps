@@ -3,6 +3,7 @@ ils sont montés (spec/core.md §9 bis.2). Un module se place sous ceux dont
 il a besoin (`requires`) ; sinon le serveur refuse de démarrer."""
 
 from assistant.module import MODULE as assistant
+from auto_import.module import MODULE as auto_import
 from choregraphies.module import MODULE as choregraphies
 from documents_contretemps.module import MODULE as documents
 from drives.module import MODULE as drives
@@ -32,6 +33,7 @@ MODULES = [
     documents,
     assistant,
     expense_notes,
+    auto_import,
     finances,
     session_clips,
     helloasso,

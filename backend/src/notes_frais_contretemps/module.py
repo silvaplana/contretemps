@@ -2,6 +2,7 @@
 §9 bis, spec/modules/notes-de-frais.md) : le module `notes_frais` est relié
 ici aux fiches, à la messagerie et au dossier Financier des Docs."""
 
+import hashlib
 import os
 from pathlib import Path
 
@@ -25,6 +26,28 @@ from .adapter import (
 DOSSIER_NOTES_FRAIS = Path(os.environ.get("NOTES_FRAIS_DIR", "./data/notes_frais"))
 
 
+def _lecteur_drive(core):
+    """Le fichier d'un justificatif resté sur un drive : relu à chaque
+    ouverture, copie de passage sous NOTES_FRAIS_DIR/_drive (import-auto-
+    pieces.md §6)."""
+    drives = getattr(core, "drives", None)
+    if drives is None:
+        return None
+
+    def lire(db, org_id: int, drive_id: int, chemin: str) -> Path:
+        try:
+            contenu = drives.call(db, org_id, drive_id, lambda client: client.read(chemin))
+        except Exception as erreur:
+            raise LookupError("Fichier introuvable sur le drive.") from erreur
+        cle = hashlib.sha256(f"{drive_id}:{chemin}".encode()).hexdigest()
+        cible = DOSSIER_NOTES_FRAIS / "_drive" / str(org_id) / f"{cle}{Path(chemin).suffix.lower()}"
+        cible.parent.mkdir(parents=True, exist_ok=True)
+        cible.write_bytes(contenu)
+        return cible
+
+    return lire
+
+
 def mount(app, core) -> None:
     ressources = core.ressources_client
     core.notes_frais_client = NotesDeFrais(
@@ -44,6 +67,8 @@ def mount(app, core) -> None:
             plan=comptes_de_charges,
             # Compte de tiers des écritures montrées à la revue de l'import.
             tiers=compte_de_tiers,
+            # Justificatif resté sur un drive du club (Import auto pièces).
+            drive=_lecteur_drive(core),
         ),
         stockage=StockageEnveloppes(DOSSIER_NOTES_FRAIS, 20 * 1024 * 1024),
     )

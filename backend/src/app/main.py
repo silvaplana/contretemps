@@ -318,6 +318,11 @@ assistant_client.actions = Actions(
 
 
 def main() -> None:
+    # Import auto pièces : la boucle des passages, seulement pour le vrai
+    # serveur (jamais sous pytest, qui importe l'app sans passer par ici).
+    from auto_import.module import start_loop
+
+    start_loop(core)
     uvicorn.run(app, host="0.0.0.0", port=8000)
 
 
