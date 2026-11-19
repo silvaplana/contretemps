@@ -306,7 +306,7 @@ pour la banque à traiter (Virements). **Une pièce n'est pas une ligne de banqu
 23 h) : les lignes de la saison en cours sans compte du plan se traitent dans **Comptes** (filtre
 « Sans compte »), et c'est le sous-onglet Comptes qui porte leur badge (bleu) ; la pastille À
 rattacher a quitté Pièces. **Ventes** = les pièces de recette (bordereau de remise de chèques,
-facture émise, reçu HelloAsso) : pas encore saisissables, la pastille le dit et renvoie vers Comptes.
+facture émise, reçu HelloAsso) : nature Vente, saisie avec le même « + », voir `financier.md` §8.12.
 
 **Preuve de virement** : la capture du mail de la banque (« ordre de virement », « virement
 instantané exécuté », « avis d'opération ») n'est pas une dépense. L'appli la reconnaît, retrouve

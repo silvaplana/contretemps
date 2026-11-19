@@ -749,9 +749,8 @@ liste ; les anciennes catégories libres sont désactivées et restent sur les a
 Pièces, la fiche d'un achat ou d'honoraires a un champ Catégorie et un **crayon** qui ouvre le plan
 comptable. Une pièce dont toutes les dépenses ont la même catégorie fait **proposer ce compte** sur
 la ligne de banque qui la paie (« la pièce « Castorama » est classée dans ce compte »), avant
-l'historique et les mots-clés. Ventes : leurs catégories seront les comptes de produits (classe 7,
-756 Cotisations à 768 Intérêts du livret) quand les pièces de vente existeront ; aujourd'hui une
-vente est une ligne de banque dont on confirme le compte de produits.
+l'historique et les mots-clés. Ventes : leurs comptes sont les comptes de produits (classe 7,
+756 Cotisations à 768 Intérêts du livret), et un compte de tiers si besoin (4671), voir §8.12.
 
 ### 8.4 Comptes : compte et pièce sur chaque ligne
 
@@ -1232,6 +1231,80 @@ bouton.
 Étapes de code, une PR chacune, sur le « vas-y » de Seb : 1. versements HelloAsso dans Rapprocher ;
 2. connexion kDrive et lecture des dossiers (factures seulement) ; 3. bulletins et avis URSSAF,
 paie complète ; 4. dépôt du bilan dans le kDrive.
+
+### 8.12 Ventes dans Pièces (Seb, 19 novembre 2026)
+
+Maquette validée par Seb (« ok, c'est bon ») : https://claude.ai/artifact/6BYVCSzcdbKPEx7rw8TYAD.
+Demande de Seb : « il faut déjà que la vente unitaire marche » (il croyait qu'elle existait). Jusqu'ici
+la puce Ventes n'affichait qu'un texte d'attente et une recette n'était qu'une ligne de banque dont on
+confirme le compte de produits (§8.3 ter). Préalable à la source HelloAsso d'Import auto pièces
+(`import-auto-pieces.md` étape 6, `helloasso.md` §9).
+
+**Une vente est une pièce comme les autres**, de nature **Vente** : même « + » que les dépenses
+(Photo de la pièce, Choisir un fichier, Choisir dans Docs, Saisir à la main). La lecture propose dépense
+ou vente : un bordereau de remise de chèques, un reçu ou une facture émise par le club est proposé en
+Vente, la trésorière corrige. « Saisir à la main › Quelle pièce ? » propose Note de frais, Honoraires,
+Achat **et Vente**. Elle se voit dans la puce **Ventes** de Pièces (À valider en tête, badge orange
+comme les autres puces).
+
+**La fiche d'une vente** :
+- **De qui ou quoi** : texte libre (« Gala du 14 juin, billetterie », « Mairie de Sanary », « famille
+  Martin ») ;
+- **Date** : celle de la pièce ; la saison suit la date, comme toute pièce (§8.3) ;
+- **Compte et montant**, une ou plusieurs lignes (« Ajouter une ligne », × pour en retirer) : un compte
+  de produits (classe 7) ou un compte de tiers (par exemple 4671 Licences FFST à reverser), et un
+  montant ; le total s'affiche dès qu'il y a deux lignes. Une vente simple a une ligne ; un versement
+  HelloAsso en a plusieurs (756 Cotisations, 4671 Licences à reverser) ;
+- **Pièce** : la photo ou le fichier, facultatif. Sans fichier, **rien n'est créé dans Docs** (règle du
+  10 novembre).
+
+**Rangement dans Docs** (croquis de Seb, 19/11) : Docs › Privé › Saison › Financier › **VENTES** ›
+**COTISATIONS**, **COURS** ou **PARTICIPATION GALA**, pas par mois (contrairement à ACHATS). Le
+sous-dossier est proposé d'après le compte de la première ligne (756 → COTISATIONS, 706 → COURS, 707 →
+PARTICIPATION GALA), modifiable dans la fiche (« Rangée dans Docs › Financier › VENTES › ») ; l'appli
+retient le choix pour ce compte. Un compte sans sous-dossier (subvention, don) range directement dans
+VENTES. Nom du fichier comme les achats : « 2026-06-16 Vente Gala billetterie 1 240,00.jpg ».
+
+**Encaissement** (même parcours que le paiement d'un achat) : l'appli cherche sur les comptes **un
+crédit** de même montant, à date proche ; la fiche le propose (« Transaction bancaire proposée ») avec
+**Rattacher à cette transaction bancaire**, « Autre transaction… », **Pas encore encaissée**,
+**Encaissée en espèces** (caisse, §8.5). Rien n'est rattaché sans un toucher ; Annuler 10 s ;
+« Détacher » tant que la saison n'est pas clôturée. Un écart entre la pièce et la banque est signalé
+(« Écart de 12,00 € avec la pièce : à vérifier »), jamais corrigé. Les ventes et les crédits sans pièce
+apparaissent aussi dans Rapprocher, avec les achats (§7 septies de `notes-de-frais.md`).
+États : **À valider** → **À encaisser** (pas encore vue sur le compte) → **Encaissée** (rattachée, ou
+en espèces). Une vente saisie par la trésorière est validée en même temps : À encaisser, ou Encaissée
+si le crédit est trouvé et rattaché.
+
+**Comptabilité** : la vente rattachée donne son compte à la ligne de banque, ventilée s'il y a
+plusieurs lignes (même ventilation qu'aujourd'hui, §8.4 : la somme doit faire la banque, sinon l'écart
+est montré). Écriture : 512x au débit (le crédit de la banque, ou 530 caisse), chaque ligne de la vente
+au crédit. Journal **VE**, numéro de pièce « VE-2025-001 » (§8.7). Une ligne de crédit **sans** vente
+garde son compte confirmé dans Comptes, comme aujourd'hui : rien ne change pour les recettes déjà
+classées, ni pour une école qui ne saisit pas de ventes.
+
+**Versements HelloAsso** (Seb, 19/11, fil Import auto pièces) : un versement = une vente à plusieurs
+lignes, ventilée par formule (la trésorière dit une fois où va chaque formule). Une adhésion payée **en
+plusieurs fois** tombe dans plusieurs versements, mêlée à d'autres personnes : on compte **par
+paiement** (échéance, `cash_out_date`), chacune répartie au prorata de l'adhésion. Exemple : 300 € dont
+72 € de licence, en 3 fois : chaque échéance donne 76 € en 756 et 24 € en 4671 ; les trois versements
+additionnés font le total. Codé avec l'étape 6 d'Import auto pièces, pas ici.
+
+**Plus tard, étape à part** : la remise de chèques détaillée chèque par chèque (une sous-ligne par
+chèque rapprochée d'une famille, §8.3).
+
+**Données** : pas de table nouvelle. `nf_notes.nature = "vente"`, `supplier` = « De qui ou quoi » ;
+une ligne = une `nf_depenses` (compte = `nf_categories` reflet d'un compte de produits ou de tiers,
+comme les charges, §8.3 ter) ; `bank_operation_id` = le crédit rattaché ; journal VE. Le sous-dossier
+retenu pour un compte est celui de la dernière vente de ce compte (le dossier de son fichier dans Docs) :
+rien de plus à garder.
+
+**Étapes de code**, une PR chacune, sur le « vas-y » de Seb :
+1. Saisir une vente : nature Vente dans le « + » et la lecture, fiche à une ou plusieurs lignes,
+   comptes de produits, puce Ventes avec badge, rangement dans VENTES › sous-dossier.
+2. Encaisser : crédit proposé, Rattacher / Pas encore encaissée / Encaissée en espèces, ventes et
+   crédits dans Rapprocher, ventilation de la ligne de banque, journal VE au Grand livre et à la Balance.
+Puis prévenir le fil Import auto pièces (étape 6, HelloAsso).
 
 ## 9. Reste à faire
 
