@@ -815,3 +815,15 @@ https://claude.ai/artifact/Nyjz67cSVg7jo8CdBgggsL).
   `POST …/posts/{id}/mail` `{test_address}` (une ou plusieurs adresses séparées par des virgules ;
   vide : aux adhérents) ; `DELETE …/posts/{id}/mail` (Annuler) ; `GET`/`POST
   /publications/desinscription/{jeton}` (public).
+
+### 12.14 Documents spécifiques (Seb, 19 novembre 2026)
+
+Dans l'éditeur, sous Document, un bouton « Documents spécifiques » (Seb : « spécifiques », pas
+« spéciaux ») déroule les documents à part de Docs, pour les joindre sans chercher dans les dossiers.
+Le premier et seul pour l'instant : « Convocation à l'AG » (le fichier créé par Docs › + › Convoquer
+l'AG, `spec/modules/procurations.md`). Le toucher liste les convocations d'AG que la personne voit
+dans Docs (fichiers à remplir dont le nom commence par « Convocation »), la plus récente d'abord ; en
+choisir une la joint comme le bouton Document : sur l'actu, un bouton à son nom l'ouvre, chacun y
+répond (Je viens, Je donne procuration, Je ne viens pas). Rien de nouveau côté serveur : la recherche
+de Docs suffit. Une autre nature de document spécifique s'ajoute à la liste `SPECIFIQUES` de
+`DocumentsSpecifiques.jsx`.
