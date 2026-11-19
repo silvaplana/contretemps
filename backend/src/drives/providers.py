@@ -8,7 +8,8 @@ SALAIRES ») ; la racine est « ».
 - kDrive (Infomaniak) : WebDAV, adresse du compte et mot de passe
   d'application, `https://<numéro>.connect.kdrive.infomaniak.com`.
 - Google Drive : un compte de service de l'appli (clé JSON du serveur,
-  variable GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE) ; le club partage ses dossiers
+  /run/secrets/google_drive.json ou la variable
+  GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE, DEPLOY.md §4) ; le club partage ses dossiers
   avec l'adresse de ce compte. La racine liste les dossiers partagés.
 """
 
@@ -122,12 +123,13 @@ class KDrive:
 API = "https://www.googleapis.com/drive/v3"
 UPLOAD = "https://www.googleapis.com/upload/drive/v3/files"
 FOLDER = "application/vnd.google-apps.folder"
+KEY_FILE = "/run/secrets/google_drive.json"
 
 
 def service_account() -> dict | None:
     """La clé JSON du compte de service, ou None si le serveur n'en a pas
     (Google Drive pas encore proposé, spec/core.md §3)."""
-    chemin = os.environ.get("GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE", "").strip()
+    chemin = os.environ.get("GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE", "").strip() or KEY_FILE
     if not chemin or not Path(chemin).is_file():
         return None
     try:

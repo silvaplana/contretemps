@@ -175,6 +175,41 @@ Spec : `spec/modules/actualites.md` §6 bis.
    puis `docker compose up -d backend messagerie-relance` (le relais toutes les 5 minutes
    tourne dans le conteneur des relances et lit aussi ces variables).
 
+### Google Drive (Drives du club, Import auto pièces)
+
+Spec : `spec/core.md` §3 et `spec/modules/import-auto-pieces.md`. Sans clé,
+la ligne Google Drive de Connexions dit « pas encore proposé » ; kDrive marche
+sans rien de tout ça. Une seule clé pour tout le serveur : chaque club partage
+ses dossiers avec l'adresse de l'appli, jamais de mot de passe Google.
+
+1. Sur <https://console.cloud.google.com>, créer un projet (ex. « Asso in the
+   Pocket »), puis API et services › Bibliothèque › **Google Drive API** › Activer.
+2. IAM et administration › Comptes de service › Créer : un nom (ex.
+   « drives-du-club »), aucun rôle à donner. Puis, sur ce compte, onglet Clés ›
+   Ajouter une clé › JSON : le fichier se télécharge.
+3. Sur le VPS, la clé en **fichier** à côté de celle de la banque, jamais dans
+   le dépôt ni dans le chat :
+
+   ```bash
+   mkdir -p ~/contretemps/backend/secrets
+   # depuis l'ordinateur : scp <fichier>.json srichard@silvaplana.cloud:~/contretemps/backend/secrets/google_drive.json
+   chmod 600 ~/contretemps/backend/secrets/google_drive.json
+   cd ~/contretemps && docker compose up -d backend
+   ```
+
+   Le conteneur la lit dans `/run/secrets/google_drive.json` (rien à mettre
+   dans `backend/.env` ; `GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE` la remplace si on
+   veut un autre chemin).
+4. Dans l'appli, Admin › École › Connexions › Drives du club › Ajouter ›
+   Google Drive : l'adresse de l'appli s'affiche (« Copier l'adresse »). Dans
+   Google Drive, partager le dossier du club avec cette adresse, en
+   **Éditeur** si l'appli doit y déposer des copies.
+
+Limite de Google : un compte de service n'a pas d'espace à lui. Lire un dossier
+partagé marche toujours ; y **déposer** une copie peut être refusé par Google
+sur un Google Drive personnel (pas sur un Drive partagé de Google Workspace).
+Dans ce cas, choisir Docs ou un kDrive comme destination.
+
 ## 5. Mise en ligne automatique (GitHub Actions)
 
 À chaque fusion dans `main` (et à la demande, onglet **Actions** du dépôt >

@@ -113,3 +113,19 @@ def test_kdrive_webdav_lit_un_dossier():
     assert drive.write("FINANCIER", "a b.pdf", b"%PDF") == "FINANCIER/a b.pdf"
     with pytest.raises(DriveRefused):
         drive.check()
+
+
+def test_google_drive_propose_quand_le_serveur_a_la_cle(client, ecole, monkeypatch, tmp_path):
+    """Étape 4 (import-auto-pieces.md) : sans clé, pas d'adresse à partager ;
+    la clé posée par Seb sur le serveur suffit à proposer Google Drive."""
+    from drives import providers
+
+    monkeypatch.delenv("GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE", raising=False)
+    monkeypatch.setattr(providers, "KEY_FILE", str(tmp_path / "absent.json"))
+    url = f"/ecoles/{ecole.id}/drives"
+    assert client.get(url).json()["google_address"] is None
+
+    cle = tmp_path / "google_drive.json"
+    cle.write_text('{"client_email": "appli@club.iam.gserviceaccount.com", "private_key": "x"}')
+    monkeypatch.setattr(providers, "KEY_FILE", str(cle))
+    assert client.get(url).json()["google_address"] == "appli@club.iam.gserviceaccount.com"
