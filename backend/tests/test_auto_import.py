@@ -181,3 +181,61 @@ def test_un_drive_en_source_et_en_destination(client, db_session, asc, monkeypat
     db_session.delete(db_session.get(DriveAccount, drive.id))
     db_session.commit()
     assert "drive" in client.post(f"/auto-import/{lu['id']}/run", headers=h).json()["message"]
+
+
+class FausseBoite:
+    """Une boîte de réception en mémoire : un mail par entrée."""
+
+    def __init__(self, mails):
+        self.mails = mails
+        self.lus = []
+
+    def list(self, folder="inbox", before=None, query=""):
+        return {"messages": [{k: m[k] for k in ("uid", "subject", "from", "date", "snippet", "hasAttachments")}
+                             for m in self.mails], "hasMore": False}
+
+    def peek(self, folder, uid):
+        m = next(m for m in self.mails if m["uid"] == uid)
+        return {"messageId": f"<{uid}@test>", "attachments": [
+            {"index": i, "filename": n, "contentType": t, "size": len(c)} for i, (n, t, c) in enumerate(m["pj"])]}
+
+    def attachment(self, folder, uid, index):
+        n, t, c = next(m for m in self.mails if m["uid"] == uid)["pj"][index]
+        return c, n, t
+
+
+def test_une_boite_mail_en_source(client, db_session, asc, monkeypatch):
+    """Étape 5 (§4.1) : sans pièce jointe, ignoré ; avec, une pièce si
+    l'objet ou l'expéditeur répond ; jamais sans destination ; un prof de
+    l'école donne Honoraires."""
+    from comptes.models import EmailCompte
+    from notes_frais.models import NoteFrais
+
+    prof = Comptes().create(db_session, ecole_id=asc["ecole"].id, role="professeur", nom="Boyer", prenom="Léa", email="lea@test.fr")
+    assert db_session.query(EmailCompte).filter_by(compte_id=prof.id).count() == 1
+    pdf = ("Facture.pdf", "application/pdf", b"%PDF-1.4 a")
+    mail = lambda uid, sujet, de, pj: {"uid": uid, "subject": sujet, "from": [{"name": "", "address": de}],  # noqa: E731
+                                       "date": "2026-11-18T09:00:00+00:00", "snippet": "", "hasAttachments": bool(pj), "pj": pj}
+    boite = FausseBoite([
+        mail(1, "Votre facture Wix", "billing@wix.com", [pdf, ("logo.txt", "text/plain", b"x")]),
+        mail(2, "Bonjour", "ami@test.fr", [("photo.pdf", "application/pdf", b"%PDF-1.4 b")]),
+        mail(3, "Facture sans pièce jointe", "billing@wix.com", []),
+        mail(4, "Mes cours d'octobre", "lea@test.fr", [("Octobre.pdf", "application/pdf", b"%PDF-1.4 c")]),
+    ])
+    monkeypatch.setattr(main.core.mail_connection, "client", lambda db, org, box=None: boite)
+    h = entetes_session(asc["tresorier"])
+    regle = client.post("/auto-import", headers=h, json={
+        "name": "Boîte", "source_kind": "mail", "source_ref": 1, "target_kind": "docs", "target_ref": asc["dossier"],
+        "mail_need_amount": False}).json()
+
+    run = client.post(f"/auto-import/{regle['id']}/run", headers=h).json()
+    assert run["created"] == 2
+    notes = {n.nature for n in db_session.query(NoteFrais)}
+    assert notes == {"achat", "honoraires"}
+    assert client.post(f"/auto-import/{regle['id']}/run", headers=h).json()["created"] == 0
+
+
+def test_helloasso_attend_les_ventes(client, db_session, asc):
+    h = entetes_session(asc["tresorier"])
+    regle = client.post("/auto-import", headers=h, json={"source_kind": "helloasso", "nature": "vente"}).json()
+    assert "ventes" in client.post(f"/auto-import/{regle['id']}/run", headers=h).json()["message"]
