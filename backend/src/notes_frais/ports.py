@@ -147,6 +147,10 @@ class Classeur(Protocol):
         auteur), ou seulement les fichiers `node_ids` quand ils sont rangés
         directement dans un dossier commun (Achats)."""
 
+    def sous_dossiers(self, db: Session, membre: Membre, chemin: list[str]) -> list[str]:
+        """The folder names under `chemin` (under Financier) in the current
+        season, to choose where receipts go (financier.md §8.13)."""
+
 
 @dataclass(frozen=True)
 class OperationBancaire:
@@ -205,6 +209,16 @@ class LectureImpossible(Exception):
 CATEGORIES_PAR_DEFAUT = ("Costumes", "Déplacement", "Matériel", "Location de salle", "Alimentation", "Autre")
 
 
+@dataclass(frozen=True)
+class Saison:
+    """A season of the host (Emplacement des pièces manuelles, §8.13: one setting per season)."""
+
+    id: int
+    nom: str
+    debut: date
+    fin: date
+
+
 @dataclass
 class Ports:
     annuaire: Annuaire
@@ -235,3 +249,12 @@ class Ports:
     # club (db, org_id, drive_id, chemin) → chemin d'une copie temporaire à
     # servir. None : l'hôte n'a pas de drives.
     drive: Callable[[Session, int, int, str], Path] | None = None
+    # Emplacement des pièces manuelles (financier.md §8.13): puts a file on a
+    # club drive (db, org_id, drive_id, chosen folder, sub-folders, name,
+    # content, mime, date of the receipt) in chosen folder › season of the
+    # date › sub-folders, creating what is missing; returns its path on the
+    # drive. None: the host has no drives.
+    deposer: Callable[[Session, int, int, str, list[str], str, bytes, str, date | None], str] | None = None
+    # The school's seasons, for one place per season (financier.md §8.13).
+    # None: the host has no seasons, one setting for all.
+    saisons: Callable[[Session, int], list[Saison]] | None = None

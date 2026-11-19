@@ -2053,6 +2053,103 @@ def test_numero_de_piece_saisi_a_la_main(client, db_session, ecole):
     assert change.status_code == 200 and change.json()["numero_piece"] == "MAIF-2026"
 
 
+# --- Emplacement des pièces manuelles (financier.md §8.13) ---
+
+
+def test_emplacements_par_defaut_et_reserves_aux_tresoriers(client, ecole):
+    """Nothing set: today's folders, so nothing changes (Contretemps, Le Beausset)."""
+    reponse = client.get("/notes-frais/emplacements", headers=entetes_session(ecole["tresorier"]))
+    assert reponse.status_code == 200
+    assert [(e["nature"], e["kind"], e["path"], e["by_month"], e["default"]) for e in reponse.json()["places"]] == [
+        ("achat", "docs", "ACHATS", True, True),
+        ("honoraires", "docs", "HONORAIRES", True, True),
+        ("frais", "docs", "Notes de frais", True, True),
+        ("vente", "docs", "VENTES", True, True),
+    ]
+    assert client.get("/notes-frais/emplacements", headers=entetes_session(ecole["eleve"])).status_code == 403
+    corps = {"kind": "docs", "path": "FACTURES"}
+    assert client.put("/notes-frais/emplacements/achat", json=corps, headers=entetes_session(ecole["eleve"])).status_code == 403
+
+
+def test_achats_dans_un_autre_dossier_sans_sous_dossier_par_mois(client, ecole, monkeypatch):
+    tresorier, org = ecole["tresorier"], ecole["ecole"].id
+    monkeypatch.setattr(
+        main.notes_frais_client.ports, "lecteur",
+        LecteurFacture(date="2025-02-09", montant_centimes=3990, commercant="Amazon", description="Câbles"),
+    )
+    reglage = client.put(
+        "/notes-frais/emplacements/achat", json={"kind": "docs", "path": "FACTURES", "by_month": False},
+        headers=entetes_session(tresorier),
+    )
+    assert reglage.status_code == 200 and reglage.json()["default"] is False
+    note = _etablir(client, tresorier, "achat")
+    assert note["rangement"] == "Financier › FACTURES"
+
+    saison = next(i for i in _parcourir(client, org, tresorier).json()["items"] if i["system_kind"] == "period")
+    financier = _enfant(client, org, tresorier, saison["id"], "Financier")
+    factures = _enfant(client, org, tresorier, financier["id"], "FACTURES")
+    noms = [i["name"] for i in _parcourir(client, org, tresorier, factures["id"]).json()["items"]]
+    assert noms == ["2025-02-09 Facture Amazon 39,90.jpg"]
+    # The folders of Financier, to choose a place.
+    dossiers = client.get("/notes-frais/emplacements-docs", headers=entetes_session(tresorier)).json()
+    assert "FACTURES" in dossiers
+
+    # Back to today's folder: no row left.
+    retour = client.put(
+        "/notes-frais/emplacements/achat", json={"kind": "docs", "path": "ACHATS", "by_month": True},
+        headers=entetes_session(tresorier),
+    )
+    assert retour.json()["default"] is True
+
+
+def test_honoraires_sur_le_drive_du_club(client, ecole, monkeypatch):
+    """Chosen folder › season (added by the host) › the usual sub-folders;
+    the file is then linked to the drive, like Import auto pièces."""
+    tresorier = ecole["tresorier"]
+    deposes = []
+
+    def deposer(db, org_id, drive_id, racine, sous_dossiers, nom, contenu, mime, le):
+        deposes.append((drive_id, racine, sous_dossiers, nom, contenu))
+        return "/".join([racine, "2025-2026", *sous_dossiers, nom])
+
+    monkeypatch.setattr(main.notes_frais_client.ports, "deposer", deposer)
+    monkeypatch.setattr(
+        main.notes_frais_client.ports, "lecteur",
+        LecteurFacture(date="2025-02-09", montant_centimes=3990, commercant="Amazon", description="Câbles"),
+    )
+    reglage = client.put(
+        "/notes-frais/emplacements/achat", json={"kind": "drive", "drive_id": 7, "path": "COMPTA/ACHATS"},
+        headers=entetes_session(tresorier),
+    )
+    assert reglage.status_code == 200, reglage.text
+    note = _etablir(client, tresorier, "achat")
+    assert deposes == [(7, "COMPTA/ACHATS", ["02.2025"], "2025-02-09 Facture Amazon 39,90.jpg", b"jpeg")]
+    assert note["rangement"] == "Drive › COMPTA › ACHATS › 2025-2026 › 02.2025"
+
+
+def test_drive_injoignable_rangee_dans_docs(client, ecole, monkeypatch):
+    tresorier, org = ecole["tresorier"], ecole["ecole"].id
+
+    def deposer(*args):
+        raise RuntimeError("Le kDrive ne répond pas.")
+
+    monkeypatch.setattr(main.notes_frais_client.ports, "deposer", deposer)
+    monkeypatch.setattr(
+        main.notes_frais_client.ports, "lecteur",
+        LecteurFacture(date="2025-02-09", montant_centimes=3990, commercant="Amazon", description="Câbles"),
+    )
+    client.put(
+        "/notes-frais/emplacements/achat", json={"kind": "drive", "drive_id": 7, "path": "COMPTA"},
+        headers=entetes_session(tresorier),
+    )
+    note = _etablir(client, tresorier, "achat")
+    assert note["rangement"] == "Financier › ACHATS › 02.2025"
+    saison = next(i for i in _parcourir(client, org, tresorier).json()["items"] if i["system_kind"] == "period")
+    financier = _enfant(client, org, tresorier, saison["id"], "Financier")
+    mois = _enfant(client, org, tresorier, _enfant(client, org, tresorier, financier["id"], "ACHATS")["id"], "02.2025")
+    assert [i["name"] for i in _parcourir(client, org, tresorier, mois["id"]).json()["items"]] == ["2025-02-09 Facture Amazon 39,90.jpg"]
+
+
 # --- Paie (financier.md §8.11, Seb 19/11) ---
 
 
@@ -2120,3 +2217,36 @@ def test_la_paie_est_eteinte_par_defaut_et_s_allume_dans_fonctionnalites(client,
     assert client.put("/notes-frais/paie", json={"active": False}, headers=t).json() == {"active": False}
     plan = {a["number"]: a for a in client.get("/finances/chart", headers=t).json()["accounts"]}
     assert not plan["431"]["active"] and "URSSAF" in plan["645"]["keywords"]
+
+
+def test_un_emplacement_par_saison_repris_par_les_suivantes(client, db_session, ecole, monkeypatch):
+    """Seb, 19/11: the place can differ each season; a new season keeps the
+    setting of the one before; each receipt follows the season of its date."""
+    from saisons.models import Saison
+
+    tresorier, org = ecole["tresorier"], ecole["ecole"].id
+    passee = Saison(ecole_id=org, nom="2025-2026", date_debut=date(2025, 9, 1), date_fin=date(2026, 8, 31))
+    db_session.add(passee)
+    db_session.commit()
+    etat = client.get("/notes-frais/emplacements", headers=entetes_session(tresorier)).json()
+    courante = etat["season_id"]
+    assert courante != passee.id and [s["id"] for s in etat["seasons"]][-1] == passee.id
+
+    # Set on the past season: the current one inherits it.
+    client.put(
+        "/notes-frais/emplacements/achat", json={"kind": "docs", "path": "FACTURES", "by_month": False, "season_id": passee.id},
+        headers=entetes_session(tresorier),
+    )
+    url = "/notes-frais/emplacements"
+    assert client.get(f"{url}?season_id={courante}", headers=entetes_session(tresorier)).json()["places"][0]["path"] == "FACTURES"
+    # Back to today's folder for the current season only.
+    client.put(
+        "/notes-frais/emplacements/achat", json={"kind": "docs", "path": "ACHATS", "by_month": True, "season_id": courante},
+        headers=entetes_session(tresorier),
+    )
+    assert client.get(f"{url}?season_id={courante}", headers=entetes_session(tresorier)).json()["places"][0]["default"] is True
+    assert client.get(f"{url}?season_id={passee.id}", headers=entetes_session(tresorier)).json()["places"][0]["path"] == "FACTURES"
+
+    lecteur = LecteurFacture(date="2026-03-10", montant_centimes=2500, commercant="Leroy Merlin", description="Peinture")
+    monkeypatch.setattr(main.notes_frais_client.ports, "lecteur", lecteur)
+    assert _etablir(client, tresorier, "achat")["rangement"] == "Financier › FACTURES"

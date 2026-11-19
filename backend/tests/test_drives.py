@@ -175,3 +175,25 @@ def test_google_drive_propose_quand_le_serveur_a_la_cle(client, ecole, monkeypat
     cle.write_text('{"client_email": "appli@club.iam.gserviceaccount.com", "private_key": "x"}')
     monkeypatch.setattr(providers, "KEY_FILE", str(cle))
     assert client.get(url).json()["google_address"] == "appli@club.iam.gserviceaccount.com"
+
+
+def test_kdrive_cree_les_dossiers_manquants():
+    """Emplacement des pièces manuelles (financier.md §8.13): COMPTA is
+    there, 2025-2026 is created under it."""
+    import httpx
+
+    from drives.providers import KDrive
+
+    crees = []
+
+    def repondre(requete):
+        if requete.method == "POST":
+            crees.append((requete.url.path, requete.content))
+            return httpx.Response(200, json={"result": "success", "data": {"id": 30, "name": "2025-2026", "type": "dir"}})
+        dossier = int(requete.url.path.split("/")[5])
+        enfants = {1: [{"id": 20, "name": "COMPTA", "type": "dir"}]}.get(dossier, [])
+        return httpx.Response(200, json={"result": "success", "data": enfants, "has_more": False})
+
+    drive = KDrive("club@ik.me", "jeton", "812345", http=httpx.Client(transport=httpx.MockTransport(repondre)))
+    assert drive.folder("COMPTA/2025-2026") == "COMPTA/2025-2026"
+    assert crees == [("/3/drive/812345/files/20/directory", b'{"name":"2025-2026"}')]

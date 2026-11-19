@@ -1361,10 +1361,15 @@ Puis prévenir le fil Importation automatique de pièces (étape 6, HelloAsso).
 Maquette : https://claude.ai/artifact/32JWw7Ga3jbpetgCXGbYMQ. Demande de Seb : le rangement des pièces
 saisies avec « + » (photo ou fichier), aujourd'hui en dur (§8, `notes_frais/service.py` `DOSSIERS`),
 devient réglable par nature, dans Docs ou sur un drive du club (Admin › École › Connexions, « Drives
-du club », `core.md` §3). **Pas codé.**
+du club », `core.md` §3). **Codé le 19 novembre 2026** (`notes_frais` : `StoragePlace`, routes
+`/notes-frais/emplacements` ; écran `notes-frais/Emplacements.jsx`).
 
 - **Où** : Financier › Pièces › ⋯ › **« Emplacement des pièces manuelles »**, pour qui a l'Accès au
   Financier. Plein écran, croix en haut à droite pour revenir à Pièces.
+- **Une saison à la fois** (Seb, 19 novembre : « l'emplacement peut être différent chaque saison ») :
+  en haut, le choix de la saison (la saison en cours par défaut ; caché s'il n'y en a qu'une). Chaque
+  saison a son réglage ; **une saison sans réglage reprend celui de la saison d'avant** (Seb : « OK »),
+  sinon le rangement d'aujourd'hui. Une pièce va à l'emplacement de la saison de sa date.
 - **L'écran** : une ligne par nature, **Factures d'achat**, **Honoraires**, **Notes de frais**,
   **Ventes**, avec le chemin où vont les nouveaux fichiers. Toucher une ligne ouvre sa fiche (← revient).
 - **La fiche** : **Où** (Docs ou un des drives connectés) et **Dossier**, choisi dans un sélecteur
@@ -1375,20 +1380,24 @@ du club », `core.md` §3). **Pas codé.**
   vont directement dans le dossier choisi (Seb, 19 novembre).
   Un exemple de chemin complet est affiché. « Revenir à l'emplacement par défaut » quand il a changé.
   Chaque changement : « … : emplacement changé. », Annuler 10 s.
-- **Saison** : dans Docs, le dossier choisi est relatif au dossier de chaque saison (Docs › Privé ›
-  2025-2026 › …), comme aujourd'hui. Sur un drive, l'appli ajoute **un dossier par saison** sous le
+- **Saison** : dans Docs, le dossier se choisit **dans le dossier Financier** de chaque saison (Docs ›
+  Privé › 2025-2026 › Financier › …), comme aujourd'hui : Financier est réservé aux trésoriers, une
+  pièce n'en sort pas. Sur un drive, l'appli ajoute **un dossier par saison** sous le
   dossier choisi (« COMPTA › ACHATS › 2025-2026 › 08.2026 ») (Seb, 19 novembre : « Oui »).
 - **Par défaut** : l'emplacement d'aujourd'hui (FINANCIER › ACHATS, HONORAIRES, Notes de frais,
   VENTES). Tant que personne ne change rien, **rien ne bouge** (Contretemps, Le Beausset) : aucune
   ligne en base, même chemin. Tests à chaque PR.
 - **Fichiers déjà rangés** : ils restent où ils sont (la base garde où est chaque fichier) ; seules
   les nouvelles pièces vont dans le nouvel emplacement, comme pour un compte renommé (§8.12).
-- **Hors du réglage** : A TRAITER, VIREMENTS SANS FACTURE et RELEVES BANCAIRES restent en dur. Les
+- **Hors du réglage** : A TRAITER, VIREMENTS SANS FACTURE, RELEVES BANCAIRES et SALAIRES (§8.11) restent
+  en dur. Les
   pièces d'Import auto pièces gardent leur propre destination.
-- **Données** : une ligne par école et par nature changée (`nf_storage_places` : organisation,
-  nature, `target_kind` docs | drive, `target_ref` = le drive, `target_path`, `by_month` pour les achats). Le dépôt sur un drive
-  réutilise celui d'Import auto pièces (`drives`). Drive déconnecté : la pièce est rangée à
-  l'emplacement par défaut dans Docs, et la fiche le signale.
+- **Données** : une ligne par école, nature et saison changées (`nf_storage_places` : organisation,
+  nature, `season_id`, `target_kind` docs | drive, `target_ref` = le drive, `target_path`, `by_month` pour les achats). Le dépôt sur un drive
+  réutilise celui d'Import auto pièces (`drives`, plus la création des dossiers manquants) ; le
+  fichier déposé est **lié** à la pièce comme pour Import auto pièces (`linked`) : l'appli ne le
+  déplace ni ne l'efface plus, et la fiche montre « Drive › … ». Drive injoignable : la pièce est
+  rangée à l'emplacement par défaut dans Docs. Une pièce mise de côté (A TRAITER) reste dans Docs.
 
 **Étape de code**, une PR, sur le « vas-y » de Seb : table, écran et rangement par `_chemin`.
 

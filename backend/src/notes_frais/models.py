@@ -246,3 +246,27 @@ class OperationReceipt(Base):
     proof_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
     proof_mime: Mapped[str | None] = mapped_column(String(100), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_maintenant)
+
+
+class StoragePlace(Base):
+    """Where the file of a receipt entered with « + » goes, for one nature
+    and season (financier.md §8.13). No row = today's place: Docs › season › Financier ›
+    ACHATS / HONORAIRES / Notes de frais / VENTES."""
+
+    __tablename__ = "nf_storage_places"
+    __table_args__ = (UniqueConstraint("org_id", "nature", "season_id", name="uq_nf_storage_place"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    org_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    nature: Mapped[str] = mapped_column(String(20), nullable=False)
+    # The season it applies to, and to the next ones without a row (Seb, 19/11);
+    # no foreign key (the module does not know the host's tables).
+    season_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # "docs": folders under the season's Financier folder; "drive": a club drive.
+    target_kind: Mapped[str] = mapped_column(String(10), nullable=False, default="docs")
+    drive_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Folder names joined by "/" (Docs: from Financier; drive: from its root).
+    path: Mapped[str] = mapped_column(String(1000), nullable=False, default="")
+    # Purchases only: one sub-folder per month « 08.2026 » (Seb, 19/11).
+    by_month: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="1")
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_maintenant)

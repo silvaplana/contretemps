@@ -96,7 +96,8 @@ Pièces
   avec avis de virement » et ne rattachent pas seuls ; au « Rattacher », l'avis devient la page
   « - Virement » de la facture et la justification s'efface. Badge bleu = suggestions +
   pièces « déjà payées » sans ligne.
-- Menu ⋯ : Créer une dépense pour quelqu'un ; Envoyer une note pour quelqu'un ; Extérieurs ; Annuler le dernier import.
+- Menu ⋯ : Créer une dépense pour quelqu'un ; Envoyer une note pour quelqu'un ; Extérieurs ; Annuler le dernier import ; Importation automatique de pièces (si allumée) ; Emplacement des pièces manuelles.
+- ⋯ › Emplacement des pièces manuelles : où va le fichier d'une pièce saisie avec « + », pour la saison choisie en haut (une saison sans réglage reprend celui d'avant), une ligne par nature (Factures d'achat, Honoraires, Notes de frais, Ventes). Toucher une ligne : Où (Docs ou un drive du club), Dossier (choisir dans la liste, ou écrire un nouveau dossier puis « Choisir ce dossier ») ; pour les achats, la case « Un sous-dossier par mois (08.2026) ». Sur un drive, l'appli ajoute un dossier par saison. « Revenir à l'emplacement par défaut ». Les fichiers déjà rangés ne bougent pas.
 - Sous la liste, « Du … au … » puis Excel (une ligne par dépense) et Rapprochement : le PDF pour le validateur comptable,
   à tout moment : pièces payées avec la transaction bancaire qui les paie (et l'écart), pièces sans paiement rattaché avec leur
   état, lignes de débit sans pièce.

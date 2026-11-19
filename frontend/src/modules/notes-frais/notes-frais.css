@@ -929,3 +929,17 @@
   flex-direction: column;
   align-items: stretch;
 }
+
+/* Emplacement des pièces manuelles (financier.md §8.13) : gros et simple. */
+.nf-emp { display: flex; flex-direction: column; gap: 12px; font-size: 17px; max-width: 720px; }
+.nf-emp__entete { justify-content: space-between; }
+.nf-emp__nature { display: flex; flex-direction: column; gap: 2px; text-align: left; font: inherit; color: inherit; background: none; border: 0; border-bottom: 1px solid var(--border); padding: 12px 4px; min-height: 64px; cursor: pointer; overflow-wrap: anywhere; }
+.nf-emp__dossier { text-align: left; min-height: 52px; font: inherit; color: inherit; background: none; border: 0; border-bottom: 1px solid var(--border); cursor: pointer; overflow-wrap: anywhere; }
+.nf-emp__champ { text-align: left; font: inherit; color: inherit; min-height: 48px; padding: 8px 12px; border: 1px solid var(--border); border-radius: 10px; background: none; cursor: pointer; overflow-wrap: anywhere; }
+.nf-emp__case { display: flex; gap: 12px; align-items: center; min-height: 48px; cursor: pointer; }
+.nf-emp__case input { width: 26px; height: 26px; flex: none; }
+.nf-emp__exemple { margin: 0; overflow-wrap: anywhere; }
+.nf-emp__ligne { display: flex; gap: 8px; align-items: center; }
+.nf-emp__nouveau { flex: 1; min-width: 0; font: inherit; min-height: 48px; padding: 0 12px; }
+.nf-emp__defaut { align-self: flex-start; min-height: 48px; }
+.nf-emp select { font: inherit; min-height: 48px; }
