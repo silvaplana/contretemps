@@ -3,8 +3,8 @@ import { createPortal } from 'react-dom'
 import Icon from '../../components/Icon.jsx'
 import * as api from './api.js'
 
-// « Écrire aux adhérents » (spec/modules/mail.md §7 bis ; Seb, 19 novembre) :
-// tous les adhérents de la saison, ou un ou plusieurs cours. Rend
+// « Écrire à un groupe » (spec/modules/mail.md §7 bis ; Seb, 19 novembre) :
+// tout le monde (adhérents, administrateurs, profs), ou un ou plusieurs cours. Rend
 // { courses: [ids] (vide : tous), label, people (null si plusieurs cours), without }.
 
 export default function ChoisirAdherents({ ecoleId, onChoix, onFermer }) {
@@ -27,7 +27,7 @@ export default function ChoisirAdherents({ ecoleId, onChoix, onFermer }) {
 
   function choisir() {
     if (cours.size === 0) {
-      onChoix({ courses: [], label: 'Tous les adhérents', people: choix.people, without: choix.without })
+      onChoix({ courses: [], label: 'Tout le monde', people: choix.people, without: choix.without })
       return
     }
     const elus = choix.courses.filter((c) => cours.has(c.id))
@@ -42,12 +42,12 @@ export default function ChoisirAdherents({ ecoleId, onChoix, onFermer }) {
   const personnes = (n) => `${n} personne${n > 1 ? 's' : ''}`
 
   return createPortal(
-    <div className="creer-saison" role="dialog" aria-label="Écrire aux adhérents">
+    <div className="creer-saison" role="dialog" aria-label="Écrire à un groupe">
       <div className="thread-screen__header">
         <button type="button" className="icon-btn" onClick={onFermer} aria-label="Retour">
           <Icon name="chevronLeft" size={22} />
         </button>
-        <h2 className="creer-saison__titre">Écrire aux adhérents</h2>
+        <h2 className="creer-saison__titre">Écrire à un groupe</h2>
       </div>
       <div className="creer-saison__corps mail">
         {erreur && <p className="login-screen__erreur">{erreur}</p>}
@@ -62,9 +62,9 @@ export default function ChoisirAdherents({ ecoleId, onChoix, onFermer }) {
             >
               <span className="mail__option-rond" />
               <span>
-                Tous les adhérents
+                Tout le monde
                 <small>
-                  {choix.season ? `Saison ${choix.season} · ` : ''}
+                  Adhérents, administrateurs et professeurs · {choix.season ? `${choix.season} · ` : ''}
                   {personnes(choix.people)}
                 </small>
               </span>

@@ -182,6 +182,9 @@ class FakeWebmail:
         self._note("bulk", folder, uids, action)
         return {}
 
+    def file_sent(self, to_label, subject, body):
+        self._note("file_sent", self.sender_name, to_label, subject, body)
+
 
 @pytest.fixture()
 def boite(client, ecole, gmail, monkeypatch):
@@ -368,8 +371,9 @@ def test_plusieurs_boites(client, db_session, ecole, boite):
 
 
 def test_ecrire_aux_adherents(client, db_session, ecole, boite, monkeypatch):
-    """Seb, 19 novembre (§7 bis) : tous les adhérents de la saison ou ceux de
-    cours, un mail chacun par Brevo ; réponses et copie à la boîte du « De »."""
+    """Seb, 19 novembre (§7 bis) : tout le monde (adhérents, administrateurs,
+    profs) ou ceux de cours, un mail chacun par Brevo ; réponses à la boîte du
+    « De », qui le range dans « Envoyés »."""
     from app import main
     from cours.cours import CoursService as LesCours
     from groups import courses
@@ -379,6 +383,8 @@ def test_ecrire_aux_adherents(client, db_session, ecole, boite, monkeypatch):
     leo = comptes.create(db_session, ecole_id=ecole.id, role="eleve", nom="Roux", prenom="Léo", email="LINA@ex.fr")
     karim = comptes.create(db_session, ecole_id=ecole.id, role="eleve", nom="B", prenom="Karim", email="karim@ex.fr")
     comptes.create(db_session, ecole_id=ecole.id, role="eleve", nom="Sans", prenom="Mail")
+    comptes.create(db_session, ecole_id=ecole.id, role="admin", nom="Bureau", prenom="Ana", email="ana@ex.fr")
+    comptes.create(db_session, ecole_id=ecole.id, role="professeur", nom="Coach", prenom="Max", email="max@ex.fr")
     autre = Ecoles().create(db_session, nom="Le Beausset", code_postal="83330")
     comptes.create(db_session, ecole_id=autre.id, role="eleve", nom="Ailleurs", prenom="Zoé", email="zoe@ex.fr")
     sambo = LesCours().create(db_session, ecole.id, "Sambo adultes")
@@ -391,7 +397,7 @@ def test_ecrire_aux_adherents(client, db_session, ecole, boite, monkeypatch):
 
     url = f"/ecoles/{ecole.id}/mail/members"
     choix = client.get(url).json()
-    assert (choix["people"], choix["without"]) == (4, 1)
+    assert (choix["people"], choix["without"]) == (6, 1)
     assert [(c["name"], c["people"]) for c in choix["courses"]] == [("Sambo adultes", 2), ("MMA", 2)]
 
     envois = []
@@ -403,18 +409,24 @@ def test_ecrire_aux_adherents(client, db_session, ecole, boite, monkeypatch):
     )
     reponse = client.post(f"{url}/send", json={"subject": "Reprise", "body": "Bonjour <à tous>"}).json()
     adresses, contenus, repondre_a = envois[-1]
-    # Une adresse par famille, jamais l'autre école ; la copie à la boîte en dernier.
-    assert adresses == ["karim@ex.fr", "lina@ex.fr", "club.sambo@gmail.com"]
-    assert repondre_a == "club.sambo@gmail.com" and reponse == {"people": 4, "sent": 2}
+    # Une adresse par famille, administrateurs et profs compris, jamais l'autre école.
+    assert adresses == ["ana@ex.fr", "karim@ex.fr", "lina@ex.fr", "max@ex.fr"]
+    assert repondre_a == "club.sambo@gmail.com" and reponse == {"people": 6, "sent": 4, "filed": True}
     sujet, texte, html = contenus[0]
-    assert sujet == "Reprise" and "adhérent de Sambo La Ciotat" in texte and "&lt;à tous&gt;" in html
-    assert "Copie du mail envoyé à 4 adhérents" in contenus[-1][1]
+    assert sujet == "Reprise" and "Mail de Sambo La Ciotat" in texte and "&lt;à tous&gt;" in html
+    # Rangé dans « Envoyés » de la boîte, au nom du club.
+    assert boite[0].calls[-1] == ("file_sent", "Sambo La Ciotat", "Tout le monde · 6", "Reprise", "Bonjour <à tous>")
 
-    # Un cours (une personne dans deux cours : un seul mail).
+    # Des cours (une personne dans deux cours : un seul mail).
     client.post(f"{url}/send", json={"courses": [sambo.id, mma.id], "body": "Salut"})
-    assert envois[-1][0] == ["karim@ex.fr", "lina@ex.fr", "club.sambo@gmail.com"]
+    assert envois[-1][0] == ["karim@ex.fr", "lina@ex.fr"]
+    assert boite[0].calls[-1][2] == "Sambo adultes, MMA · 3"
     client.post(f"{url}/send", json={"courses": [sambo.id], "body": "Salut"})
-    assert envois[-1][0] == ["lina@ex.fr", "club.sambo@gmail.com"]
+    assert envois[-1][0] == ["lina@ex.fr"]
+
+    # Envoyés injoignable : les mails partent quand même.
+    boite[0].refuse = True
+    assert client.post(f"{url}/send", json={"body": "x"}).json()["filed"] is False
     # Le cours d'une autre école ne donne personne.
     assert client.post(f"{url}/send", json={"courses": [999], "body": "x"}).status_code == 400
     assert client.post(f"/ecoles/{autre.id}/mail/members/send", json={"body": "x"}).status_code == 409

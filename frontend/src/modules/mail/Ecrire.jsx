@@ -101,10 +101,10 @@ export default function Ecrire({ ecoleId, brouillon, fichiersInitiaux = [], boit
               </span>
             </div>
             <p className="mail__discret">
-              Chacun reçoit son propre mail : personne ne voit l’adresse des autres. Les réponses et une copie arrivent
-              dans cette boîte.
+              Chacun reçoit son propre mail : personne ne voit l’adresse des autres. Les réponses arrivent dans cette
+              boîte, et le mail est rangé dans ses Envoyés.
               {adherents.without > 0 &&
-                ` ${adherents.without} adhérent${adherents.without > 1 ? 's n’ont' : ' n’a'} pas d’adresse mail.`}
+                ` ${adherents.without} personne${adherents.without > 1 ? 's n’ont' : ' n’a'} pas d’adresse mail.`}
             </p>
           </>
         ) : (
@@ -118,7 +118,7 @@ export default function Ecrire({ ecoleId, brouillon, fichiersInitiaux = [], boit
             />
             {brouillon.mode === 'new' && (
               <button type="button" className="mail__lien-adherents" onClick={() => setChoisir(true)}>
-                👥 Écrire aux adhérents
+                👥 Écrire à un groupe
               </button>
             )}
             <ChampAdresses label="Cc" value={cc} onChange={setCc} contacts={contacts} />
@@ -171,7 +171,7 @@ export default function Ecrire({ ecoleId, brouillon, fichiersInitiaux = [], boit
         {total > MAX && <p className="login-screen__erreur">Pièces jointes trop lourdes : 18 Mo au total au maximum.</p>}
         {erreur && <p className="login-screen__erreur">{erreur}</p>}
 
-        {adherents && <p className="mail__discret">Pas de pièce jointe dans un mail aux adhérents pour l’instant.</p>}
+        {adherents && <p className="mail__discret">Pas de pièce jointe dans un mail à un groupe pour l’instant.</p>}
         {!adherents && (
           <label className="btn btn--secondary mail__joindre">
             <Icon name="paperclip" /> Joindre un fichier
@@ -190,8 +190,8 @@ export default function Ecrire({ ecoleId, brouillon, fichiersInitiaux = [], boit
         <button type="submit" className="btn btn--primary btn--block mail__principal" disabled={!adherents && total > MAX}>
           {adherents
             ? adherents.people != null
-              ? `Envoyer à ${adherents.people} adhérent${adherents.people > 1 ? 's' : ''}`
-              : 'Envoyer aux adhérents'
+              ? `Envoyer à ${adherents.people} personne${adherents.people > 1 ? 's' : ''}`
+              : 'Envoyer au groupe'
             : 'Envoyer'}
         </button>
       </form>

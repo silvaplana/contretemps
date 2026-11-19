@@ -1,7 +1,9 @@
 """« Écrire aux adhérents » (spec/modules/mail.md §7 bis ; Seb, 19 novembre
-2026) : tous les adhérents de la saison, ou des cours, chacun son propre mail
-par Brevo (`ecoles.mail_ecole.envoyer_a_chacun`) ; personne ne voit l'adresse
-des autres. Les réponses et une copie vont à la boîte du « De »."""
+2026) : tout le monde (adhérents, administrateurs et professeurs : toutes les
+fiches de la saison), ou des cours, chacun son propre mail par Brevo
+(`ecoles.mail_ecole.envoyer_a_chacun`) ; personne ne voit l'adresse des
+autres. Les réponses vont à la boîte du « De », qui garde le mail dans
+« Envoyés »."""
 
 from __future__ import annotations
 
@@ -18,16 +20,21 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 
+EVERYONE = "Tout le monde"
+
+
 @dataclass
 class Recipients:
+    label: str  # « Tout le monde » ou les noms des cours, et le nombre
     people: int  # fiches choisies
     addresses: list[str]  # une par adresse (une famille qui partage une adresse : un mail)
     without: int  # fiches sans adresse mail
 
 
-def _recipients(members: list[Compte]) -> Recipients:
+def _recipients(members: list[Compte], label: str = EVERYONE) -> Recipients:
     addresses = {a.lower(): a for m in members for a in m.emails}
     return Recipients(
+        label=f"{label} · {len(members)}",
         people=len(members),
         addresses=sorted(addresses.values(), key=str.lower),
         without=sum(1 for m in members if not m.emails),
@@ -70,16 +77,21 @@ def choices(db: Session, org_id: int) -> dict:
 
 
 def recipients(db: Session, org_id: int, course_ids: list[int] | None) -> Recipients:
-    """Tous les adhérents (`course_ids` vide ou absent) ou ceux des cours."""
-    return _recipients(_members(db, org_id, saison_courante_id(db, org_id), course_ids or None))
+    """Tout le monde (`course_ids` vide ou absent) ou ceux des cours."""
+    season_id = saison_courante_id(db, org_id)
+    label = EVERYONE
+    if course_ids:
+        with toutes_saisons(db):
+            names = list(db.scalars(
+                select(Cours.nom).where(Cours.ecole_id == org_id, Cours.id.in_(course_ids)).order_by(Cours.ordre)
+            ))
+        label = ", ".join(names) or label
+    return _recipients(_members(db, org_id, season_id, course_ids or None), label)
 
 
-def content(school: str, subject: str, body: str, address: str, copy_to: str, people: int):
-    """(sujet, texte, html) pour une adresse ; la copie de la boîte dit à qui
-    le mail est parti."""
-    footer = f"Vous recevez ce mail parce que vous êtes adhérent de {school}. Pour répondre, répondez à ce mail."
-    if address.lower() == copy_to.lower():
-        footer = f"Copie du mail envoyé à {people} adhérent{'s' if people > 1 else ''} de {school}."
+def content(school: str, subject: str, body: str):
+    """(sujet, texte, html), le même pour chacun."""
+    footer = f"Mail de {school}. Pour répondre, répondez à ce mail."
     text = f"{body}\n\n{footer}"
     html = (
         '<div style="font-family:Arial,sans-serif;font-size:16px;line-height:1.5;color:#1f1f1f">'

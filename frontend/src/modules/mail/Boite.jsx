@@ -129,7 +129,7 @@ export default function Boite({ ecoleId, boite, boites, menuBoite, onCoupee }) {
     attente.current = { action: 'send', brouillon, fichiers, de, minuteur: setTimeout(envoyer, ANNULER_MS) }
     const n = brouillon.adherents?.people
     setToast(
-      brouillon.adherents ? (n != null ? `Envoi à ${n} adhérent${n > 1 ? 's' : ''}` : 'Envoi aux adhérents') : RANGE.send,
+      brouillon.adherents ? (n != null ? `Envoi à ${n} personne${n > 1 ? 's' : ''}` : 'Envoi au groupe') : RANGE.send,
     )
   }
 

@@ -52,11 +52,12 @@ Un mail (toucher la ligne)
   toucher « De » pour choisir la boîte qui envoie), « À », « Cc »,
   « Cci », « Objet », le message. Dès 2 lettres tapées dans À, Cc ou Cci, les adhérents, profs,
   administrateurs et adresses déjà échangées qui correspondent s'affichent : un toucher ajoute l'adresse.
-- « 👥 Écrire aux adhérents », sous « À » dans Nouveau message : tous les adhérents de la saison ou
-  un ou plusieurs cours, puis « Choisir ». Chacun reçoit son propre mail (personne ne voit les autres
-  adresses) ; les réponses et une copie arrivent dans la boîte du « De ». Pas de Cc, Cci ni pièce
-  jointe dans ce mail ; « Envoyer à N adhérents », Annuler pendant 10 secondes. ✕ sur la pastille
-  pour revenir à un mail normal.
+- « 👥 Écrire à un groupe », sous « À » dans Nouveau message : tout le monde (adhérents,
+  administrateurs et professeurs de la saison) ou un ou plusieurs cours, puis « Choisir ». Chacun
+  reçoit son propre mail (personne ne voit les autres adresses) ; les réponses arrivent dans la boîte
+  du « De », et le mail est rangé dans ses Envoyés (« À : Tout le monde · 84 »). Pas de Cc, Cci ni
+  pièce jointe dans ce mail ; « Envoyer à N personnes », Annuler pendant 10 secondes. ✕ sur la
+  pastille pour revenir à un mail normal.
 - « Joindre un fichier » (18 Mo au total au plus), croix pour retirer. Transférer garde les pièces
   jointes du mail.
 - « Envoyer » : l'écran se ferme et « Mail envoyé » s'affiche avec « Annuler » pendant 10 secondes ;
