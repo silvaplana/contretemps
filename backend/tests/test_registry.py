@@ -48,10 +48,10 @@ def _ecoles(db):
 
 
 def test_tous_les_modules_sont_allumes_par_defaut(client, db_session):
-    """Sauf HelloAsso, FFST, Mail et Essais, éteints tant que l'école ne les allume pas (Seb, 18/11)."""
+    """Sauf HelloAsso, FFST, Mail, Essais et Drives du club, éteints tant que l'école ne les allume pas (Seb, 18/11)."""
     ecole, _ = _ecoles(db_session)
     assert _etats(client, ecole.id) == {
-        m.key: m.key not in ("helloasso", "ffst", "mail", "trials") for m in MODULES if not m.technical
+        m.key: m.key not in ("helloasso", "ffst", "mail", "trials", "drives") for m in MODULES if not m.technical
     }
 
 

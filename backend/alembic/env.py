@@ -34,6 +34,7 @@ from members.models import MemberColumn, MemberField, MemberValue  # noqa: F401
 from helloasso.models import OrgHelloAsso  # noqa: F401
 from ffst.models import FfstConnection, FfstSnapshot  # noqa: F401
 from mail.models import MailAccount  # noqa: F401
+from drives.models import DriveAccount  # noqa: F401
 from plans.models import SeasonPlan, SeasonPlanInstallment  # noqa: F401
 from session_clips.models import Clip, ClipParticipant, ClipSession, SessionAttendee  # noqa: F401
 from finances.models import FinAccount, FinAssembly, FinAssemblyFile, FinForecast, FinOperation, FinReport, FinStatement  # noqa: F401
