@@ -209,6 +209,16 @@ class LectureImpossible(Exception):
 CATEGORIES_PAR_DEFAUT = ("Costumes", "Déplacement", "Matériel", "Location de salle", "Alimentation", "Autre")
 
 
+@dataclass(frozen=True)
+class Saison:
+    """A season of the host (Emplacement des pièces manuelles, §8.13: one setting per season)."""
+
+    id: int
+    nom: str
+    debut: date
+    fin: date
+
+
 @dataclass
 class Ports:
     annuaire: Annuaire
@@ -245,3 +255,6 @@ class Ports:
     # date › sub-folders, creating what is missing; returns its path on the
     # drive. None: the host has no drives.
     deposer: Callable[[Session, int, int, str, list[str], str, bytes, str, date | None], str] | None = None
+    # The school's seasons, for one place per season (financier.md §8.13).
+    # None: the host has no seasons, one setting for all.
+    saisons: Callable[[Session, int], list[Saison]] | None = None

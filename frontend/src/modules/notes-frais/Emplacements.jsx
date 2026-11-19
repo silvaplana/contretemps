@@ -6,8 +6,9 @@ import * as drivesApi from '../drives/api.js'
 
 // Financier › Pièces › ⋯ › Emplacement des pièces manuelles (financier.md
 // §8.13 ; maquette https://claude.ai/artifact/32JWw7Ga3jbpetgCXGbYMQ) : par
-// nature, où va le fichier d'une pièce saisie avec « + ». Par défaut, les
-// dossiers d'aujourd'hui.
+// nature et par saison, où va le fichier d'une pièce saisie avec « + ». Par
+// défaut, les dossiers d'aujourd'hui ; une saison reprend le réglage de la
+// précédente.
 
 const ANNULER_MS = 10000
 const NATURES = [
@@ -20,10 +21,10 @@ const DEFAUTS = { achat: 'ACHATS', honoraires: 'HONORAIRES', frais: 'Notes de fr
 const fleches = (path) => path.split('/').join(' › ')
 const cle = (lieu) => (lieu.kind === 'docs' ? 'docs' : `drive:${lieu.drive_id}`)
 
-function chemin(place, drives) {
-  if (place.kind === 'docs') return `Docs › Financier › ${fleches(place.path)}`
+function chemin(place, drives, saison) {
+  if (place.kind === 'docs') return `Docs › ${saison} › Financier › ${fleches(place.path)}`
   const drive = drives.find((d) => d.id === place.drive_id)
-  return `Drive « ${drive?.name ?? '?'} » › ${fleches(place.path)} › saison`
+  return `Drive « ${drive?.name ?? '?'} » › ${fleches(place.path)} › ${saison}`
 }
 
 // Choisir un dossier : sous Financier (Docs) ou sur un drive.
@@ -97,14 +98,14 @@ function ChoixDossier({ orgId, lieu, onChoix, onRetour }) {
   )
 }
 
-function Fiche({ orgId, drives, nature, place, onRegler, onRetour }) {
+function Fiche({ orgId, drives, saison, nature, place, onRegler, onRetour }) {
   const [choix, setChoix] = useState(null) // le lieu dont on choisit le dossier
   const lieux = [{ kind: 'docs', drive_id: null, label: 'Docs' }].concat(
     drives.map((d) => ({ kind: 'drive', drive_id: d.id, label: `Drive « ${d.name} »` })),
   )
   const valeur = cle(place)
   const achatParMois = nature.nature === 'achat' && place.by_month
-  const exemple = `${chemin(place, drives).replace(/ › saison$/, ' › 2025-2026')} › ${achatParMois ? '08.2026 › ' : ''}${nature.exemple}`
+  const exemple = `${chemin(place, drives, saison)} › ${achatParMois ? '08.2026 › ' : ''}${nature.exemple}`
 
   if (choix)
     return (
@@ -124,7 +125,9 @@ function Fiche({ orgId, drives, nature, place, onRegler, onRetour }) {
         <button type="button" className="icon-btn" onClick={onRetour} aria-label="Retour">
           <Icon name="chevronLeft" size={22} />
         </button>
-        <h2 className="creer-saison__titre">{nature.label}</h2>
+        <h2 className="creer-saison__titre">
+          {nature.label} · {saison}
+        </h2>
       </div>
       <div className="creer-saison__corps nf-emp">
         <label className="mail__champ">
@@ -140,11 +143,13 @@ function Fiche({ orgId, drives, nature, place, onRegler, onRetour }) {
         <label className="mail__champ">
           <span>Dossier</span>
           <button type="button" className="nf-emp__champ" onClick={() => setChoix(lieux.find((l) => cle(l) === valeur) ?? lieux[0])}>
-            {chemin(place, drives).replace(/ › saison$/, '')}
+            {place.kind === 'docs'
+              ? `Docs › Financier › ${fleches(place.path)}`
+              : chemin(place, drives, '').replace(/ › $/, '')}
           </button>
         </label>
         <p className="mail__discret">
-          {place.kind === 'docs' ? 'Dans le dossier de chaque saison.' : 'L’appli y ajoute un dossier par saison.'}
+          {place.kind === 'docs' ? 'Dans le dossier de la saison.' : 'L’appli y ajoute un dossier par saison.'}
         </p>
         {nature.nature === 'achat' ? (
           <label className="nf-emp__case">
@@ -193,18 +198,24 @@ export default function Emplacements({ onClose }) {
     return () => clearTimeout(minuteur.current)
   }, [])
 
+  function changerSaison(id) {
+    setToast(null)
+    api.emplacements(id).then(setEtat, (e) => setErreur(e.message))
+  }
+  const saison = etat?.seasons.find((x) => x.id === etat.season_id)?.name ?? ''
+
   const placeDe = (nature) => etat.places.find((p) => p.nature === nature)
 
-  async function regler(nature, place, annulable = true) {
+  async function regler(nature, place, annulable = true, saisonId = etat.season_id) {
     const avant = placeDe(nature)
     setErreur(null)
     try {
-      const apres = await api.reglerEmplacement(nature, place)
+      const apres = await api.reglerEmplacement(nature, { ...place, season_id: saisonId })
       setEtat((e) => ({ ...e, places: e.places.map((p) => (p.nature === nature ? apres : p)) }))
       if (!annulable) return
       clearTimeout(minuteur.current)
       const label = NATURES.find((n) => n.nature === nature).label
-      setToast({ texte: `${label} : emplacement changé.`, nature, avant })
+      setToast({ texte: `${label} : emplacement changé.`, nature, avant, saisonId })
       minuteur.current = setTimeout(() => setToast(null), ANNULER_MS)
     } catch (e) {
       setErreur(e.message)
@@ -222,12 +233,24 @@ export default function Emplacements({ onClose }) {
       </div>
       <div className="creer-saison__corps nf-emp">
         <p className="mail__discret">Où l’appli range le fichier d’une pièce saisie avec « + » (photo ou fichier).</p>
+        {etat?.seasons.length > 1 && (
+          <label className="mail__champ">
+            <span>Saison</span>
+            <select value={etat.season_id ?? ''} onChange={(e) => changerSaison(Number(e.target.value))}>
+              {etat.seasons.map((x) => (
+                <option key={x.id} value={x.id}>
+                  {x.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         {erreur && <p className="login-screen__erreur">{erreur}</p>}
         {etat &&
           NATURES.map((n) => (
             <button key={n.nature} type="button" className="nf-emp__nature" onClick={() => setOuverte(n.nature)}>
               <strong>{n.label}</strong>
-              <span className="mail__discret">{chemin(placeDe(n.nature), drives)}</span>
+              <span className="mail__discret">{chemin(placeDe(n.nature), drives, saison)}</span>
             </button>
           ))}
       </div>
@@ -235,6 +258,7 @@ export default function Emplacements({ onClose }) {
         <Fiche
           orgId={etat.org_id}
           drives={drives}
+          saison={saison}
           nature={nature}
           place={placeDe(nature.nature)}
           onRegler={(place) => regler(nature.nature, place)}
@@ -250,7 +274,7 @@ export default function Emplacements({ onClose }) {
               clearTimeout(minuteur.current)
               setToast(null)
               const { kind, drive_id, path, by_month } = toast.avant
-              regler(toast.nature, { kind, drive_id, path, by_month }, false)
+              regler(toast.nature, { kind, drive_id, path, by_month }, false, toast.saisonId)
             }}
           >
             Annuler

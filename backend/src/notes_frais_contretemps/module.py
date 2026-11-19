@@ -77,6 +77,19 @@ def _deposeur_drive(core):
     return deposer
 
 
+def _saisons(db, org_id: int):
+    """The school's seasons (one storage place per season, financier.md §8.13)."""
+    from sqlalchemy import select
+
+    from notes_frais.ports import Saison as SaisonPort
+    from saisons.models import Saison
+    from saisons.portee import toutes_saisons
+
+    with toutes_saisons(db):
+        return [SaisonPort(x.id, x.nom, x.date_debut, x.date_fin)
+                for x in db.scalars(select(Saison).where(Saison.ecole_id == org_id))]
+
+
 def mount(app, core) -> None:
     ressources = core.ressources_client
     core.notes_frais_client = NotesDeFrais(
@@ -106,6 +119,7 @@ def mount(app, core) -> None:
             drive=_lecteur_drive(core),
             # Receipts put on a club drive (Emplacement des pièces manuelles).
             deposer=_deposeur_drive(core),
+            saisons=_saisons,
         ),
         stockage=StockageEnveloppes(DOSSIER_NOTES_FRAIS, 20 * 1024 * 1024),
     )

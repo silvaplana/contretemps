@@ -2217,3 +2217,36 @@ def test_la_paie_est_eteinte_par_defaut_et_s_allume_dans_fonctionnalites(client,
     assert client.put("/notes-frais/paie", json={"active": False}, headers=t).json() == {"active": False}
     plan = {a["number"]: a for a in client.get("/finances/chart", headers=t).json()["accounts"]}
     assert not plan["431"]["active"] and "URSSAF" in plan["645"]["keywords"]
+
+
+def test_un_emplacement_par_saison_repris_par_les_suivantes(client, db_session, ecole, monkeypatch):
+    """Seb, 19/11: the place can differ each season; a new season keeps the
+    setting of the one before; each receipt follows the season of its date."""
+    from saisons.models import Saison
+
+    tresorier, org = ecole["tresorier"], ecole["ecole"].id
+    passee = Saison(ecole_id=org, nom="2025-2026", date_debut=date(2025, 9, 1), date_fin=date(2026, 8, 31))
+    db_session.add(passee)
+    db_session.commit()
+    etat = client.get("/notes-frais/emplacements", headers=entetes_session(tresorier)).json()
+    courante = etat["season_id"]
+    assert courante != passee.id and [s["id"] for s in etat["seasons"]][-1] == passee.id
+
+    # Set on the past season: the current one inherits it.
+    client.put(
+        "/notes-frais/emplacements/achat", json={"kind": "docs", "path": "FACTURES", "by_month": False, "season_id": passee.id},
+        headers=entetes_session(tresorier),
+    )
+    url = "/notes-frais/emplacements"
+    assert client.get(f"{url}?season_id={courante}", headers=entetes_session(tresorier)).json()["places"][0]["path"] == "FACTURES"
+    # Back to today's folder for the current season only.
+    client.put(
+        "/notes-frais/emplacements/achat", json={"kind": "docs", "path": "ACHATS", "by_month": True, "season_id": courante},
+        headers=entetes_session(tresorier),
+    )
+    assert client.get(f"{url}?season_id={courante}", headers=entetes_session(tresorier)).json()["places"][0]["default"] is True
+    assert client.get(f"{url}?season_id={passee.id}", headers=entetes_session(tresorier)).json()["places"][0]["path"] == "FACTURES"
+
+    lecteur = LecteurFacture(date="2026-03-10", montant_centimes=2500, commercant="Leroy Merlin", description="Peinture")
+    monkeypatch.setattr(main.notes_frais_client.ports, "lecteur", lecteur)
+    assert _etablir(client, tresorier, "achat")["rangement"] == "Financier › FACTURES"

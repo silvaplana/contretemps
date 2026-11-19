@@ -49,7 +49,7 @@ from .models import (
     Rib,
     StoragePlace,
 )
-from .ports import LectureImpossible, Membre, OperationBancaire, Personne, Ports, TicketLu
+from .ports import LectureImpossible, Membre, OperationBancaire, Personne, Ports, Saison, TicketLu
 from . import externals, recapitulatif
 from .stockage import StockageEnveloppes, nom_dossier, nom_propre
 
@@ -1770,29 +1770,80 @@ class NotesDeFrais:
 
     # --- Emplacement des pièces manuelles (financier.md §8.13) ---
 
-    def _place(self, db: Session, org_id: int, nature: str) -> StoragePlace | None:
-        return db.scalar(select(StoragePlace).where(StoragePlace.org_id == org_id, StoragePlace.nature == nature))
+    def _saisons(self, db: Session, org_id: int) -> list[Saison]:
+        return sorted(self.ports.saisons(db, org_id), key=lambda x: x.debut) if self.ports.saisons else []
 
     @staticmethod
-    def _emplacement_dict(nature: str, place: StoragePlace | None) -> dict:
+    def _saison_du(saisons: list[Saison], jour: date | None) -> int | None:
+        """The season that holds this day, else the current one (holds today, else the last)."""
+        for quand in (jour, date.today()):
+            if quand is not None:
+                trouvee = next((x.id for x in reversed(saisons) if x.debut <= quand <= x.fin), None)
+                if trouvee is not None:
+                    return trouvee
+        return saisons[-1].id if saisons else None
+
+    @staticmethod
+    def _herite(saisons: list[Saison], places: dict, saison_id: int | None) -> StoragePlace | None:
+        """The place of this season, else of the closest earlier season that
+        has one (a new season keeps the last setting), else the one set
+        without a season (host without seasons)."""
+        ordre = [x.id for x in saisons]
+        avant = ordre[: ordre.index(saison_id) + 1] if saison_id in ordre else []
+        for sid in reversed(avant):
+            if sid in places:
+                return places[sid]
+        return places.get(None)
+
+    def _places(self, db: Session, org_id: int, nature: str) -> dict:
+        return {p.season_id: p for p in db.scalars(select(StoragePlace).where(
+            StoragePlace.org_id == org_id, StoragePlace.nature == nature))}
+
+    def _place(self, db: Session, org_id: int, nature: str, jour: date | None = None) -> StoragePlace | None:
+        places = self._places(db, org_id, nature)
+        if not places:
+            return None
+        saisons = self._saisons(db, org_id)
+        return self._herite(saisons, places, self._saison_du(saisons, jour))
+
+    @staticmethod
+    def _valeur(nature: str, place: StoragePlace | None) -> tuple:
+        if place is None:
+            return ("docs", None, DOSSIERS[nature].lower(), True)
+        return (place.target_kind, place.drive_id, place.path.lower(), place.by_month)
+
+    @classmethod
+    def _emplacement_dict(cls, nature: str, place: StoragePlace | None) -> dict:
         if place is None:
             return {"nature": nature, "kind": "docs", "drive_id": None, "path": DOSSIERS[nature], "by_month": True, "default": True}
         return {
             "nature": nature, "kind": place.target_kind, "drive_id": place.drive_id, "path": place.path,
-            "by_month": place.by_month, "default": False,
+            "by_month": place.by_month, "default": cls._valeur(nature, place) == cls._valeur(nature, None),
         }
 
-    def emplacements(self, db: Session, membre: Membre) -> list[dict]:
-        """Where each nature's files go; today's folders when nothing is set."""
+    def emplacements(self, db: Session, membre: Membre, season_id: int | None = None) -> dict:
+        """Where each nature's files go in this season (the current one by
+        default); today's folders when nothing is set."""
         self._exiger_tresorier(membre)
-        places = {p.nature: p for p in db.scalars(select(StoragePlace).where(StoragePlace.org_id == membre.org_id))}
-        return [self._emplacement_dict(n, places.get(n)) for n in NATURES_RANGEES]
+        saisons = self._saisons(db, membre.org_id)
+        if season_id not in {x.id for x in saisons}:
+            season_id = self._saison_du(saisons, None)
+        return {
+            "seasons": [{"id": x.id, "name": x.nom} for x in reversed(saisons)],
+            "season_id": season_id,
+            "places": [
+                self._emplacement_dict(n, self._herite(saisons, self._places(db, membre.org_id, n), season_id))
+                for n in NATURES_RANGEES
+            ],
+        }
 
     def regler_emplacement(
         self, db: Session, membre: Membre, nature: str, kind: str, drive_id: int | None, path: str, by_month: bool = True,
+        season_id: int | None = None,
     ) -> dict:
-        """Sets one nature's place. Back to today's folders = no row. Files
-        already put somewhere stay there; only new receipts go to the new place."""
+        """Sets one nature's place for one season (and the seasons after it
+        that have none). The same as what the season would inherit = no row.
+        Files already put somewhere stay there."""
         self._exiger_tresorier(membre)
         if nature not in NATURES_RANGEES:
             raise ValueError("Nature inconnue.")
@@ -1803,15 +1854,23 @@ class NotesDeFrais:
         dossiers = [p.strip() for p in (path or "").split("/") if p.strip()]
         if not dossiers:
             raise ValueError("Choisissez un dossier.")
+        saisons = self._saisons(db, membre.org_id)
+        if season_id is None:
+            season_id = self._saison_du(saisons, None)
+        elif season_id not in {x.id for x in saisons}:
+            raise ValueError("Saison inconnue.")
         by_month = bool(by_month) if nature == ACHAT else True
-        place = self._place(db, membre.org_id, nature)
-        if kind == "docs" and [d.lower() for d in dossiers] == [DOSSIERS[nature].lower()] and by_month:
+        places = self._places(db, membre.org_id, nature)
+        place = places.pop(season_id, None)
+        herite = self._herite(saisons, places, season_id)
+        voulu = (kind, drive_id if kind == "drive" else None, "/".join(dossiers).lower(), by_month)
+        if voulu == self._valeur(nature, herite):
             if place is not None:
                 db.delete(place)
             db.commit()
-            return self._emplacement_dict(nature, None)
+            return self._emplacement_dict(nature, herite)
         if place is None:
-            place = StoragePlace(org_id=membre.org_id, nature=nature)
+            place = StoragePlace(org_id=membre.org_id, nature=nature, season_id=season_id)
             db.add(place)
         place.target_kind, place.drive_id = kind, drive_id if kind == "drive" else None
         place.path, place.by_month, place.updated_at = "/".join(dossiers), by_month, _maintenant()
@@ -1828,7 +1887,7 @@ class NotesDeFrais:
     def _racine(self, db: Session, note: NoteFrais, defaut: bool = False) -> tuple[list[str], StoragePlace | None]:
         """The Docs folders of the note's nature under Financier, and its place
         (None: today's folders)."""
-        place = None if defaut else self._place(db, note.org_id, note.nature)
+        place = None if defaut else self._place(db, note.org_id, note.nature, self._date_docs(note))
         if place is not None and place.target_kind == "docs":
             return place.path.split("/"), place
         return [DOSSIERS[note.nature]], place

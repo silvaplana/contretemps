@@ -133,6 +133,7 @@ class EmplacementEntree(BaseModel):
     drive_id: int | None = None
     path: str = Field(min_length=1, max_length=1000)
     by_month: bool = True
+    season_id: int | None = None
 
 
 class CategoriesEntree(BaseModel):
@@ -303,12 +304,14 @@ class NotesDeFraisReceiver:
         # --- Emplacement des pièces manuelles (financier.md §8.13) ---
 
         @app.get("/notes-frais/emplacements")
-        def emplacements(db: Session = db_dep, m: Membre = membre):
-            return {"org_id": m.org_id, "places": appeler(nf.emplacements, db, m)}
+        def emplacements(season_id: int | None = None, db: Session = db_dep, m: Membre = membre):
+            return {"org_id": m.org_id, **appeler(nf.emplacements, db, m, season_id)}
 
         @app.put("/notes-frais/emplacements/{nature}")
         def regler_emplacement(nature: str, corps: EmplacementEntree, db: Session = db_dep, m: Membre = membre):
-            return appeler(nf.regler_emplacement, db, m, nature, corps.kind, corps.drive_id, corps.path, corps.by_month)
+            return appeler(
+                nf.regler_emplacement, db, m, nature, corps.kind, corps.drive_id, corps.path, corps.by_month, corps.season_id,
+            )
 
         @app.get("/notes-frais/emplacements-docs")
         def dossiers_financier(chemin: str = "", db: Session = db_dep, m: Membre = membre):

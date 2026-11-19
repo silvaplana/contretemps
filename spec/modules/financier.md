@@ -1366,6 +1366,10 @@ du club », `core.md` §3). **Codé le 19 novembre 2026** (`notes_frais` : `Stor
 
 - **Où** : Financier › Pièces › ⋯ › **« Emplacement des pièces manuelles »**, pour qui a l'Accès au
   Financier. Plein écran, croix en haut à droite pour revenir à Pièces.
+- **Une saison à la fois** (Seb, 19 novembre : « l'emplacement peut être différent chaque saison ») :
+  en haut, le choix de la saison (la saison en cours par défaut ; caché s'il n'y en a qu'une). Chaque
+  saison a son réglage ; **une saison sans réglage reprend celui de la saison d'avant** (Seb : « OK »),
+  sinon le rangement d'aujourd'hui. Une pièce va à l'emplacement de la saison de sa date.
 - **L'écran** : une ligne par nature, **Factures d'achat**, **Honoraires**, **Notes de frais**,
   **Ventes**, avec le chemin où vont les nouveaux fichiers. Toucher une ligne ouvre sa fiche (← revient).
 - **La fiche** : **Où** (Docs ou un des drives connectés) et **Dossier**, choisi dans un sélecteur
@@ -1388,8 +1392,8 @@ du club », `core.md` §3). **Codé le 19 novembre 2026** (`notes_frais` : `Stor
 - **Hors du réglage** : A TRAITER, VIREMENTS SANS FACTURE, RELEVES BANCAIRES et SALAIRES (§8.11) restent
   en dur. Les
   pièces d'Import auto pièces gardent leur propre destination.
-- **Données** : une ligne par école et par nature changée (`nf_storage_places` : organisation,
-  nature, `target_kind` docs | drive, `target_ref` = le drive, `target_path`, `by_month` pour les achats). Le dépôt sur un drive
+- **Données** : une ligne par école, nature et saison changées (`nf_storage_places` : organisation,
+  nature, `season_id`, `target_kind` docs | drive, `target_ref` = le drive, `target_path`, `by_month` pour les achats). Le dépôt sur un drive
   réutilise celui d'Import auto pièces (`drives`, plus la création des dossiers manquants) ; le
   fichier déposé est **lié** à la pièce comme pour Import auto pièces (`linked`) : l'appli ne le
   déplace ni ne l'efface plus, et la fiche montre « Drive › … ». Drive injoignable : la pièce est

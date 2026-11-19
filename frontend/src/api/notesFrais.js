@@ -207,8 +207,8 @@ export const aujourdhui = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 // Emplacement des pièces manuelles (financier.md §8.13) :
-// → { org_id, places: [{ nature, kind: 'docs' | 'drive', drive_id, path, by_month, default }] }
-export const emplacements = () => appel('/emplacements')
+// → { org_id, seasons: [{ id, name }], season_id, places: [{ nature, kind: 'docs' | 'drive', drive_id, path, by_month, default }] }
+export const emplacements = (saison) => appel(`/emplacements${saison ? `?season_id=${saison}` : ''}`)
 export const reglerEmplacement = (nature, place) => appel(`/emplacements/${nature}`, json('PUT', place))
 // Les dossiers sous Financier › chemin (« / » entre les noms), saison en cours → [nom]
 export const dossiersFinancier = (chemin = '') => appel(`/emplacements-docs?chemin=${encodeURIComponent(chemin)}`)
