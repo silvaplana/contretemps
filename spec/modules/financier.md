@@ -1258,12 +1258,14 @@ comme les autres puces).
 - **Pièce** : la photo ou le fichier, facultatif. Sans fichier, **rien n'est créé dans Docs** (règle du
   10 novembre).
 
-**Rangement dans Docs** (croquis de Seb, 19/11) : Docs › Privé › Saison › Financier › **VENTES** ›
-**COTISATIONS**, **COURS** ou **PARTICIPATION GALA**, pas par mois (contrairement à ACHATS). Le
-sous-dossier est proposé d'après le compte de la première ligne (756 → COTISATIONS, 706 → COURS, 707 →
-PARTICIPATION GALA), modifiable dans la fiche (« Rangée dans Docs › Financier › VENTES › ») ; l'appli
-retient le choix pour ce compte. Un compte sans sous-dossier (subvention, don) range directement dans
-VENTES. Nom du fichier comme les achats : « 2026-06-16 Vente Gala billetterie 1 240,00.jpg ».
+**Rangement dans Docs** (Seb, 19/11, revient sur son croquis du même jour) : Docs › Privé › Saison ›
+Financier › **VENTES** › **un sous-dossier par compte**, au nom du compte de la première ligne en
+majuscules sans accent (756 Cotisations → VENTES › COTISATIONS), créé à la première vente de ce compte ;
+pas par mois (contrairement à ACHATS), et plus de sous-dossiers vides créés à l'avance (ceux déjà créés
+chez Contretemps restent). Rien à choisir dans la fiche : la ligne du compte décide. Une vente sans
+compte va directement dans VENTES. **Compte renommé** (Seb, 19/11) : les fichiers déjà rangés ne
+bougent pas ; les nouvelles ventes vont dans un dossier au nouveau nom. Nom du fichier comme les
+achats : « 2026-06-16 Vente Gala billetterie 1240,00.jpg » (le total de la vente).
 
 **Encaissement** (même parcours que le paiement d'un achat) : l'appli cherche sur les comptes **un
 crédit** de même montant, à date proche ; la fiche le propose (« Transaction bancaire proposée ») avec
@@ -1293,15 +1295,18 @@ additionnés font le total. Codé avec l'étape 6 d'Import auto pièces, pas ici
 **Plus tard, étape à part** : la remise de chèques détaillée chèque par chèque (une sous-ligne par
 chèque rapprochée d'une famille, §8.3).
 
-**Données** : pas de table nouvelle. `nf_notes.nature = "vente"`, `supplier` = « De qui ou quoi » ;
-une ligne = une `nf_depenses` (compte = `nf_categories` reflet d'un compte de produits ou de tiers,
-comme les charges, §8.3 ter) ; `bank_operation_id` = le crédit rattaché ; journal VE. Le sous-dossier
-retenu pour un compte est celui de la dernière vente de ce compte (le dossier de son fichier dans Docs) :
-rien de plus à garder.
+**Données** : pas de table ni de colonne nouvelles. `nf_notes.nature = "vente"`, `supplier` = « De
+qui ou quoi » ; une ligne = une `nf_depenses` (compte = `nf_categories` reflet d'un compte de produits
+du plan, port `Ports.plan_ventes`, jamais mêlé aux catégories de dépense) ; `bank_operation_id` = le
+crédit rattaché (étape 2) ; journal VE. Le compte de tiers d'une ligne (4671) viendra avec HelloAsso :
+à l'étape 1, seuls les comptes de produits sont proposés.
 
 **Étapes de code**, une PR chacune, sur le « vas-y » de Seb :
 1. Saisir une vente : nature Vente dans le « + » et la lecture, fiche à une ou plusieurs lignes,
-   comptes de produits, puce Ventes avec badge, rangement dans VENTES › sous-dossier.
+   comptes de produits, puce Ventes avec badge, rangement dans VENTES › nom du compte.
+   **Codée le 19 novembre 2026** (`notes_frais` : `VENTE`, `etablir(lignes=…)`, `PATCH lignes`,
+   `categories?ventes=true` ; écran `notes-frais/Vente.jsx`). Une vente validée est À encaisser :
+   jamais dans Virements, Rapprocher, « Fournisseurs à payer » ni « Mes notes de frais ».
 2. Encaisser : crédit proposé, Rattacher / Pas encore encaissée / Encaissée en espèces, ventes et
    crédits dans Rapprocher, ventilation de la ligne de banque, journal VE au Grand livre et à la Balance.
 Puis prévenir le fil Import auto pièces (étape 6, HelloAsso).

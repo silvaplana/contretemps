@@ -400,6 +400,20 @@ def comptes_de_charges(db: Session, org_id: int) -> list[tuple[str, str]]:
     ]
 
 
+def comptes_de_produits(db: Session, org_id: int) -> list[tuple[str, str]]:
+    """Les comptes d'une vente = les comptes de produits actifs du plan
+    comptable du Financier (financier.md §8.12)."""
+    from finances.models import INCOME, FinChartAccount
+
+    return [
+        (a.number, a.label)
+        for a in db.scalars(
+            select(FinChartAccount).where(FinChartAccount.org_id == org_id, FinChartAccount.nature == INCOME, FinChartAccount.active.is_(True))
+        )
+    ]
+
+
+
 def compte_de_tiers(db: Session, org_id: int, nature: str, nom: str) -> tuple[str, str] | None:
     """Le compte de tiers d'une pièce au niveau Complet, comme le Grand livre
     le prendra (financier.md §8.7) : 401 pour un achat, le 467n au nom de la

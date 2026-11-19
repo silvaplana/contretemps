@@ -36,6 +36,7 @@ from .models import (
     REFUSEE,
     REMBOURSEE,
     VALIDEE,
+    VENTE,
     VIREE,
     CategorieFrais,
     Depense,
@@ -60,9 +61,11 @@ FILTRES = ("a_valider", "a_rembourser", "terminees", "a_trancher")
 # À payer, pas encore vu sur le compte (financier.md §8.3 bis).
 EN_PAIEMENT = (VALIDEE, PREPAREE, VIREE)
 # Journal du numéro de pièce (financier.md §8.7) : AC achats, HO honoraires, NF notes de frais.
-JOURNAUX = {ACHAT: "AC", HONORAIRES: "HO", FRAIS: "NF"}
+JOURNAUX = {ACHAT: "AC", HONORAIRES: "HO", FRAIS: "NF", VENTE: "VE"}
 # Dossiers de Docs › Financier, par nature (financier.md §8.3 bis).
-DOSSIERS = {FRAIS: "Notes de frais", HONORAIRES: "HONORAIRES", ACHAT: "ACHATS"}
+DOSSIERS = {FRAIS: "Notes de frais", HONORAIRES: "HONORAIRES", ACHAT: "ACHATS", VENTE: "VENTES"}
+# Les natures sans personne : l'achat a un fournisseur, la vente « de qui ou quoi » (`supplier`).
+SANS_PERSONNE = (ACHAT, VENTE)
 A_TRAITER = "A TRAITER"  # « plus tard » et refusées, le temps de décider (Seb, 6/11)
 VIREMENTS_SANS_FACTURE = "VIREMENTS SANS FACTURE"  # l'avis de virement reçu sans facture, gardé sur la transaction (§7 octies)
 ECARTS = ("refund", "pay_rest", "write_off")
@@ -173,7 +176,16 @@ class NotesDeFrais:
 
     # --- Catégories (§4.6) ---
 
-    def categories(self, db: Session, org_id: int, *, toutes: bool = False) -> list[CategorieFrais]:
+    def categories(self, db: Session, org_id: int, *, toutes: bool = False, ventes: bool = False) -> list[CategorieFrais]:
+        """Les catégories des dépenses ; `ventes` : celles des ventes (comptes
+        de produits, financier.md §8.12), jamais mêlées aux dépenses."""
+        codes = self._codes_ventes(db, org_id)
+        return [c for c in self._toutes_categories(db, org_id, toutes=toutes) if (c.code in codes) == ventes]
+
+    def _codes_ventes(self, db: Session, org_id: int) -> set[str]:
+        return {code for code, _ in self.ports.plan_ventes(db, org_id)} if self.ports.plan_ventes is not None else set()
+
+    def _toutes_categories(self, db: Session, org_id: int, *, toutes: bool = False) -> list[CategorieFrais]:
         if self.ports.plan is not None:
             self._suivre_le_plan(db, org_id)
         existantes = list(
@@ -183,7 +195,7 @@ class NotesDeFrais:
             for ordre, libelle in enumerate(self.ports.categories_par_defaut):
                 db.add(CategorieFrais(org_id=org_id, libelle=libelle, ordre=ordre))
             db.commit()
-            return self.categories(db, org_id, toutes=toutes)
+            return self._toutes_categories(db, org_id, toutes=toutes)
         return existantes if toutes else [c for c in existantes if c.active]
 
     def _suivre_le_plan(self, db: Session, org_id: int) -> None:
@@ -192,6 +204,8 @@ class NotesDeFrais:
         (catégories libres d'avant, comptes retirés) sont désactivées et
         restent sur les anciennes dépenses."""
         plan = sorted(self.ports.plan(db, org_id))
+        if plan and self.ports.plan_ventes is not None:
+            plan = sorted(plan + list(self.ports.plan_ventes(db, org_id)))
         if not plan:  # pas encore de plan : les catégories libres restent
             return
         existantes = list(db.scalars(select(CategorieFrais).where(CategorieFrais.org_id == org_id)))
@@ -229,7 +243,7 @@ class NotesDeFrais:
                 propres.append(libelle)
         if not propres:
             raise ValueError("Gardez au moins une catégorie.")
-        existantes = {c.libelle.lower(): c for c in self.categories(db, membre.org_id, toutes=True)}
+        existantes = {c.libelle.lower(): c for c in self._toutes_categories(db, membre.org_id, toutes=True)}
         for categorie in existantes.values():
             categorie.active = False
         for ordre, libelle in enumerate(propres):
@@ -253,8 +267,8 @@ class NotesDeFrais:
         """Le compte de la dernière pièce du même fournisseur (achat) ou de la
         même personne : un choix déjà fait passe avant la lecture (Seb, 10/11)."""
         meme = (
-            func.lower(NoteFrais.supplier) == note.supplier.lower() if note.nature == ACHAT and note.supplier
-            else NoteFrais.person_id == note.person_id if note.nature != ACHAT and note.person_id != PERSONNE_A_CHOISIR
+            func.lower(NoteFrais.supplier) == note.supplier.lower() if note.nature in SANS_PERSONNE and note.supplier
+            else NoteFrais.person_id == note.person_id if note.nature not in SANS_PERSONNE and note.person_id != PERSONNE_A_CHOISIR
             else None
         )
         if meme is None:
@@ -580,7 +594,7 @@ class NotesDeFrais:
         )
         notes = db.scalars(
             select(NoteFrais)
-            .where(NoteFrais.org_id == membre.org_id, NoteFrais.person_id == membre.person_id)
+            .where(NoteFrais.org_id == membre.org_id, NoteFrais.person_id == membre.person_id, NoteFrais.nature != VENTE)
             .order_by(NoteFrais.envoyee_le.desc(), NoteFrais.id.desc())
         )
         rib = self.rib(db, membre.org_id, membre.person_id)
@@ -714,7 +728,7 @@ class NotesDeFrais:
         elif filtre == "a_valider":
             requete = requete.where(NoteFrais.statut == ENVOYEE).order_by(NoteFrais.envoyee_le)
         elif filtre == "a_rembourser":
-            requete = requete.where(NoteFrais.statut.in_(EN_PAIEMENT), NoteFrais.don.is_(False)).order_by(NoteFrais.traitee_le)
+            requete = requete.where(NoteFrais.statut.in_(EN_PAIEMENT), NoteFrais.don.is_(False), NoteFrais.nature != VENTE).order_by(NoteFrais.traitee_le)
         elif filtre == "a_trancher":
             requete = requete.where(self._a_trancher()).order_by(NoteFrais.envoyee_le.desc(), NoteFrais.id.desc())
         else:
@@ -843,7 +857,7 @@ class NotesDeFrais:
 
     @staticmethod
     def _nom_tiers(note: NoteFrais, personnes: dict) -> str:
-        if note.nature == ACHAT:
+        if note.nature in SANS_PERSONNE:
             return note.supplier or ""
         personne = personnes.get(note.person_id)
         return personne.nom if personne else (note.supplier or "")
@@ -884,7 +898,8 @@ class NotesDeFrais:
         compteurs["a_trancher"] = db.scalar(select(func.count()).select_from(NoteFrais).where(NoteFrais.org_id == membre.org_id, self._a_trancher())) or 0
         en_paiement = db.scalars(
             select(NoteFrais).where(
-                NoteFrais.org_id == membre.org_id, NoteFrais.don.is_(False), NoteFrais.statut.in_(EN_PAIEMENT)
+                NoteFrais.org_id == membre.org_id, NoteFrais.don.is_(False), NoteFrais.statut.in_(EN_PAIEMENT),
+                NoteFrais.nature != VENTE,
             )
         ).all()
         prises = self._operations_prises(db, membre.org_id)
@@ -898,7 +913,7 @@ class NotesDeFrais:
         a_rapprocher = [n for n in db.scalars(
             select(NoteFrais).where(
                 NoteFrais.org_id == membre.org_id, NoteFrais.don.is_(False), NoteFrais.bank_operation_id.is_(None),
-                NoteFrais.statut.in_((ENVOYEE,) + EN_PAIEMENT),
+                NoteFrais.statut.in_((ENVOYEE,) + EN_PAIEMENT), NoteFrais.nature != VENTE,
             )
         )]
         compteurs["rapprocher"] = sum(
@@ -967,7 +982,7 @@ class NotesDeFrais:
     @staticmethod
     def _exiger_complete(note: NoteFrais) -> None:
         """Une pièce photographiée en rafale se complète avant d'être validée."""
-        if note.nature != ACHAT and note.person_id == PERSONNE_A_CHOISIR:
+        if note.nature not in SANS_PERSONNE and note.person_id == PERSONNE_A_CHOISIR:
             raise ValueError("Choisissez d'abord pour qui est cette pièce.")
         if any(d.montant_centimes <= 0 for d in note.depenses):
             raise ValueError("Indiquez d'abord le montant.")
@@ -991,6 +1006,7 @@ class NotesDeFrais:
         batch_id: str | None = None,
         numero_piece: str | None = None,
         lien: dict | None = None,
+        lignes: list[tuple[int | None, int]] | None = None,
     ) -> NoteFrais | Preuve:
         """Une pièce établie par un trésorier : une photo (ou un fichier) =
         une note d'une dépense, créée aussitôt. La lecture remplit ce qu'elle
@@ -1002,8 +1018,13 @@ class NotesDeFrais:
         (`Preuve`). `valider` : tout est saisi, validé en même temps.
         `lien` (Import auto pièces) : le fichier reste où il est, dans un
         dossier du club ({"doc_node_id"} ou {"drive_id", "drive_path"}) ;
-        jamais rangé, déplacé ni effacé par l'appli."""
+        jamais rangé, déplacé ni effacé par l'appli.
+        Vente (financier.md §8.12) : `lignes` = (catégorie, montant) de chaque
+        compte de produits, la première porte le fichier ; une pièce lue comme
+        une recette (« vente ») est proposée en Vente."""
         self._exiger_tresorier(membre)
+        if lignes:
+            categorie_id, montant_centimes = lignes[0]
         if nature is not None and nature not in NATURES:
             raise ValueError("Nature inconnue.")
         lu = {}
@@ -1039,6 +1060,8 @@ class NotesDeFrais:
             # Personne reconnue à une lettre près : proposée à la revue, jamais décidée (Seb, 10/11).
             lu_sur = (lu.get("client") or "") if lu.get("emetteur_personne") is False else f"{emetteur or ''} {lu.get('description') or ''}"
             proche = self._personne_proche(db, membre, lu_sur, jour)
+        if nature is None and lu.get("sorte") == "vente":
+            nature = VENTE
         if nature is None:
             # Seb, 31/10 : seul un prof de l'école donne des honoraires ; un
             # extérieur qui facture, c'est une note de frais à son nom.
@@ -1052,9 +1075,11 @@ class NotesDeFrais:
             org_id=membre.org_id, nature=nature, statut=ENVOYEE, titre="", established_by=membre.person_id,
             batch_id=(batch_id or "")[:36] or None, suggested_person_id=proche.person_id if proche is not None else None,
         )
-        if nature == ACHAT:
+        if nature in SANS_PERSONNE:
             note.person_id = membre.person_id
-            note.supplier = " ".join((fournisseur or emetteur or "").split())[:120] or None
+            # Une vente : de qui vient l'argent (à qui l'association a facturé), sinon ce que dit la pièce.
+            lu_qui = (lu.get("client") or lu.get("description")) if nature == VENTE else emetteur
+            note.supplier = " ".join((fournisseur or lu_qui or "").split())[:120] or None
         else:
             note.person_id = personne.person_id if personne is not None else PERSONNE_A_CHOISIR
             if personne is None and lu.get("emetteur_personne"):
@@ -1075,7 +1100,14 @@ class NotesDeFrais:
             ),
         )
         db.add(depense)
+        for autre_categorie, autre_montant in (lignes or [])[1:]:
+            self._valider_saisie(autre_montant, jour)
+            db.add(Depense(
+                org_id=membre.org_id, person_id=note.person_id, date=jour, montant_centimes=autre_montant,
+                description=description, note_id=note.id, categorie_id=self._categorie(db, membre.org_id, autre_categorie),
+            ))
         db.flush()
+        db.refresh(note)
         if valider:
             self._exiger_complete(note)
             self._numeroter(db, note)  # saisie à la main validée d'un coup : elle aussi a son numéro (Seb, 10/11)
@@ -1091,7 +1123,7 @@ class NotesDeFrais:
         elif fichier is not None:
             self._poser_piece(
                 membre, depense, io.BytesIO(fichier[0]), fichier[1], fichier[2],
-                nom_personne=personne.nom if personne is not None and nature != ACHAT else membre.nom,
+                nom_personne=personne.nom if personne is not None and nature not in SANS_PERSONNE else membre.nom,
             )
             db.flush()
             note.duplicate_of_id = self._meme_fichier(db, note)
@@ -1358,7 +1390,7 @@ class NotesDeFrais:
             if note.statut != ENVOYEE:
                 raise ValueError("La nature ne change plus une fois la pièce validée.")
             note.nature = champs["nature"]
-            if note.nature == ACHAT:
+            if note.nature in SANS_PERSONNE:
                 note.person_id = membre.person_id
             elif champs.get("person_id") is None:
                 note.person_id = PERSONNE_A_CHOISIR
@@ -1368,7 +1400,7 @@ class NotesDeFrais:
             note.rib_titulaire = note.rib_iban = note.rib_bic = None
         if champs.get("nature") is not None or champs.get("person_id") is not None:
             note.suggested_person_id = None  # la trésorière a tranché
-        if note.nature != ACHAT and champs.get("person_id") is not None and champs["person_id"] != note.person_id:
+        if note.nature not in SANS_PERSONNE and champs.get("person_id") is not None and champs["person_id"] != note.person_id:
             self._personne_de_l_org(db, membre, champs["person_id"])
             note.person_id = champs["person_id"]
             note.supplier = None  # le nom lu a servi
@@ -1377,9 +1409,11 @@ class NotesDeFrais:
             depense.person_id = note.person_id
         if not note.rib_iban:
             self._recopier_rib(db, note)
-        if note.nature == ACHAT and champs.get("fournisseur") is not None:
+        if note.nature in SANS_PERSONNE and champs.get("fournisseur") is not None:
             note.supplier = " ".join(champs["fournisseur"].split())[:120] or None
-        if len(note.depenses) == 1:
+        if note.nature == VENTE and champs.get("lignes"):
+            self._poser_lignes(db, note, champs["lignes"], champs.get("jour"), champs.get("description"))
+        elif len(note.depenses) == 1:
             depense = note.depenses[0]
             if champs.get("jour") is not None:
                 depense.date, depense.date_approximative = champs["jour"], False
@@ -1401,6 +1435,39 @@ class NotesDeFrais:
         self._reranger(db, membre, note)
         self._ranger(db, membre, note)
         return note
+
+    def _poser_lignes(
+        self, db: Session, note: NoteFrais, lignes: list[tuple[int | None, int]], jour: date | None, description: str | None
+    ) -> None:
+        """Les lignes d'une vente (financier.md §8.12) : (catégorie, montant)
+        dans l'ordre ; la première dépense garde le fichier, celles en trop
+        partent, celles qui manquent s'ajoutent."""
+        jour = jour or (note.depenses[0].date if note.depenses else date.today())
+        description = " ".join((description if description is not None else (note.depenses[0].description if note.depenses else "")).split())[:200]
+        existantes = list(note.depenses)
+        for rang, (categorie_id, montant) in enumerate(lignes):
+            self._valider_saisie(montant, jour)
+            depense = existantes[rang] if rang < len(existantes) else None
+            if depense is None:
+                depense = Depense(org_id=note.org_id, person_id=note.person_id, note_id=note.id, date=jour, montant_centimes=montant)
+                db.add(depense)
+            depense.date, depense.montant_centimes, depense.description = jour, montant, description
+            depense.categorie_id = self._categorie(db, note.org_id, categorie_id)
+        for depense in existantes[len(lignes):]:
+            if depense.pieces:
+                raise ValueError("La première ligne porte le fichier : retirez une autre ligne.")
+            db.delete(depense)
+        db.flush()
+        db.refresh(note)
+
+    @staticmethod
+    def dossier_vente(note: NoteFrais) -> str:
+        """Le sous-dossier de Financier › VENTES d'une vente (Seb, 19/11) : le
+        nom du compte de sa première ligne, en majuscules sans accent
+        (« 756 Cotisations » → COTISATIONS), créé à la première vente de ce
+        compte ; "" sans compte (directement dans VENTES)."""
+        premiere = note.depenses[0] if note.depenses else None
+        return nom_dossier(premiere.categorie.libelle) if premiere is not None and premiere.categorie else ""
 
     def _reranger(self, db: Session, membre: Membre, note: NoteFrais) -> None:
         """Après une correction (date, personne, fournisseur, montant) : les
@@ -1554,6 +1621,8 @@ class NotesDeFrais:
             return f"Honoraires {MOIS[jour.month - 1]} {jour.year}"
         if note.nature == ACHAT:
             return note.supplier or "Achat"
+        if note.nature == VENTE:
+            return note.supplier or "Vente"
         if note.established_by is not None:
             return f"Frais {MOIS[jour.month - 1]} {jour.year}"
         return note.titre
@@ -1561,7 +1630,7 @@ class NotesDeFrais:
     def _recopier_rib(self, db: Session, note: NoteFrais) -> None:
         """Le RIB à payer, s'il est connu : celui de la personne (honoraires),
         ou celui du dernier achat chez ce fournisseur."""
-        if note.rib_iban or note.don:
+        if note.rib_iban or note.don or note.nature == VENTE:
             return
         if note.nature == ACHAT:
             if not note.supplier:
@@ -1628,6 +1697,9 @@ class NotesDeFrais:
             return [A_TRAITER]
         if note.nature == ACHAT:
             return [DOSSIERS[ACHAT], f"{self._date_docs(note):%m.%Y}"]
+        if note.nature == VENTE:
+            dossier = self.dossier_vente(note)
+            return [DOSSIERS[VENTE], dossier] if dossier else [DOSSIERS[VENTE]]
         if note.person_id == PERSONNE_A_CHOISIR:
             return None
         personne = self.annuaire.personnes(db, note.org_id, {note.person_id}).get(note.person_id)
@@ -1661,6 +1733,8 @@ class NotesDeFrais:
         jour = depense.date.isoformat()
         if note.nature == ACHAT:
             base = f"{jour} Facture {note.supplier or 'Achat'} {montant_court(depense.montant_centimes)}"
+        elif note.nature == VENTE:
+            base = f"{jour} Vente {note.supplier or ''} {montant_court(self.total(note))}"
         elif note.nature == HONORAIRES:
             base = f"{jour} Facture Hono {personne or note.titre}"
         else:
@@ -1671,7 +1745,7 @@ class NotesDeFrais:
 
     def _nom_personne(self, db: Session, note: NoteFrais) -> str:
         """Le nom de la personne de la note (prof, membre), pour le nom des fichiers."""
-        if note.nature == ACHAT or note.person_id == PERSONNE_A_CHOISIR:
+        if note.nature in SANS_PERSONNE or note.person_id == PERSONNE_A_CHOISIR:
             return ""
         personne = self.annuaire.personnes(db, note.org_id, {note.person_id}).get(note.person_id)
         return personne.nom if personne else ""
@@ -1710,7 +1784,7 @@ class NotesDeFrais:
         if self.ports.classeur is None or chemin is None:
             return
         try:
-            par_fichier = note.nature == ACHAT or chemin == [A_TRAITER]
+            par_fichier = note.nature in SANS_PERSONNE or chemin == [A_TRAITER]
             self.ports.classeur.retirer(db, membre, chemin, node_ids if par_fichier else (), le=self._date_docs(note))
         except Exception:
             db.rollback()
@@ -1905,7 +1979,7 @@ class NotesDeFrais:
         depuis = _maintenant() - timedelta(days=60)
         notes = list(db.scalars(
             select(NoteFrais).where(
-                NoteFrais.org_id == membre.org_id, NoteFrais.don.is_(False),
+                NoteFrais.org_id == membre.org_id, NoteFrais.don.is_(False), NoteFrais.nature != VENTE,
                 # Une pièce « déjà payée » (§7 septies) n'est pas à payer : elle attend dans Rapprocher.
                 (NoteFrais.statut.in_(EN_PAIEMENT) & NoteFrais.paid_unmatched_at.is_(None))
                 | ((NoteFrais.statut == REMBOURSEE) & (NoteFrais.remboursee_le >= depuis)),
@@ -1930,7 +2004,7 @@ class NotesDeFrais:
         facture), de préférence au nom du bénéficiaire. Proposé, jamais
         rattaché sans confirmation."""
         banque, total = self.ports.banque, self.total(note)
-        if banque is None or total <= 0 or note.don or note.statut not in (ENVOYEE,) + EN_PAIEMENT:
+        if banque is None or total <= 0 or note.don or note.statut not in (ENVOYEE,) + EN_PAIEMENT or note.nature == VENTE:
             return None
         if note.statut == VIREE and note.transfer_sent_at is not None:
             reference = note.transfer_sent_at.date()
@@ -1950,7 +2024,7 @@ class NotesDeFrais:
         même personne encore à payer, ces pièces (« paie aussi »). Jamais
         rattaché sans « C'est ce paiement »."""
         banque, total = self.ports.banque, self.total(note)
-        if banque is None or total <= 0 or note.don or note.statut not in (ENVOYEE,) + EN_PAIEMENT:
+        if banque is None or total <= 0 or note.don or note.statut not in (ENVOYEE,) + EN_PAIEMENT or note.nature == VENTE:
             return []
         reference = min((d.date for d in note.depenses), default=note.envoyee_le.date())
         candidates = [
@@ -2135,7 +2209,7 @@ class NotesDeFrais:
                 personne = personnes.get(note.person_id)
                 lignes.append({
                     "date": depense.date,
-                    "personne": (note.supplier or "") if note.nature == ACHAT else (personne.nom if personne else ""),
+                    "personne": (note.supplier or "") if note.nature in SANS_PERSONNE else (personne.nom if personne else ""),
                     "categorie": depense.categorie.libelle if depense.categorie else "",
                     "description": depense.description,
                     "montant": depense.montant_centimes / 100,
@@ -2155,7 +2229,10 @@ class NotesDeFrais:
         pièce). Une pièce est de la période par sa date, sinon par celle de
         son paiement."""
         self._exiger_tresorier(membre)
-        notes = list(db.scalars(select(NoteFrais).where(NoteFrais.org_id == membre.org_id, NoteFrais.statut != REFUSEE)))
+        # Les ventes s'encaissent : elles viendront ici avec l'étape 2 (financier.md §8.12).
+        notes = list(db.scalars(select(NoteFrais).where(
+            NoteFrais.org_id == membre.org_id, NoteFrais.statut != REFUSEE, NoteFrais.nature != VENTE,
+        )))
         personnes = self.annuaire.personnes(db, membre.org_id, {n.person_id for n in notes} - {PERSONNE_A_CHOISIR})
         banque = self.ports.banque
         lignes = {}

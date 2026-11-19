@@ -18,6 +18,7 @@ from .adapter import (
     NotifieurContretemps,
     compte_de_tiers,
     comptes_de_charges,
+    comptes_de_produits,
     membre_appelant,
 )
 
@@ -65,6 +66,8 @@ def mount(app, core) -> None:
             banque=BanqueContretemps(),
             # Catégories des dépenses = comptes de charges du plan comptable.
             plan=comptes_de_charges,
+            # Comptes d'une vente = comptes de produits (financier.md §8.12).
+            plan_ventes=comptes_de_produits,
             # Compte de tiers des écritures montrées à la revue de l'import.
             tiers=compte_de_tiers,
             # Justificatif resté sur un drive du club (Import auto pièces).

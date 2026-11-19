@@ -908,3 +908,18 @@
 .nf-joindre__nom {
   overflow-wrap: anywhere;
 }
+
+/* Vente (financier.md §8.12) : une ligne = compte, montant, retirer. */
+.nf-label {
+  font-weight: 600;
+}
+.nf-vente-ligne {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 7.5em 48px;
+  gap: 6px;
+  align-items: center;
+}
+.nf-vente-ligne input {
+  text-align: right;
+  min-width: 0;
+}

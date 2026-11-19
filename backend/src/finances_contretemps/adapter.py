@@ -80,7 +80,7 @@ def adresse_ecole(db: Session, ecole_id: int | None) -> str:
 
 
 # Libellés des natures de dépense (notes_frais/models.py) sur la ligne de Comptes.
-_NATURES = {"frais": "Note de frais", "honoraires": "Honoraires", "achat": "Achat"}
+_NATURES = {"frais": "Note de frais", "honoraires": "Honoraires", "achat": "Achat", "vente": "Vente"}
 
 
 def pieces_des_operations(db: Session, ecole_id: int) -> dict[int, dict]:
@@ -139,7 +139,8 @@ def pieces_a_payer(db: Session, ecole_id: int) -> list[dict]:
 
     notes = list(db.scalars(
         select(NoteFrais).where(
-            NoteFrais.org_id == ecole_id, NoteFrais.don.is_(False), NoteFrais.statut.in_((VALIDEE, PREPAREE, VIREE))
+            NoteFrais.org_id == ecole_id, NoteFrais.don.is_(False), NoteFrais.statut.in_((VALIDEE, PREPAREE, VIREE)),
+            NoteFrais.nature != "vente",  # une vente à encaisser n'est pas un fournisseur à payer
         )
     ))
     codes = {c.id: c.code for c in db.scalars(select(CategorieFrais).where(CategorieFrais.org_id == ecole_id))}
@@ -527,15 +528,13 @@ def ranger_releve(documents, gestion_saisons):
     return ranger
 
 
-VENTES = ("COTISATIONS", "COURS", "PARTICIPATION GALA")
-
 
 def preparer_dossiers_financier(documents):
     """Crée, vides, les dossiers de la trésorière sous Financier (Seb, 30/10)
     dans la saison en cours et les saisons ouvertes : RELEVES BANCAIRES ›
     un par compte en banque, ACHATS (ses mois viennent avec les pièces),
-    HONORAIRES › un par prof (PRENOM NOM), VENTES › COTISATIONS, COURS,
-    PARTICIPATION GALA. Une fois par saison et par processus : ce qui existe
+    HONORAIRES › un par prof (PRENOM NOM), VENTES (ses sous-dossiers, un par
+    compte, viennent avec les ventes : Seb, 19/11). Une fois par saison et par processus : ce qui existe
     déjà ne bouge pas."""
     from comptes.roles import PROFESSEUR, a_le_role
     from finances.models import FinAccount
@@ -579,7 +578,7 @@ def preparer_dossiers_financier(documents):
             if racine is None:
                 continue
             chemins = [[RELEVES], *([RELEVES, c] for c in comptes), ["ACHATS"], ["HONORAIRES"],
-                       *(["HONORAIRES", p] for p in profs), *(["VENTES", v] for v in VENTES)]
+                       *(["HONORAIRES", p] for p in profs), ["VENTES"]]
             for chemin in chemins:
                 classeur._dossier(db, qui, racine.id, chemin)
             db.commit()

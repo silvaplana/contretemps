@@ -95,7 +95,8 @@ export const notePourTresorier = (noteId) => appel(`/tresorerie/notes/${noteId}`
 export const valider = (noteId) => appel(`/notes/${noteId}/valider`, { method: 'POST' })
 export const refuser = (noteId, motif) => appel(`/notes/${noteId}/refuser`, json('POST', { motif }))
 export const rembourser = (noteIds) => appel('/remboursements', json('POST', { note_ids: noteIds }))
-export const categories = () => appel('/categories')
+// `ventes` : les comptes de produits d'une vente (financier.md §8.12), à part des catégories de dépense.
+export const categories = ({ ventes = false } = {}) => appel(ventes ? '/categories?ventes=true' : '/categories')
 
 // Financier › Pièces (spec/modules/financier.md §8.3 bis) : honoraires et
 // achats établis par un trésorier, une photo = une pièce, lue par le serveur.

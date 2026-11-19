@@ -31,8 +31,11 @@ Comptes
   on remplit les cases à la main. Saisons suivantes : reportés par la clôture, rien à faire.
 
 Pièces
-- Puces : Virements, Rapprocher, Notes de frais, Honoraires, Achats, Ventes, À trancher (les pièces mises « plus tard » et les pièces refusées, fichiers dans Docs › Financier › A TRAITER). Un badge compte les pièces qui attendent. Ventes (pièces de
-  recette) ne se saisit pas encore. Les transactions bancaires sans compte se classent dans Comptes (filtre « Sans compte »), badge
+- Puces : Virements, Rapprocher, Notes de frais, Honoraires, Achats, Ventes, À trancher (les pièces mises « plus tard » et les pièces refusées, fichiers dans Docs › Financier › A TRAITER). Un badge compte les pièces qui attendent. Ventes = les pièces de
+  recette (remise de chèques, reçu, facture émise, subvention) : « + » › Saisir à la main › Vente, ou une photo lue
+  comme une recette. Fiche d'une vente : De qui ou quoi, Date, Compte et montant (« Ajouter une ligne » pour plusieurs
+  comptes), Pièce facultative ; « Valider : À encaisser ». Rangée dans Docs › Financier › VENTES › le nom du compte.
+  Les transactions bancaires sans compte se classent dans Comptes (filtre « Sans compte »), badge
   bleu sur le sous-onglet Comptes.
 - « + » : Saisir une dépense. Prendre en photo (enchaîner : Pièce suivante, Encore une page de celle-ci), Choisir des
   fichiers (ou un zip), ou Saisir à la main (fiche vide ; « Prendre une photo » ou « Joindre un fichier » y ajoute quand même le justificatif). Chaque pièce est lue ; l'appli propose la nature (facture d'un prof de

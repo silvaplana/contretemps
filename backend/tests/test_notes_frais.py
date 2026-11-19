@@ -495,7 +495,7 @@ def test_rafale_d_achats_lue_rangee_dans_achats(client, ecole, monkeypatch):
 
     puce = client.get("/notes-frais/tresorerie?filtre=achat", headers=entetes_session(tresorier)).json()
     assert [n["id"] for n in puce["notes"]] == [note["id"]]
-    assert puce["compteurs"] == {"frais": 0, "honoraires": 0, "achat": 1, "virements": 0, "a_trancher": 0, "rapprocher": 0}
+    assert puce["compteurs"] == {"frais": 0, "honoraires": 0, "achat": 1, "vente": 0, "virements": 0, "a_trancher": 0, "rapprocher": 0}
     # Rien des achats dans la puce Notes de frais.
     assert client.get("/notes-frais/tresorerie?filtre=frais", headers=entetes_session(tresorier)).json()["notes"] == []
 
@@ -1030,7 +1030,7 @@ def test_aide_au_virement_et_faire_payer_par_quelqu_un(client, db_session, ecole
     [ligne] = liste["virements"]
     assert ligne["beneficiaire"] == "L MARTIN" and ligne["libelle_virement"] == "Contretemps honoraires oct 2026"
     assert [p["nom"] for p in liste["payeurs"]] == ["Julia Dho"]
-    assert _a_faire(client, tresorier) == {"frais": 0, "honoraires": 0, "achat": 0, "virements": 1, "a_trancher": 0, "rapprocher": 0}
+    assert _a_faire(client, tresorier) == {"frais": 0, "honoraires": 0, "achat": 0, "vente": 0, "virements": 1, "a_trancher": 0, "rapprocher": 0}
 
     # « Qui paie » : Ana, qui a l'appli de la banque.
     reglage = client.put("/notes-frais/payeurs", json={"person_ids": [admin.id]}, headers=entetes_session(tresorier))
@@ -1251,6 +1251,87 @@ def test_categories_sont_les_comptes_de_charges_du_plan(client, db_session, ecol
     assert achat.status_code == 201, achat.text
     assert achat.json()["depenses"][0]["categorie"]["id"] == fournitures["id"]
 
+
+
+# --- Ventes (financier.md §8.12, Seb 19/11) ---
+
+
+def test_vente_a_plusieurs_lignes_rangee_dans_ventes_au_nom_du_compte(client, db_session, ecole, monkeypatch):
+    """Une vente : de qui, date, une ou plusieurs lignes (compte de produits,
+    montant) ; ses comptes ne sont jamais des catégories de dépense ; son
+    fichier va dans VENTES › le nom du compte de la première ligne ; validée,
+    elle est À encaisser (numéro VE), jamais dans Virements ni à payer."""
+    tresorier = ecole["tresorier"]
+    t = entetes_session(tresorier)
+    org = ecole["ecole"].id
+    plan = client.get("/finances/chart", headers=t).json()["accounts"]
+    produits = sorted((a["number"], a["label"]) for a in plan if a["nature"] == "recette" and a["active"])
+    ventes = client.get("/notes-frais/categories?ventes=true", headers=t).json()
+    assert [(c["code"], c["libelle"]) for c in ventes] == produits
+    depenses = client.get("/notes-frais/categories", headers=t).json()
+    assert not {c["code"] for c in depenses} & {c["code"] for c in ventes}
+    cotisations = next(c for c in ventes if c["code"] == "756")
+    autres = next(c for c in ventes if c["code"] == "758")
+
+    import json
+    lignes = [{"categorie_id": cotisations["id"], "montant_centimes": 96000}, {"categorie_id": autres["id"], "montant_centimes": 28000}]
+    vente = _etablir(client, tresorier, "vente", fournisseur="Gala du 14 juin", date="2026-10-16", lignes=json.dumps(lignes))
+    assert vente["nature"] == "vente" and vente["fournisseur"] == "Gala du 14 juin" and vente["titre"] == "Gala du 14 juin"
+    assert vente["total_centimes"] == 124000 and [d["montant_centimes"] for d in vente["depenses"]] == [96000, 28000]
+    assert vente["paiement_propose"] is None and vente["paiements_possibles"] == []
+
+    saison = _enfant(client, org, tresorier, None, "Saison 2026-2027")
+    financier = _enfant(client, org, tresorier, saison["id"], "Financier")
+    dossier = _enfant(client, org, tresorier, _enfant(client, org, tresorier, financier["id"], "VENTES")["id"], "COTISATIONS")
+    noms = [i["name"] for i in _parcourir(client, org, tresorier, dossier["id"]).json()["items"]]
+    assert noms == ["2026-10-16 Vente Gala du 14 juin 1240,00.jpg"]
+
+    puce = client.get("/notes-frais/tresorerie?filtre=vente", headers=t).json()
+    assert [n["id"] for n in puce["notes"]] == [vente["id"]] and puce["compteurs"]["vente"] == 1
+    # Une seule ligne maintenant : celle qui porte le fichier reste.
+    corrige = client.patch(f"/notes-frais/notes/{vente['id']}", json={"lignes": [{"categorie_id": cotisations["id"], "montant_centimes": 124000}]}, headers=t)
+    assert corrige.status_code == 200, corrige.text
+    assert [d["montant_centimes"] for d in corrige.json()["depenses"]] == [124000]
+    assert corrige.json()["depenses"][0]["pieces"]
+
+    valide = client.post(f"/notes-frais/notes/{vente['id']}/valider", headers=t)
+    assert valide.status_code == 200 and valide.json()["statut"] == "validee"
+    assert valide.json()["numero_piece"] == "VE-2026-001"
+    assert client.get("/notes-frais/virements", headers=t).json()["virements"] == []
+    assert client.get("/notes-frais/tresorerie/compteurs", headers=t).json()["virements"] == 0
+    # Pas un fournisseur à payer, et pas dans « Mes notes de frais » du trésorier.
+    from finances_contretemps.adapter import pieces_a_payer
+    assert pieces_a_payer(db_session, org) == []
+    assert client.get("/notes-frais/moi", headers=t).json()["notes"] == []
+
+
+def test_vente_saisie_a_la_main_sans_fichier_ne_cree_rien_dans_docs(client, ecole):
+    """Règle du 10/11 : sans fichier, rien dans Docs ; sans compte, la vente
+    irait directement dans VENTES."""
+    tresorier = ecole["tresorier"]
+    t = entetes_session(tresorier)
+    org = ecole["ecole"].id
+    client.get("/finances/chart", headers=t)  # le plan de base de l'école
+    subvention = next(c for c in client.get("/notes-frais/categories?ventes=true", headers=t).json() if c["code"] == "740")
+    vente = _etablir(client, tresorier, "vente", contenu=None, fournisseur="Mairie de Sanary", date="2026-10-02",
+                     montant_centimes="150000", categorie_id=str(subvention["id"]), valider="true")
+    assert vente["statut"] == "validee" and vente["depenses"][0]["sans_justificatif"]
+    saison = _enfant(client, org, tresorier, None, "Saison 2026-2027")
+    financier = saison and _enfant(client, org, tresorier, saison["id"], "Financier")
+    ventes = financier and _enfant(client, org, tresorier, financier["id"], "VENTES")
+    assert not ventes or _parcourir(client, org, tresorier, ventes["id"]).json()["items"] == []
+
+
+def test_une_recette_lue_est_proposee_en_vente(client, ecole, monkeypatch):
+    """La lecture dit « vente » (bordereau de remise, reçu émis par le club) :
+    la pièce est proposée en Vente, au nom de qui a payé."""
+    monkeypatch.setattr(
+        main.notes_frais_client.ports, "lecteur",
+        LecteurFacture(sorte="vente", date="2026-10-18", montant_centimes=36000, commercant="Contretemps",
+                       client="Famille Martin", description="Stage de Pâques"),
+    )
+    note = _etablir(client, ecole["tresorier"], None)
+    assert note["nature"] == "vente" and note["fournisseur"] == "Famille Martin" and note["total_centimes"] == 36000
 
 # --- Personnes extérieures (§7 quater) ---
 
