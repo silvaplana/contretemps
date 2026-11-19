@@ -41,7 +41,9 @@ ACHAT = "achat"
 # Une recette avec sa pièce (financier.md §8.12) : une ligne (`Depense`) par
 # compte de produits ; À valider → À encaisser (validée) → Encaissée.
 VENTE = "vente"
-NATURES = (FRAIS, HONORAIRES, ACHAT, VENTE)
+# Bulletin de salaire (financier.md §8.11) : 641 brut + 645 part employeur − 431 cotisations = net payé.
+SALAIRE = "salaire"
+NATURES = (FRAIS, HONORAIRES, ACHAT, VENTE, SALAIRE)
 # person_id d'une note d'honoraires dont le prof n'est pas encore reconnu.
 PERSONNE_A_CHOISIR = 0
 

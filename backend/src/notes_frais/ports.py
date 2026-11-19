@@ -220,6 +220,12 @@ class Ports:
     # Les comptes d'une vente (financier.md §8.12) : (numéro, libellé) des
     # comptes de produits actifs ; ils deviennent des catégories à part.
     plan_ventes: Callable[[Session, int], list[tuple[str, str]]] | None = None
+    # La paie (financier.md §8.11) : les comptes d'un bulletin de salaire (641, 645, 431) qui
+    # manquent au plan, (numéro, libellé) ; les y ajouter (« L'association a des salariés » :
+    # oui), ou retirer 431 (non). La paie est allumée quand 431 est dans le plan.
+    paie_manquants: Callable[[Session, int], list[tuple[str, str]]] | None = None
+    ajouter_paie: Callable[[Session, int], None] | None = None
+    retirer_paie: Callable[[Session, int], None] | None = None
     # Le compte de tiers (numéro, libellé) d'une pièce de cette nature pour ce
     # nom (401 Fournisseurs, 467n Honoraires Nom ; numéro vide = créé à la
     # validation), None si l'hôte ne passe pas par les tiers. Il fait montrer

@@ -35,6 +35,7 @@ from .models import (
     PREPAREE,
     REFUSEE,
     REMBOURSEE,
+    SALAIRE,
     VALIDEE,
     VENTE,
     VIREE,
@@ -61,11 +62,18 @@ FILTRES = ("a_valider", "a_rembourser", "terminees", "a_trancher")
 # À payer, pas encore vu sur le compte (financier.md §8.3 bis).
 EN_PAIEMENT = (VALIDEE, PREPAREE, VIREE)
 # Journal du numéro de pièce (financier.md §8.7) : AC achats, HO honoraires, NF notes de frais.
-JOURNAUX = {ACHAT: "AC", HONORAIRES: "HO", FRAIS: "NF", VENTE: "VE"}
+JOURNAUX = {ACHAT: "AC", HONORAIRES: "HO", FRAIS: "NF", VENTE: "VE", SALAIRE: "SA"}
 # Dossiers de Docs › Financier, par nature (financier.md §8.3 bis).
-DOSSIERS = {FRAIS: "Notes de frais", HONORAIRES: "HONORAIRES", ACHAT: "ACHATS", VENTE: "VENTES"}
-# Les natures sans personne : l'achat a un fournisseur, la vente « de qui ou quoi » (`supplier`).
-SANS_PERSONNE = (ACHAT, VENTE)
+DOSSIERS = {FRAIS: "Notes de frais", HONORAIRES: "HONORAIRES", ACHAT: "ACHATS", VENTE: "VENTES", SALAIRE: "SALAIRES"}
+# Les natures sans personne : l'achat a un fournisseur, la vente « de qui ou quoi », le salaire
+# le nom du salarié (`supplier`).
+SANS_PERSONNE = (ACHAT, VENTE, SALAIRE)
+# Les natures à plusieurs lignes (compte, montant) : la vente (financier.md §8.12) et le bulletin
+# de salaire (§8.11), qui donnent leurs comptes à la ligne de banque.
+A_LIGNES = (VENTE, SALAIRE)
+# Les comptes d'un bulletin de salaire (financier.md §8.11) : salaire brut, part de l'employeur,
+# cotisations dues à l'URSSAF (salarié + employeur, en moins : payées plus tard par le prélèvement).
+COMPTES_PAIE = (("641", "Salaires"), ("645", "Charges sociales"), ("431", "URSSAF à payer"))
 A_TRAITER = "A TRAITER"  # « plus tard » et refusées, le temps de décider (Seb, 6/11)
 VIREMENTS_SANS_FACTURE = "VIREMENTS SANS FACTURE"  # l'avis de virement reçu sans facture, gardé sur la transaction (§7 octies)
 ECARTS = ("refund", "pay_rest", "write_off")
@@ -255,6 +263,58 @@ class NotesDeFrais:
         db.commit()
         return self.categories(db, membre.org_id)
 
+    # --- Paie (financier.md §8.11) ---
+
+    def comptes_paie_manquants(self, db: Session, org_id: int) -> list[tuple[str, str]]:
+        """Les comptes d'un bulletin de salaire absents du plan : l'appli le dit, rien n'est ajouté seul."""
+        return list(self.ports.paie_manquants(db, org_id)) if self.ports.paie_manquants is not None else []
+
+    def paie_active(self, db: Session, org_id: int) -> bool:
+        """« L'association a des salariés » (financier.md §8.11) : 431 est dans
+        le plan. Éteint par défaut : une école sans salariés ne voit rien."""
+        return self.ports.paie_manquants is not None and "431" not in dict(self.ports.paie_manquants(db, org_id))
+
+    def regler_paie(self, db: Session, membre: Membre, active: bool) -> bool:
+        """Oui : les comptes de la paie entrent au plan (rien d'autre n'est
+        touché) ; non : 431 sort du plan (inactif), les bulletins déjà saisis restent."""
+        self._exiger_tresorier(membre)
+        port = self.ports.ajouter_paie if active else self.ports.retirer_paie
+        if port is None:
+            raise ValueError("Pas de plan comptable sans le module Financier.")
+        port(db, membre.org_id)
+        return self.paie_active(db, membre.org_id)
+
+    def ajouter_comptes_paie(self, db: Session, membre: Membre) -> list[tuple[str, str]]:
+        """« Ajouter ces comptes » : un toucher de la trésorière."""
+        self.regler_paie(db, membre, True)
+        return self.comptes_paie_manquants(db, membre.org_id)
+
+    def lignes_paie(self, db: Session, org_id: int, brut: int, salarie: int, employeur: int) -> list[tuple[int | None, int]]:
+        """Les lignes d'un bulletin (financier.md §8.11), en centimes : 641
+        le brut, 645 la part de l'employeur, 431 en moins les cotisations des
+        deux (dues à l'URSSAF, payées par le prélèvement) ; leur somme est le
+        net payé au salarié. Un compte absent du plan : ligne sans compte."""
+        if brut <= 0 or salarie < 0 or employeur < 0:
+            raise ValueError("Indiquez le salaire brut et les cotisations (zéro s'il n'y en a pas).")
+        if salarie >= brut:
+            raise ValueError("Les cotisations du salarié dépassent le salaire brut : vérifiez les montants.")
+        par_code: dict[str, CategorieFrais] = {}
+        for categorie in self._toutes_categories(db, org_id, toutes=True):
+            if categorie.code and (categorie.code not in par_code or categorie.active):
+                par_code[categorie.code] = categorie
+        if "431" not in par_code:
+            # 431 est un compte de tiers, pas une charge : une catégorie à part, jamais proposée ailleurs.
+            par_code["431"] = CategorieFrais(org_id=org_id, code="431", libelle=dict(COMPTES_PAIE)["431"], ordre=999, active=False)
+            db.add(par_code["431"])
+            db.flush()
+        identifiant = lambda code: par_code[code].id if code in par_code else None  # noqa: E731
+        lignes = [(identifiant("641"), brut)]
+        if employeur:
+            lignes.append((identifiant("645"), employeur))
+        if salarie + employeur:
+            lignes.append((identifiant("431"), -(salarie + employeur)))
+        return lignes
+
     def _categorie(self, db: Session, org_id: int, categorie_id: int | None) -> int | None:
         if categorie_id is None:
             return None
@@ -313,6 +373,10 @@ class NotesDeFrais:
         if modifiable and depense.note_id is not None:
             raise ValueError("Cette dépense est déjà envoyée : reprenez la note pour la modifier.")
         return depense
+
+    def _valider_ligne(self, nature: str, montant_centimes: int, jour: date) -> None:
+        """Une ligne de pièce : positive, sauf les cotisations d'un bulletin de salaire (431, en moins)."""
+        self._valider_saisie(-montant_centimes if nature == SALAIRE and montant_centimes < 0 else montant_centimes, jour)
 
     def _valider_saisie(self, montant_centimes: int, jour: date) -> None:
         if montant_centimes <= 0:
@@ -987,7 +1051,10 @@ class NotesDeFrais:
         """Une pièce photographiée en rafale se complète avant d'être validée."""
         if note.nature not in SANS_PERSONNE and note.person_id == PERSONNE_A_CHOISIR:
             raise ValueError("Choisissez d'abord pour qui est cette pièce.")
-        if any(d.montant_centimes <= 0 for d in note.depenses):
+        if note.nature == SALAIRE:
+            if not note.depenses or note.depenses[0].montant_centimes <= 0 or NotesDeFrais.total(note) <= 0:
+                raise ValueError("Indiquez d'abord le salaire brut et les cotisations : le net payé doit être positif.")
+        elif any(d.montant_centimes <= 0 for d in note.depenses):
             raise ValueError("Indiquez d'abord le montant.")
 
     # --- Établir une dépense : le « + » de Financier › Pièces (financier.md §8.3 bis) ---
@@ -1104,7 +1171,7 @@ class NotesDeFrais:
         )
         db.add(depense)
         for autre_categorie, autre_montant in (lignes or [])[1:]:
-            self._valider_saisie(autre_montant, jour)
+            self._valider_ligne(nature, autre_montant, jour)
             db.add(Depense(
                 org_id=membre.org_id, person_id=note.person_id, date=jour, montant_centimes=autre_montant,
                 description=description, note_id=note.id, categorie_id=self._categorie(db, membre.org_id, autre_categorie),
@@ -1414,7 +1481,7 @@ class NotesDeFrais:
             self._recopier_rib(db, note)
         if note.nature in SANS_PERSONNE and champs.get("fournisseur") is not None:
             note.supplier = " ".join(champs["fournisseur"].split())[:120] or None
-        if note.nature == VENTE and champs.get("lignes"):
+        if note.nature in A_LIGNES and champs.get("lignes"):
             self._poser_lignes(db, note, champs["lignes"], champs.get("jour"), champs.get("description"))
         elif len(note.depenses) == 1:
             depense = note.depenses[0]
@@ -1442,14 +1509,14 @@ class NotesDeFrais:
     def _poser_lignes(
         self, db: Session, note: NoteFrais, lignes: list[tuple[int | None, int]], jour: date | None, description: str | None
     ) -> None:
-        """Les lignes d'une vente (financier.md §8.12) : (catégorie, montant)
+        """Les lignes d'une vente (financier.md §8.12) ou d'un bulletin de salaire (§8.11) : (catégorie, montant)
         dans l'ordre ; la première dépense garde le fichier, celles en trop
         partent, celles qui manquent s'ajoutent."""
         jour = jour or (note.depenses[0].date if note.depenses else date.today())
         description = " ".join((description if description is not None else (note.depenses[0].description if note.depenses else "")).split())[:200]
         existantes = list(note.depenses)
         for rang, (categorie_id, montant) in enumerate(lignes):
-            self._valider_saisie(montant, jour)
+            self._valider_ligne(note.nature, montant, jour)
             depense = existantes[rang] if rang < len(existantes) else None
             if depense is None:
                 depense = Depense(org_id=note.org_id, person_id=note.person_id, note_id=note.id, date=jour, montant_centimes=montant)
@@ -1628,6 +1695,8 @@ class NotesDeFrais:
             return note.supplier or "Achat"
         if note.nature == VENTE:
             return note.supplier or "Vente"
+        if note.nature == SALAIRE:
+            return " ".join(f"Salaire {note.supplier or ''} {MOIS[jour.month - 1]} {jour.year}".split())
         if note.established_by is not None:
             return f"Frais {MOIS[jour.month - 1]} {jour.year}"
         return note.titre
@@ -1637,7 +1706,7 @@ class NotesDeFrais:
         ou celui du dernier achat chez ce fournisseur."""
         if note.rib_iban or note.don or note.nature == VENTE:
             return
-        if note.nature == ACHAT:
+        if note.nature in (ACHAT, SALAIRE):
             if not note.supplier:
                 return
             precedent = db.scalars(
@@ -1705,6 +1774,8 @@ class NotesDeFrais:
         if note.nature == VENTE:
             dossier = self.dossier_vente(note)
             return [DOSSIERS[VENTE], dossier] if dossier else [DOSSIERS[VENTE]]
+        if note.nature == SALAIRE:
+            return [DOSSIERS[SALAIRE], f"{self._date_docs(note):%m.%Y}"]
         if note.person_id == PERSONNE_A_CHOISIR:
             return None
         personne = self.annuaire.personnes(db, note.org_id, {note.person_id}).get(note.person_id)
@@ -1740,6 +1811,8 @@ class NotesDeFrais:
             base = f"{jour} Facture {note.supplier or 'Achat'} {montant_court(depense.montant_centimes)}"
         elif note.nature == VENTE:
             base = f"{jour} Vente {note.supplier or ''} {montant_court(self.total(note))}"
+        elif note.nature == SALAIRE:
+            base = f"{jour} Bulletin de salaire {note.supplier or ''}"
         elif note.nature == HONORAIRES:
             base = f"{jour} Facture Hono {personne or note.titre}"
         else:
@@ -2128,9 +2201,9 @@ class NotesDeFrais:
         note.bank_operation_id, note.deferred_at, note.paid_unmatched_at = operation_id, None, None
         db.commit()
         db.refresh(note)
-        if note.nature == VENTE:
-            # La vente donne ses comptes à la ligne de banque (financier.md §8.12).
-            self.ports.banque.ventiler(db, note.org_id, operation_id, self._lignes_vente(note), membre.person_id)
+        if note.nature in A_LIGNES:
+            # La vente (financier.md §8.12) ou le bulletin de salaire (§8.11) donne ses comptes à la ligne de banque.
+            self.ports.banque.ventiler(db, note.org_id, operation_id, self._lignes_banque(note), membre.person_id)
         self._adopter_avis(db, membre, note, operation_id)
         self._reranger(db, membre, note)
         self._apres_paiement(db, membre, note, prevenir=prevenir)
@@ -2216,8 +2289,8 @@ class NotesDeFrais:
             raise ValueError("Cette pièce n'est pas rattachée à une transaction bancaire.")
         if not self._detachable(db, note):
             raise ValueError("La saison de cette ligne est clôturée : on ne la détache plus.")
-        if note.nature == VENTE:
-            self.ports.banque.deventiler(db, note.org_id, note.bank_operation_id, self._lignes_vente(note))
+        if note.nature in A_LIGNES:
+            self.ports.banque.deventiler(db, note.org_id, note.bank_operation_id, self._lignes_banque(note))
         if note.statut == ENVOYEE:
             pass
         elif note.nature == VENTE:
@@ -2239,6 +2312,14 @@ class NotesDeFrais:
     def _lignes_vente(note: NoteFrais) -> list[tuple[str, int]]:
         """(numéro du compte, centimes) de chaque ligne ; "" sans compte."""
         return [((d.categorie.code or "") if d.categorie else "", d.montant_centimes) for d in note.depenses]
+
+    @classmethod
+    def _lignes_banque(cls, note: NoteFrais) -> list[tuple[str, int]]:
+        """Les lignes comme la banque les voit : une vente encaisse (+), un
+        salaire sort (641 et 645 en moins, 431 en plus : la somme fait le
+        débit du net payé)."""
+        lignes = cls._lignes_vente(note)
+        return [(numero, -montant) for numero, montant in lignes] if note.nature == SALAIRE else lignes
 
     @staticmethod
     def _en_especes(note: NoteFrais) -> bool:

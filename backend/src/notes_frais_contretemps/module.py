@@ -18,8 +18,11 @@ from .adapter import (
     NotifieurContretemps,
     compte_de_tiers,
     comptes_de_charges,
+    ajouter_comptes_paie,
     comptes_de_produits,
+    comptes_paie_manquants,
     membre_appelant,
+    retirer_comptes_paie,
 )
 
 # Justificatifs pas encore envoyés (ensuite, ils sont dans Docs) : jamais
@@ -68,6 +71,10 @@ def mount(app, core) -> None:
             plan=comptes_de_charges,
             # Comptes d'une vente = comptes de produits (financier.md §8.12).
             plan_ventes=comptes_de_produits,
+            # Comptes d'un bulletin de salaire (641, 645, 431), ajoutés d'un toucher (financier.md §8.11).
+            paie_manquants=comptes_paie_manquants,
+            ajouter_paie=ajouter_comptes_paie,
+            retirer_paie=retirer_comptes_paie,
             # Compte de tiers des écritures montrées à la revue de l'import.
             tiers=compte_de_tiers,
             # Justificatif resté sur un drive du club (Importation automatique de pièces).

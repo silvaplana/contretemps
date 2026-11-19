@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import * as api from '../../api/notesFrais.js'
 import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
-import { BadgeEtat, NATURES, Pieces as Vignettes } from './commun.jsx'
+import { BadgeEtat, naturesProposees, Pieces as Vignettes } from './commun.jsx'
 import { ChoixTransactionModal } from './Rapprocher.jsx'
 
 // Fiche d'une vente (financier.md §8.12, maquette validée par Seb le 19/11) :
@@ -97,7 +97,7 @@ export default function VenteModal({ note, onClose, onFait }) {
       {note && note.statut === 'envoyee' && (
         // Une pièce lue comme une recette peut être une dépense : la nature se change ici.
         <div className="filter-chips nf-natures" role="group" aria-label="Nature de la pièce">
-          {Object.entries(NATURES).map(([value, label]) => (
+          {naturesProposees(false).map(([value, label]) => (
             <button
               key={value}
               type="button"

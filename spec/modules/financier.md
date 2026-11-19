@@ -1186,7 +1186,11 @@ de pièces » à valider par Seb avant le code, CLAUDE.md) :
   que les autres. On donne l'e-mail du compte Infomaniak, un **mot de passe d'application** (créé
   dans Infomaniak › Sécurité, pas le mot de passe habituel) et le numéro du kDrive ; l'appli lit
   par WebDAV. Les identifiants sont chiffrés comme ceux de HelloAsso, jamais montrés.
-- **Dossiers** : on coche les dossiers à lire (« Que doit lire l'appli ? »). L'appli **lit
+- **Dossiers** : on coche les dossiers à lire (« Que doit lire l'appli ? »). Rien n'est supposé sur
+  l'arborescence (Seb, 19/11 : il ne sait pas encore où sont les pièces). Juste après la connexion,
+  l'appli parcourt tout le kDrive une fois et écrit à côté de chaque dossier ce qu'elle y a
+  reconnu (« 14 bulletins de salaire », « 3 factures », rien si rien) ; les dossiers qui en ont
+  sont en haut. Elle ne garde de ce parcours que ces comptes. L'appli **lit
   seulement** : elle n'écrit dans le kDrive que sur le bouton « Déposer » (plus bas).
 - **Lecture** : chaque nouveau fichier d'un dossier coché est lu une fois (même lecteur que les
   factures) et reconnu d'après son contenu : bulletin de salaire, avis URSSAF, facture ; un fichier
@@ -1222,6 +1226,25 @@ fois : « Il manque 4 comptes pour la paie : 641 Salaires, 645 Charges sociales,
 payer, 431 URSSAF à payer » (pour HelloAsso : 4671 Licences FFST à reverser, et un compte de frais
 seulement si la campagne en a) ; **« Ajouter ces comptes »** en un geste, Annuler 10 s. Rien n'est
 ajouté sans ce toucher ; Contretemps, sans source allumée, ne voit jamais la question.
+
+**Paie : décision et code (Seb, 19/11, « code ce que tu peux » ; étape 3 ci-dessous)**. Un bulletin
+de salaire est une pièce de nature **Bulletin de salaire** (`salaire`, journal SA, dossier Docs ›
+Financier › SALAIRES › MM.AAAA), à plusieurs lignes comme une vente (§8.12) : 641 Salaires = le brut,
+645 Charges sociales = la part de l'employeur, 431 URSSAF à payer = **en moins** les cotisations du
+salarié et de l'employeur ; la somme des lignes est le net payé. La fiche demande seulement Salarié,
+Date, Salaire brut, Cotisations du salarié, Cotisations de l'employeur, et montre le net, le coût pour
+l'association et les écritures. Rattaché au virement du net, le bulletin **ventile** la ligne de
+banque (641 et 645 au débit, 431 au crédit) ; le prélèvement de l'URSSAF se classe dans 431 (proposé
+par le mot-clé URSSAF), qui revient à zéro. Pas de 421 : le net est payé par la banque le jour du
+virement (le bulletin non payé au 31/08 reste dans « Fournisseurs à payer », pas encore en charge au
+Complet). Le lecteur ne reconnaît pas encore les bulletins : une pièce lue (par exemple du kDrive)
+change de nature en « Bulletin de salaire » et les montants se saisissent.
+**Éteint par défaut, rien ne change pour Contretemps** : « L'association a des salariés » (non par
+défaut) sur la ligne Financier de Fonctionnalités ; « Oui » ajoute au plan 641, 645 et 431 (le mot
+URSSAF passe de 645 à 431), et Pièces montre la puce Salaires et la nature Bulletin de salaire ;
+« Non » rend 431 inactif. L'état est simplement « 431 actif dans le plan » : pas de réglage stocké.
+Routes : `GET|PUT /notes-frais/paie` ({active}), `GET|POST /notes-frais/paie/comptes`, `paie`
+({brut, salarie, employeur} en centimes) sur `POST /notes-frais/etablir` et `PATCH /notes-frais/notes/{id}`.
 
 **Dépôt du bilan** : à l'étape 7, « Déposer les documents » demande **où** quand le kDrive est
 connecté : kDrive (dossier choisi une fois, par exemple FINANCIER › BILAN <saison>) ou Docs comme
