@@ -7,7 +7,7 @@ import CreerSaison from './CreerSaison.jsx'
 import { MODULES } from '../../app/modules.js'
 
 // Les blocs des modules sous les dates (`seasonEditor`, ex. la campagne
-// HelloAsso de la saison) : saison en cours seulement.
+// HelloAsso de la saison) : toute saison qu'on édite (Seb, 19 novembre 2026).
 const BLOCS = MODULES.filter((m) => m.seasonEditor)
 
 // Panneau "Éditer la saison" (spec §2.6 et §5.1.1) : nom et dates de la
@@ -70,7 +70,7 @@ function PanneauSaison({ ecoleId, saison, onValider, onClose }) {
           onChange={(e) => setChamps((c) => ({ ...c, dateFin: e.target.value }))}
         />
       </div>
-      {saison.courante && BLOCS.map((m) => <m.seasonEditor key={m.key} ecoleId={ecoleId} />)}
+      {BLOCS.map((m) => <m.seasonEditor key={m.key} ecoleId={ecoleId} />)}
 
       {erreur && <p className="login-screen__erreur">{erreur}</p>}
     </Modal>

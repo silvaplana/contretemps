@@ -166,9 +166,11 @@ export default function HelloAssoCampagne({ ecoleId, onChange }) {
               </button>
               <p className="champs__note">
                 {resultat ||
-                  (etat.synced_at
-                    ? `Inscrits recopiés ${ilYA(etat.synced_at)}, puis toutes les 5 minutes.`
-                    : 'Les inscrits seront recopiés dans les 5 minutes, puis toutes les 5 minutes.')}
+                  (!etat.current
+                    ? 'Saison passée : pas de recopie automatique. Cliquez sur « Synchroniser maintenant » pour recopier.'
+                    : etat.synced_at
+                      ? `Inscrits recopiés ${ilYA(etat.synced_at)}, puis toutes les 5 minutes.`
+                      : 'Les inscrits seront recopiés dans les 5 minutes, puis toutes les 5 minutes.')}
               </p>
             </>
           )}

@@ -328,7 +328,7 @@ Le module FFST (`modules/ffst.md`) s'intercale après l'étape 6.
   anglais), proposées dans « Affichage dans Admin » (nature Calculé, HelloAsso) ; sans affichage
   enregistré, ordre de Sambo Admin : Adhérent, Email, Montant, Code promo, Photo, Statut HelloAsso,
   le reste masqué. Le tableau d'Admin > Élèves, quand la saison affichée a une campagne : titre
-  « Adhérents (n) » (adhésions HelloAsso non résiliées seulement : une fiche sans adhésion, un prof par exemple, est listée en dernier sans être comptée), « Rafraîchir » (synchronise, saison en cours),
+  « Adhérents (n) » (adhésions HelloAsso non résiliées seulement : une fiche sans adhésion, un prof par exemple, est listée en dernier sans être comptée), « Rafraîchir » (synchronise la saison affichée),
   « Rechercher un adhérent... » (nom, prénom, email), ordre de Sambo Admin (celui de HelloAsso :
   la commande la plus récente d'abord, Seb 18 novembre 2026 ; `memberList.ordre`), filtres par âge, ligne résiliée grisée et nom
   barré, pas de « + », d'import, de poubelle ni d'Inscription OCR / web ; menu ⋮ « Masquer /
@@ -470,12 +470,15 @@ comment elle s'en sert. Maquette du paramétrage : https://claude.ai/artifact/N9
 ### 8.1 Les trois choix
 
 Seb, 18 novembre 2026 : une campagne par saison, donc le choix se fait **dans la saison** :
-Admin › École › Saisons › **Éditer la saison**, sous les dates (saison en cours, HelloAsso
-connecté, administrateur principal et Super User). La connexion (Connexions › HelloAsso › Voir)
+Admin › École › Saisons › **Éditer la saison**, sous les dates (toute saison qu'on édite : la
+courante ou une ancienne ouverte aux modifications ; HelloAsso connecté, administrateur principal
+et Super User). Seb, 19 novembre 2026 : « toutes les saisons pareilles » ; une saison passée n'est
+pas recopiée toutes les 5 minutes, l'écran le dit (« Saison passée : pas de recopie automatique.
+Cliquez sur « Synchroniser maintenant » pour recopier. ») ; ses fiches restent dans sa saison et
+aucun nouvel adhérent n'est annoncé (`Sync.run(…, season_id)`, champ `current` des réponses). La connexion (Connexions › HelloAsso › Voir)
 ne garde que les clés, le résumé de la saison et le rappel « N'oubliez pas de brancher chaque
 saison à sa campagne HelloAsso dans « Saisons » ». Point de branchement côté écran :
-`seasonEditor` du module.js (bloc sous les dates, `SaisonsSection.jsx`). Pas encore fait :
-choisir à l'avance pour une saison future (aujourd'hui, la saison en cours seulement). Trois
+`seasonEditor` du module.js (bloc sous les dates, `SaisonsSection.jsx`). Trois
 cartes, une seule cochée :
 1. **HelloAsso fait tout** : les gens s'inscrivent et paient sur HelloAsso. On choisit la campagne
    (§3) ; les adhérents sont recopiés et verrouillés (§7). C'est le choix « Imposés par HelloAsso »

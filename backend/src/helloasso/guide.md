@@ -16,7 +16,7 @@ Case : Admin › École › Personnalisation › Fonctionnalités. Connexion : A
   « Déconnecter » (« Annuler » proposé 10 secondes).
 
 Comment chaque saison utilise HelloAsso : Admin › École › Saisons › « Éditer la saison », sous les
-dates (administrateur principal et super user, saison en cours, HelloAsso connecté), trois choix
+dates (administrateur principal et super user, toute saison qu'on édite, HelloAsso connecté), trois choix
 qui s'enregistrent tout de suite (« Valider » ne sert qu'au nom et aux dates) :
 - « HelloAsso fait tout » : on choisit la campagne HelloAsso dans la carte ; les adhérents viennent
   de HelloAsso (voir plus bas). « Synchroniser maintenant ».
@@ -44,7 +44,7 @@ Tarifs : Admin › École › Tarifs
 Adhérents imposés par HelloAsso : Admin › Élèves (« Adhérents » si l'école a ce mot), saison dont la
 campagne est choisie
 - En haut : « Adhérents (n) » (les adhésions résiliées ne comptent pas) et « Rafraîchir » (recopie
-  tout de suite depuis HelloAsso ; saison en cours).
+  tout de suite depuis HelloAsso ; la saison affichée).
 - « Rechercher un adhérent... » (nom, prénom ou email) ; filtres par âge : Tous, Juniors (moins de
   18 ans), Seniors, -10, 10-20, 20-30, 30-40, 40-50, 50+.
 - Colonnes par défaut : Adhérent, Email (du payeur), Montant, Code promo, Photo, Statut HelloAsso
@@ -114,7 +114,8 @@ Où voir les paiements
 
 Règles de l'appli
 - Les inscrits sont recopiés toutes les 5 minutes pour la saison en cours, ou par « Synchroniser
-  maintenant ».
+  maintenant ». Une saison passée n'est recopiée que par « Synchroniser maintenant » (l'écran le dit :
+  « Saison passée : pas de recopie automatique… »).
 - Une commande retrouve sa fiche par nom et prénom, sinon par email du payeur et prénom ; sinon une
   fiche d'élève est créée. Une adhésion résiliée, annulée ou remboursée est recopiée quand même,
   avec son état (« Résilié »).

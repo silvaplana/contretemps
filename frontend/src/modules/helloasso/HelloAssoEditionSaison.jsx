@@ -6,7 +6,7 @@ import { useToast } from './Contact.jsx'
 // Dans « Éditer la saison » (`seasonEditor` du module.js, Seb 18 novembre
 // 2026 : une campagne par saison) : comment la saison utilise HelloAsso,
 // campagne comprise. Rien si HelloAsso est éteint ou pas connecté, ou pour
-// qui ne peut pas le changer (administrateur principal, saison en cours).
+// qui ne peut pas le changer (administrateur principal).
 export default function HelloAssoEditionSaison({ ecoleId }) {
   const [lu, setLu] = useState(null)
   const [toast, montrer] = useToast()
