@@ -1138,3 +1138,38 @@ def test_campagne_d_une_saison_passee(client, db_session, ecole, campagnes, monk
     # La saison en cours n'a pas de campagne : rien n'a changé pour elle.
     assert client.get(f"/ecoles/{ecole.id}/helloasso/saison").json()["mode"] == "none"
     assert client.get(f"/ecoles/{ecole.id}/helloasso/saison").json()["current"] is True
+
+
+def test_jeton_garde_et_429_reessaye(monkeypatch):
+    """« Erreur (429) » dans le choix de la campagne (Seb 19/11) : un jeton
+    était redemandé à chaque appel. Le jeton est gardé jusqu'à son
+    expiration, et un 429 est réessayé une fois après une courte pause."""
+    from helloasso import api
+
+    class Reponse:
+        def __init__(self, status, corps, headers=None):
+            self.status_code, self.ok, self._corps = status, status < 400, corps
+            self.headers = headers or {}
+
+        def json(self):
+            return self._corps
+
+    jetons, appels = [], []
+
+    def post(url, data, timeout):
+        jetons.append(data["client_id"])
+        return Reponse(200, {"access_token": "jeton", "expires_in": 1800})
+
+    def get(url, headers, params, timeout):
+        appels.append(url)
+        if len(appels) == 1:
+            return Reponse(429, {}, {"Retry-After": "1"})
+        return Reponse(200, {"data": [{"title": "Adhésion", "formSlug": "a", "formType": "Membership"}]})
+
+    api._jetons.clear()
+    monkeypatch.setattr(api.requests, "post", post)
+    monkeypatch.setattr(api.requests, "get", get)
+    monkeypatch.setattr(api.time, "sleep", lambda s: None)
+    assert [f.name for f in api.forms("id-429", "secret", "asso")] == ["Adhésion"]
+    assert [f.name for f in api.forms("id-429", "secret", "asso")] == ["Adhésion"]
+    assert jetons == ["id-429"] and len(appels) == 3

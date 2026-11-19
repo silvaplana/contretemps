@@ -95,7 +95,7 @@ une PR sur le « vas-y » de Seb, après les groupes et les champs des membres (
 `frontend/src/modules/helloasso/`), éteint dans les écoles existantes, et éteint par défaut dans toute nouvelle école (Seb, 18 novembre 2026, `core.md` §11.3). Sur sa ligne de
 Fonctionnalités (`settings` du module.js, `core.md` §11.1) : « Pas encore connecté » / « Connecté à
 <association> », lien « Connecter » ou « Voir » ; cocher la case sans connexion ouvre l'écran des
-clés. Tester demande un jeton, lit `/v5/users/me/organizations` (l'association reliée aux clés) et
+clés. Le jeton est gardé jusqu'à son expiration et une réponse « 429 » (trop de requêtes) est réessayée une fois après la pause demandée (Seb, 19 novembre 2026 : la liste des campagnes restait vide). Tester demande un jeton, lit `/v5/users/me/organizations` (l'association reliée aux clés) et
 ses formulaires d'adhésion ; Enregistrer reteste puis garde les clés. Table `org_helloasso`
 (identifiant client, clé secrète chiffrée par Fernet avec une clé tirée du secret du serveur
 `SECRET_JETONS` / fichier `secret_jetons` du volume, association, slug, actif, dernier test).
