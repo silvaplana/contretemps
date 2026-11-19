@@ -1188,6 +1188,17 @@ de pièces » à valider par Seb avant le code, CLAUDE.md) :
   factures) et reconnu d'après son contenu : bulletin de salaire, avis URSSAF, facture ; un fichier
   non reconnu est ignoré et listé à part. Le fichier reste dans le kDrive : **rien n'est copié dans
   Docs** (règle de Seb du 10/11) ; la pièce garde le chemin et « Voir le fichier » l'ouvre.
+- **Où restent les pièces** (question de Seb, 19/11) : **sur le kDrive, rien à copier**. L'appli
+  garde le lien (chemin) et ce qu'elle a lu (date, montants, nature), jamais le fichier ; « Voir le
+  fichier » l'ouvre depuis le kDrive. Trois cas prévus :
+  - fichier **déplacé ou renommé** dans le kDrive : l'appli garde aussi son empreinte (taille et
+    somme de contrôle) et le retrouve dans les dossiers cochés ; sinon la pièce affiche « Fichier
+    introuvable dans le kDrive », ses écritures restent ;
+  - kDrive **déconnecté** (mot de passe d'application révoqué) : les pièces et écritures restent,
+    seul « Voir le fichier » ne marche plus, et la ligne de Connexions le dit ;
+  - **conservation** : les pièces comptables se gardent 10 ans ; c'est le kDrive qui les archive.
+    L'appli ne supprime jamais rien dans le kDrive, et la pièce prévient si son fichier a disparu
+    (rappel : ne pas vider SALAIRES, URSSAF, FACTURES des saisons passées).
 - **Paie complète, comme EBP** : un bulletin donne brut, cotisations du salarié, net payé,
   cotisations de l'employeur. Écritures : 641 Salaires au débit (brut), 645 Charges sociales au
   débit (part employeur), 421 Salaire à payer au crédit (net), 431 URSSAF à payer au crédit
