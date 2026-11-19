@@ -673,6 +673,14 @@ class Webmail:
             "starred": "\\Flagged" in flags,
         }
 
+    def peek(self, folder: str, uid: int) -> dict:
+        """Message complet sans le marquer lu (Import auto pièces)."""
+        with self._session() as conn:
+            name, _criteria = self._target(conn, folder)
+            self._select(conn, name, readonly=True)
+            raw, _flags = self._raw(conn, uid)
+        return parse_message(raw)
+
     def attachment(self, folder: str, uid: int, index: int) -> tuple[bytes, str, str]:
         with self._session() as conn:
             name, _criteria = self._target(conn, folder)

@@ -41,6 +41,9 @@ class SourceFile:
     # Date de la pièce quand la source la connaît (versement HelloAsso).
     day: date | None = None
     nature: str | None = None  # imposée par la source (mail : d'après l'expéditeur)
+    # Dernier tri, une fois le fichier lu : (db, rule, contenu, mime, nom) →
+    # garder ? (mail : la pièce jointe montre-t-elle un montant…).
+    check: Callable | None = None
 
 
 class SkipRule(Exception):
@@ -189,6 +192,8 @@ class AutoImport:
         if rule.source_kind == "drive":
             return self._drive_files(db, rule)
         source = self.sources.get(rule.source_kind)
+        if source is None and rule.source_kind == "helloasso":
+            raise SkipRule("Les versements HelloAsso arriveront quand Pièces saura saisir les ventes : cet import attend.")
         if source is None:
             raise SkipRule("Cette source n'est pas encore proposée.")
         return source(db, rule)
@@ -276,6 +281,9 @@ class AutoImport:
                 logger.exception("Import auto %s : %s illisible", rule.id, f.key)
                 continue
             sha = hashlib.sha256(content).hexdigest()
+            if f.check is not None and not f.check(db, rule, content, mime, f.name):
+                self._seen(db, rule, f.key, sha, None)
+                continue
             if sha in hashes:  # le même fichier, déplacé ou renommé
                 self._seen(db, rule, f.key, sha, None)
                 continue

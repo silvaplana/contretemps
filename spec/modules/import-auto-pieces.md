@@ -98,7 +98,7 @@ ignoré**. Un mail avec pièce jointe devient une pièce s'il répond à l'un de
 - **La pièce jointe montre un montant, une date, un SIRET ou un numéro de facture** (case, cochée
   par défaut), d'après le lecteur des factures.
 
-Cases modifiables ; vide = critère ignoré. La **nature vient de l'expéditeur** quand il est connu
+Cases modifiables ; vide = le critère par défaut (en gris à l'écran). La **nature vient de l'expéditeur** quand il est connu
 (un prof : Honoraires ; un adhérent qui demande un remboursement : Note de frais), sinon la nature
 de la fiche. Le mail reste dans la boîte, l'appli ne le déplace ni ne le marque lu.
 
@@ -189,7 +189,21 @@ Tables préfixées `autoimport_`, liées par `organization_id` (écoles étanche
    posée, Google Drive reste « pas encore proposé ». Limite de Google : déposer une copie dans un
    Google Drive personnel peut être refusé (compte de service sans espace) ; la lecture marche.
 5. Source **boîte mail** (§4.1).
+   **Fait (19 novembre)** : `auto_import/mail_source.py`, branchée sur les boîtes de Connexions
+   (`core.mail_connection`) ; chaque passage lit les 120 derniers mails du dossier de réception,
+   sans les marquer lus ni les déplacer (`Webmail.peek`). Une pièce par pièce jointe PDF ou photo.
+   Champs vides = les critères par défaut montrés en gris : expéditeur = une personne de l'école
+   (par son email), l'URSSAF ou un fournisseur déjà dans les pièces ; mots = facture, note
+   d'honoraires, reçu, remboursement. Case « montant… » : le lecteur des factures lit la pièce
+   jointe (lecture payante, seulement pour un mail qui ne répond à aucun autre critère). Nature :
+   un prof de l'école → Honoraires, une autre personne de l'école → Note de frais, sinon la nature
+   de la fiche.
 6. Source **HelloAsso** (versements, `financier.md` §8.11).
+   **En attente (19 novembre)** : un versement HelloAsso est une recette, donc une pièce de nature
+   Vente, et Pièces ne sait pas encore saisir de vente (natures : Facture d'achat, Note de frais,
+   Honoraires). La copie HelloAsso de l'appli connaît les paiements encaissés et versés
+   (`helloasso/money.py`), de quoi reconstituer un versement ; on code cette étape quand les ventes
+   existent dans Pièces. D'ici là, une fiche avec la source HelloAsso attend avec un message.
 
 ## 10. Reste à décider
 

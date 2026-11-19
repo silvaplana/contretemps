@@ -36,11 +36,49 @@ def _places(core):
     return places
 
 
+def _who(db, org_id: int, address: str) -> str | None:
+    """La nature que donne un expéditeur de l'école (§4.1) : un prof,
+    Honoraires ; un autre adhérent, Note de frais ; inconnu, None."""
+    from comptes import roles
+    from comptes.models import Compte, EmailCompte
+    from sqlalchemy import select
+
+    compte = db.scalar(select(Compte).join(EmailCompte, EmailCompte.compte_id == Compte.id).where(
+        Compte.ecole_id == org_id, EmailCompte.email == address.strip().lower()).limit(1))
+    if compte is None:
+        return None
+    return "honoraires" if roles.is_prof(compte) else "frais"
+
+
+def _reader(notes):
+    """La pièce jointe montre-t-elle un montant ou une date (lecteur des
+    factures, §4.1) ? Sans lecteur : non."""
+
+    def check(db, rule, content: bytes, mime: str, name: str) -> bool:
+        from notes_frais.service import LectureImpossible
+
+        if not notes.lecture_disponible:
+            return False
+        try:
+            lu = notes.lire_ticket(db, AutoImport._membre(rule), content, mime, name)
+        except LectureImpossible:
+            return False
+        return bool(lu.get("montant_centimes") or lu.get("date"))
+
+    return check
+
+
 def mount(app, core) -> None:
     from notes_frais_contretemps.adapter import membre_appelant
 
+    from .mail_source import mail_source
+
+    sources = {}
+    if getattr(core, "mail_connection", None) is not None:
+        sources["mail"] = mail_source(core.mail_connection, _who, _reader(core.notes_frais_client))
     core.auto_import = AutoImport(
         notes=core.notes_frais_client, documents=core.documents_client, drives=getattr(core, "drives", None),
+        sources=sources,
     )
     AutoImportReceiver(client=core.auto_import, app=app, membre_courant=membre_appelant, places=_places(core))
 
