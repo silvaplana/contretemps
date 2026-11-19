@@ -1182,7 +1182,11 @@ de pièces » à valider par Seb avant le code, CLAUDE.md) :
   que les autres. On donne l'e-mail du compte Infomaniak, un **mot de passe d'application** (créé
   dans Infomaniak › Sécurité, pas le mot de passe habituel) et le numéro du kDrive ; l'appli lit
   par WebDAV. Les identifiants sont chiffrés comme ceux de HelloAsso, jamais montrés.
-- **Dossiers** : on coche les dossiers à lire (« Que doit lire l'appli ? »). L'appli **lit
+- **Dossiers** : on coche les dossiers à lire (« Que doit lire l'appli ? »). Rien n'est supposé sur
+  l'arborescence (Seb, 19/11 : il ne sait pas encore où sont les pièces). Juste après la connexion,
+  l'appli parcourt tout le kDrive une fois et écrit à côté de chaque dossier ce qu'elle y a
+  reconnu (« 14 bulletins de salaire », « 3 factures », rien si rien) ; les dossiers qui en ont
+  sont en haut. Elle ne garde de ce parcours que ces comptes. L'appli **lit
   seulement** : elle n'écrit dans le kDrive que sur le bouton « Déposer » (plus bas).
 - **Lecture** : chaque nouveau fichier d'un dossier coché est lu une fois (même lecteur que les
   factures) et reconnu d'après son contenu : bulletin de salaire, avis URSSAF, facture ; un fichier
