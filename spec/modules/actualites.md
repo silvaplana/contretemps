@@ -827,3 +827,20 @@ choisir une la joint comme le bouton Document : sur l'actu, un bouton à son nom
 répond (Je viens, Je donne procuration, Je ne viens pas). Rien de nouveau côté serveur : la recherche
 de Docs suffit. Une autre nature de document spécifique s'ajoute à la liste `SPECIFIQUES` de
 `DocumentsSpecifiques.jsx`.
+
+### 12.15 Texte mis en forme (Seb, 19 novembre 2026)
+
+Maquette « Texte mis en forme », https://claude.ai/artifact/KDK3qdUPJaSYaygiL7MBzb (Seb : « très bien »).
+
+- Au-dessus du texte, une barre : B (gras), U (souligné), Taille (Petit, Normal, Grand) et ☺ (35
+  émojis). On sélectionne des mots, on touche un bouton ; le retoucher enlève. Pas de couleurs ni de
+  polices : le texte reste lisible partout, dans l'appli comme dans le mail. Une Brève reste du texte
+  simple (☺ seulement).
+- Rangement : le texte garde de petites balises, `[g]…[/g]`, `[s]…[/s]`, `[grand]…[/grand]`,
+  `[petit]…[/petit]`, dans `pub_posts.body` (pas de nouvelle colonne ni migration). Jamais de HTML
+  rangé : l'écran construit ses éléments (`TexteRiche.jsx`, `texteRiche.js`), le mail échappe le
+  texte puis met `<strong>`, `<u>` et les tailles (`publications/formatting.py`).
+- Sans balises : la notification, le sujet et la version texte du mail, le nom d'un brouillon dans
+  « Envoyer à… », l'aperçu de l'assistant.
+- L'éditeur est un bloc modifiable du navigateur (gras, souligné, taille par ses commandes) ; un
+  collage n'y apporte que le texte.

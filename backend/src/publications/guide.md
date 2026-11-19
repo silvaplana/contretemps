@@ -62,6 +62,10 @@ Nouvelle publication / Modifier
 - Blog avec catégories : « Nom » en haut (obligatoire).
 - Blog avec niveaux : Important, Normal ou Brève.
 - Texte (facultatif s'il y a une photo, une vidéo, un lien ou un document ; obligatoire pour une Brève).
+  Au-dessus, une barre : « B » (gras), « U » (souligné), « Taille » (Petit, Normal, Grand) et ☺
+  (des émojis, « Fermer »). Sélectionner des mots puis toucher un bouton ; le retoucher enlève. Le
+  bouton est allumé quand le curseur est dans un mot mis en forme. Une Brève n'a que ☺ : passer en
+  Brève enlève la mise en forme. Un texte collé arrive sans sa mise en forme.
 - Blog avec catégories : « Catégorie » en gros boutons et « + Nouvelle » (un champ et OK), puis
   « Sous-catégorie (facultatif) » de même. Toucher la catégorie choisie la retire.
 - Boutons « Photo », « Vidéo » (100 Mo au plus), « Lien » et « Document » (pris dans Docs) sous le

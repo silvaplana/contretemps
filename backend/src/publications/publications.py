@@ -28,7 +28,7 @@ from storage import FileTooLarge, LocalStorage, make_thumbnail
 from videos import Videos
 from videos.models import Video
 
-from . import links, mailing
+from . import formatting, links, mailing
 from .models import (
     BRIEF, ICONS, IMPORTANT, NORMAL, Blog, Category, InstagramLink, Poll, PollOption, PollVote, Post, PostMedia,
     Reaction, Seen,
@@ -675,7 +675,8 @@ class Publications:
         blog = db.get(Blog, post.blog_id)
         ecole = db.get(Ecole, post.org_id)
         title = ecole.nom if ecole else blog.name
-        text = post.body if len(post.body) <= PREVIEW_CHARS else post.body[: PREVIEW_CHARS - 1].rstrip() + "…"
+        body = formatting.plain(post.body)
+        text = body if len(body) <= PREVIEW_CHARS else body[: PREVIEW_CHARS - 1].rstrip() + "…"
         if blog.with_categories and post.title:
             text = f"{post.title} · {text}" if text else post.title
         text = text or f"Nouveau dans {blog.name}"  # a photo without text

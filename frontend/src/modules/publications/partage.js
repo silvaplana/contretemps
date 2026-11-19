@@ -1,4 +1,5 @@
 import * as api from './api.js'
+import { sansBalises } from './texteRiche.js'
 
 // Partager un lien depuis une autre appli (bouton Partager de YouTube) vers
 // un blog (spec/modules/actualites.md §12.11, Seb 13 novembre) : l'écran
@@ -9,7 +10,7 @@ import * as api from './api.js'
 const URL_DANS = /https?:\/\/\S+/i
 export const lienDans = (texte) => texte?.match(URL_DANS)?.[0] ?? null
 
-const nomDe = (b) => b.titre?.trim() || b.texte?.trim().split('\n')[0].slice(0, 40) || 'Sans nom'
+const nomDe = (b) => b.titre?.trim() || sansBalises(b.texte).trim().split('\n')[0].slice(0, 40) || 'Sans nom'
 
 // Les blogs où l'on publie, chacun suivi de ses brouillons.
 export async function choixDePartage(ecoleId) {

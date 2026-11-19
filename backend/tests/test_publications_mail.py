@@ -172,3 +172,15 @@ def test_les_gens_de_l_ecole_pour_completer_l_essai(client, club):
         {"name": "Seb Richard", "email": "seb@asc.fr"},
         {"name": "Zoé Martin", "email": "zoe@ex.fr"},
     ]
+
+
+def test_texte_mis_en_forme_dans_le_mail(client, db_session, club, envois):
+    """§12.15 : le mail garde le gras ; le sujet et la version texte, non."""
+    _avec_contact(db_session, club)
+    actu = _actu(client, club, body="[grand]Stage de Noël[/grand]\nSamedi [g]20 décembre[/g]")
+    client.post(f"{club['blog']}/posts/{actu['id']}/mail", json={})
+    core.publications_client.send_mail(db_session, actu["id"])
+    sujet, texte, html = envois[0]["mails"][0]
+    assert sujet == "Actus · Stage de Noël"
+    assert "Stage de Noël\nSamedi 20 décembre" in texte and "[g]" not in texte
+    assert "Samedi <strong>20 décembre</strong>" in html

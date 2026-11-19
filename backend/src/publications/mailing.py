@@ -17,6 +17,7 @@ from securite import jetons
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from . import formatting
 from .models import Blog, MailOptOut, Post
 
 SUBJECT_CHARS = 80
@@ -112,7 +113,7 @@ def optout_page(school: str, out: bool) -> str:
 # --- The mail itself ---
 
 def subject(blog: Blog, post: Post) -> str:
-    headline = post.title if blog.with_categories and post.title else (post.body.strip().splitlines() or [""])[0]
+    headline = post.title if blog.with_categories and post.title else (formatting.plain(post.body).strip().splitlines() or [""])[0]
     if len(headline) > SUBJECT_CHARS:
         headline = headline[: SUBJECT_CHARS - 1].rstrip() + "…"
     return f"{blog.name} · {headline}" if headline else f"Nouveau dans {blog.name}"
@@ -126,7 +127,8 @@ def content(blog: Blog, post: Post, school: str, app_url: str, address: str, pho
     links = [(m.link_title or m.link_url, m.link_url) for m in post.media if m.link_url]
     title = post.title if blog.with_categories and post.title else ""
 
-    lines = [title, post.body] if title else [post.body]
+    body = formatting.plain(post.body)
+    lines = [title, body] if title else [body]
     lines += [f"{t} : {u}" for t, u in links]
     if read:
         lines.append(f"Lire sur l’appli : {app_url}")
@@ -138,8 +140,7 @@ def content(blog: Blog, post: Post, school: str, app_url: str, address: str, pho
     if title:
         parts.append(f'<h1 style="margin:0;font-size:21px">{escape(title)}</h1>')
     if post.body:
-        body = escape(post.body).replace("\n", "<br>")
-        parts.append(f'<p style="margin:0;font-size:17px;line-height:1.5">{body}</p>')
+        parts.append(f'<p style="margin:0;font-size:17px;line-height:1.5">{formatting.to_html(post.body)}</p>')
     if photo:
         parts.append('<img src="cid:photo" alt="" style="display:block;width:100%;max-width:560px;border-radius:10px">')
     for t, u in links:

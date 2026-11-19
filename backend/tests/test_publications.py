@@ -151,6 +151,12 @@ def test_notification_a_qui_voit_les_actus_sauf_l_auteur_et_pas_apres_annuler(cl
     muette = _publier(client, eid, "Brève sans bruit", level="brief")
     assert core.publications_client.send_notification(db_session, muette["id"]) == 0
 
+    # Texte mis en forme (§12.15) : la notification le montre sans ses balises.
+    forme = _publier(client, eid, "[g]Gala[/g] samedi", notify=True)
+    faux.envois.clear()
+    core.publications_client.send_notification(db_session, forme["id"])
+    assert faux.envois[0][2] == "Gala samedi"
+
 
 def _reglages(**kw):
     return {"open_app_on": True, "media_first": False, "visible_to_all": True, "instagram_hashtag": "",
