@@ -149,6 +149,29 @@ l'adresse,
 bouton principal **Envoyer**. Répondre met « Re: » et le texte cité ; Transférer met « Fwd: » et
 garde les pièces jointes. Sans destinataire : « Indiquez à qui envoyer le mail ».
 
+## 7 bis. Écrire aux adhérents (Seb, 19 novembre)
+
+Seb : envoyer un mail à tous les adhérents sans que chacun voie l'adresse des autres ; « on utilise
+Brevo déjà ». Maquette validée le 19 novembre : https://claude.ai/artifact/CymmDAMxGZG5syXEjuekF8
+
+- Dans **Nouveau message**, sous « À », le lien **👥 Écrire aux adhérents** ouvre « Écrire aux
+  adhérents » : **Tous les adhérents** (saison courante, nombre de personnes) ou **un ou plusieurs
+  cours** (une personne inscrite à deux cours ne reçoit qu'un mail), bouton principal **Choisir**.
+- « À » devient une pastille « Tous les adhérents · 84 » (✕ pour revenir à un mail normal) ; Cc,
+  Cci et pièces jointes disparaissent (« Pas de pièce jointe dans un mail aux adhérents pour
+  l'instant »). Phrase : « Chacun reçoit son propre mail : personne ne voit l'adresse des autres.
+  Les réponses et une copie arrivent dans cette boîte. » et le nombre d'adhérents sans adresse.
+- Bouton **Envoyer à 84 adhérents** ; toast « Envoi à 84 adhérents » avec **Annuler** 10 s (§8).
+- Envoi : `ecoles.mail_ecole.envoyer_a_chacun` (core, Brevo, `core.md` §9 bis), un mail par adresse
+  au nom de l'école ; une famille qui partage une adresse reçoit un mail. **Adhérents** = toutes les
+  fiches de la saison courante de l'école (comme les actus par mail). Réponses (`Reply-To`) à la
+  boîte du « De » ; une copie y arrive aussi (« Copie du mail envoyé à N adhérents »), Brevo ne
+  pouvant pas la ranger dans Envoyés. Pied du mail : « Vous recevez ce mail parce que vous êtes
+  adhérent de … Pour répondre, répondez à ce mail. » Pas de désinscription : ce ne sont pas les
+  actus, ce sont les mails du club.
+- Routes : `GET …/mail/members` (saison, personnes, sans adresse, cours) et
+  `POST …/mail/members/send?box=` (`courses` vide = tous, `subject`, `body`), droit `mail.read`.
+
 ## 8. Annuler plutôt que confirmer
 
 Les confirmations de Sambo Admin deviennent un toast **Annuler** de 10 s (`core` : « Annuler
@@ -211,3 +234,5 @@ Messagerie. `guide.md` du module mis à jour dans la même PR que les écrans.
 4. Plusieurs boîtes par école (§4 bis ; Seb, 18 novembre).
    **Fait (18 novembre 2026)** : colonne `name`, `organization_id` plus unique (migration), un seul
    droit, une puce par boîte, « De » au choix.
+5. Écrire aux adhérents (§7 bis ; Seb, 19 novembre).
+   **Fait (19 novembre 2026)** : `mail/members.py`, un mail chacun par Brevo, copie à la boîte.

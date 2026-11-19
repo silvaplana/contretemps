@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import Icon from '../../components/Icon.jsx'
 import * as api from './api.js'
 import ChampAdresses from './ChampAdresses.jsx'
+import ChoisirAdherents from './ChoisirAdherents.jsx'
 import { taille } from './format.js'
 
 // Écrire (spec/modules/mail.md §7) : écran plein, « De : » l'adresse du club
@@ -22,6 +23,10 @@ export default function Ecrire({ ecoleId, brouillon, fichiersInitiaux = [], boit
   const [subject, setSubject] = useState(brouillon.subject)
   const [body, setBody] = useState(brouillon.body)
   const [fichiers, setFichiers] = useState(fichiersInitiaux)
+  // « Écrire aux adhérents » (§7 bis) : le choix fait, ou null ; un mail
+  // chacun par Brevo, sans Cc, Cci ni pièce jointe.
+  const [adherents, setAdherents] = useState(brouillon.adherents ?? null)
+  const [choisir, setChoisir] = useState(false)
   const [erreur, setErreur] = useState(null)
   const texte = useRef(null)
   const total = fichiers.reduce((s, f) => s + f.size, 0)
@@ -40,6 +45,14 @@ export default function Ecrire({ ecoleId, brouillon, fichiersInitiaux = [], boit
 
   function envoyer(e) {
     e.preventDefault()
+    if (adherents) {
+      if (!body.trim()) {
+        setErreur('Écrivez le message')
+        return
+      }
+      onEnvoyer({ ...brouillon, to: '', cc: '', bcc: '', subject, body, adherents }, [], deId)
+      return
+    }
     if (!to.trim() && !cc.trim() && !bcc.trim()) {
       setErreur('Indiquez à qui envoyer le mail')
       return
@@ -73,15 +86,45 @@ export default function Ecrire({ ecoleId, brouillon, fichiersInitiaux = [], boit
             <span className="mail__discret">{boites.find((b) => b.id === deId)?.address}</span>
           </div>
         )}
-        <ChampAdresses
-          label="À"
-          value={to}
-          onChange={setTo}
-          contacts={contacts}
-          autoFocus={brouillon.mode === 'new' || brouillon.mode === 'forward'}
-        />
-        <ChampAdresses label="Cc" value={cc} onChange={setCc} contacts={contacts} />
-        <ChampAdresses label="Cci" value={bcc} onChange={setBcc} contacts={contacts} />
+        {adherents ? (
+          <>
+            <div className="mail__champ-ligne">
+              <span>À</span>
+              <span className="mail__adherents">
+                <span>
+                  {adherents.label}
+                  {adherents.people != null && ` · ${adherents.people}`}
+                </span>
+                <button type="button" className="icon-btn" aria-label="Retirer" onClick={() => setAdherents(null)}>
+                  <Icon name="x" />
+                </button>
+              </span>
+            </div>
+            <p className="mail__discret">
+              Chacun reçoit son propre mail : personne ne voit l’adresse des autres. Les réponses et une copie arrivent
+              dans cette boîte.
+              {adherents.without > 0 &&
+                ` ${adherents.without} adhérent${adherents.without > 1 ? 's n’ont' : ' n’a'} pas d’adresse mail.`}
+            </p>
+          </>
+        ) : (
+          <>
+            <ChampAdresses
+              label="À"
+              value={to}
+              onChange={setTo}
+              contacts={contacts}
+              autoFocus={brouillon.mode === 'new' || brouillon.mode === 'forward'}
+            />
+            {brouillon.mode === 'new' && (
+              <button type="button" className="mail__lien-adherents" onClick={() => setChoisir(true)}>
+                👥 Écrire aux adhérents
+              </button>
+            )}
+            <ChampAdresses label="Cc" value={cc} onChange={setCc} contacts={contacts} />
+            <ChampAdresses label="Cci" value={bcc} onChange={setBcc} contacts={contacts} />
+          </>
+        )}
         <label className="mail__champ-ligne">
           <span>Objet</span>
           <input value={subject} onChange={(e) => setSubject(e.target.value)} />
@@ -95,7 +138,7 @@ export default function Ecrire({ ecoleId, brouillon, fichiersInitiaux = [], boit
           rows={12}
         />
 
-        {(brouillon.forwardAttachments?.length > 0 || fichiers.length > 0) && (
+        {!adherents && (brouillon.forwardAttachments?.length > 0 || fichiers.length > 0) && (
           <div className="mail__pieces">
             {brouillon.forwardAttachments?.map((p) => (
               <span key={`t${p.index}`} className="mail__piece">
@@ -128,23 +171,41 @@ export default function Ecrire({ ecoleId, brouillon, fichiersInitiaux = [], boit
         {total > MAX && <p className="login-screen__erreur">Pièces jointes trop lourdes : 18 Mo au total au maximum.</p>}
         {erreur && <p className="login-screen__erreur">{erreur}</p>}
 
-        <label className="btn btn--secondary mail__joindre">
-          <Icon name="paperclip" /> Joindre un fichier
-          <input
-            type="file"
-            multiple
-            hidden
-            onChange={(e) => {
-              const choisis = [...e.target.files]
-              setFichiers((liste) => [...liste, ...choisis])
-              e.target.value = ''
-            }}
-          />
-        </label>
-        <button type="submit" className="btn btn--primary btn--block mail__principal" disabled={total > MAX}>
-          Envoyer
+        {adherents && <p className="mail__discret">Pas de pièce jointe dans un mail aux adhérents pour l’instant.</p>}
+        {!adherents && (
+          <label className="btn btn--secondary mail__joindre">
+            <Icon name="paperclip" /> Joindre un fichier
+            <input
+              type="file"
+              multiple
+              hidden
+              onChange={(e) => {
+                const choisis = [...e.target.files]
+                setFichiers((liste) => [...liste, ...choisis])
+                e.target.value = ''
+              }}
+            />
+          </label>
+        )}
+        <button type="submit" className="btn btn--primary btn--block mail__principal" disabled={!adherents && total > MAX}>
+          {adherents
+            ? adherents.people != null
+              ? `Envoyer à ${adherents.people} adhérent${adherents.people > 1 ? 's' : ''}`
+              : 'Envoyer aux adhérents'
+            : 'Envoyer'}
         </button>
       </form>
+      {choisir && (
+        <ChoisirAdherents
+          ecoleId={ecoleId}
+          onFermer={() => setChoisir(false)}
+          onChoix={(choix) => {
+            setAdherents(choix)
+            setFichiers([])
+            setChoisir(false)
+          }}
+        />
+      )}
     </div>,
     document.body,
   )

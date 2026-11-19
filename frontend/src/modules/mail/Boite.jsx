@@ -90,7 +90,11 @@ export default function Boite({ ecoleId, boite, boites, menuBoite, onCoupee }) {
     setToast(null)
     if (a.action === 'send') {
       // Envoi refusé : le mail revient à l'écran pour ne pas le perdre.
-      api.envoyer(ecoleId, a.de, a.brouillon, a.fichiers).catch((e) => {
+      const b = a.brouillon
+      const envoi = b.adherents
+        ? api.ecrireAuxAdherents(ecoleId, a.de, { courses: b.adherents.courses, subject: b.subject, body: b.body })
+        : api.envoyer(ecoleId, a.de, b, a.fichiers)
+      envoi.catch((e) => {
         setEcrire({ brouillon: a.brouillon, fichiers: a.fichiers, de: a.de })
         echec(e)
       })
@@ -123,7 +127,10 @@ export default function Boite({ ecoleId, boite, boites, menuBoite, onCoupee }) {
     envoyer()
     setEcrire(null)
     attente.current = { action: 'send', brouillon, fichiers, de, minuteur: setTimeout(envoyer, ANNULER_MS) }
-    setToast(RANGE.send)
+    const n = brouillon.adherents?.people
+    setToast(
+      brouillon.adherents ? (n != null ? `Envoi à ${n} adhérent${n > 1 ? 's' : ''}` : 'Envoi aux adhérents') : RANGE.send,
+    )
   }
 
   function annuler() {
