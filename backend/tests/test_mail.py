@@ -430,3 +430,36 @@ def test_ecrire_aux_adherents(client, db_session, ecole, boite, monkeypatch):
     # Le cours d'une autre école ne donne personne.
     assert client.post(f"{url}/send", json={"courses": [999], "body": "x"}).status_code == 400
     assert client.post(f"/ecoles/{autre.id}/mail/members/send", json={"body": "x"}).status_code == 409
+
+
+def test_ecrire_aux_groupes_d_admin(client, db_session, ecole, boite, monkeypatch):
+    """Seb, 19 novembre : les groupes d'Admin (Bureau, Profs, faits à la main)
+    se choisissent aussi ; pas les droits 🔒."""
+    from app import main
+    from groups import board, custom, rights
+    from groups.models import GroupMember
+
+    comptes = Comptes()
+    ana = comptes.create(db_session, ecole_id=ecole.id, role="admin", nom="Bureau", prenom="Ana", email="ana@ex.fr")
+    max_ = comptes.create(db_session, ecole_id=ecole.id, role="professeur", nom="Coach", prenom="Max", email="max@ex.fr")
+    zoe = comptes.create(db_session, ecole_id=ecole.id, role="eleve", nom="Aide", prenom="Zoé", email="zoe@ex.fr")
+    board.set_functions(db_session, ana, ["president"])
+    benevoles = custom.create(db_session, ecole.id, zoe.saison_id, "Bénévoles")
+    db_session.add(GroupMember(group_id=benevoles.id, member_id=zoe.id))
+    rights.add(db_session, ana, "mail.read")
+    db_session.commit()
+
+    choix = client.get(f"/ecoles/{ecole.id}/mail/members").json()
+    groupes = {g["name"]: g for g in choix["groups"]}
+    assert list(groupes) == ["Bureau", "Profs", "Bénévoles"]
+    assert (groupes["Bureau"]["people"], groupes["Profs"]["people"], groupes["Bénévoles"]["people"]) == (1, 1, 1)
+
+    envois = []
+    monkeypatch.setattr(
+        main.core.mail_receiver, "send_to_each",
+        lambda db, org, adresses, contenu, repondre_a=None: envois.append(adresses) or adresses,
+    )
+    ids = [groupes["Bureau"]["id"], groupes["Bénévoles"]["id"]]
+    client.post(f"/ecoles/{ecole.id}/mail/members/send", json={"groups": ids, "body": "AG"})
+    assert envois[-1] == ["ana@ex.fr", "zoe@ex.fr"]
+    assert boite[0].calls[-1][2] == "Bureau, Bénévoles · 2"

@@ -68,9 +68,12 @@ class StatusOut(BaseModel):
 
 
 class MembersIn(BaseModel):
-    """« Écrire aux adhérents » (§7 bis) : des cours, ou tous (liste vide)."""
+    """« Écrire à un groupe » (§7 bis) : des cours ou des groupes, ou tout le
+    monde (listes vides)."""
 
     courses: list[int] = []
+    # Groupes d'Admin (Bureau, Profs, faits à la main), Seb 19 novembre.
+    groups: list[int] = []
     subject: str = Field("", max_length=300)
     body: str = Field(min_length=1, max_length=50000)
 
@@ -360,7 +363,7 @@ class MailReceiver:
         account = self.connection.account(db, ecole_id, box)
         if account is None:
             raise HTTPException(status_code=409, detail="La boîte mail du club n'est pas connectée")
-        chosen = members.recipients(db, ecole_id, data.courses)
+        chosen = members.recipients(db, ecole_id, data.courses, data.groups)
         if not chosen.addresses:
             raise HTTPException(status_code=400, detail="Aucun adhérent avec une adresse mail")
         ecole = db.get(Ecole, ecole_id)

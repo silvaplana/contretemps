@@ -4,13 +4,15 @@ import Icon from '../../components/Icon.jsx'
 import * as api from './api.js'
 
 // « Écrire à un groupe » (spec/modules/mail.md §7 bis ; Seb, 19 novembre) :
-// tout le monde (adhérents, administrateurs, profs), ou un ou plusieurs cours. Rend
-// { courses: [ids] (vide : tous), label, people (null si plusieurs cours), without }.
+// tout le monde (adhérents, administrateurs, profs), ou des cours et des groupes
+// d'Admin (Bureau, Profs, faits à la main). Rend { courses, groups (vides :
+// tout le monde), label, people (null si plusieurs), without }.
 
 export default function ChoisirAdherents({ ecoleId, onChoix, onFermer }) {
   const [choix, setChoix] = useState(null)
   const [erreur, setErreur] = useState(null)
-  const [cours, setCours] = useState(() => new Set()) // vide : tous
+  // Cochés : 'c<id>' pour un cours, 'g<id>' pour un groupe ; vide : tout le monde.
+  const [cours, setCours] = useState(() => new Set())
 
   useEffect(() => {
     api.adherents(ecoleId).then(setChoix, (e) => setErreur(e.message))
@@ -27,12 +29,15 @@ export default function ChoisirAdherents({ ecoleId, onChoix, onFermer }) {
 
   function choisir() {
     if (cours.size === 0) {
-      onChoix({ courses: [], label: 'Tout le monde', people: choix.people, without: choix.without })
+      onChoix({ courses: [], groups: [], label: 'Tout le monde', people: choix.people, without: choix.without })
       return
     }
-    const elus = choix.courses.filter((c) => cours.has(c.id))
+    const lesCours = choix.courses.filter((c) => cours.has(`c${c.id}`))
+    const lesGroupes = choix.groups.filter((g) => cours.has(`g${g.id}`))
+    const elus = [...lesCours, ...lesGroupes]
     onChoix({
-      courses: elus.map((c) => c.id),
+      courses: lesCours.map((c) => c.id),
+      groups: lesGroupes.map((g) => g.id),
       label: elus.map((c) => c.name).join(', '),
       people: elus.length === 1 ? elus[0].people : null,
       without: 0,
@@ -72,12 +77,12 @@ export default function ChoisirAdherents({ ecoleId, onChoix, onFermer }) {
             {choix.courses.length > 0 && <p className="mail__discret">Ou des cours</p>}
             {choix.courses.map((c) => (
               <button
-                key={c.id}
+                key={`c${c.id}`}
                 type="button"
                 className="mail__option"
                 role="checkbox"
-                aria-checked={cours.has(c.id)}
-                onClick={() => basculer(c.id)}
+                aria-checked={cours.has(`c${c.id}`)}
+                onClick={() => basculer(`c${c.id}`)}
               >
                 <span className="mail__option-rond" />
                 <span>
@@ -86,9 +91,26 @@ export default function ChoisirAdherents({ ecoleId, onChoix, onFermer }) {
                 </span>
               </button>
             ))}
-            {choix.courses.length > 1 && (
+            {choix.groups.length > 0 && <p className="mail__discret">Ou des groupes</p>}
+            {choix.groups.map((g) => (
+              <button
+                key={`g${g.id}`}
+                type="button"
+                className="mail__option"
+                role="checkbox"
+                aria-checked={cours.has(`g${g.id}`)}
+                onClick={() => basculer(`g${g.id}`)}
+              >
+                <span className="mail__option-rond" />
+                <span>
+                  {g.name}
+                  <small>{personnes(g.people)}</small>
+                </span>
+              </button>
+            ))}
+            {choix.courses.length + choix.groups.length > 1 && (
               <p className="mail__discret">
-                On peut cocher plusieurs cours ; une personne inscrite à deux cours ne reçoit qu’un mail.
+                On peut en cocher plusieurs ; une personne qui est dans deux d’entre eux ne reçoit qu’un mail.
               </p>
             )}
             <button type="button" className="btn btn--primary btn--block mail__principal" onClick={choisir}>

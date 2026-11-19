@@ -92,7 +92,12 @@ export default function Boite({ ecoleId, boite, boites, menuBoite, onCoupee }) {
       // Envoi refusé : le mail revient à l'écran pour ne pas le perdre.
       const b = a.brouillon
       const envoi = b.adherents
-        ? api.ecrireAuxAdherents(ecoleId, a.de, { courses: b.adherents.courses, subject: b.subject, body: b.body })
+        ? api.ecrireAuxAdherents(ecoleId, a.de, {
+            courses: b.adherents.courses,
+            groups: b.adherents.groups,
+            subject: b.subject,
+            body: b.body,
+          })
         : api.envoyer(ecoleId, a.de, b, a.fichiers)
       envoi.catch((e) => {
         setEcrire({ brouillon: a.brouillon, fichiers: a.fichiers, de: a.de })

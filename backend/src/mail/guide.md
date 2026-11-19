@@ -53,7 +53,8 @@ Un mail (toucher la ligne)
   « Cci », « Objet », le message. Dès 2 lettres tapées dans À, Cc ou Cci, les adhérents, profs,
   administrateurs et adresses déjà échangées qui correspondent s'affichent : un toucher ajoute l'adresse.
 - « 👥 Écrire à un groupe », sous « À » dans Nouveau message : tout le monde (adhérents,
-  administrateurs et professeurs de la saison) ou un ou plusieurs cours, puis « Choisir ». Chacun
+  administrateurs et professeurs de la saison), ou des cours et des groupes d'Admin (Bureau, Profs,
+  groupes faits à la main) à cocher, puis « Choisir ». Chacun
   reçoit son propre mail (personne ne voit les autres adresses) ; les réponses arrivent dans la boîte
   du « De », et le mail est rangé dans ses Envoyés (« À : Tout le monde · 84 »). Pas de Cc, Cci ni
   pièce jointe dans ce mail ; « Envoyer à N personnes », Annuler pendant 10 secondes. ✕ sur la

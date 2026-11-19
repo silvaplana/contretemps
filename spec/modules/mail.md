@@ -158,8 +158,10 @@ garder une trace du mail dans la boîte (Gmail ou Infomaniak).
 
 - Dans **Nouveau message**, sous « À », le lien **👥 Écrire à un groupe** ouvre « Écrire à un
   groupe » : **Tout le monde** (« Adhérents, administrateurs et professeurs », saison courante,
-  nombre de personnes) ou **un ou plusieurs cours** (une personne inscrite à deux cours ne reçoit
-  qu'un mail), bouton principal **Choisir**.
+  nombre de personnes), ou des **cours** et des **groupes** d'Admin › École › Administrateurs
+  (« Ou des groupes » : Bureau, Profs, groupes faits à la main ; pas les droits 🔒 ; Seb,
+  19 novembre), à cocher, une personne dans deux d'entre eux ne recevant qu'un mail ; bouton
+  principal **Choisir**. Les groupes de Chat (messagerie instantanée) : plus tard.
 - « À » devient une pastille « Tout le monde · 84 » (✕ pour revenir à un mail normal) ; Cc, Cci et
   pièces jointes disparaissent (« Pas de pièce jointe dans un mail à un groupe pour l'instant »).
   Phrase : « Chacun reçoit son propre mail : personne ne voit l'adresse des autres. Les réponses
@@ -176,8 +178,8 @@ garder une trace du mail dans la boîte (Gmail ou Infomaniak).
   liste de diffusion ; « Sambo adultes, MMA · 27 » pour des cours). Si la boîte ne répond pas, les
   mails partent quand même (`filed: false`).
 - Routes : `GET …/mail/members` (saison, personnes, sans adresse, cours) et
-  `POST …/mail/members/send?box=` (`courses` vide = tout le monde, `subject`, `body`), droit
-  `mail.read`.
+  `POST …/mail/members/send?box=` (`courses` et `groups` vides = tout le monde, `subject`, `body`),
+  droit `mail.read`. Un groupe compte ses sous-groupes (Bureau › Président·e…).
 
 ## 8. Annuler plutôt que confirmer
 
@@ -243,5 +245,6 @@ Messagerie. `guide.md` du module mis à jour dans la même PR que les écrans.
    droit, une puce par boîte, « De » au choix.
 5. Écrire aux adhérents (§7 bis ; Seb, 19 novembre).
    **Fait (19 novembre 2026)** : `mail/members.py`, un mail chacun par Brevo, copie à la boîte.
-6. Écrire à un groupe : tout le monde (administrateurs et profs compris), trace dans Envoyés (§7 bis).
+6. Écrire à un groupe : tout le monde (administrateurs et profs compris), groupes d'Admin, trace dans
+   Envoyés (§7 bis).
    **Fait (19 novembre 2026)**.
