@@ -80,7 +80,7 @@ class Accounting:
             db.add(FinSettings(org_id=member.org_id, level=level))
         else:
             if settings.level == FULL and level == SIMPLE:
-                raise AccountingError("On ne revient pas de Complet à Simple.")
+                raise AccountingError("On ne revient pas d'Engagement à Trésorerie.")
             settings.level = level
         db.commit()
         return level

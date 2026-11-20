@@ -480,6 +480,11 @@ les journaux de son grand livre (AC, HO, NF, VE).
 Admin › École › Personnalisation › Fonctionnalités, ligne Financier : **Simple** ou **Complet**,
 par organisation. Pas de troisième cas.
 
+**Noms à l'écran (Seb, 20/11)** : **Trésorerie (recettes-dépenses)** pour Simple et **Engagement
+(partie double)** pour Complet, les mots des pros. Dans le code et la base, `simple` / `complet`
+restent ; dans cette spec, Simple = Trésorerie, Complet = Engagement. On ne revient pas d'Engagement
+à Trésorerie.
+
 - **Simple** (comptabilité de trésorerie ; une association loi 1901 sous les seuils n'a rien
   d'autre à tenir) : comptes en banque, caisse, pièces rattachées, plan comptable, Synthèse,
   Rapport financier. Le Sambo reste en Simple.
@@ -825,8 +830,8 @@ l'AG** :
 | Grand livre | PDF, format comptable standard (celui du logiciel de la trésorière, 10 novembre 2026) : bandeau nom de l'association + « Édition du », titre et période, « Comptes … à … », « Devise : EUR » ; un bloc par compte (numéro, libellé) avec Type (cadenas = validée par la clôture), date, journal, pièce (numéro de pièce), libellé, lettre, débit, crédit, solde ; « Total pour le compte n » ; « Total du Grand-Livre » | Complet |
 | Balance | PDF, même en-tête ; colonnes N° Compte, Intitulé, Total Période (débit, crédit), Solde Période (débit, crédit) ; « Total des comptes de Bilan » (classes 1 à 5), « Total des comptes de Résultat » (6 et 7), « Total de la Balance » | Complet |
 | Bilan actif-passif | PDF, au dernier jour de la saison, forme simplifiée des petites associations (PCA 2018) : **actif** = soldes débiteurs des comptes de bilan (créances 4xx, trésorerie 5xx), **passif** = fonds associatifs (comptes 1, report à nouveau, **résultat de la saison** porté ici) et dettes (soldes créditeurs 4xx) ; totaux égaux, sinon l'écart est écrit (ligne sans compte, soldes de départ incomplets). Codé le 10 novembre 2026 | Complet |
-| Honoraires par professeur | Excel : total par prof et par mois, pour la DAS-2 | Complet |
-| FEC | Fichier des écritures comptables (art. A47 A-1 du LPF) : texte, 18 colonnes séparées par une tabulation, dates AAAAMMJJ, montants à virgule, ISO-8859-15. Les écritures du Grand livre (§8.7), regroupées en écritures numérotées par date (même journal, même jour, même opération ; les à-nouveaux en une seule). Pièce vide : le numéro d'écriture. Comptes de tiers dans CompteNum (pas de CompAux pour l'instant) | Simple |
+| Honoraires versés aux professeurs (DAS-2) | Excel : total par prof et par mois, pour la DAS-2 ; à l'étape 6 seulement par « Ajouter un document » | Complet |
+| FEC (à l'étape 6 seulement par « Ajouter un document ») | Fichier des écritures comptables (art. A47 A-1 du LPF) : texte, 18 colonnes séparées par une tabulation, dates AAAAMMJJ, montants à virgule, ISO-8859-15. Les écritures du Grand livre (§8.7), regroupées en écritures numérotées par date (même journal, même jour, même opération ; les à-nouveaux en une seule). Pièce vide : le numéro d'écriture. Comptes de tiers dans CompteNum (pas de CompAux pour l'instant) | Simple |
 
 **Balance | Grand-livre | Compte de résultat** (Seb, 20/11 ; maquette
 https://claude.ai/artifact/RfYkidna3tjwFtmnsJ4E4Q) : Comptes réunit ce qui sert à tout moment de l'année.
@@ -1214,6 +1219,27 @@ n'attend jamais une pièce : une ligne sans pièce reçoit son compte à la main
    l'an dernier (année avancée), ou « Synthèse Dépenses-Recettes <saison>.xlsx » sans modèle. La trésorière coche ce qu'on refait et
    corrige la nature (« reconnu comme », table `fin_document_choices`, `GET/PUT
    /finances/seasons/{id}/documents`) ; « Ajouter un document que l'appli sait faire » complète.
+   **Ordre et liste par défaut (Seb, 20/11)** : du plus simple au plus élaboré, Grand livre, Balance,
+   Compte de résultat, Bilan actif-passif, Rapport financier, Budget prévisionnel, puis les « Autre ».
+   **Honoraires versés aux professeurs (DAS-2)** (ce qui est payé à chaque professeur non salarié,
+   pour la déclaration aux impôts au-delà de 1 200 € par an ; pas un document de l'AG) et **FEC** ne
+   sont jamais cochés d'office, même reconnus l'an dernier : on les prend avec « Ajouter un document »
+   (`season_documents.ON_REQUEST`). Le fichier des honoraires garde son nom « Honoraires par professeur ».
+   **Un document, trois touches (Seb, 20/11 ; maquette https://claude.ai/artifact/TwsjGqxgjqZkF9gifoUtk7)** :
+   chaque document que l'appli sait faire a sa ligne sous son nom officiel, avec **Comme l'an dernier**
+   (le nom du fichier de l'an dernier, année avancée ; grisé sans fichier), **Nouveau** (le nom officiel :
+   « Compte de résultat 2025-2026.xlsx ») et **Non** ; dessous, le fichier qu'on obtiendra. « Tout comme
+   l'an dernier » et « Tout nouveau » règlent la liste. Stockage inchangé (`fin_document_choices`) : fichier
+   de l'an dernier coché = comme l'an dernier, document ajouté coché = nouveau ; la réponse porte `rows`
+   (`kind`, `label`, `lastYear`, `choice` same / new / none, `name`). Les fichiers non reconnus sont listés
+   « à refaire à la main », avec la nature à corriger. **On produit un document à la fois** : « Produire »,
+   puis « Voir » et « Télécharger » (plus de production d'ensemble). **Provisoire** : en Engagement, tant
+   que la saison n'est pas clôturée, le nom du fichier et le titre du document portent « (provisoire) »
+   (`AgDocuments.provisional`), comme dans les logiciels du métier ; après la clôture, le nom officiel,
+   celui qu'on dépose dans Docs. En Trésorerie, pas de clôture, pas de mention. Un document de chiffres ne
+   se corrige pas à la main : on corrige l'écriture et on le reproduit. **À venir** (Seb, 20/11) : « Comme
+   l'an dernier » reprend aussi la présentation des fichiers Excel et Word (cases repérées une fois par le
+   modèle, validées, chiffres posés par l'appli) ; les PDF gardent la présentation de l'appli.
    Chaque document prend **le nom de celui de l'an dernier, les années avancées d'un an**
    (« Balance 2024-2025.pdf » → « Balance 2025-2026.pdf »), au format que l'appli produit ; sans
    fichier l'an dernier : Synthèse, Balance, Rapport financier. Voir et Télécharger

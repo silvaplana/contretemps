@@ -15,10 +15,10 @@ Comptes
   Importer des relevés ; Relevés ; Plan comptable ; Soldes de départ ; Balance.
 - Importer des relevés : un tableau (Fichier | À quoi il correspond | Compte | Rangé dans) montre ce que l'appli propose ; on change le compte dans sa case si besoin, puis Valider (Annuler ne change rien). Les PDF vont dans Docs › saison › Financier › RELEVES BANCAIRES › compte.
 - Relevés : par saison, une case par compte et par mois ; ✓ relevé importé (toucher l'ouvre), – aucun mouvement, ! relevé manquant, ↓ relevé à importer, ? en attente du prochain relevé ; bouton Importer des relevés.
-- ⋯ › Plan comptable : le niveau Simple / Complet en haut (Complet sans retour), puis les comptes par classe (Classe 1 Capitaux… Classe 7 Produits) et par nature dans la classe : ajouter,
+- ⋯ › Plan comptable : le niveau Trésorerie (recettes-dépenses) / Engagement (partie double) en haut (Engagement sans retour), puis les comptes par classe (Classe 1 Capitaux… Classe 7 Produits) et par nature dans la classe : ajouter,
   renommer, nature (une rubrique du plan des associations, ex. « 21 Immobilisations corporelles », proposée d'après le numéro, ou « Créer une nature dans la classe N… » : un nom libre, la classe vient du numéro, puis dépense, recette ou hors résultat), mots-clés (qui font proposer le compte), événement (« gala »), désactiver (case « Compte actif » ; Retirer
   supprime un compte jamais utilisé, désactive sinon ; un compte de tiers 401 / 467x n'est jamais supprimé). Un prof sans
-  compte d'honoraires : l'appli crée « 467n Honoraires Nom » toute seule à sa première facture (niveau Complet).
+  compte d'honoraires : l'appli crée « 467n Honoraires Nom » toute seule à sa première facture (Engagement (partie double)).
   « Copies du plan » : le journal des copies mémorisées (date, commentaire) ; « Mémoriser le plan comptable » en ajoute
   une, le commentaire pré-rempli dit ce qui a changé depuis la précédente. « Repartir à zéro sur cette saison »
   (en bas de Bilan › Préparer) remet la copie choisie.
@@ -30,9 +30,9 @@ Comptes
   Compte de résultat : charges puis produits par classe et par compte, le résultat (Excédent ou Déficit), à côté de la saison d'avant.
   Saison pas finie : jusqu'au dernier jour connu des comptes en banque, comparée à la saison d'avant sur les mêmes dates un an plus tôt (c'est écrit sous le titre) ;
   saison finie : saison entière contre saison d'avant entière. Toucher un compte ouvre son Grand-livre. Seul le Compte de résultat se compare à l'an dernier.
-  Niveau Complet, soldes de départ de la saison ni repris ni reportés par une clôture : en haut de la Balance et du Grand-livre, la ligne orange
+  En Engagement (partie double), soldes de départ de la saison ni repris ni reportés par une clôture : en haut de la Balance et du Grand-livre, la ligne orange
   « Soldes de départ pas encore repris : banque, tiers et fonds incomplets. » et le lien « Reprendre les soldes de départ (Bilan › Préparer, étape 2) », qui ouvre cette étape sur la saison choisie.
-- ⋯ › Soldes de départ : soldes au premier jour de la saison (niveau Complet). Bouton « Reprendre les soldes de la Balance
+- ⋯ › Soldes de départ : soldes au premier jour de la saison (Engagement (partie double)). Bouton « Reprendre les soldes de la Balance
   2024-2025 (Docs › Financier) » (la saison précédente est nommée) : l'appli lit la Balance de la saison précédente déposée dans Docs › Financier (saison précédente ou en cours, n'importe quel sous-dossier, « Balance » dans le nom),
   remplit les cases, montre en haut l'écart éventuel avec les relevés ; sous chaque solde qui n'est pas à zéro, une phrase dit ce que c'est (factures non payées, fonds, compte d'attente à vider…) et propose la facture ou la transaction bancaire du même montant ; « Utiliser ces soldes » enregistre. Sans Balance dans Docs,
   on remplit les cases à la main. Saisons suivantes : reportés par la clôture, rien à faire.
@@ -130,7 +130,7 @@ Bilan
 - Préparer : sous le titre « Étapes du bilan 2025-2026 », les sept étapes, dans l'ordre, chacune nommée par un verbe
   (ce qu'on fait) avec ce qui reste (un ✓ quand il ne reste rien) ; toucher une étape la déplie. 1. Obtenir les relevés
   (la grille des relevés) ; 2. Reprendre les soldes de départ (orange tant que l'an dernier
-  n'est pas repris au niveau Complet : « Reprendre les soldes de la Balance <saison précédente> (Docs › Financier) ») ; 3. Rapprocher les factures et classer les transactions bancaires :
+  n'est pas repris en Engagement (partie double) : « Reprendre les soldes de la Balance <saison précédente> (Docs › Financier) ») ; 3. Rapprocher les factures et classer les transactions bancaires :
   les compteurs de Pièces › Rapprocher sur la saison et « Ouvrir Rapprocher les factures », puis les transactions bancaires sans
   compte : « À confirmer une par une » (toucher ouvre la fiche de l'opération ; une remise de chèques y est toujours,
   « à ventiler entre ses comptes » : dans sa fiche, « Ventiler comme les remises précédentes » puis répartir les
@@ -138,20 +138,24 @@ Bilan
   regroupées par compte avec « Valider le compte 6226 Honoraires : 48 lignes » ; au-dessus, s'il y en a, « Pièce et
   transaction pas dans le même compte (n) » : sur chaque ligne « Garder 606 (la pièce) » ou « Garder 627 (la
   transaction) » ; une pièce rattachée donne d'elle-même son compte à sa transaction ; 4. Compter la caisse et les factures non payées : la caisse et les
-  factures validées pas encore payées (au niveau Complet, dues au jour de la facture contre 401 / 467 ; au niveau Simple,
-  dans « Fournisseurs à payer » de la Synthèse), puis les écritures à la main (niveau Complet) : « Ajouter une écriture »
+  factures validées pas encore payées (en Engagement, dues au jour de la facture contre 401 / 467 ; en Trésorerie (recettes-dépenses),
+  dans « Fournisseurs à payer » de la Synthèse), puis les écritures à la main (Engagement (partie double)) : « Ajouter une écriture »
   ouvre une fenêtre date / libellé / compte débité / compte crédité / montant, pour une cotisation due (411) ou le compte
   d'attente (471), la poubelle supprime ; 5. Passer les contrôles, en clair (relevés complets, soldes de départ égaux aux
   relevés, un compte sur chaque transaction bancaire, FEC juste, écarts expliqués) ; 6. Produire les documents et comparer à l'an dernier : chaque
   compte face à la saison précédente (montant, écart, %), « ? » au-delà de 30 % ou compte nouveau / disparu, une ligne
-  d'explication à écrire (reprise dans le Rapport financier), puis les documents : « Documents à produire, d'après Docs ›
-  Financier › Bilan financier <saison précédente> » (chaque fichier de l'an dernier avec une case à cocher et « reconnu comme »
-  pour corriger sa nature), puis « Documents 2025-2026 » (dont « Budget prévisionnel : Budget prévisionnel 2026-2027.xlsx », « À remplir » :
+  d'explication à écrire (reprise dans le Rapport financier), puis les documents : « Documents 2025-2026 » (dont « Budget prévisionnel : Budget prévisionnel 2026-2027.xlsx », « À remplir » :
   Remplir ouvre une ligne par compte de charges et de produits, le réalisé de la saison en face, la case Prévu à taper, gardée tout de suite ;
   totaux et résultat prévu calculés ; « Reprendre le réalisé » pré-remplit ; « Produire le document » télécharge l'Excel ; « ← Étapes du bilan » revient), chacun affiché « nom officiel : nom du fichier », nommés comme ceux de l'an dernier (« Compte de résultat : Synthèse bilan 2025-2026.xlsx ») : Voir (un PDF s'ouvre dans un nouvel onglet ; Excel, Word et FEC
   dans l'éditeur, en lecture seule, ← revient), Télécharger ;
   Rapport financier : Rédiger, puis Voir, Word, PDF ; « Autre » = à faire à la main ; « Ajouter un document que l'appli sait faire ».
-  Rien n'est rangé dans Docs : on télécharge et on dépose soi-même. 7. Clôturer la saison (niveau Complet), quand les étapes 1
+  Ordre : Grand livre, Balance, Compte de résultat, Bilan actif-passif, Rapport financier, Budget prévisionnel, puis les « Autre ». « Honoraires versés
+  aux professeurs (DAS-2) » (pour la déclaration aux impôts) et « FEC » ne sont jamais cochés d'office : « Ajouter un document » les prend.
+  Chaque document a sa ligne sous son nom officiel avec trois touches : « Comme l'an dernier » (même nom, année avancée ; grisée sans fichier
+  l'an dernier), « Nouveau » (nom officiel), « Non » ; dessous « Fichier : … ». En haut « Tout comme l'an dernier » et « Tout nouveau ». On produit
+  un document à la fois : « Produire », puis « Voir » et « Télécharger ». En Engagement, avant la clôture, le fichier porte « (provisoire) ».
+  Les fichiers de l'an dernier non reconnus sont sous « Aussi dans Docs l'an dernier, à refaire à la main » (liste pour corriger la nature).
+  Rien n'est rangé dans Docs : on télécharge et on dépose soi-même. 7. Clôturer la saison (Engagement (partie double)), quand les étapes 1
   à 6 sont vertes : Clôturer / Rouvrir, avec la trace des clôtures rouvertes ; une fois clôturée, « Déposer les documents
   dans Docs » range les documents de l'étape 6 dans Docs › <saison> › Financier › Bilan financier (c'est la personne qui le touche). Un numéro de compte s'affiche
   toujours avec son libellé.
@@ -159,9 +163,9 @@ Bilan
 - ⋯ › Nouveau bilan : la liste des bilans (pour l'AG), « ← Étapes du bilan » revient ; choisir un bilan de la liste. Puces d'état : Brouillon, Validé, Officiel.
 - Dans un bilan : Calculer, puis « Résultat » (à déplier) : recettes et dépenses par compte, analyse, présentation du tableau.
 - En dessous, Documents de l'AG : Synthèse Dépenses-Recettes (Excel), FEC (fichier des écritures, pour le
-  comptable ou l'administration fiscale, avec son contrôle juste / à corriger juste dessous), et au niveau Complet
+  comptable ou l'administration fiscale, avec son contrôle juste / à corriger juste dessous), et en Engagement (partie double)
   Balance, Grand livre, Bilan actif-passif (PDF), Honoraires par professeur (Excel). Pour chacun : Voir (s'ouvre comme dans Docs), télécharger, icône dossier (Docs ›
-  Financier › AG). Puis Rapport financier : Rédiger, Voir, Word, PDF. Au niveau Complet : clôture de la saison.
+  Financier › AG). Puis Rapport financier : Rédiger, Voir, Word, PDF. En Engagement (partie double) : clôture de la saison.
 - Clôturer (étape 7) : Clôturer valide toutes les écritures de la saison (cadenas dans Comptes et dans la colonne Type
   du Grand livre, « Écritures validées par la clôture du … ») ; la carte garde la trace des clôtures rouvertes.
 - « Repartir à zéro sur cette saison » (pour s'exercer) : la fenêtre liste ce qui part et ce qui reste, le nom de la saison retapé puis « Tout effacer ».
@@ -187,9 +191,9 @@ Règles de l'appli
   compte va dans « Dépenses à classer » (659) ou « Recettes à classer » (759) des documents de l'AG.
 - Les virements entre les comptes de l'association n'ont pas de compte du plan (ni recette ni dépense).
 - Une pièce (facture, ticket, note) se rattache à la ligne qui la paie ; elle ne change pas les montants.
-- Simple : comptabilité de trésorerie, chaque ligne contre son compte ; Synthèse et Rapport financier.
-- Complet : partie double. Achats et honoraires passent par les comptes de tiers (401 fournisseurs, 467x honoraires
+- Trésorerie (recettes-dépenses) : comptabilité de trésorerie, chaque ligne contre son compte ; Synthèse et Rapport financier.
+- Engagement (partie double) : partie double. Achats et honoraires passent par les comptes de tiers (401 fournisseurs, 467x honoraires
   par professeur), lettrés (AAA, AAB…) avec leur paiement ; soldes de départ ; clôture qui verrouille la saison et reporte
-  le résultat ; Balance, Grand livre, Bilan actif-passif, Honoraires par professeur (DAS-2).
+  le résultat ; Balance, Grand livre, Bilan actif-passif, Honoraires versés aux professeurs (DAS-2).
 - Le bilan additionne par compte du plan confirmé, sinon par catégorie de Comptes. Les montants sont calculés par
   l'appli, jamais écrits par l'assistant.

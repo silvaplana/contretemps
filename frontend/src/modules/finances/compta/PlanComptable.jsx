@@ -36,7 +36,7 @@ export default function PlanComptable({ onClose }) {
 
   async function choisirNiveau(level) {
     if (level === plan.level) return
-    if (level === 'complet' && !window.confirm('Passer en Complet (partie double) ? On ne revient pas en Simple.')) return
+    if (level === 'complet' && !window.confirm('Passer en Engagement (partie double) ? On ne revient pas en Trésorerie.')) return
     try {
       const r = await api.choisirNiveau(level)
       setPlan((p) => ({ ...p, level: r.level }))
@@ -81,8 +81,8 @@ export default function PlanComptable({ onClose }) {
         <span>Documents comptables</span>
         <div className="fin-cp-niveau" role="group" aria-label="Niveau">
           {[
-            ['simple', 'Simple'],
-            ['complet', 'Complet'],
+            ['simple', 'Trésorerie (recettes-dépenses)'],
+            ['complet', 'Engagement (partie double)'],
           ].map(([id, label]) => (
             <button key={id} type="button" className={plan.level === id ? 'is-active' : ''} onClick={() => choisirNiveau(id)}>
               {label}
@@ -90,9 +90,9 @@ export default function PlanComptable({ onClose }) {
           ))}
         </div>
         <p className="muted">
-          <b>Simple</b> : Synthèse Dépenses-Recettes, trésorerie et Rapport financier, ce que l’assemblée générale vote.{' '}
-          <b>Complet</b> : partie double (fournisseurs, adhérents, honoraires par prof, lettrage, clôture), Grand livre,
-          Balance et Honoraires par professeur en plus.
+          <b>Trésorerie (recettes-dépenses)</b> : Compte de résultat, trésorerie et Rapport financier, ce que l’assemblée générale vote.{' '}
+          <b>Engagement (partie double)</b> : en plus, les factures dues et les comptes de tiers (fournisseurs, adhérents, honoraires par prof, lettrage, clôture), Grand livre,
+          Balance et Honoraires versés aux professeurs (DAS-2) en plus.
         </p>
       </div>
       <p className="muted">

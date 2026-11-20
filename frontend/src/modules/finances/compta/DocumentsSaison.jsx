@@ -53,6 +53,8 @@ export function Etape6Documents({ season, docs }) {
   const [budget, setBudget] = useState(false)
   const [rapportId, setRapportId] = useState(null)
   const [ajout, setAjout] = useState('')
+  const [produits, setProduits] = useState([]) // noms des documents produits depuis l'ouverture de l'écran
+  const [enCours, setEnCours] = useState('')
   const [apercu, setApercu] = useState(null) // { titre, charger } : un Excel, un Word, le FEC dans OnlyOffice
 
   if (erreur) return <p className="login-screen__erreur">{erreur}</p>
@@ -70,10 +72,16 @@ export function Etape6Documents({ season, docs }) {
 
   const reportId = rapportId ?? data.reportId
 
-  // Les choix tels qu'à l'écran, envoyés en entier à chaque changement.
-  function items(change) {
-    const modeles = data.models.map((m) => ({ nodeId: m.nodeId, name: m.name, kind: m.kind, selected: m.selected, ...change(m) }))
-    const ajoutes = data.documents.filter((d) => d.nodeId == null).map((d) => ({ nodeId: null, name: '', kind: d.kind, selected: true }))
+  // Les choix tels qu'à l'écran, envoyés en entier à chaque changement : un
+  // fichier de l'an dernier coché = « Comme l'an dernier », un document ajouté
+  // coché = « Nouveau », ni l'un ni l'autre = « Non ».
+  function items(choix, nature = () => ({})) {
+    const modeles = data.models.map((m) => {
+      const kind = nature(m).kind ?? m.kind
+      const voulu = choix(kind)
+      return { nodeId: m.nodeId, name: m.name, kind, selected: voulu ? voulu === 'same' : kind !== m.kind ? kind !== AUTRE : m.selected }
+    })
+    const ajoutes = data.rows.map((r) => ({ nodeId: null, name: '', kind: r.kind, selected: (choix(r.kind) ?? r.choice) === 'new' }))
     return [...modeles, ...ajoutes]
   }
 
@@ -85,8 +93,27 @@ export function Etape6Documents({ season, docs }) {
     }
   }
 
+  const choisir = (kind, choice) => enregistrer(items((k) => (k === kind ? choice : null)))
+  // « Tout comme l'an dernier » : là où il y a un fichier ; « Tout nouveau » : sauf les « Non ».
+  const toutChoisir = (choice) =>
+    enregistrer(items((k) => (data.rows.some((r) => r.kind === k && (choice === 'same' ? r.lastYear : r.choice !== 'none')) ? choice : null)))
+
   function telecharger(d) {
     telechargerFichier(api.urlDocumentSaison(season.id, d.kind, d.name), d.name).catch((err) => setErreur(err.message))
+  }
+
+  // « Produire » un document à la fois (Seb, 20/11) : l'appli le calcule, puis on peut le voir.
+  async function produire(d) {
+    setEnCours(d.name)
+    try {
+      const reponse = await fetch(api.urlDocumentSaison(season.id, d.kind, d.name))
+      if (!reponse.ok) throw new Error(`Le document n’a pas pu être produit (${reponse.status})`)
+      setProduits((p) => [...p, d.name])
+    } catch (err) {
+      setErreur(err.message)
+    } finally {
+      setEnCours('')
+    }
   }
 
   async function rediger() {
@@ -103,30 +130,121 @@ export function Etape6Documents({ season, docs }) {
     else setApercu({ titre: d.name, charger: () => api.apercuDocumentSaison(season.id, d.kind, d.name) })
   }
 
+  const voirEtTelecharger = (d) => (
+    <>
+      <button type="button" className="btn btn--secondary" onClick={() => voir(d)}>
+        <Icon name="eye" size={16} /> Voir
+      </button>
+      <button type="button" className="btn btn--secondary" onClick={() => telecharger(d)}>
+        <Icon name="download" size={16} /> Télécharger
+      </button>
+    </>
+  )
+
+  const budgetDoc = data.documents.find((d) => d.kind === 'budget')
+  const autres = data.models.filter((m) => m.kind === AUTRE)
+
   return (
     <>
       {apercu && <Apercu titre={apercu.titre} charger={apercu.charger} onClose={() => setApercu(null)} />}
-      {data.models.length > 0 && (
-        <div className="fin-preparer__bloc">
-          <span className="fin-cp-t">Documents à produire, d’après Docs › Financier › Bilan financier {data.previousSeason}</span>
-          <span className="fin-cp-s">
-            L’appli a reconnu chaque fichier d’après son contenu, puis son nom. Corrigez la nature si besoin, décochez ce qu’on ne refait pas.
+      <div className="fin-preparer__bloc">
+        <span className="fin-cp-t">Documents {season.name}</span>
+        <span className="fin-cp-s">Pour chaque document : le même que l’an dernier (même nom, année avancée), ou un nouveau.</span>
+        {data.models.length > 0 && (
+          <span className="fin-cp-a fin-docs__tout">
+            <button type="button" className="btn btn--secondary" onClick={() => toutChoisir('same')}>
+              Tout comme l’an dernier
+            </button>
+            <button type="button" className="btn btn--secondary" onClick={() => toutChoisir('new')}>
+              Tout nouveau
+            </button>
           </span>
-          {data.models.map((m) => (
-            <label key={m.nodeId} className="fin-docs__choix">
-              <input
-                type="checkbox"
-                checked={m.selected}
-                onChange={(e) => enregistrer(items((x) => (x.nodeId === m.nodeId ? { selected: e.target.checked } : {})))}
-              />
-              <span>
-                <span className="fin-cp-t">{m.name}</span>
+        )}
+        {data.rows.map((r) => {
+          const d = { kind: r.kind, name: r.name }
+          const produit = produits.includes(r.name)
+          return (
+            <div key={r.kind} className="fin-docs__doc">
+              <span className="fin-cp-t">{r.label}</span>
+              <span className="fin-docs__trois">
+                <button type="button" className="btn btn--secondary" aria-pressed={r.choice === 'same'} disabled={!r.lastYear} onClick={() => choisir(r.kind, 'same')}>
+                  Comme l’an dernier
+                </button>
+                <button type="button" className="btn btn--secondary" aria-pressed={r.choice === 'new'} onClick={() => choisir(r.kind, 'new')}>
+                  Nouveau
+                </button>
+                <button type="button" className="btn btn--secondary" aria-pressed={r.choice === 'none'} onClick={() => choisir(r.kind, 'none')}>
+                  Non
+                </button>
+              </span>
+              <span className="fin-cp-s">
+                {r.choice === 'same' && `D’après « ${r.lastYear} » · `}
+                {r.choice !== 'same' && !r.lastYear && 'Pas de fichier l’an dernier · '}
+                {r.choice === 'none' ? 'Pas produit' : `Fichier : ${r.name}`}
+                {produit && r.choice !== 'none' && (data.provisional ? ' · Produit, provisoire' : ' · Produit')}
+              </span>
+              {r.choice !== 'none' &&
+                (r.kind === RAPPORT ? (
+                  reportId != null ? (
+                    <RapportFinancier
+                      reportId={reportId}
+                      seasonName={season.name}
+                      titre={r.name}
+                      sansDocs
+                      rediger={rapportId != null}
+                      onErreur={setErreur}
+                      onApercu={() => setApercu({ titre: r.name, charger: () => api.apercuRapportFinancier(reportId, r.name.replace(/\.docx$/, '')) })}
+                    />
+                  ) : (
+                    <span className="fin-cp-a">
+                      <button type="button" className="btn btn--secondary" onClick={rediger}>
+                        <Icon name="edit" size={16} /> Rédiger
+                      </button>
+                    </span>
+                  )
+                ) : (
+                  <span className="fin-cp-a">
+                    <button type="button" className="btn btn--secondary" onClick={() => produire(d)} disabled={enCours === r.name}>
+                      {enCours === r.name ? 'Calcul…' : produit ? 'Produire à nouveau' : 'Produire'}
+                    </button>
+                    {produit && voirEtTelecharger(d)}
+                  </span>
+                ))}
+              {r.kind === 'fec' && r.choice !== 'none' && data.fecCheck && (
+                <span className={data.fecCheck.ok ? 'fin-cp-s' : 'fin-cp-alerte'}>
+                  {data.fecCheck.ok ? `FEC juste : ${data.fecCheck.entries} écriture(s) équilibrée(s)` : `FEC à corriger : ${data.fecCheck.problems.join(' ')}`}
+                </span>
+              )}
+            </div>
+          )
+        })}
+        {budgetDoc && (
+          // Budget prévisionnel de la saison suivante (Seb, 20/11) : à remplir, puis Voir / Télécharger.
+          <div className="fin-docs__doc">
+            <span className="fin-cp-t">{budgetDoc.label}</span>
+            <span className="fin-cp-s">Fichier : {budgetDoc.name}</span>
+            <span className={budgetDoc.filled ? 'fin-cp-s' : 'fin-cp-alerte'}>{budgetDoc.filled ? 'Montants prévus tapés' : 'À remplir'}</span>
+            <span className="fin-cp-a">
+              <button type="button" className="btn btn--secondary" onClick={() => setBudget(true)}>
+                <Icon name="edit" size={16} /> {budgetDoc.filled ? 'Modifier' : 'Remplir'}
+              </button>
+              {budgetDoc.filled && voirEtTelecharger(budgetDoc)}
+            </span>
+          </div>
+        )}
+        {autres.length > 0 && (
+          <>
+            <span className="fin-cp-t">Aussi dans Docs l’an dernier, à refaire à la main</span>
+            {autres.map((m) => (
+              <div key={m.nodeId} className="fin-docs__doc">
+                <span>{m.name}</span>
                 <span className="fin-docs__nature">
-                  <span className="fin-cp-s">reconnu comme</span>
+                  <span className="fin-cp-s">Si l’appli sait le faire, c’est un</span>
                   <select
                     className="field-input"
                     value={m.kind}
-                    onChange={(e) => enregistrer(items((x) => (x.nodeId === m.nodeId ? { kind: e.target.value } : {})))}
+                    aria-label={`Nature de ${m.name}`}
+                    onChange={(e) => enregistrer(items(() => null, (x) => (x.nodeId === m.nodeId ? { kind: e.target.value } : {})))}
                   >
                     {Object.entries(data.labels).map(([k, label]) => (
                       <option key={k} value={k}>
@@ -135,99 +253,20 @@ export function Etape6Documents({ season, docs }) {
                     ))}
                   </select>
                 </span>
-              </span>
-            </label>
-          ))}
-        </div>
-      )}
-
-      <div className="fin-preparer__bloc">
-        <span className="fin-cp-t">Documents {season.name}</span>
-        {data.documents.length === 0 && <span className="fin-cp-s">Aucun document coché.</span>}
-        {data.documents.map((d) =>
-          d.kind === 'budget' ? (
-            // Budget prévisionnel de la saison suivante (Seb, 20/11) : à remplir, puis Voir / Télécharger.
-            <div key="budget" className="fin-docs__doc">
-              <span className="fin-cp-t">
-                {d.label} : {d.name}
-              </span>
-              <span className={d.filled ? 'fin-cp-s' : 'fin-cp-alerte'}>{d.filled ? 'Montants prévus tapés' : 'À remplir'}</span>
-              <span className="fin-cp-a">
-                <button type="button" className="btn btn--secondary" onClick={() => setBudget(true)}>
-                  <Icon name="edit" size={16} /> {d.filled ? 'Modifier' : 'Remplir'}
-                </button>
-                {d.filled && (
-                  <>
-                    <button type="button" className="btn btn--secondary" onClick={() => voir(d)}>
-                      <Icon name="eye" size={16} /> Voir
-                    </button>
-                    <button type="button" className="btn btn--secondary" onClick={() => telecharger(d)}>
-                      <Icon name="download" size={16} /> Télécharger
-                    </button>
-                  </>
-                )}
-              </span>
-            </div>
-          ) : d.kind === RAPPORT && d.available ? (
-            reportId != null ? (
-              <RapportFinancier
-                key={`${d.kind}-${d.nodeId}`}
-                reportId={reportId}
-                seasonName={season.name}
-                titre={d.name}
-                nature={d.label}
-                sansDocs
-                rediger={rapportId != null}
-                onErreur={setErreur}
-                onApercu={() => setApercu({ titre: d.name, charger: () => api.apercuRapportFinancier(reportId, d.name.replace(/\.docx$/, '')) })}
-              />
-            ) : (
-              <div key={`${d.kind}-${d.nodeId}`} className="fin-docs__doc">
-                <span className="fin-cp-t">{d.label} : {d.name}</span>
-                <span className="fin-cp-s">Texte rédigé d’après les chiffres de la saison, à relire{d.model ? ` · nommé comme « ${d.model} »` : ''}</span>
-                <span className="fin-cp-a">
-                  <button type="button" className="btn btn--secondary" onClick={rediger}>
-                    <Icon name="edit" size={16} /> Rédiger
-                  </button>
-                </span>
               </div>
-            )
-          ) : (
-            <div key={`${d.kind}-${d.nodeId}`} className="fin-docs__doc">
-              {/* Nom officiel : nom du fichier produit (Seb, 20/11). */}
-              <span className="fin-cp-t">{d.kind === AUTRE ? d.name : `${d.label} : ${d.name}`}</span>
-              <span className="fin-cp-s">
-                {d.kind === AUTRE ? 'À faire à la main, d’après le fichier de l’an dernier' : d.model ? `Nommé comme « ${d.model} »` : 'Nom proposé par l’appli'}
-                {!d.available && ' · niveau Complet (Comptes › ⋯ › Plan comptable)'}
-              </span>
-              {d.kind !== AUTRE && d.available && (
-                <span className="fin-cp-a">
-                  <button type="button" className="btn btn--secondary" onClick={() => voir(d)}>
-                    <Icon name="eye" size={16} /> Voir
-                  </button>
-                  <button type="button" className="btn btn--secondary" onClick={() => telecharger(d)}>
-                    <Icon name="download" size={16} /> Télécharger
-                  </button>
-                </span>
-              )}
-              {d.kind === 'fec' && data.fecCheck && (
-                <span className={data.fecCheck.ok ? 'fin-cp-s' : 'fin-cp-alerte'}>
-                  {data.fecCheck.ok ? `FEC juste : ${data.fecCheck.entries} écriture(s) équilibrée(s)` : `FEC à corriger : ${data.fecCheck.problems.join(' ')}`}
-                </span>
-              )}
-            </div>
-          ),
+            ))}
+          </>
         )}
         {data.addable.length > 0 && (
           <label className="fin-cp-champ">
-            <span>Ajouter un document que l’appli sait faire</span>
+            <span>Ajouter un document</span>
             <select
               className="field-input"
               value={ajout}
               onChange={(e) => {
                 const kind = e.target.value
                 setAjout('')
-                if (kind) enregistrer([...items(() => ({})), { nodeId: null, name: '', kind, selected: true }])
+                if (kind) enregistrer([...items(() => null), { nodeId: null, name: '', kind, selected: true }])
               }}
             >
               <option value="">Choisir…</option>
@@ -238,6 +277,9 @@ export function Etape6Documents({ season, docs }) {
               ))}
             </select>
           </label>
+        )}
+        {data.provisional && (
+          <span className="fin-cp-s">Tant que la saison n’est pas clôturée, chaque document porte la mention « provisoire ». Après la clôture, il prend son nom officiel.</span>
         )}
         <span className="fin-cp-s">Rien n’est rangé tout seul dans Docs : on télécharge, et on dépose soi-même dans Docs › Financier ce qu’on veut garder.</span>
       </div>
@@ -277,7 +319,7 @@ export function Etape7Cloture({ season, docs, pret, onChange }) {
     }
   }
 
-  if (data.level !== 'complet') return <p className="muted">La clôture est au niveau Complet (Comptes › ⋯ › Plan comptable).</p>
+  if (data.level !== 'complet') return <p className="muted">La clôture est en Engagement (partie double) (Comptes › ⋯ › Plan comptable).</p>
   return (
     <div className="fin-preparer__corps">
       {closing ? (

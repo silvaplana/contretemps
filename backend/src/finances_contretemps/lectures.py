@@ -263,7 +263,7 @@ def financier(
         if kind is None:
             raise Refus("document inconnu : synthese, balance, grand_livre, honoraires ou fec")
         if AG_KINDS[kind][2] == "complet" and accounting.level(db, org_id) != "complet":
-            raise Refus(f"{AG_KINDS[kind][0]} : niveau Complet seulement (Comptes › ⋯ › Plan comptable)")
+            raise Refus(f"{AG_KINDS[kind][0]} : en Engagement (partie double) seulement (Comptes › ⋯ › Plan comptable)")
         if kind == "synthese":
             return _json(documents.synthese(db, member, season))
         if kind == "fec":
@@ -415,7 +415,7 @@ def financier(
         if kind is None:
             raise Refus("document inconnu : synthese, balance, grand_livre, honoraires ou fec")
         if AG_KINDS[kind][2] == "complet" and accounting.level(db, org_id) != "complet":
-            raise Refus(f"{AG_KINDS[kind][0]} : niveau Complet seulement")
+            raise Refus(f"{AG_KINDS[kind][0]} : en Engagement (partie double) seulement")
         title, extension, _ = AG_KINDS[kind]
 
         def faire(db: Session) -> None:
@@ -482,8 +482,8 @@ def financier(
         def faire(db: Session) -> None:
             accounting.set_level(db, member, "complet")
 
-        return Ligne("Passer la comptabilité au niveau Complet (partie double : comptes de tiers, lettrage, soldes de départ, "
-                     "clôture ; Balance, Grand livre et Honoraires). On ne revient pas en Simple.", faire)
+        return Ligne("Passer la comptabilité en Engagement (partie double : comptes de tiers, lettrage, soldes de départ, "
+                     "clôture ; Balance, Grand livre et Honoraires). On ne revient pas en Trésorerie.", faire)
 
     def read(name: str, module: str, description: str, params: type[BaseModel], fn) -> Action:
         return Action(name, module, description, params, None, admin_only=False, read=fn)
@@ -512,7 +512,7 @@ def financier(
              "Le contenu d'un document de l'AG d'une saison (Financier › Bilan › Documents de l'AG) : synthese (charges et produits "
              "par compte, trésorerie, fournisseurs à payer, événements, à classer), balance, grand_livre, honoraires (par "
              "professeur et par mois) ou fec (le contrôle du FEC : ce qui l'empêche d'être juste). Balance, grand livre et "
-             "honoraires : niveau Complet.", AgDocument, read_ag_document),
+             "honoraires : en Engagement (partie double).", AgDocument, read_ag_document),
         read("finance_assemblies", "Financier", "Financier › AG : les assemblées générales d'une saison et leur PowerPoint.",
              SeasonOnly, read_assemblies),
         read("finance_assembly_slides", "Financier", "Le texte de chaque diapo du PowerPoint d'une AG (final, produit, modifié ou modèle).",
@@ -538,5 +538,5 @@ def financier(
                "Supprime un compte du plan comptable jamais utilisé ; s'il a des lignes, il est désactivé.",
                ChartNumber, prepare_delete_account, admin_only=False),
         Action("set_accounting_level", "Financier",
-               "Passe la comptabilité au niveau Complet (partie double). Sans retour en Simple.", Level, prepare_level, admin_only=False),
+               "Passe la comptabilité en Engagement (partie double). Sans retour en Trésorerie.", Level, prepare_level, admin_only=False),
     ]

@@ -608,6 +608,10 @@ button.fin-cp-compte:last-child {
 .fin-docs__doc { display: grid; gap: 4px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; }
 .fin-docs__doc .fin-cp-a { display: flex; flex-wrap: wrap; gap: 6px; }
 .fin-docs__doc .btn { min-height: 48px; }
+.fin-docs__trois { display: grid; grid-template-columns: 1fr 1fr auto; gap: 6px; }
+.fin-docs__trois .btn { min-height: 52px; min-width: 0; padding: 6px 10px; }
+.fin-docs__trois .btn[aria-pressed="true"] { border-color: var(--accent); font-weight: 600; box-shadow: inset 0 0 0 1px var(--accent); }
+.fin-docs__tout { display: flex; flex-wrap: wrap; gap: 6px; }
 .fin-docs__cloture { border-left: 3px solid var(--accent); padding-left: 12px; }
 .fin-docs__cloture p { margin: 0 0 6px; }
 .fin-docs__cloture ul { margin: 0; padding-left: 20px; }
