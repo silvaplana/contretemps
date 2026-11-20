@@ -11,6 +11,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date
+from html import escape
 
 from sqlalchemy.orm import Session
 
@@ -65,13 +66,18 @@ def pdf(day: date, payments: list[Payment]) -> bytes:
     import pymupdf
 
     doc = pymupdf.open()
+    doc.set_metadata({"title": f"Versement HelloAsso du {day.strftime('%d/%m/%Y')} (reconstituée par l'appli)"})
     page, y = None, 0
 
     def write(text: str, size: int = 10, bold: bool = False):
+        # insert_htmlbox : police Noto intégrée, qui a « € » et « — »
+        # (la Helvetica de base les affiche « · »).
         nonlocal page, y
-        if page is None or y > 800:
-            page, y = doc.new_page(width=595, height=842), 50
-        page.insert_text((50, y), text, fontsize=size, fontname="hebo" if bold else "helv")
+        if page is None or y > 790:
+            page, y = doc.new_page(width=595, height=842), 40
+        weight = "bold" if bold else "normal"
+        page.insert_htmlbox(pymupdf.Rect(50, y, 545, y + 3 * size),
+                            f'<p style="font-size:{size}px;font-weight:{weight};margin:0">{escape(text)}</p>')
         y += size + 6
 
     write(MENTION, 11, bold=True)

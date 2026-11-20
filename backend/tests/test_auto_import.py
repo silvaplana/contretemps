@@ -301,3 +301,18 @@ def test_versements_helloasso(client, db_session, asc, monkeypatch):
     avant = db_session.query(DocNode).count()
     assert client.post(f"/auto-import/{sans['id']}/run", headers=h).json()["created"] == 2
     assert db_session.query(DocNode).count() == avant
+
+
+def test_pdf_versement_affiche_les_euros_et_son_nom():
+    """Le PDF reconstitué montre « € » (pas « · ») et porte un titre lisible
+    (sinon la visionneuse affiche un identifiant)."""
+    import pymupdf
+    from datetime import date
+
+    from auto_import.helloasso_source import Payment, pdf
+
+    data = pdf(date(2026, 2, 9), [Payment("Jules Martin", "Cotisation", 10000, 1, "2025-11-09", date(2026, 2, 9))])
+    doc = pymupdf.open(stream=data, filetype="pdf")
+    texte = doc[0].get_text()
+    assert "100,00 €" in texte and "Jules Martin — Cotisation" in texte
+    assert doc.metadata["title"] == "Versement HelloAsso du 09/02/2026 (reconstituée par l'appli)"
