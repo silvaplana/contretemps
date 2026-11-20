@@ -152,6 +152,9 @@ const SOMBRE = {
   // rouge brun d'avant rappelait la charte de Contretemps.
   '--danger-bg': 'color-mix(in srgb, #ef4444 8%, var(--card-bg))',
   '--danger-text': '#f87171',
+  // Docs : cartes des dossiers et champ de recherche, clairs sinon.
+  '--folder-bg': 'color-mix(in srgb, var(--accent) 8%, var(--card-bg))',
+  '--input-bg': 'var(--bg)',
   'color-scheme': 'dark',
 }
 
