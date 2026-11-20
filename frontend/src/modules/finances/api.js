@@ -192,6 +192,11 @@ export const apercuDocumentSaison = (seasonId, kind, nom) => appel(`/seasons/${s
 export const apercuRapportFinancier = (reportId, nom) => appel(`/reports/${reportId}/rapport/preview?name=${encodeURIComponent(nom)}`)
 // Étape 7 : la trésorière dépose les documents de la saison clôturée dans Docs (Seb 13/11).
 export const deposerDocumentsSaison = (seasonId) => appel(`/seasons/${seasonId}/documents/deposit`, { method: 'POST' })
+// Budget prévisionnel de la saison suivante (Bilan › Préparer, étape 6).
+export const budget = (seasonId) => appel(`/seasons/${seasonId}/budget`)
+export const enregistrerBudget = (seasonId, lines) => appel(`/seasons/${seasonId}/budget`, json('PUT', { lines }))
+export const reprendreRealise = (seasonId) => appel(`/seasons/${seasonId}/budget/realised`, { method: 'POST' })
+
 export const urlDocumentSaison = (seasonId, kind, nom) => `${BASE}/seasons/${seasonId}/documents/${kind}/file?name=${encodeURIComponent(nom)}`
 export const bilanDuRapport = (seasonId) => appel(`/seasons/${seasonId}/rapport-report`, { method: 'POST' })
 export const cloturerSaison = (seasonId) => appel(`/seasons/${seasonId}/close`, { method: 'POST' })

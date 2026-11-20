@@ -146,7 +146,9 @@ Bilan
   compte face à la saison précédente (montant, écart, %), « ? » au-delà de 30 % ou compte nouveau / disparu, une ligne
   d'explication à écrire (reprise dans le Rapport financier), puis les documents : « Documents à produire, d'après Docs ›
   Financier › Bilan financier <saison précédente> » (chaque fichier de l'an dernier avec une case à cocher et « reconnu comme »
-  pour corriger sa nature), puis « Documents 2025-2026 », chacun affiché « nom officiel : nom du fichier », nommés comme ceux de l'an dernier (« Compte de résultat : Synthèse bilan 2025-2026.xlsx ») : Voir (un PDF s'ouvre dans un nouvel onglet ; Excel, Word et FEC
+  pour corriger sa nature), puis « Documents 2025-2026 » (dont « Budget prévisionnel : Budget prévisionnel 2026-2027.xlsx », « À remplir » :
+  Remplir ouvre une ligne par compte de charges et de produits, le réalisé de la saison en face, la case Prévu à taper, gardée tout de suite ;
+  totaux et résultat prévu calculés ; « Reprendre le réalisé » pré-remplit ; « Produire le document » télécharge l'Excel ; « ← Étapes du bilan » revient), chacun affiché « nom officiel : nom du fichier », nommés comme ceux de l'an dernier (« Compte de résultat : Synthèse bilan 2025-2026.xlsx ») : Voir (un PDF s'ouvre dans un nouvel onglet ; Excel, Word et FEC
   dans l'éditeur, en lecture seule, ← revient), Télécharger ;
   Rapport financier : Rédiger, puis Voir, Word, PDF ; « Autre » = à faire à la main ; « Ajouter un document que l'appli sait faire ».
   Rien n'est rangé dans Docs : on télécharge et on dépose soi-même. 7. Clôturer la saison (niveau Complet), quand les étapes 1

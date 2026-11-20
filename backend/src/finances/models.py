@@ -397,6 +397,25 @@ class FinSeasonNote(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_now)
 
 
+class FinBudgetLine(Base):
+    """Budget prévisionnel de la saison suivante (Seb, 20/11 ; Bilan ›
+    Préparer, étape 6) : le montant prévu par compte de charges ou de
+    produits, tapé par le trésorier (centimes, positif). Rattaché à la saison
+    qu'on clôture ; l'appli n'écrit aucun chiffre d'elle-même, sauf sur
+    « Reprendre le réalisé »."""
+
+    __tablename__ = "fin_budget_lines"
+    __table_args__ = (UniqueConstraint("org_id", "season_id", "number"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    org_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    season_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    number: Mapped[str] = mapped_column(String(10), nullable=False)
+    amount: Mapped[int] = mapped_column(Integer, nullable=False)
+    updated_by: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_now)
+
+
 class FinManualEntry(Base):
     """Écriture saisie à la main (spec §8.10, étape 4 « Hors banque » ; journal
     OD, niveau Complet) : ce qui n'est ni sur les relevés ni dans la caisse ni

@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import html
 import io
+import re
 from collections import defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -42,7 +43,7 @@ from .accounting import Accounting
 from .balance_reader import read_balance
 from .exports import _CSS, _eur, _fr, html_to_pdf
 from .chart import is_cheque_deposit
-from .models import EXPENSE, FULL, INCOME, THIRD_PARTY, FinAccount, FinCashLine, FinClosing, FinManualEntry, FinOpeningBalance, FinOperation, FinOperationAccount, FinSeasonNote, FinDocumentChoice
+from .models import EXPENSE, FULL, INCOME, THIRD_PARTY, FinAccount, FinBudgetLine, FinCashLine, FinClosing, FinManualEntry, FinOpeningBalance, FinOperation, FinOperationAccount, FinSeasonNote, FinDocumentChoice
 from .ports import Member, Season
 from .season_documents import BASE, LABELS, OTHER, RAPPORT, default_name, next_name, recognize
 
@@ -84,6 +85,7 @@ KINDS = {
     "bilan": ("Bilan actif-passif", "pdf", "complet"),
     "honoraires": ("Honoraires par professeur", "xlsx", "complet"),
     "fec": ("FEC", "txt", "simple"),
+    "budget": ("Budget prévisionnel", "xlsx", "simple"),
 }
 
 # Fichier des écritures comptables (article A47 A-1 du livre des procédures
@@ -979,6 +981,11 @@ class AgDocuments:
         if not files and not any(c.node_id is None for c in choices):
             added = list(BASE)
         documents += [{"kind": k, "name": default_name(k, season.name), "model": None, "nodeId": None} for k in added]
+        # Le budget de la saison suivante, toujours là (Seb, 20/11) : à remplir.
+        next_season = self.next_season_name(db, member.org_id, season)
+        filled = db.scalar(select(FinBudgetLine.id).where(FinBudgetLine.org_id == member.org_id, FinBudgetLine.season_id == season.id)) is not None
+        documents = [d for d in documents if d["kind"] != "budget"]
+        documents.append({"kind": "budget", "name": f"Budget prévisionnel {next_season}.xlsx", "model": None, "nodeId": None, "filled": filled})
         for d in documents:
             d["label"] = LABELS.get(d["kind"], d["kind"])
             d["available"] = d["kind"] == OTHER or d["kind"] in available
@@ -1027,7 +1034,7 @@ class AgDocuments:
         files = [
             self.season_file(db, member, season, d["kind"], d["name"])[:2][::-1]
             for d in self.season_documents(db, member, season)["documents"]
-            if d["kind"] in KINDS and d["available"]
+            if d["kind"] in KINDS and d["available"] and d.get("filled", True)
         ]
         files += list(extra)
         if not files:
@@ -1416,6 +1423,124 @@ class AgDocuments:
         )
         return html_to_pdf("".join(parts), _CSS + _REPORT_CSS)
 
+    # ----- Budget prévisionnel de la saison suivante (§8.10, étape 6) -----
+
+    def next_season_name(self, db: Session, org_id: int, season: Season) -> str:
+        """Le nom de la saison suivante : celle qui existe, sinon les années
+        avancées d'un an (« 2025-2026 » → « 2026-2027 »)."""
+        after = sorted((s for s in self.seasons(db, org_id) if s.start_date > season.end_date), key=lambda s: s.start_date)
+        if after:
+            return after[0].name
+        return re.sub(r"\d{4}", lambda m: str(int(m.group()) + 1), season.name) if re.search(r"\d{4}", season.name) else f"après {season.name}"
+
+    def budget(self, db: Session, member: Member, season: Season) -> dict:
+        """Le budget prévisionnel de la saison suivante, préparé avec le bilan
+        de `season` (Seb, 20/11) : une ligne par compte de charges et de
+        produits actif (sans « à classer »), le réalisé de la saison en face
+        (euros, positif), le prévu tapé ; totaux et résultat prévu calculés.
+        L'appli ne décide d'aucun chiffre."""
+        books = self.books(db, member, season)
+        books.pop("_cutoff")
+        realised = {
+            a.number: (a.label, a.nature, a.balance if a.nature == EXPENSE else -a.balance)
+            for a in books.values() if a.nature in (EXPENSE, INCOME)
+        }
+        for a in self.accounting.accounts(db, member.org_id, active_only=True):
+            if a.nature in (EXPENSE, INCOME):
+                realised.setdefault(a.number, (a.label, a.nature, 0))
+        skip = {n for n, _ in UNCLASSIFIED.values()}
+        planned = {
+            l.number: l.amount
+            for l in db.scalars(select(FinBudgetLine).where(FinBudgetLine.org_id == member.org_id, FinBudgetLine.season_id == season.id))
+        }
+
+        def side(nature: str) -> dict:
+            lines = [
+                {"number": n, "label": label, "realised": amount / 100, "planned": planned[n] / 100 if n in planned else None}
+                for n, (label, nat, amount) in sorted(realised.items()) if nat == nature and n not in skip
+            ]
+            return {
+                "lines": lines,
+                "realised": round(sum(l["realised"] for l in lines), 2),
+                "planned": round(sum(l["planned"] or 0 for l in lines), 2),
+            }
+
+        charges, produits = side(EXPENSE), side(INCOME)
+        return {
+            "seasonId": season.id, "seasonName": season.name, "nextName": self.next_season_name(db, member.org_id, season),
+            "charges": charges, "produits": produits,
+            "result": round(produits["planned"] - charges["planned"], 2),
+            "realisedResult": round(produits["realised"] - charges["realised"], 2),
+            "filled": bool(planned),
+        }
+
+    def set_budget(self, db: Session, member: Member, season: Season, lines: dict[str, float | None]) -> dict:
+        """Les montants prévus tapés ({numéro: euros}, vide = effacé)."""
+        if not member.is_treasurer:
+            raise PermissionError("Réservé au trésorier")
+        rows = {
+            l.number: l
+            for l in db.scalars(select(FinBudgetLine).where(FinBudgetLine.org_id == member.org_id, FinBudgetLine.season_id == season.id))
+        }
+        for number, euros in lines.items():
+            number = str(number).strip()[:10]
+            row = rows.get(number)
+            if euros is None or euros == "":
+                if row is not None:
+                    db.delete(row)
+                continue
+            amount = round(float(euros) * 100)
+            if amount < 0:
+                raise ValueError("Un montant prévu est positif.")
+            if row is None:
+                db.add(FinBudgetLine(org_id=member.org_id, season_id=season.id, number=number, amount=amount, updated_by=member.person_id))
+            else:
+                row.amount, row.updated_by, row.updated_at = amount, member.person_id, datetime.now(timezone.utc).replace(tzinfo=None)
+        db.commit()
+        return self.budget(db, member, season)
+
+    def take_realised(self, db: Session, member: Member, season: Season) -> dict:
+        """« Reprendre le réalisé » : chaque ligne prend le chiffre de la saison, à corriger ensuite."""
+        current = self.budget(db, member, season)
+        return self.set_budget(
+            db, member, season, {l["number"]: l["realised"] for side in ("charges", "produits") for l in current[side]["lines"]}
+        )
+
+    def budget_xlsx(self, budget: dict, org_name: str) -> bytes:
+        """Le budget prévisionnel pour l'AG : Compte, Réalisé N, Prévu N+1."""
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Budget prévisionnel"
+        bold, money = Font(bold=True), '#,##0.00 €'
+        ws.append([f"{org_name} — Budget prévisionnel {budget['nextName']}".strip(" —")])
+        ws.cell(1, 1).font = Font(bold=True, size=14)
+        ws.append([])
+        ws.append(["Compte", "Libellé", f"Réalisé {budget['seasonName']}", f"Prévu {budget['nextName']}"])
+        for c in ws[ws.max_row]:
+            c.font = bold
+        for title, key in (("Charges", "charges"), ("Produits", "produits")):
+            ws.append([title])
+            ws.cell(ws.max_row, 1).font = bold
+            for l in budget[key]["lines"]:
+                ws.append([l["number"], l["label"], l["realised"], l["planned"] or 0])
+            ws.append(["", f"Total des {title.lower()}", budget[key]["realised"], budget[key]["planned"]])
+            for c in ws[ws.max_row]:
+                c.font = bold
+        ws.append([])
+        ws.append(["", "Résultat", budget["realisedResult"], budget["result"]])
+        for c in ws[ws.max_row]:
+            c.font = bold
+        for row in ws.iter_rows(min_row=4, min_col=3, max_col=4):
+            for c in row:
+                c.number_format = money
+        ws.column_dimensions["A"].width = 10
+        ws.column_dimensions["B"].width = 40
+        ws.column_dimensions["C"].width = 18
+        ws.column_dimensions["D"].width = 18
+        buffer = io.BytesIO()
+        wb.save(buffer)
+        return buffer.getvalue()
+
     # ----- Honoraires par professeur -----
 
     def fees_xlsx(self, db: Session, member: Member, season: Season, org_name: str) -> bytes:
@@ -1559,6 +1684,10 @@ class AgDocuments:
             content = self.bilan_pdf(db, member, season, org_name)
         elif kind == "fec":
             content = self.fec(db, member, season)
+        elif kind == "budget":
+            budget = self.budget(db, member, season)
+            content = self.budget_xlsx(budget, org_name)
+            return content, f"{title} {budget['nextName']}.{extension}", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         else:
             content = self.fees_xlsx(db, member, season, org_name)
         name = f"{title} {season.name}.{extension}"
@@ -1586,7 +1715,7 @@ class AgDocuments:
         return [
             {"id": key, "title": title, "format": extension, "level": needed}
             for key, (title, extension, needed) in KINDS.items()
-            if level == "complet" or needed == "simple"
+            if (level == "complet" or needed == "simple") and key != "budget"  # le budget se remplit à l'étape 6
         ]
 
 

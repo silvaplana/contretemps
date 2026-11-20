@@ -26,12 +26,13 @@ LABELS = {
     "bilan": "Bilan actif-passif",
     "honoraires": "Honoraires par professeur",
     "fec": "FEC",
+    "budget": "Budget prévisionnel",
     RAPPORT: "Rapport financier",
     OTHER: "Autre : à faire à la main",
 }
 # Le fichier sans modèle de l'an dernier garde son nom d'avant.
 FILE_LABELS = {"synthese": "Synthèse Dépenses-Recettes"}
-FORMATS = {"synthese": "xlsx", "balance": "pdf", "grand-livre": "pdf", "bilan": "pdf", "honoraires": "xlsx", "fec": "txt", RAPPORT: "docx"}
+FORMATS = {"synthese": "xlsx", "balance": "pdf", "grand-livre": "pdf", "bilan": "pdf", "honoraires": "xlsx", "fec": "txt", "budget": "xlsx", RAPPORT: "docx"}
 # La première année, sans rien dans Docs.
 BASE = ["synthese", "balance", RAPPORT]
 

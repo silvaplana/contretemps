@@ -3,6 +3,7 @@ mémoire équilibré, Synthèse par classe avec trésorerie, événement et
 fournisseurs à payer, Balance et Grand livre en PDF, honoraires par prof,
 lignes sans compte « à classer », retrait au distributeur, bilan par compte."""
 
+import io
 import pymupdf
 import pytest
 from openpyxl import load_workbook
@@ -331,7 +332,7 @@ def test_season_documents_follow_last_year_and_are_never_stored_in_docs(world, d
     data = documents.season_documents(db_session, TRESORIER, SEASON)
     assert data["previousSeason"] == "2024-2025"
     assert [(m["kind"], m["selected"]) for m in data["models"]] == [("balance", True), ("rapport", True), ("autre", False)]
-    assert [d["name"] for d in data["documents"]] == ["Balance 2025-2026.pdf", "Rapport financier AG2026.docx"]
+    assert [d["name"] for d in data["documents"]] == ["Balance 2025-2026.pdf", "Rapport financier AG2026.docx", "Budget prévisionnel 2026-2027.xlsx"]
 
     # La trésorière corrige : la note est refaite à la main, la Synthèse ajoutée.
     items = [{"nodeId": m["nodeId"], "name": m["name"], "kind": m["kind"], "selected": True} for m in data["models"]]
@@ -340,6 +341,7 @@ def test_season_documents_follow_last_year_and_are_never_stored_in_docs(world, d
     assert [(d["kind"], d["name"]) for d in data["documents"]] == [
         ("balance", "Balance 2025-2026.pdf"), ("rapport", "Rapport financier AG2026.docx"),
         ("autre", "notes trésorière.docx"), ("synthese", "Synthèse Dépenses-Recettes 2025-2026.xlsx"),
+        ("budget", "Budget prévisionnel 2026-2027.xlsx"),  # toujours là, à remplir (Seb, 20/11)
     ]
     # À l'écran, le nom officiel ; le fichier garde son nom (Seb, 20/11).
     assert next(d for d in data["documents"] if d["kind"] == "synthese")["label"] == "Compte de résultat"
@@ -352,7 +354,7 @@ def test_season_documents_follow_last_year_and_are_never_stored_in_docs(world, d
 def test_season_documents_without_last_year_offer_the_base_list(world, db_session):
     _, _, documents = world
     data = documents.season_documents(db_session, TRESORIER, SEASON)
-    assert [d["kind"] for d in data["documents"]] == ["synthese", "balance", "rapport"]
+    assert [d["kind"] for d in data["documents"]] == ["synthese", "balance", "rapport", "budget"]
 
 
 def test_the_treasurer_deposits_the_documents_once_the_season_is_closed(world, db_session, monkeypatch):
@@ -404,3 +406,33 @@ def test_balance_says_when_opening_balances_are_missing(world, db_session):
     assert documents.balance(db_session, TRESORIER, SEASON)["openingMissing"] is True
     documents.set_opening(db_session, TRESORIER, SEASON, [{"number": "5121", "label": "Courant", "balance": 950}])
     assert documents.balance(db_session, TRESORIER, SEASON)["openingMissing"] is False
+
+
+def test_budget_next_season_typed_by_the_treasurer(world, db_session):
+    """Seb, 20/11 : Bilan › Préparer, étape 6, Budget prévisionnel 2026-2027 :
+    une ligne par compte avec le réalisé en face, le prévu tapé, totaux et
+    résultat calculés ; « Reprendre le réalisé » ; un Excel pour l'AG."""
+    _, _, documents = world
+    b = documents.budget(db_session, TRESORIER, SEASON)
+    assert b["nextName"] == "2026-2027" and b["filled"] is False
+    charges = {l["number"]: l for l in b["charges"]["lines"]}
+    assert charges["613"]["realised"] == 1600.0 and charges["613"]["planned"] is None
+    assert "65900" not in charges and "616" in charges  # compte du plan sans réalisé : à 0
+    docs = documents.season_documents(db_session, TRESORIER, SEASON)["documents"]
+    budget_doc = next(d for d in docs if d["kind"] == "budget")
+    assert budget_doc["name"] == "Budget prévisionnel 2026-2027.xlsx" and budget_doc["filled"] is False
+
+    b = documents.set_budget(db_session, TRESORIER, SEASON, {"613": 1700, "706": 2500})
+    assert b["charges"]["planned"] == 1700.0 and b["produits"]["planned"] == 2500.0 and b["result"] == 800.0
+    b = documents.set_budget(db_session, TRESORIER, SEASON, {"706": None})
+    assert b["produits"]["planned"] == 0
+    with pytest.raises(ValueError):
+        documents.set_budget(db_session, TRESORIER, SEASON, {"613": -5})
+
+    b = documents.take_realised(db_session, TRESORIER, SEASON)
+    assert b["charges"]["planned"] == b["charges"]["realised"] and b["result"] == b["realisedResult"]
+    content, name, media = documents.season_file(db_session, TRESORIER, SEASON, "budget")
+    assert name == "Budget prévisionnel 2026-2027.xlsx" and "spreadsheet" in media
+    sheet = load_workbook(io.BytesIO(content)).active
+    assert sheet["A1"].value == "Contretemps — Budget prévisionnel 2026-2027"
+    assert [c.value for c in sheet[3]] == ["Compte", "Libellé", "Réalisé 2025-2026", "Prévu 2026-2027"]

@@ -8,6 +8,7 @@ import Icon from '../../../components/Icon.jsx'
 import { telechargerFichier } from '../../../utils/telechargement.js'
 import { RapportFinancier } from './DocumentsAG.jsx'
 import Apercu from './Apercu.jsx'
+import BudgetPrevisionnel from './BudgetPrevisionnel.jsx'
 import * as api from '../api.js'
 import './compta.css'
 
@@ -48,13 +49,24 @@ export function useDocumentsSaison(seasonId) {
 }
 
 export function Etape6Documents({ season, docs }) {
-  const { data, setData, erreur, setErreur } = docs
+  const { data, setData, erreur, setErreur, charger } = docs
+  const [budget, setBudget] = useState(false)
   const [rapportId, setRapportId] = useState(null)
   const [ajout, setAjout] = useState('')
   const [apercu, setApercu] = useState(null) // { titre, charger } : un Excel, un Word, le FEC dans OnlyOffice
 
   if (erreur) return <p className="login-screen__erreur">{erreur}</p>
   if (!data) return <p className="muted">Chargement…</p>
+  if (budget)
+    return (
+      <BudgetPrevisionnel
+        season={season}
+        onClose={() => {
+          setBudget(false)
+          charger()
+        }}
+      />
+    )
 
   const reportId = rapportId ?? data.reportId
 
@@ -133,7 +145,30 @@ export function Etape6Documents({ season, docs }) {
         <span className="fin-cp-t">Documents {season.name}</span>
         {data.documents.length === 0 && <span className="fin-cp-s">Aucun document coché.</span>}
         {data.documents.map((d) =>
-          d.kind === RAPPORT && d.available ? (
+          d.kind === 'budget' ? (
+            // Budget prévisionnel de la saison suivante (Seb, 20/11) : à remplir, puis Voir / Télécharger.
+            <div key="budget" className="fin-docs__doc">
+              <span className="fin-cp-t">
+                {d.label} : {d.name}
+              </span>
+              <span className={d.filled ? 'fin-cp-s' : 'fin-cp-alerte'}>{d.filled ? 'Montants prévus tapés' : 'À remplir'}</span>
+              <span className="fin-cp-a">
+                <button type="button" className="btn btn--secondary" onClick={() => setBudget(true)}>
+                  <Icon name="edit" size={16} /> {d.filled ? 'Modifier' : 'Remplir'}
+                </button>
+                {d.filled && (
+                  <>
+                    <button type="button" className="btn btn--secondary" onClick={() => voir(d)}>
+                      <Icon name="eye" size={16} /> Voir
+                    </button>
+                    <button type="button" className="btn btn--secondary" onClick={() => telecharger(d)}>
+                      <Icon name="download" size={16} /> Télécharger
+                    </button>
+                  </>
+                )}
+              </span>
+            </div>
+          ) : d.kind === RAPPORT && d.available ? (
             reportId != null ? (
               <RapportFinancier
                 key={`${d.kind}-${d.nodeId}`}
