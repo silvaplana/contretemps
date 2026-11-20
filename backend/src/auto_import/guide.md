@@ -14,4 +14,6 @@
 - Source HelloAsso : la fiche montre les formules de la campagne de la saison, chacune avec son compte
   de produits à choisir une fois (« À choisir »). Chaque versement HelloAsso devient une vente À
   valider, une ligne par compte ; avec une destination, le détail du versement y est déposé en PDF
-  « … (reconstituée par l'appli) ».
+  « … (reconstituée par l'appli) ». Sous chaque formule, « dont licence … € » : la part licence va sur
+  le compte des licences à reverser (bouton « Ajouter « Licences FFST à reverser » au plan » s'il
+  manque). Un remboursement vient en moins dans le versement suivant.

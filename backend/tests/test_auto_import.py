@@ -316,3 +316,50 @@ def test_pdf_versement_affiche_les_euros_et_son_nom():
     texte = doc[0].get_text()
     assert "100,00 €" in texte and "Jules Martin — Cotisation" in texte
     assert doc.metadata["title"] == "Versement HelloAsso du 09/02/2026 (reconstituée par l'appli)"
+
+
+def test_versements_helloasso_licences_et_remboursements(client, db_session, asc):
+    """Seb, 20 novembre (§4.2) : la part licence de la formule, prise sur le
+    premier paiement, va au compte des licences à reverser (ajouté au plan
+    s'il manque) ; un paiement remboursé après versement compte dans son
+    versement, et son remboursement vient en moins dans le versement suivant."""
+    from finances.models import FinChartAccount
+    from helloasso.models import HelloAssoRegistration
+    from notes_frais.models import Depense, NoteFrais
+
+    def paiement(montant, jour, versement, echeance=None, etat="Authorized", rembourse=None):
+        return {"amount": montant, "date": jour, "state": etat, "means": "Card", "installment": echeance,
+                "cash_out_state": "CashedOut", "cash_out_date": versement, "refunded_on": rembourse}
+
+    def inscrit(item, nom, formule, paiements):
+        db_session.add(HelloAssoRegistration(
+            org_id=asc["ecole"].id, season_id=1, item_id=item, order_id=item, first_name=nom, last_name="X",
+            tier_name=formule, amount=sum(p["amount"] for p in paiements), state="Processed", payments=paiements))
+
+    inscrit("1", "Ali", "Adhésion", [paiement(10000, "2026-09-20", "2026-10-10")])
+    inscrit("2", "Bea", "Adhésion", [paiement(4000, "2026-09-21", "2026-10-10", 1), paiement(15000, "2026-10-21", "2026-11-10", 2)])
+    inscrit("3", "Cid", "Adhésion", [paiement(10000, "2026-09-22", "2026-10-10", etat="Refunded", rembourse="2026-10-15")])
+    db_session.commit()
+
+    h = entetes_session(asc["tresorier"])
+    client.get("/finances/chart", headers=h)
+    infos = client.get("/auto-import-helloasso", headers=h).json()
+    assert infos["licence_account"] is None
+    licence = client.post("/auto-import-helloasso/licence-account", headers=h).json()
+    assert licence["libelle"] == "Licences FFST à reverser" and licence["code"].startswith("467")
+    assert db_session.query(FinChartAccount).filter_by(org_id=asc["ecole"].id, number=licence["code"], active=True).one()
+    assert client.get("/auto-import-helloasso", headers=h).json()["licence_account"] == licence
+    cotisations = next(c["id"] for c in infos["accounts"] if c["code"] == "756")
+    regle = client.post("/auto-import", headers=h, json={
+        "name": "HelloAsso", "nature": "vente", "source_kind": "helloasso",
+        "helloasso_accounts": {"Adhésion": cotisations}, "helloasso_licences": {"Adhésion": 2400}}).json()
+
+    assert client.post(f"/auto-import/{regle['id']}/run", headers=h).json()["created"] == 2
+    ventes = db_session.query(NoteFrais).order_by(NoteFrais.id).all()
+    lignes = [sorted((d.categorie_id, d.montant_centimes) for d in db_session.query(Depense).filter_by(note_id=v.id))
+              for v in ventes]
+    # 10/10 : Ali 100 + Bea 40 (1re échéance) + Cid 100 ; 3 licences de 24.
+    # 10/11 : Bea 150 (2e échéance, sans licence), Cid remboursé 100 dont 24 de licence.
+    assert lignes[0] == sorted([(cotisations, 24000 - 7200), (licence["id"], 7200)])
+    assert lignes[1] == sorted([(cotisations, 15000 - 7600), (licence["id"], -2400)])
+    assert sum(m for _, m in lignes[1]) == 5000  # ce que HelloAsso a viré

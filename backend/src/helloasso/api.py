@@ -91,6 +91,13 @@ def _token(client_id: str, client_secret: str) -> str:
     return corps["access_token"]
 
 
+def _refunded_on(payment: dict) -> str | None:
+    """The day of a payment's latest refund (`refundOperations`), if any."""
+    days = [((op.get("meta") or {}).get("createdAt") or "")[:10] for op in payment.get("refundOperations") or []]
+    days = [d for d in days if d]
+    return max(days) if days else None
+
+
 def _data(reponse: dict | list) -> list:
     return reponse.get("data", []) if isinstance(reponse, dict) else reponse
 
@@ -233,6 +240,8 @@ def orders(client_id: str, client_secret: str, slug: str, form_type: str, form_s
                                 # paid to the school's account or not yet.
                                 "cash_out_state": payments[ref.get("id")].get("cashOutState"),
                                 "cash_out_date": payments[ref.get("id")].get("cashOutDate"),
+                                # Day of the refund (import-auto-pieces.md §4.2): HelloAsso takes it back on the next payout.
+                                "refunded_on": _refunded_on(payments[ref.get("id")]),
                             }
                             for ref in item.get("payments") or []
                             if ref.get("id") in payments

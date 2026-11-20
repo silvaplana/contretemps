@@ -379,7 +379,7 @@ def test_commandes_par_l_api(monkeypatch):
     assert inscrits[0]["payer_name"] == "Paul" and inscrits[1]["payer_name"] == "Ana Noir"
     assert inscrits[0]["payments"] == [
         {"amount": 9000, "date": "2026-09-02", "state": "Authorized", "means": "Card", "installment": 1,
-         "cash_out_state": "CashedOut", "cash_out_date": "2026-10-07"},
+         "cash_out_state": "CashedOut", "cash_out_date": "2026-10-07", "refunded_on": None},
     ]
 
 
@@ -1201,3 +1201,12 @@ def test_liste_des_campagnes_gardee_10_minutes(client, db_session, ecole, campag
     monkeypatch.setattr(campaign.time, "time", lambda: maintenant + campaign.FORMS_KEPT + 1)
     assert [f["name"] for f in client.get(url).json()["forms"]] == ["Adhésion 3"]
     assert len(lectures) == 3
+
+
+def test_jour_du_remboursement():
+    """import-auto-pieces.md §4.2 : le jour du dernier remboursement d'un paiement."""
+    from helloasso.api import _refunded_on
+
+    assert _refunded_on({}) is None
+    assert _refunded_on({"refundOperations": [{"meta": {"createdAt": "2026-10-15T10:00:00"}},
+                                              {"meta": {"createdAt": "2026-10-20T08:00:00"}}]}) == "2026-10-20"

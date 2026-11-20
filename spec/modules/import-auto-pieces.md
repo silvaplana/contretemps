@@ -118,9 +118,19 @@ de la fiche. Le mail reste dans la boîte, l'appli ne le déplace ni ne le marqu
 - Destination proposée (Seb, 20/11) : avec une saison choisie et pas encore de destination, l'écran
   prend Docs › Saison … › Financier › VENTES › COTISATIONS, aussi loin que ces dossiers existent
   (au moins VENTES) ; on peut la changer.
-- Pas encore : la part Licence d'une formule vers 4671 (le compte n'est pas encore proposé dans les
-  ventes) et les remboursements (une ligne de vente est toujours positive) ; un écart avec la banque
-  se voit au rattachement.
+- **Part licence** (Seb, 20/11) : sous chaque formule, « dont licence … € ». Elle est prise sur le
+  premier paiement de l'inscription (une adhésion en 3 fois la paie avec sa première échéance, au plus
+  le montant de ce paiement) et va sur le **compte des licences à reverser** : un compte de tiers 467…
+  du plan dont le libellé parle de licences. S'il manque, la fiche propose « Ajouter « Licences FFST à
+  reverser » au plan » (4671, ou 4675 / 4678 si 4671 sert déjà, comme chez Contretemps). Sa catégorie
+  de pièce est à part, jamais proposée ailleurs (comme 431 de la paie).
+- **Remboursements** (Seb, 20/11) : un paiement remboursé après avoir été versé compte dans son
+  versement (l'argent est arrivé), et son remboursement vient **en moins** dans le premier versement
+  d'après le jour du remboursement (HelloAsso le reprend sur le versement suivant), sur les mêmes
+  comptes (formule et part licence). Une ligne de vente peut donc être négative, le total restant
+  positif (financier.md §8.12). Le jour du remboursement vient de `refundOperations` de HelloAsso
+  (`refunded_on` de la copie). Un remboursement avant versement n'apparaît nulle part. Un versement
+  dont le total serait nul ou négatif n'est pas créé ; un écart avec la banque se voit au rattachement.
 
 ## 5. Ce qui se passe à chaque passage
 

@@ -207,18 +207,31 @@ function Formules({ regle, onChange }) {
     api.helloasso(regle.season_id).then(setInfos, (e) => setErreur(e.message))
   }, [regle.season_id])
   const comptes = regle.helloasso_accounts ?? {}
+  const licences = regle.helloasso_licences ?? {}
+  const avecLicence = Object.values(licences).some((c) => c > 0)
+  async function ajouterCompte() {
+    try {
+      const compte = await api.ajouterCompteLicences()
+      setInfos({ ...infos, licence_account: compte })
+    } catch (e) {
+      setErreur(e.message)
+    }
+  }
   if (erreur) return <p className="mail__discret">{erreur}</p>
   if (!infos) return <p className="mail__discret">Lecture…</p>
   return (
     <>
       <p className="mail__discret">
-        Un versement HelloAsso devient une vente, une ligne par compte. Dites une fois où va chaque formule.
+        Un versement HelloAsso devient une vente, une ligne par compte. Dites une fois où va chaque formule, et
+        la part licence à reverser s’il y en a une (prise sur le premier paiement). Un remboursement vient en
+        moins dans le versement suivant.
       </p>
       {infos.formulas.length === 0 && <p className="mail__discret">Pas encore d’inscrit HelloAsso pour cette saison.</p>}
       {infos.formulas.map((f) => (
-        <label key={f} className="mail__champ">
+        <div key={f} className="mail__champ">
           <span>{f || 'Sans formule'}</span>
           <select
+            aria-label={`Compte de ${f || 'Sans formule'}`}
             value={comptes[f] ?? ''}
             onChange={(e) => onChange({ helloasso_accounts: { ...comptes, [f]: e.target.value ? Number(e.target.value) : null } })}
           >
@@ -229,8 +242,37 @@ function Formules({ regle, onChange }) {
               </option>
             ))}
           </select>
-        </label>
+          <label className="ai__ligne">
+            dont licence
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              inputMode="decimal"
+              value={licences[f] ? licences[f] / 100 : ''}
+              placeholder="0"
+              onChange={(e) => {
+                const centimes = Math.round(Number(e.target.value.replace(',', '.')) * 100) || 0
+                onChange({ helloasso_licences: { ...licences, [f]: Math.max(0, centimes) } })
+              }}
+            />
+            €
+          </label>
+        </div>
       ))}
+      {avecLicence &&
+        (infos.licence_account ? (
+          <p className="mail__discret">
+            Les parts licence vont sur {infos.licence_account.code} {infos.licence_account.libelle}.
+          </p>
+        ) : (
+          <span className="ai__ligne">
+            <span className="mail__discret">Le plan comptable n’a pas de compte des licences à reverser.</span>
+            <button type="button" className="mail__lien" onClick={ajouterCompte}>
+              Ajouter « Licences FFST à reverser » au plan
+            </button>
+          </span>
+        ))}
     </>
   )
 }
