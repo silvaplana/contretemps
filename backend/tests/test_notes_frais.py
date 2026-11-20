@@ -2275,6 +2275,35 @@ def test_bulletin_de_salaire_refuse_des_cotisations_plus_grandes_que_le_brut(cli
     assert reponse.status_code == 400
 
 
+def test_bulletin_de_salaire_lu_pre_remplit_brut_et_cotisations(client, ecole, monkeypatch):
+    """Une photo de bulletin, paie allumée : l'appli le reconnaît, propose la
+    nature Bulletin de salaire et pré-remplit brut, cotisations du salarié
+    (brut − net payé) et de l'employeur ; la trésorière relit et valide.
+    Paie éteinte (Contretemps) : rien ne change, la pièce reste un achat."""
+    t = entetes_session(ecole["tresorier"])
+    client.get("/finances/chart", headers=t)
+    lu = dict(sorte="salaire", date="2026-10-31", montant_centimes=139000, commercant="ASC La Ciotat",
+              emetteur_personne=False, salarie="Paul Dupont", brut_centimes=180000, net_centimes=139000, employeur_centimes=52000)
+    monkeypatch.setattr(main.notes_frais_client.ports, "lecteur", LecteurFacture(**lu))
+
+    assert _etablir(client, ecole["tresorier"], None)["nature"] == "achat"
+
+    client.put("/notes-frais/paie", json={"active": True}, headers=t)
+    bulletin = _etablir(client, ecole["tresorier"], None)
+    assert bulletin["nature"] == "salaire" and bulletin["statut"] == "envoyee"
+    assert bulletin["fournisseur"] == "Paul Dupont" and bulletin["titre"] == "Salaire Paul Dupont octobre 2026"
+    assert [(d["categorie"]["code"], d["montant_centimes"]) for d in bulletin["depenses"]] == [("641", 180000), ("645", 52000), ("431", -93000)]
+    assert bulletin["total_centimes"] == 139000
+
+    # La fiche « Bulletin de salaire » lit aussi la photo jointe : les montants reviennent.
+    lecture = client.post("/notes-frais/lecture", files={"fichier": ("b.pdf", io.BytesIO(b"%PDF"), "application/pdf")}, headers=t).json()
+    assert lecture["paie"] == {"brut": 180000, "salarie": 41000, "employeur": 52000} and lecture["salarie"] == "Paul Dupont"
+
+    # Montants incohérents (net plus grand que le brut) : rien n'est pré-rempli.
+    monkeypatch.setattr(main.notes_frais_client.ports, "lecteur", LecteurFacture(**{**lu, "net_centimes": 190000}))
+    assert _etablir(client, ecole["tresorier"], None)["nature"] != "salaire"
+
+
 def test_la_paie_est_eteinte_par_defaut_et_s_allume_dans_fonctionnalites(client, ecole):
     """Rien ne change pour une école sans salariés (Contretemps) : la paie est
     éteinte tant que 431 n'est pas au plan ; « oui » l'ajoute, « non » le retire."""

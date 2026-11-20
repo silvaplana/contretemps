@@ -42,7 +42,8 @@ Règles :
 avis d'échéance, justificatif de paiement d'un commerçant) ; « virement » pour la preuve d'un \
 virement bancaire fait par l'association ; « vente » pour une recette de l'association \
 (bordereau de remise de chèques ou d'espèces, reçu ou facture émis par l'association, \
-billetterie, attestation de subvention ou de don reçu) ; « autre » sinon.
+billetterie, attestation de subvention ou de don reçu) ; « salaire » pour un bulletin de \
+salaire (bulletin de paie) d'un salarié de l'association ; « autre » sinon.
 - `date` : date de la pièce (achat, facture, ou exécution du virement), au format AAAA-MM-JJ. \
 Les dates sont écrites à la française (jour/mois/année). Il faut toujours trouver une date : si la \
 pièce ne porte qu'un mois (« Janvier 2025 »), prends le dernier jour de ce mois ; si le nom du \
@@ -58,6 +59,10 @@ c'est une société ou une enseigne, null si on ne sait pas.
 « Mme Julia Dho », « Association Contretemps ») ; null si absent.
 - `beneficiaire`, `iban`, `motif` : pour un virement seulement, le nom du bénéficiaire, son \
 IBAN (sans espaces) et le motif ou libellé ; null sinon.
+- `salarie`, `salaire_brut`, `net_paye`, `cotisations_employeur` : pour un bulletin de salaire \
+seulement, le nom du salarié (prénom et nom), le salaire brut, le net payé au salarié (« net à \
+payer », après l'impôt prélevé à la source) et le total des cotisations patronales (part de \
+l'employeur), en euros ; null sinon. Pour un bulletin, `montant_ttc` est le net payé.
 - `categorie` : exactement un des libellés de la liste donnée, celui qui convient le mieux ; \
 null si aucun ne convient.
 - `description` : quelques mots en français qui disent ce qui a été acheté ou payé \
@@ -95,6 +100,10 @@ class TicketJson(BaseModel):
     description: str | None
     cheques: list[ChequeJson] | None
     compte_propose: CompteJson | None
+    salarie: str | None = None
+    salaire_brut: float | None = None
+    net_paye: float | None = None
+    cotisations_employeur: float | None = None
 
 
 def cout_usd(modele: str, jetons_entree: int, jetons_sortie: int) -> float:
@@ -157,10 +166,11 @@ class LecteurClaude:
         lu = reponse.parsed_output
         if reponse.stop_reason == "refusal" or lu is None:
             raise LectureImpossible("Le ticket n'a pas pu être lu : reprenez la photo bien à plat, ou remplissez à la main.")
-        montant = round(lu.montant_ttc * 100) if lu.montant_ttc is not None else None
+        centimes = lambda euros: round(euros * 100) if euros is not None else None  # noqa: E731
+        montant = centimes(lu.montant_ttc)
         return TicketLu(
             date=lu.date, montant_centimes=montant, commercant=lu.commercant, categorie=lu.categorie, description=lu.description,
-            sorte=lu.sorte if lu.sorte in ("facture", "virement", "vente", "autre") else "facture",
+            sorte=lu.sorte if lu.sorte in ("facture", "virement", "vente", "salaire", "autre") else "facture",
             emetteur_personne=lu.emetteur_personne, client=lu.client,
             beneficiaire=lu.beneficiaire, iban=lu.iban, motif=lu.motif,
             compte_propose=(
@@ -170,4 +180,6 @@ class LecteurClaude:
             cheques=tuple(
                 ((c.nom or "").strip(), round(c.montant * 100)) for c in (lu.cheques or []) if c.montant is not None and c.montant > 0
             ),
+            salarie=lu.salarie, brut_centimes=centimes(lu.salaire_brut), net_centimes=centimes(lu.net_paye),
+            employeur_centimes=centimes(lu.cotisations_employeur),
         )

@@ -48,6 +48,8 @@ Pièces
   431, 512) ; « Valider : À payer ». Bloc « Paiement du net » : « Rattacher à cette transaction bancaire » (le
   virement du net prend les comptes du bulletin), « Autre transaction… », « Détacher ». Le prélèvement de l'URSSAF
   se classe dans 431 URSSAF à payer (proposé par l'appli). Rangé dans Docs › Financier › SALAIRES › mois.
+  Une photo ou un PDF de bulletin est reconnu : la pièce arrive en « Bulletin de salaire » avec les montants
+  pré-remplis, à relire ; dans la fiche, « Prendre une photo » ou « Joindre un fichier » remplit les montants vides.
   Les transactions bancaires sans compte se classent dans Comptes (filtre « Sans compte »), badge
   bleu sur le sous-onglet Comptes.
 - « + » : Saisir une dépense. Prendre en photo (enchaîner : Pièce suivante, Encore une page de celle-ci), Choisir des
