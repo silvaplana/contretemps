@@ -34,8 +34,9 @@ LABELS = {
 # Pas proposés d'office, même s'ils étaient là l'an dernier : « Ajouter un
 # document » quand on en a besoin (Seb, 20/11).
 ON_REQUEST = ("honoraires", "fec")
-# Le fichier garde son nom d'avant.
-FILE_LABELS = {"synthese": "Synthèse Dépenses-Recettes", "honoraires": "Honoraires par professeur"}
+# Un document « nouveau » prend le nom officiel (Seb, 20/11) ; les honoraires gardent leur nom court.
+FILE_LABELS = {"honoraires": "Honoraires par professeur"}
+PROVISIONAL = " (provisoire)"
 FORMATS = {"synthese": "xlsx", "balance": "pdf", "grand-livre": "pdf", "bilan": "pdf", "honoraires": "xlsx", "fec": "txt", "budget": "xlsx", RAPPORT: "docx"}
 # La première année, sans rien dans Docs.
 BASE = ["synthese", "balance", RAPPORT]
@@ -108,7 +109,7 @@ def next_name(previous: str, kind: str) -> str:
     """Le nom de l'an dernier, chaque année avancée d'un an, au format produit
     par l'appli : « Balance 2024-2025.pdf » → « Balance 2025-2026.pdf »,
     « Rapport financier AG2025.doc » → « Rapport financier AG2026.docx »."""
-    stem = Path(previous).stem
+    stem = Path(previous).stem.replace(PROVISIONAL, "")
     stem = re.sub(r"(?<!\d)(19|20)(\d{2})(?!\d)", lambda m: str(int(m.group(0)) + 1), stem)
     return f"{stem}.{FORMATS.get(kind, Path(previous).suffix.lstrip('.') or 'pdf')}"
 
@@ -116,3 +117,9 @@ def next_name(previous: str, kind: str) -> str:
 def default_name(kind: str, season_name: str) -> str:
     """Nom d'un document sans modèle de l'an dernier."""
     return f"{FILE_LABELS.get(kind, LABELS[kind])} {season_name}.{FORMATS[kind]}"
+
+
+def provisional_name(name: str) -> str:
+    """« Balance 2025-2026.pdf » → « Balance 2025-2026 (provisoire).pdf »."""
+    path = Path(name)
+    return name if PROVISIONAL in name else f"{path.stem}{PROVISIONAL}{path.suffix}"

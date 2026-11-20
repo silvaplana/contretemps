@@ -1225,6 +1225,21 @@ n'attend jamais une pièce : une ligne sans pièce reçoit son compte à la main
    pour la déclaration aux impôts au-delà de 1 200 € par an ; pas un document de l'AG) et **FEC** ne
    sont jamais cochés d'office, même reconnus l'an dernier : on les prend avec « Ajouter un document »
    (`season_documents.ON_REQUEST`). Le fichier des honoraires garde son nom « Honoraires par professeur ».
+   **Un document, trois touches (Seb, 20/11 ; maquette https://claude.ai/artifact/TwsjGqxgjqZkF9gifoUtk7)** :
+   chaque document que l'appli sait faire a sa ligne sous son nom officiel, avec **Comme l'an dernier**
+   (le nom du fichier de l'an dernier, année avancée ; grisé sans fichier), **Nouveau** (le nom officiel :
+   « Compte de résultat 2025-2026.xlsx ») et **Non** ; dessous, le fichier qu'on obtiendra. « Tout comme
+   l'an dernier » et « Tout nouveau » règlent la liste. Stockage inchangé (`fin_document_choices`) : fichier
+   de l'an dernier coché = comme l'an dernier, document ajouté coché = nouveau ; la réponse porte `rows`
+   (`kind`, `label`, `lastYear`, `choice` same / new / none, `name`). Les fichiers non reconnus sont listés
+   « à refaire à la main », avec la nature à corriger. **On produit un document à la fois** : « Produire »,
+   puis « Voir » et « Télécharger » (plus de production d'ensemble). **Provisoire** : en Engagement, tant
+   que la saison n'est pas clôturée, le nom du fichier et le titre du document portent « (provisoire) »
+   (`AgDocuments.provisional`), comme dans les logiciels du métier ; après la clôture, le nom officiel,
+   celui qu'on dépose dans Docs. En Trésorerie, pas de clôture, pas de mention. Un document de chiffres ne
+   se corrige pas à la main : on corrige l'écriture et on le reproduit. **À venir** (Seb, 20/11) : « Comme
+   l'an dernier » reprend aussi la présentation des fichiers Excel et Word (cases repérées une fois par le
+   modèle, validées, chiffres posés par l'appli) ; les PDF gardent la présentation de l'appli.
    Chaque document prend **le nom de celui de l'an dernier, les années avancées d'un an**
    (« Balance 2024-2025.pdf » → « Balance 2025-2026.pdf »), au format que l'appli produit ; sans
    fichier l'an dernier : Synthèse, Balance, Rapport financier. Voir et Télécharger

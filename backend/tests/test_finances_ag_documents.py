@@ -340,7 +340,7 @@ def test_season_documents_follow_last_year_and_are_never_stored_in_docs(world, d
     data = documents.set_document_choices(db_session, TRESORIER, SEASON, items)
     # Du plus simple au plus élaboré (Seb, 20/11), les fichiers « autre » à la fin.
     assert [(d["kind"], d["name"]) for d in data["documents"]] == [
-        ("balance", "Balance 2025-2026.pdf"), ("synthese", "Synthèse Dépenses-Recettes 2025-2026.xlsx"),
+        ("balance", "Balance 2025-2026.pdf"), ("synthese", "Compte de résultat 2025-2026.xlsx"),
         ("rapport", "Rapport financier AG2026.docx"),
         ("budget", "Budget prévisionnel 2026-2027.xlsx"),  # toujours là, à remplir (Seb, 20/11)
         ("autre", "notes trésorière.docx"),
@@ -371,6 +371,34 @@ def test_honoraires_and_fec_of_last_year_are_not_offered_by_default(world, db_se
     assert [(m["kind"], m["selected"]) for m in data["models"]] == [("grand-livre", True), ("honoraires", False), ("fec", False)]
     assert [d["kind"] for d in data["documents"]] == ["grand-livre", "budget"]
     assert data["labels"]["honoraires"] == "Honoraires versés aux professeurs (DAS-2)"
+    assert data["addable"] == ["fec"]  # les honoraires sont en Engagement
+
+
+def test_each_document_is_like_last_year_new_or_not_produced(world, db_session):
+    """Seb, 20/11 (maquette https://claude.ai/artifact/TwsjGqxgjqZkF9gifoUtk7) :
+    une ligne par document, « Comme l'an dernier » / « Nouveau » / « Non » ;
+    en Engagement, « (provisoire) » dans le nom tant que la saison n'est pas clôturée."""
+    _, accounting, documents = world
+    accounting.set_level(db_session, TRESORIER, "complet")
+    documents.seasons = lambda db, org: [Season(id=0, name="2024-2025", start_date="2024-09-01", end_date="2025-08-31"), SEASON]
+    documents.ports.previous_documents = lambda db, member, season: [(1, "Synthèse bilan 2024-2025.xls", None), (2, "Balance 2024-2025.pdf", None)]
+    data = documents.season_documents(db_session, TRESORIER, SEASON)
+    assert data["provisional"] is True
+    rows = {r["kind"]: r for r in data["rows"]}
+    assert list(rows) == ["grand-livre", "balance", "synthese", "bilan", "rapport"]
+    assert (rows["synthese"]["choice"], rows["synthese"]["lastYear"], rows["synthese"]["name"]) == ("same", "Synthèse bilan 2024-2025.xls", "Synthèse bilan 2025-2026 (provisoire).xlsx")
+    assert (rows["grand-livre"]["choice"], rows["grand-livre"]["lastYear"], rows["grand-livre"]["name"]) == ("none", None, "Grand livre 2025-2026 (provisoire).pdf")
+    assert set(data["addable"]) == {"honoraires", "fec"}
+
+    # Nouveau pour le Compte de résultat et le Grand livre, Non pour la Balance.
+    items = [{"nodeId": m["nodeId"], "name": m["name"], "kind": m["kind"], "selected": False} for m in data["models"]]
+    items += [{"nodeId": None, "kind": "synthese", "selected": True}, {"nodeId": None, "kind": "grand-livre", "selected": True}, {"nodeId": None, "kind": "balance", "selected": False}]
+    rows = {r["kind"]: r for r in documents.set_document_choices(db_session, TRESORIER, SEASON, items)["rows"]}
+    assert (rows["synthese"]["choice"], rows["synthese"]["name"]) == ("new", "Compte de résultat 2025-2026 (provisoire).xlsx")
+    assert rows["grand-livre"]["choice"] == "new" and rows["balance"]["choice"] == "none"
+    # Le nom d'un fichier provisoire rangé l'an dernier ne garde pas la mention.
+    from finances.season_documents import next_name
+    assert next_name("Balance 2024-2025 (provisoire).pdf", "balance") == "Balance 2025-2026.pdf"
 
 
 def test_the_treasurer_deposits_the_documents_once_the_season_is_closed(world, db_session, monkeypatch):
@@ -387,7 +415,7 @@ def test_the_treasurer_deposits_the_documents_once_the_season_is_closed(world, d
     result = documents.deposit(db_session, TRESORIER, SEASON, [("Rapport financier 2025-2026.docx", b"PK rapport")])
     assert result["place"] == "Docs › 2025-2026 › Financier › BILAN FINANCIER"
     # Liste de base au niveau Simple : la Synthèse ; la Balance (niveau Complet) n'est pas faite ; le Rapport passé à part.
-    assert result["names"] == ["Synthèse Dépenses-Recettes 2025-2026.xlsx", "Rapport financier 2025-2026.docx"]
+    assert result["names"] == ["Compte de résultat 2025-2026.xlsx", "Rapport financier 2025-2026.docx"]
     name, files = deposited[0]
     assert name == "2025-2026" and files[0][1] and files[1] == ("Rapport financier 2025-2026.docx", b"PK rapport")
 

@@ -45,7 +45,7 @@ from .exports import _CSS, _eur, _fr, html_to_pdf
 from .chart import is_cheque_deposit
 from .models import EXPENSE, FULL, INCOME, THIRD_PARTY, FinAccount, FinBudgetLine, FinCashLine, FinClosing, FinManualEntry, FinOpeningBalance, FinOperation, FinOperationAccount, FinSeasonNote, FinDocumentChoice
 from .ports import Member, Season
-from .season_documents import BASE, LABELS, ON_REQUEST, OTHER, RAPPORT, default_name, next_name, recognize
+from .season_documents import BASE, LABELS, ON_REQUEST, OTHER, RAPPORT, default_name, next_name, provisional_name, recognize
 
 # Numéros des comptes de trésorerie et de report (plan associatif).
 BANK_BASE = "512"
@@ -698,6 +698,15 @@ class AgDocuments:
             return None
         return {"closedAt": closing.closed_at.isoformat(timespec="seconds"), "result": closing.result / 100}
 
+    def provisional(self, db: Session, org_id: int, season: Season) -> bool:
+        """Avant la clôture (Engagement), un document est « provisoire » (Seb,
+        20/11), comme dans les logiciels du métier ; en Trésorerie il n'y a pas
+        de clôture, donc pas de mention."""
+        return self.accounting.level(db, org_id) == FULL and self.closing(db, org_id, season.id) is None
+
+    def _mention(self, db: Session, org_id: int, season: Season) -> str:
+        return " (provisoire)" if self.provisional(db, org_id, season) else ""
+
     def closing_history(self, db: Session, org_id: int, season: Season) -> list[dict]:
         """Les clôtures rouvertes de la saison (§8.7, trace gardée) : clôturée le…, rouverte le…"""
         rows = db.scalars(
@@ -988,16 +997,41 @@ class AgDocuments:
         documents.append({"kind": "budget", "name": f"Budget prévisionnel {next_season}.xlsx", "model": None, "nodeId": None, "filled": filled})
         order = list(LABELS)
         documents.sort(key=lambda d: order.index(d["kind"]) if d["kind"] in order else len(order))
+        # Avant la clôture, le nom du fichier le dit (Seb, 20/11) ; le budget, lui, parle de la saison suivante.
+        provisional = self.provisional(db, member.org_id, season)
         for d in documents:
             d["label"] = LABELS.get(d["kind"], d["kind"])
             d["available"] = d["kind"] == OTHER or d["kind"] in available
+            if provisional and d["kind"] not in (OTHER, "budget"):
+                d["name"] = provisional_name(d["name"])
+        # Une ligne par document que l'appli sait faire (Seb, 20/11) : comme l'an
+        # dernier (« same »), nouveau (« new ») ou pas produit (« none »).
+        by_kind = {d["kind"]: d for d in reversed(documents)}
+        rows = []
+        for kind in order:
+            if kind in (OTHER, "budget") or kind not in available:
+                continue
+            model = next((m for m in models if m["kind"] == kind), None)
+            doc = by_kind.get(kind)
+            if kind in ON_REQUEST and doc is None:
+                continue
+            new = default_name(kind, season.name)
+            rows.append({
+                "kind": kind,
+                "label": LABELS[kind],
+                "lastYear": model["name"] if model else None,
+                "choice": "none" if doc is None else "same" if doc["nodeId"] is not None else "new",
+                "name": doc["name"] if doc else provisional_name(new) if provisional else new,
+            })
         produced = {d["kind"] for d in documents}
         return {
             "level": level,
             "previousSeason": previous.name if previous is not None else None,
             "models": models,
             "documents": documents,
-            "addable": [k for k in LABELS if k != OTHER and k in available and k not in produced],
+            "rows": rows,
+            "provisional": provisional,
+            "addable": [k for k in ON_REQUEST if k in available and k not in produced],
             "labels": LABELS,
             "fecCheck": self.fec_check(db, member, season) if "fec" in produced else None,
             "closing": self.closing_status(db, member.org_id, season),
@@ -1307,7 +1341,7 @@ class AgDocuments:
             f"<td>{_c(sum(max(a.balance, 0) for a in accounts))}</td><td>{_c(sum(max(-a.balance, 0) for a in accounts))}</td></tr>"
         )
         body = (
-            self._report_header(org_name, f"Balance {season.name}", start, cutoff, accounts)
+            self._report_header(org_name, f"Balance {season.name}{self._mention(db, member.org_id, season)}", start, cutoff, accounts)
             + "<table><tr><th rowspan='2'>N° Compte</th><th rowspan='2' class='l'>Intitulé</th><th colspan='2' class='c'>Total Période</th><th colspan='2' class='c'>Solde Période</th></tr>"
             "<tr><th>Débit</th><th>Crédit</th><th>Débit</th><th>Crédit</th></tr>"
             + "".join(rows)
@@ -1374,7 +1408,7 @@ class AgDocuments:
         passif = bloc("Fonds associatifs", b["passif"]["fonds"]) + bloc("Dettes", b["passif"]["dettes"])
         ecart = b["totalActif"] - b["totalPassif"]
         body = (
-            f"<h1>{e(org_name)} — Bilan {e(season.name)}</h1>"
+            f"<h1>{e(org_name)} — Bilan {e(season.name)}{self._mention(db, member.org_id, season)}</h1>"
             f"<p class='muted'>Au {_fr(b['cutoff'])}. Ce que l'association possède (actif) et ce qu'elle doit, y compris à elle-même (passif).</p>"
             "<div class='cols'>"
             f"<table><tr><th class='l'>Actif</th><th></th></tr>{actif}<tr class='total'><td class='l'>Total actif</td><td>{_signed(b['totalActif'])}</td></tr></table>"
@@ -1396,7 +1430,7 @@ class AgDocuments:
         # la saison fait de toutes ses écritures (§8.7).
         closing = self.closing(db, member.org_id, season.id)
         kind = _PADLOCK if closing is not None else ""
-        parts = [self._report_header(org_name, f"Grand livre {season.name}", season.start_date, cutoff, accounts)]
+        parts = [self._report_header(org_name, f"Grand livre {season.name}{self._mention(db, member.org_id, season)}", season.start_date, cutoff, accounts)]
         parts.append("<p class='muted'>Journaux : AN à-nouveaux, BQn banque, CA caisse, AC achats, HO honoraires, NF notes de frais, OD écritures à la main.</p>")
         if closing is not None:
             parts.append(f"<p class='muted'>{_PADLOCK} Écritures validées par la clôture du {closing.closed_at:%d/%m/%Y} : elles ne changent plus.</p>")
@@ -1677,7 +1711,9 @@ class AgDocuments:
         title, extension, _ = KINDS[kind]
         org_name = self.ports.org_name(db, member.org_id) if self.ports.org_name else ""
         if kind == "synthese":
-            content = self.synthese_xlsx(self.synthese(db, member, season), org_name)
+            synthese = self.synthese(db, member, season)
+            synthese["season"] += self._mention(db, member.org_id, season)
+            content = self.synthese_xlsx(synthese, org_name)
         elif kind == "balance":
             content = self.balance_pdf(db, member, season, org_name)
         elif kind == "grand-livre":
