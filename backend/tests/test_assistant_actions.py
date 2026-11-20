@@ -61,6 +61,9 @@ def test_outils_montres_selon_le_role(db_session, ecole):
         "finance_reports", "finance_report", "finance_ag_document", "finance_assemblies", "finance_assembly_slides",
         "finance_forecasts", "set_operation_accounts", "recalculate_financial_report", "write_financial_statement",
         "store_ag_document", "edit_chart_account", "delete_chart_account", "set_accounting_level",
+        "finance_balance", "finance_preparation", "finance_cash", "finance_chart_proposals", "set_season_budget",
+        "validate_year_end_entries", "create_proposed_accounts", "correct_financial_statement", "add_cash_line",
+        "add_manual_entry", "set_opening_balances", "set_season_documents",
         "publish_news", "delete_news",
     }
     assert {"create_group_chat", "delete_course"} <= {t["name"] for t in actions.tools(db_session, ecole["id"], admin=True)}

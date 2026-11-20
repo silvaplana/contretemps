@@ -58,6 +58,11 @@ class GeneralAssembly(BaseModel):
         "« modèle général », ou null pour le choix par défaut (PowerPoint final de l'AG officielle de la saison "
         "précédente, sinon le modèle général).",
     )
+    docs_file_id: int | None = Field(
+        default=None,
+        description="Ou un PowerPoint (.pptx) rangé dans Docs pris comme modèle : l'id du fichier (trouvé avec les outils "
+        "de Docs), ou null.",
+    )
 
 
 class Forecast(BaseModel):
@@ -109,6 +114,7 @@ def actions(
     forecasts: Forecasts,
     finances: Finances,
     seasons: Callable[[Session, int], list[Season]],
+    docs_file: Callable[[Session, object, int, int], tuple[str, bytes]] | None = None,
 ) -> list[Action]:
     def prepare_report(db: Session, compte, org_id: int, p: FinancialReport) -> Ligne:
         member = _member(db, compte, org_id)
@@ -137,14 +143,20 @@ def actions(
         if options["report"] is None:
             raise Refus(f"aucun bilan calculé pour {season.name} : produisez-le d'abord (produce_financial_report)")
         source = None
-        if p.template is not None:
+        if p.docs_file_id is not None:
+            if p.template is not None:
+                raise Refus("donner template ou docs_file_id, pas les deux")
+            if docs_file is None:
+                raise Refus("Docs n'est pas branché")
+            docs_name, _ = docs_file(db, compte, org_id, p.docs_file_id)  # droit de lecture dans Docs, .pptx
+        elif p.template is not None:
             wanted = " ".join(p.template.split()).casefold()
             candidates = assemblies.model_sources(db, member)
             found = [s for s in candidates if wanted in s["label"].casefold()]
             if not found:
                 raise Refus(f"PowerPoint « {p.template} » introuvable. Disponibles : " + (", ".join(s["label"] for s in candidates) or "aucun"))
             source = found[0]  # le plus récent d'abord (voir model_sources)
-        elif options["template"] is None:
+        elif options["template"] is None and p.docs_file_id is None:
             raise Refus(
                 f"pas de PowerPoint modèle pour {season.name} : indiquez l'AG dont reprendre le PowerPoint (template), "
                 "ou envoyez un modèle général depuis Financier › AG › ⋯"
@@ -154,13 +166,19 @@ def actions(
         def faire(db: Session) -> None:
             try:
                 created = assemblies.create(db, member, data)
-                if source is not None:
+                if p.docs_file_id is not None:
+                    name, content = docs_file(db, compte, org_id, p.docs_file_id)
+                    assemblies.set_model(db, member, created["id"], content, name, f"Copie de « {name} » (Docs)")
+                elif source is not None:
                     assemblies.copy_model(db, member, created["id"], source["assemblyId"], source["kind"])
                 assemblies.run(db, member, created["id"], {})
             except AssemblyError as erreur:
                 raise Refus(str(erreur)) from erreur
 
-        template = source["label"] if source else options["template"]["name"]
+        if p.docs_file_id is not None:
+            template = f"« {docs_name} » (Docs)"
+        else:
+            template = source["label"] if source else options["template"]["name"]
         return Ligne(
             f"Produire le PowerPoint de l'AG « {data['name']} » de la saison {season.name} ({STATES[p.state].lower()}, {label}) "
             f"à partir du bilan « {options['report']['name']} » et de : {template}. Résultat dans Financier › AG.",
@@ -204,7 +222,8 @@ def actions(
                FinancialReport, prepare_report, admin_only=False),
         Action("produce_general_assembly", "Assemblée générale",
                "Produit le PowerPoint de l'assemblée générale d'une saison (Financier › AG) à partir du bilan calculé de la "
-               "saison et d'un PowerPoint modèle (par défaut celui de l'AG officielle de la saison précédente). "
+               "saison et d'un PowerPoint modèle (par défaut celui de l'AG officielle de la saison précédente ; ou une AG "
+               "nommée, ou un PowerPoint rangé dans Docs). "
                "Il faut un bilan calculé : sinon, produire d'abord le bilan.",
                GeneralAssembly, prepare_assembly, admin_only=False),
         Action("produce_forecast", "Prévisionnel",

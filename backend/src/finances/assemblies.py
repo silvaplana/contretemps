@@ -332,12 +332,15 @@ class GeneralAssemblies:
         self._set_file(db, row, "modifie", tmp, filename or "ag.pptx", "Importé de votre ordinateur")
         return self.get(db, member, assembly_id)
 
-    def set_model(self, db: Session, member: Member, assembly_id: int, content: bytes, filename: str) -> dict:
-        """PowerPoint modèle de l'AG, envoyé depuis l'ordinateur."""
+    def set_model(
+        self, db: Session, member: Member, assembly_id: int, content: bytes, filename: str, origin: str = "Importé de votre ordinateur"
+    ) -> dict:
+        """PowerPoint modèle de l'AG, envoyé depuis l'ordinateur (ou pris dans
+        Docs par l'assistant : `origin` le dit)."""
         row = self._row(db, member, assembly_id)
         tmp = self._folder(row) / "modele.tmp"
         self._check_pptx(content, tmp)
-        self._set_file(db, row, "modele", tmp, filename or "modele.pptx", "Importé de votre ordinateur")
+        self._set_file(db, row, "modele", tmp, filename or "modele.pptx", origin)
         return self.get(db, member, assembly_id)
 
     def copy_model(self, db: Session, member: Member, assembly_id: int, source_id: int | None, kind: str) -> dict:

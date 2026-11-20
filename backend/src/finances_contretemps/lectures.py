@@ -8,8 +8,8 @@ comptable et le guider dans les écrans : les lectures donnent tout (natures,
 écritures d'une ligne) et le guide du module (guide.md) dit où est chaque bouton.
 
 Les lectures rendent du JSON compact : l'assistant lit, l'appli a calculé
-(l'IA n'écrit jamais un chiffre). Laissés aux écrans : clôture, soldes de
-départ, import de relevés (gestes rares, voir financier.md §7).
+(l'IA n'écrit jamais un chiffre). Laissés aux écrans : clôture, import de
+relevés (voir financier.md §7). Bilan › Préparer, Balance, caisse : preparer.py.
 """
 
 from __future__ import annotations
@@ -42,7 +42,10 @@ from finances.slides import texts
 from .actions import SEASON, _member, _season
 
 LIMIT_MAX = 300
-DOCUMENTS = {"synthese": "synthese", "balance": "balance", "grand_livre": "grand-livre", "honoraires": "honoraires", "fec": "fec"}
+DOCUMENTS = {
+    "synthese": "synthese", "balance": "balance", "grand_livre": "grand-livre", "bilan": "bilan", "honoraires": "honoraires", "fec": "fec",
+}
+DOCUMENT_NAMES = "synthese (le Compte de résultat), balance, grand_livre, bilan (actif-passif), honoraires ou fec"
 
 
 
@@ -87,7 +90,7 @@ class ReportId(BaseModel):
 
 class AgDocument(BaseModel):
     season: str | None = SEASON
-    document: str = Field(description="synthese, balance, grand_livre, honoraires ou fec.")
+    document: str = Field(description=DOCUMENT_NAMES + ".")
     account_number: str | None = Field(default=None, description="Grand livre : numéro d'un compte pour n'avoir que ses lignes, ou null pour tous.")
 
 
@@ -115,7 +118,7 @@ class WriteStatement(BaseModel):
 
 class StoreDocument(BaseModel):
     season: str | None = SEASON
-    document: str = Field(description="synthese, balance, grand_livre, honoraires ou fec.")
+    document: str = Field(description=DOCUMENT_NAMES + ".")
 
 
 class ChartAccount(BaseModel):
@@ -261,13 +264,21 @@ def financier(
         season = season_of(db, org_id, p.season)
         kind = DOCUMENTS.get(p.document)
         if kind is None:
-            raise Refus("document inconnu : synthese, balance, grand_livre, honoraires ou fec")
+            raise Refus("document inconnu : " + DOCUMENT_NAMES)
         if AG_KINDS[kind][2] == "complet" and accounting.level(db, org_id) != "complet":
             raise Refus(f"{AG_KINDS[kind][0]} : en Engagement (partie double) seulement (Comptes › ⋯ › Plan comptable)")
         if kind == "synthese":
             return _json(documents.synthese(db, member, season))
         if kind == "fec":
             return _json({"season": season.name, **documents.fec_check(db, member, season)})
+        if kind == "bilan":
+            sheet = documents.bilan(db, member, season)
+
+            def euros(groups: dict) -> dict:
+                return {g: [{**line, "amount": line["amount"] / 100} for line in lines] for g, lines in groups.items()}
+
+            return _json({"season": season.name, "cutoff": sheet["cutoff"], "actif": euros(sheet["actif"]), "passif": euros(sheet["passif"]),
+                          "result": sheet["result"] / 100, "totalActif": sheet["totalActif"] / 100, "totalPassif": sheet["totalPassif"] / 100})
         if kind == "honoraires":
             fees = documents.ports.fees(db, org_id, season.start_date, season.end_date) if documents.ports.fees else []
             by_person: dict[str, dict[str, float]] = defaultdict(lambda: defaultdict(float))
@@ -413,7 +424,7 @@ def financier(
         season = season_of(db, org_id, p.season)
         kind = DOCUMENTS.get(p.document)
         if kind is None:
-            raise Refus("document inconnu : synthese, balance, grand_livre, honoraires ou fec")
+            raise Refus("document inconnu : " + DOCUMENT_NAMES)
         if AG_KINDS[kind][2] == "complet" and accounting.level(db, org_id) != "complet":
             raise Refus(f"{AG_KINDS[kind][0]} : en Engagement (partie double) seulement")
         title, extension, _ = AG_KINDS[kind]
@@ -509,10 +520,12 @@ def financier(
              "Le contenu d'un bilan : recettes et dépenses par compte, totaux, résultat, vérification des soldes, analyse écrite, "
              "saison précédente, et le rapport financier rédigé s'il existe.", ReportId, read_report),
         read("finance_ag_document", "Financier",
-             "Le contenu d'un document de l'AG d'une saison (Financier › Bilan › Documents de l'AG) : synthese (charges et produits "
-             "par compte, trésorerie, fournisseurs à payer, événements, à classer), balance, grand_livre, honoraires (par "
-             "professeur et par mois) ou fec (le contrôle du FEC : ce qui l'empêche d'être juste). Balance, grand livre et "
-             "honoraires : en Engagement (partie double).", AgDocument, read_ag_document),
+             "Le contenu d'un document du bilan d'une saison entière (Financier › Bilan) : synthese = le « Compte de résultat » "
+             "de l'écran, anciennement « Synthèse » (charges et produits par compte, trésorerie, fournisseurs à payer, "
+             "événements, à classer), balance, grand_livre, bilan (Bilan actif-passif au dernier jour de la saison), honoraires "
+             "(par professeur et par mois) ou fec (le contrôle du FEC : ce qui l'empêche d'être juste). Balance, grand livre, "
+             "bilan et honoraires : en Engagement (partie double). Sur d'autres dates ou à côté de la saison d'avant : "
+             "finance_balance.", AgDocument, read_ag_document),
         read("finance_assemblies", "Financier", "Financier › AG : les assemblées générales d'une saison et leur PowerPoint.",
              SeasonOnly, read_assemblies),
         read("finance_assembly_slides", "Financier", "Le texte de chaque diapo du PowerPoint d'une AG (final, produit, modifié ou modèle).",
@@ -529,7 +542,7 @@ def financier(
         Action("write_financial_statement", "Bilan",
                "Fait rédiger le rapport financier d'un bilan (Word et PDF) : texte par le modèle, chaque montant placé par l'appli.",
                WriteStatement, prepare_statement, admin_only=False),
-        Action("store_ag_document", "Bilan", "Produit un document de l'AG d'une saison et le range dans Docs › Financier › AG.",
+        Action("store_ag_document", "Bilan", "Produit un document de l'AG d'une saison (synthese = Compte de résultat) et le range dans Docs › Financier › AG.",
                StoreDocument, prepare_store, admin_only=False),
         Action("edit_chart_account", "Financier",
                "Ajoute un compte au plan comptable, ou modifie un compte existant (même numéro) : libellé, mots-clés, actif ou non.",

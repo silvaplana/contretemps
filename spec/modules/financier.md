@@ -445,8 +445,29 @@ aux actions.
     demande « propose-moi les validations » ; l'assistant lit les pièces à valider, explique
     chaque proposition, puis présente la carte ;
   - `mark_expense_notes_paid`.
-- **Laissés aux écrans** (gestes rares) : clôture, soldes de départ, import de relevés et
-  connexion à la banque.
+- **Laissés aux écrans** (gestes rares) : clôture, import de relevés et connexion à la banque.
+
+**Le reste du Financier (Seb, 20 novembre 2026 : « tout le Financier »).** Code dans
+`finances_contretemps/preparer.py` ; mêmes services et mêmes droits que les routes des écrans.
+
+- **Lectures** : `finance_balance` (Comptes › Balance, puces Balance | Grand-livre | Compte de
+  résultat, saison et dates au choix ; le Compte de résultat à côté de la saison d'avant) ;
+  `finance_ag_document` prend aussi `bilan` (Bilan actif-passif, Engagement) et dit que `synthese`
+  est le « Compte de résultat » de l'écran ; `finance_preparation` (une partie de Bilan › Préparer :
+  etapes, releves, soldes_depart, fin_annee, ecritures_main, budget, documents) ; `finance_cash` ;
+  `finance_chart_proposals`.
+- **Écritures** (carte Faire / Annuler) : `set_season_budget` (montants prévus, « Reprendre le
+  réalisé ») ; `validate_year_end_entries` (« Valider mes choix », le choix conseillé par défaut) ;
+  `create_proposed_accounts` ; `correct_financial_statement` (« Corriger » par consigne) ;
+  `add_cash_line` ; `add_manual_entry` ; `set_opening_balances` (soldes donnés, ou lus dans la
+  Balance de l'an dernier dans Docs ; les autres comptes gardent leur solde, la différence va dans
+  110) ; `set_season_documents` (étape 6 : Comme l'an dernier, Nouveau, Non) ;
+  `produce_general_assembly` prend aussi un PowerPoint (.pptx) rangé dans Docs comme modèle
+  (`docs_file_id`), lu avec les droits Docs de la personne.
+- **Restent à la personne** : clôturer / rouvrir, « Repartir à zéro », la banque, l'import de
+  relevés, les suppressions (bilan, AG, prévisionnel, écriture à la main, ligne de caisse), et
+  « Produire » un document de l'étape 6 : c'est un téléchargement, rien n'est rangé dans Docs
+  (`store_ag_document` range, lui, un document dans Docs › Financier › AG).
 
 ## 8. Pièces et comptabilité (28 octobre 2026)
 

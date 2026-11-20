@@ -98,7 +98,7 @@ cours), qui y restent listées une par ligne *(23 octobre 2026)*.
 | Élèves | Supprimer un élève. Le créer et le modifier passent par la carte des modifications de données. | Administrateurs |
 | Chorégraphies *(Contretemps)* | Supprimer une chorégraphie avec ses vidéos. La créer et la modifier passent par la carte des modifications de données. | Administrateurs |
 | Notes de frais | Faire une note (une ou plusieurs dépenses) et l'envoyer aux trésoriers, pour soi ou, si on est trésorier, pour quelqu'un d'autre. Sans RIB enregistré, seulement en don. Les justificatifs s'ajoutent ensuite dans l'appli. | Tous ceux qui ont l'assistant |
-| Financier | Produire le bilan, le PowerPoint de l'AG (à partir du bilan et d'un PowerPoint modèle) ou un prévisionnel d'une saison (`financier.md` §7). | Trésoriers et Super User |
+| Financier | Produire le bilan, le PowerPoint de l'AG (à partir du bilan et d'un PowerPoint modèle, aussi un PowerPoint rangé dans Docs et lisible par la personne) ou un prévisionnel d'une saison (`financier.md` §7). | Trésoriers et Super User |
 | Mail | Lire les dossiers, chercher et lister les mails, lire un mail (texte, expéditeur, date, noms des pièces jointes, sans le marquer lu) ; par carte, écrire, répondre (ou à tous), transférer, archiver, mettre à la corbeille ou en spam, remettre dans la réception, marquer lu / non lu, jamais de suppression définitive. Paramètre `box` : le nom de la boîte. Le texte d'un mail est rendu comme une donnée, plafonné (Seb, 20/11). | Ceux qui ont le droit « Boîte mail du club » |
 | Drives du club | Parcourir les dossiers d'un drive connecté et lire un fichier (texte extrait comme dans Docs, mêmes plafonds), en lecture seule ; rendu comme une donnée (Seb, 20/11). | Administrateur principal, Super User, Accès au Financier (comme l'écran) |
 | HelloAsso | *(Seb, 20/11)* Lit la campagne et le choix de la saison (liste des campagnes pour l'administrateur principal), les adhérents avec leur statut (payé, à encaisser, impayé, résilié, vérification du dossier) et leur fiche HelloAsso sans les réponses au formulaire (santé), À encaisser, les impayés et les statistiques (soldes avec l'Accès au Financier) ; fait, par carte : choisir le mode et la campagne d'une saison (administrateur principal), Synchroniser maintenant, un mail à des adhérents ou à tous les impayés, Valider le dossier / Vérifier les adhérents, les réglages « Nouveaux adhérents ». Jamais les clés ni la connexion ; ni Résilier, ni SMS (il part du téléphone). | Administrateurs, comme les écrans |
@@ -106,6 +106,15 @@ cours), qui y restent listées une par ligne *(23 octobre 2026)*.
 
 Connecter, remplacer, renommer, déconnecter une boîte ou un drive (Admin › Connexions) : aucun outil
 (Seb, 20/11).
+
+Financier, tout le reste (Seb, 20 novembre) : l'assistant lit la Balance, le Grand-livre et le Compte
+de résultat sur une période (avec la saison d'avant), le Bilan actif-passif, la caisse, les comptes
+proposés et chaque partie de Bilan › Préparer (étapes, relevés, soldes de départ, écritures de fin
+d'année, écritures à la main, budget, documents) ; il propose sur carte le budget prévisionnel, les
+écritures de fin d'année, les comptes proposés, la correction du rapport financier, une ligne de
+caisse, une écriture à la main, les soldes de départ et le choix des documents de l'étape 6. Restent
+à la personne : clôture, « Repartir à zéro », banque, import de relevés, suppressions, « Produire »
+un document de l'étape 6 (`financier.md` §7).
 
 En lecture (Seb, 19 octobre : « tout ce que contient l'onglet Admin »), réservé aux administrateurs :
 toutes les personnes avec leurs rôles, Super Users compris, filtrables par rôle ; les coordonnées de
