@@ -113,7 +113,13 @@ export async function login({ identifiant, motDePasse, compteId = null }) {
 export async function restaurerSession(compteId) {
   session.ouvrirSession(compteId, session.jetonEnCours())
   const reponse = await fetch(`${BASE_URL}/comptes/${compteId}`)
-  if (!reponse.ok) throw new Error('Session expirée')
+  if (!reponse.ok) {
+    const erreur = new Error('Session expirée')
+    // Refus du serveur : vraie fin de session. Une panne (5xx) ou pas de
+    // réponse du tout n'en est pas une (Seb, 20/11/2026).
+    erreur.definitive = [401, 403, 404].includes(reponse.status)
+    throw erreur
+  }
   return ouvrir({ compte: await reponse.json(), jeton: null })
 }
 
