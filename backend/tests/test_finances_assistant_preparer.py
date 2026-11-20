@@ -213,3 +213,15 @@ def test_ag_avec_un_powerpoint_de_docs(db_session, ecole, monkeypatch):
     ag = main.finances_assemblies.list(db_session, ecole["membre"], saison.id)[0]
     detail = main.finances_assemblies.get(db_session, ecole["membre"], ag["id"])
     assert "AG 2023-2024.pptx" in json.dumps(detail, ensure_ascii=False)
+
+
+def test_ag_refuse_un_powerpoint_que_la_personne_ne_peut_pas_lire(db_session, ecole, monkeypatch):
+    t = ecole["tresorier"]
+    monkeypatch.setattr(main.documents_client.storage, "root", ecole["tmp"] / "docs")
+    _faire(db_session, t, ecole, _proposer(db_session, t, ecole, "produce_financial_report", {})[1])
+    # Dans l'espace Personnel d'un autre : le trésorier ne le voit pas dans Docs.
+    autre = membre_appelant(db_session, ecole["admin"])
+    pptx = make_pptx(ecole["tmp"] / "perso.pptx").read_bytes()
+    fichier = main.documents_client.upload(db_session, autre, "personal", None, "AG perso.pptx", io.BytesIO(pptx))
+    texte, carte = _proposer(db_session, t, ecole, "produce_general_assembly", {"docs_file_id": fichier["id"]})
+    assert carte is None and "Refusé" in texte
