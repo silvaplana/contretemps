@@ -828,6 +828,17 @@ l'AG** :
 | Honoraires par professeur | Excel : total par prof et par mois, pour la DAS-2 | Complet |
 | FEC | Fichier des écritures comptables (art. A47 A-1 du LPF) : texte, 18 colonnes séparées par une tabulation, dates AAAAMMJJ, montants à virgule, ISO-8859-15. Les écritures du Grand livre (§8.7), regroupées en écritures numérotées par date (même journal, même jour, même opération ; les à-nouveaux en une seule). Pièce vide : le numéro d'écriture. Comptes de tiers dans CompteNum (pas de CompAux pour l'instant) | Simple |
 
+**Balance | Grand-livre | Compte de résultat** (Seb, 20/11 ; maquette
+https://claude.ai/artifact/RfYkidna3tjwFtmnsJ4E4Q) : Comptes réunit ce qui sert à tout moment de l'année.
+Trois puces à côté de Graphique et Tableau ouvrent le même écran (puces en haut, même Saison / Du / Au).
+**Grand-livre** : un compte, ses écritures et le solde au fil des lignes. **Compte de résultat** (le vrai
+nom de la Synthèse Dépenses-Recettes) : classes 6 puis 7, par classe et par compte, Excédent ou Déficit,
+**comparé à la saison d'avant comme le font les logiciels du métier (N et N-1)** ; saison en cours : jusqu'au
+dernier jour connu des banques, comparée aux **mêmes dates un an plus tôt**, et l'écran l'écrit en clair ;
+saison finie : entière contre entière (`AgDocuments.income_statement`, `GET /finances/income-statement`).
+La Balance et le Grand-livre ne se comparent pas (Seb, 20/11). Toucher un compte du Compte de résultat
+ouvre son Grand-livre.
+
 **Écran Balance** (Seb et la trésorière, 10 novembre 2026 ; maquette
 https://claude.ai/artifact/N1EtPWMPcDvo381hcZyB3M) : Comptes › ⋯ › **Balance**, à tout moment, pas
 seulement à l'AG, et par la puce **« Balance »** à côté de Graphique et Tableau (Seb 12/11, à la place du

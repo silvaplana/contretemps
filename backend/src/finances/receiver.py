@@ -674,6 +674,14 @@ class FinancesReceiver:
                 "seasons": [{"id": s.id, "name": s.name, "start": s.start_date, "end": s.end_date} for s in seasons],
             }
 
+        @app.get("/finances/income-statement")
+        def get_income_statement(season_id: int | None = None, start: str | None = None, end: str | None = None, db: Session = db_dep, member: Member = member_dep) -> dict:
+            """Comptes › Compte de résultat : la saison choisie à côté de la saison d'avant, mêmes dates."""
+            season = season_by_id(db, member, season_id) if season_id else documents.balance_season(db, member.org_id)
+            if season is None:
+                raise HTTPException(status_code=404, detail="Aucune saison")
+            return ag_call(documents.income_statement, db, member, season, start, end)
+
         @app.get("/finances/balance/pdf")
         def balance_pdf(season_id: int, start: str | None = None, end: str | None = None, db: Session = db_dep, member: Member = member_dep) -> Response:
             """La Balance de l'écran en PDF, téléchargée (rien n'est rangé dans Docs)."""

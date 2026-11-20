@@ -1,5 +1,6 @@
-// Comptes ⋯ › « Balance » (spec/modules/financier.md §8.6) : la Balance
-// recalculée à chaque ouverture, avec la période dite en clair. Saison par
+// Comptes › Balance | Grand-livre | Compte de résultat (spec/modules/financier.md
+// §8.6, Seb 20/11) : recalculés à chaque ouverture, sur la saison choisie, avec la
+// période dite en clair ; le Compte de résultat se compare à la saison d'avant. Saison par
 // défaut : la dernière terminée si elle n'est pas clôturée, sinon la
 // saison en cours (choix du serveur) ; Du / Au resserrent la période. Un compte touché montre ses
 // écritures, comme au Grand livre ; une pièce touchée ouvre sa fiche.
@@ -67,7 +68,15 @@ function LigneTotal({ libelle, t, className }) {
   )
 }
 
-export default function Balance({ onClose }) {
+const VUES = [
+  { id: 'balance', label: 'Balance' },
+  { id: 'gl', label: 'Grand-livre' },
+  { id: 'resultat', label: 'Compte de résultat' },
+]
+
+export default function Balance({ onClose, onglet = 'balance' }) {
+  const [vue, setVue] = useState(onglet)
+  const [compte, setCompte] = useState(null)
   const [data, setData] = useState(null)
   const [demande, setDemande] = useState({}) // { seasonId, start, end }
   const [filtre, setFiltre] = useState('tous')
@@ -119,9 +128,24 @@ export default function Balance({ onClose }) {
       <button type="button" className="btn btn--link fin-releves__retour" onClick={onClose}>
         ← Comptes
       </button>
+      <div className="filter-chips" role="group" aria-label="État affiché">
+        {VUES.map((v) => (
+          <button
+            key={v.id}
+            type="button"
+            className={`filter-chip${vue === v.id ? ' filter-chip-active' : ''}`}
+            aria-pressed={vue === v.id}
+            onClick={() => setVue(v.id)}
+          >
+            {v.label}
+          </button>
+        ))}
+      </div>
       <div className="fin-balance__titre">
-        <h3>Balance {data?.seasonName ?? ''}</h3>
-        {data && (
+        <h3>
+          {VUES.find((v) => v.id === vue).label} {data?.seasonName ?? ''}
+        </h3>
+        {data && vue !== 'resultat' && (
           <p className="fin-balance__periode">
             Période : du {dateLongue(data.start)} au {dateLongue(data.end)}
           </p>
@@ -170,15 +194,35 @@ export default function Balance({ onClose }) {
               onChange={(e) => e.target.value && setDemande({ seasonId: data.seasonId, start: data.start, end: e.target.value })}
             />
           </label>
-          <button type="button" className="btn btn--primary" onClick={telecharger}>
-            Télécharger le PDF
-          </button>
+          {vue === 'balance' && (
+            <button type="button" className="btn btn--primary" onClick={telecharger}>
+              Télécharger le PDF
+            </button>
+          )}
         </div>
       )}
 
       {erreur && <p className="login-screen__erreur">{erreur}</p>}
 
-      {data && (
+      {data && vue === 'gl' && (
+        <GrandLivre
+          comptes={data.accounts}
+          compte={compte}
+          onCompte={setCompte}
+        />
+      )}
+
+      {data && vue === 'resultat' && (
+        <CompteResultat
+          demande={{ seasonId: data.seasonId, start: data.start, end: data.end }}
+          onCompte={(n) => {
+            setCompte(n)
+            setVue('gl')
+          }}
+        />
+      )}
+
+      {data && vue === 'balance' && (
         <>
           <div className="filter-chips" role="group" aria-label="Comptes affichés">
             {FILTRES.map((f) => (
@@ -310,5 +354,172 @@ export default function Balance({ onClose }) {
         </>
       )}
     </div>
+  )
+}
+
+// Grand-livre : un compte choisi, ses écritures dans l'ordre avec le solde au fil
+// des lignes (comme le Grand livre des logiciels de la trésorière).
+function GrandLivre({ comptes, compte, onCompte }) {
+  if (comptes.length === 0) return <p className="muted">Aucune écriture sur cette période.</p>
+  const courant = comptes.find((c) => c.number === compte) ?? comptes[0]
+  let solde = 0
+  return (
+    <>
+      <label className="fin-cp-champ">
+        Compte
+        <select className="field-input" value={courant.number} onChange={(e) => onCompte(e.target.value)}>
+          {comptes.map((c) => (
+            <option key={c.number} value={c.number}>
+              {c.number} {c.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <div className="fin-balance__table">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Pièce</th>
+              <th>Libellé</th>
+              <th className="fin-balance__n">Débit</th>
+              <th className="fin-balance__n">Crédit</th>
+              <th className="fin-balance__n">Solde</th>
+            </tr>
+          </thead>
+          <tbody>
+            {courant.lines.map((l, i) => {
+              solde += cents(l.debit) - cents(l.credit)
+              return (
+                <tr key={i}>
+                  <td>{api.dateFr(l.date)}</td>
+                  <td>
+                    {l.pieceId ? (
+                      <button type="button" className="btn btn--link fin-balance__piece" onClick={() => requestFichePiece(l.pieceId)}>
+                        {l.piece}
+                      </button>
+                    ) : (
+                      l.piece || l.journal
+                    )}
+                  </td>
+                  <td>{l.label}</td>
+                  <td className="fin-balance__n">{eur(cents(l.debit))}</td>
+                  <td className="fin-balance__n">{eur(cents(l.credit))}</td>
+                  <td className="fin-balance__n">
+                    {api.euros(Math.abs(solde) / 100)} {solde >= 0 ? 'D' : 'C'}
+                  </td>
+                </tr>
+              )
+            })}
+            <LigneTotal
+              libelle={`Total ${courant.number}`}
+              t={sommes([courant]).slice(0, 2).concat([null])}
+              className="fin-balance__total"
+            />
+          </tbody>
+        </table>
+      </div>
+    </>
+  )
+}
+
+// Compte de résultat : charges puis produits par classe, le résultat, et la
+// saison d'avant aux mêmes dates (N et N-1). La comparaison est écrite en clair.
+function CompteResultat({ demande, onCompte }) {
+  const [r, setR] = useState(null)
+  const [erreur, setErreur] = useState('')
+  const { seasonId, start, end } = demande
+
+  useEffect(() => {
+    let actif = true
+    api
+      .compteDeResultat({ seasonId, start, end })
+      .then((d) => actif && setR(d))
+      .catch((err) => actif && setErreur(err.message))
+    return () => {
+      actif = false
+    }
+  }, [seasonId, start, end])
+
+  if (erreur) return <p className="login-screen__erreur">{erreur}</p>
+  if (!r) return <p className="muted">Calcul…</p>
+  const p = r.previous
+  const n = (v) => (v == null ? '' : api.euros(v))
+  const resultat = (v) => (v == null ? '' : `${v >= 0 ? 'Excédent' : 'Déficit'} ${api.euros(Math.abs(v))}`)
+  return (
+    <>
+      <p className="fin-balance__periode">
+        {r.full ? 'Saison entière' : `Du ${dateLongue(r.start)} au ${dateLongue(r.end)}`}
+        {!r.full && ' (dernier jour connu des comptes en banque)'}
+      </p>
+      <p className="muted">
+        {p
+          ? r.full
+            ? `Comparé à toute la saison ${p.seasonName}.`
+            : `Comparé à ${p.seasonName} sur les mêmes dates, du ${dateLongue(p.start)} au ${dateLongue(p.end)} : ${r.seasonName} n’est pas finie, on compare la même partie de l’année.`
+          : 'Pas de saison d’avant dans l’appli : pas de comparaison.'}
+      </p>
+      <div className="fin-balance__table">
+        <table>
+          <thead>
+            <tr>
+              <th>Compte</th>
+              <th>Libellé</th>
+              <th className="fin-balance__n">{r.seasonName}</th>
+              {p && <th className="fin-balance__n">{p.seasonName}</th>}
+            </tr>
+          </thead>
+          <tbody>
+            {[
+              ['Charges', r.charges],
+              ['Produits', r.produits],
+            ].flatMap(([titre, sec]) => [
+              <tr key={titre} className="fin-balance__classe">
+                <td colSpan={p ? 4 : 3}>{titre}</td>
+              </tr>,
+              ...sec.groups.flatMap((g) => [
+                ...g.accounts.map((a) => (
+                  <tr
+                    key={a.number}
+                    className="fin-balance__compte"
+                    tabIndex={0}
+                    onClick={() => onCompte(a.number)}
+                    onKeyDown={(e) => e.key === 'Enter' && onCompte(a.number)}
+                  >
+                    <td>
+                      <span className="fin-balance__chev">›</span> {a.number}
+                    </td>
+                    <td>{a.label}</td>
+                    <td className="fin-balance__n">{n(a.amount)}</td>
+                    {p && <td className="fin-balance__n">{n(a.previous)}</td>}
+                  </tr>
+                )),
+                <tr key={`t${g.code}`} className="fin-balance__st">
+                  <td></td>
+                  <td>
+                    {g.code} {g.label}
+                  </td>
+                  <td className="fin-balance__n">{n(g.total)}</td>
+                  {p && <td className="fin-balance__n">{n(g.previousTotal)}</td>}
+                </tr>,
+              ]),
+              <tr key={`T${titre}`} className="fin-balance__total">
+                <td></td>
+                <td>Total des {titre.toLowerCase()}</td>
+                <td className="fin-balance__n">{n(sec.total)}</td>
+                {p && <td className="fin-balance__n">{n(sec.previousTotal)}</td>}
+              </tr>,
+            ])}
+            <tr className="fin-balance__total">
+              <td></td>
+              <td>Résultat</td>
+              <td className="fin-balance__n">{resultat(r.result)}</td>
+              {p && <td className="fin-balance__n">{resultat(r.previousResult)}</td>}
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p className="muted">Un compte touché ouvre son Grand-livre.</p>
+    </>
   )
 }
