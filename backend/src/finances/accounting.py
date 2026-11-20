@@ -53,11 +53,17 @@ def _check(member: Member) -> None:
 
 
 class Accounting:
-    def __init__(self, pieces: Callable[[Session, int], dict[int, dict]] | None = None) -> None:
+    def __init__(
+        self,
+        pieces: Callable[[Session, int], dict[int, dict]] | None = None,
+        justified: Callable[[Session, int], set[int]] | None = None,
+    ) -> None:
         """pieces(db, org_id) : la pièce rattachée à chaque opération
         bancaire ({operation_id: {"id", "title", "kind"}}), fournie par
-        l'appli hôte (les dépenses du module notes de frais)."""
+        l'appli hôte (les dépenses du module notes de frais) ;
+        justified(db, org_id) : les opérations justifiées sans facture."""
         self.pieces = pieces
+        self.justified = justified
 
     # ----- réglage -----
 
@@ -367,8 +373,10 @@ class Accounting:
         lines = self._lines(db, org_id)
         history = self._history(db, org_id)
         pieces = self.pieces(db, org_id) if self.pieces is not None else {}
+        justified = self.justified(db, org_id) if self.justified is not None else set()
         for row in rows:
             row["account"] = row["proposal"] = row["piece"] = None
+            row["justified"] = row["id"] in justified
             if row.get("transfer"):
                 continue
             confirmed = lines.get(row["id"])
@@ -381,6 +389,9 @@ class Accounting:
                 )
                 row["proposal"] = self._proposal(by_id, proposal)
             row["piece"] = pieces.get(row["id"])
+            # Ce qui reste à justifier (Seb, 20/11) : les pièces rattachées ne font pas tout le montant.
+            piece_cents = round(abs(float(row["piece"].get("amount") or 0)) * 100) if row["piece"] else 0
+            row["toJustify"] = max(abs(round(row["amount"] * 100)) - piece_cents, 0) / 100 if row["piece"] else 0
         return rows
 
     @staticmethod
@@ -484,9 +495,16 @@ class Accounting:
         return done
 
     def counts(self, db: Session, org_id: int, rows: list[dict]) -> dict:
-        """Compteurs des puces « Sans compte » et « Sans pièce » (§8.4)."""
+        """Compteurs des puces « À catégoriser » (pas de compte) et « Justificatif
+        manquant » (un compte, ni justification sans facture ni pièces qui font
+        tout le montant) (§8.4)."""
         real = [r for r in rows if not r.get("transfer")]
-        return {"withoutAccount": sum(r["account"] is None for r in real), "withoutPiece": sum(r["piece"] is None for r in real)}
+        return {
+            "withoutAccount": sum(r["account"] is None for r in real),
+            "withoutPiece": sum(
+                r["account"] is not None and not r.get("justified") and (r["piece"] is None or r.get("toJustify", 0) > 0) for r in real
+            ),
+        }
 
     # ----- caisse -----
 

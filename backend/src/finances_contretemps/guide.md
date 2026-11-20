@@ -2,7 +2,7 @@ Financier : onglet de la barre du bas (sous « Plus » sur téléphone). Cinq so
 Comptes, Pièces, Bilan, AG, Prévisionnel. Le menu ⋯ en haut à droite change selon le sous-onglet.
 
 Comptes
-- Puces des comptes : Tous, chaque compte en banque, Caisse. Puces « Sans compte (n) » et « Sans pièce (n) » : les lignes à compléter.
+- Puces des comptes : Tous, chaque compte en banque, Caisse. Puces « À catégoriser (n) » (pas de compte) et « Justificatif manquant (n) » (un compte, pas de pièce) : les lignes à compléter. Sous chaque transaction : son compte et un badge « À catégoriser », « Justificatif manquant » ou « Justifiée » (pièces rattachées qui font tout le montant, ou justifiée sans facture ; sinon « Justificatif manquant · reste 100,00 € »). La Balance part des transactions bancaires : chacune va sur le compte de ses pièces rattachées, sinon sur celui choisi dans Comptes, sinon « à classer ».
 - Graphique / Tableau : la courbe du solde ou la liste des lignes. Liste des catégories, menu « Tous les mois » (un mois précis, tous les mois depuis la première opération), recherche d'une opération.
 - Toucher une ligne : sa fiche (compte du plan proposé à confirmer, ventilation sur plusieurs comptes, pièce, écritures).
   Le crayon à côté de « Compte » ouvre le Plan comptable à la place de la fiche pour ajouter le compte qui manque ;
@@ -50,7 +50,7 @@ Pièces
   se classe dans 431 URSSAF à payer (proposé par l'appli). Rangé dans Docs › Financier › SALAIRES › mois.
   Une photo ou un PDF de bulletin est reconnu : la pièce arrive en « Bulletin de salaire » avec les montants
   pré-remplis, à relire ; dans la fiche, « Prendre une photo » ou « Joindre un fichier » remplit les montants vides.
-  Les transactions bancaires sans compte se classent dans Comptes (filtre « Sans compte »), badge
+  Les transactions bancaires sans compte se classent dans Comptes (filtre « À catégoriser »), badge
   bleu sur le sous-onglet Comptes.
 - « + » : Saisir une dépense. Prendre en photo (enchaîner : Pièce suivante, Encore une page de celle-ci), Choisir des
   fichiers (ou un zip), ou Saisir à la main (fiche vide ; « Prendre une photo » ou « Joindre un fichier » y ajoute quand même le justificatif). Chaque pièce est lue ; l'appli propose la nature (facture d'un prof de
@@ -62,11 +62,12 @@ Pièces
   transaction bancaire trouvée ou proposée avec l'écart ; ce que la pièce deviendrait ; sous la ligne, les écritures Débit / Crédit :
   facture au compte de charge, menu « Compte de charge » pour le changer, contre le compte de tiers 401 ou 467n, puis paiement
   du tiers contre la banque 512x) et trois boutons : Valider (« Valider :
-  Payé », « C'est ce paiement », « Valider : À payer »), Déjà payée (aucune ligne trouvée : la facture est validée, réglée hors de
+  Payée », « C'est ce paiement », « Valider : À payer »), Déjà payée (aucune ligne trouvée : la facture est validée, réglée hors de
   l'appli, elle attend dans Rapprocher et pas dans Virements), Autre… (la fiche), Plus tard. En haut « Valider les pièces sûres
   (N) », en bas « Annuler cet import ». Sur une pièce payée avec écart : « Régler l'écart… » (Il nous rembourse / On lui
   doit encore, qui crée une pièce À payer du reste / On laisse tomber). Dans la liste et sur la fiche, le badge d'une pièce à valider dit l'état
-  proposé : « À valider → Payé » ou « À valider → À payer ». Une pièce validée reçoit son numéro, « Pièce n° AC-2025-001 »
+  proposé : « À valider → Payée » ou « À valider → À payer ». Une pièce vérifiée dont une ligne n'a pas de compte (Catégorie
+  vide) porte en plus le badge orange « À catégoriser ». Une pièce validée reçoit son numéro, « Pièce n° AC-2025-001 »
   (par saison et par journal : AC achats, HO honoraires, NF notes de frais), repris dans le Grand livre et le FEC ; champ facultatif « Numéro de pièce » sur la fiche pour donner le sien. Une pièce : Valider, Refuser (motif), « Revenir en arrière » (Envoyé ou
   Préparé → À payer, À payer → À valider), « Annuler cette pièce : tout défaire » (une note envoyée par un membre lui
   revient) ; payée à tort : « Détacher » d'abord (tant que la saison n'est pas clôturée). Dans la revue, « Annuler cet
@@ -90,7 +91,7 @@ Pièces
   paiement (À rapprocher, À valider, À payer, Préparé, Envoyé ; toucher ouvre la fiche ; « Rattacher à une transaction
   bancaire… » = lettrage à la main : choisir la transaction dans la liste de celles sans facture, l'écart reste à régler
   dans la fiche) ; Transactions bancaires sans facture (leur
-  compte se choisit dans Comptes, filtre « Sans compte » ; sur chacune, « Justifier sans facture » = une raison, la
+  compte se choisit dans Comptes, filtre « À catégoriser » ; sur chacune, « Justifier sans facture » = une raison, la
   transaction passe dans « Transactions bancaires justifiées sans facture » avec « Retirer », ou « Demander le
   justificatif » = choisir une personne, prévenue par notification et mail, la transaction affiche « justificatif
   demandé à … le … » ; une transaction qui porte un avis de virement le montre en vignette ; justifiée sans facture, l'avis

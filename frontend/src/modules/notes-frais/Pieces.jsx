@@ -483,7 +483,7 @@ function NoteModalDepense({ note, nature, onClose, onFait }) {
             agir(() => (corrigeable ? enregistrer(aValider) : api.valider(note.id)))
           }
         >
-          {aValider ? (note?.operation ? 'Valider : Payé' : 'Valider : À payer') : 'Enregistrer'}
+          {aValider ? (note?.operation ? 'Valider : Payée' : 'Valider : À payer') : 'Enregistrer'}
         </button>
       </div>
     )

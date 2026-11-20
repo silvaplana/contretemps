@@ -541,7 +541,7 @@ Financier › **Pièces** : le classeur des justificatifs. Puces **Achats** · *
 **Notes de frais** · **Ventes** : les quatre dossiers de l'association dans Docs (ci-dessus), ni
 plus ni moins, qui donnent le journal (AC, HO, NF, VE) ; plus **Virements**. La puce À rattacher
 a quitté Pièces le 31 octobre (Seb : une pièce n'est pas une ligne de banque) : les lignes sans
-compte se traitent dans Comptes (« Sans compte »), avec le badge sur le sous-onglet Comptes, saison
+compte se traitent dans Comptes (« À catégoriser »), avec le badge sur le sous-onglet Comptes, saison
 en cours. Sur téléphone, les cinq puces tiennent en deux lignes de trois, sans défiler. **Badges (Seb, 29/10)** : une pastille ronde
 compte ce qui attend une action de la personne qui regarde, rien quand c'est zéro ; Achats,
 Honoraires et Notes de frais = À valider ; Virements = À payer, Préparés pour elle, Envoyés vus sur
@@ -583,7 +583,7 @@ numéro, objet), rangée dans un dossier, et l'appli propose **la ligne de banqu
 date proche, nom) et **le compte** du plan. Le trésorier **Confirme**, choisit **Autre ligne**,
 ou dit **Pas encore payée** / **Payée en espèces**. Rien n'est rattaché sans confirmation, **sauf**
 quand la ligne est sûre (même montant et même nom, Seb 31 octobre : « la banque décide »,
-`notes-de-frais.md` §7 quinquies) : rattachée toute seule, la pièce attend « Valider : Payé » d'un
+`notes-de-frais.md` §7 quinquies) : rattachée toute seule, la pièce attend « Valider : Payée » d'un
 trésorier, détachable tant que la saison n'est pas clôturée ; la ligne garde « proposé par l'assistant, confirmé par X le … ». Le montant lu sert à chercher la
 ligne, jamais à écrire un chiffre dans les comptes : le montant comptable est celui de la banque
 (ou de la caisse). Une différence pièce / banque est signalée, pas corrigée.
@@ -773,8 +773,20 @@ l'historique et les mots-clés. Ventes : leurs comptes sont les comptes de produ
 Comptes se filtre par catégorie, par **mois** (menu « Tous les mois » : chaque mois depuis la
 première opération, le plus récent en tête ; Seb, 10 novembre 2026) et par recherche ; les
 filtres se cumulent et le graphique montre alors le cumul des opérations retenues.
-Dans Comptes › Tableau, chaque opération porte son **compte** (ou « Compte à choisir ») et sa
-**pièce** (ou « sans pièce ») ; puces **Sans compte** et **Sans pièce** avec compteur. Un appui
+Dans Comptes › Tableau, chaque opération porte son **compte** et l'un de **trois états** (Seb, 20 novembre
+2026, comme les logiciels du métier) : **À catégoriser** (pas de compte confirmé ; la proposition « 606 Achats ? »
+reste affichée), **Justificatif manquant** (un compte, ni pièce rattachée ni « Justifier sans facture »),
+**Justifiée** (un compte et des pièces rattachées qui font **tout** le montant, ou justifiée sans facture dans
+Rapprocher ; une transaction de 300 € avec 200 € de pièces reste « Justificatif manquant · reste 100,00 € ») ; puces
+**À catégoriser** et **Justificatif manquant** avec compteur.
+**D'où viennent les montants de la Balance (Seb, 20/11)** : la Balance, le Grand livre et le Compte de
+résultat partent des **transactions bancaires** (et de la caisse), jamais des pièces : chaque transaction
+fait 512 d'un côté et, de l'autre, **le compte de la ou des pièces rattachées** (écrit sur la transaction au
+rattachement quand les pièces font le montant), sinon **le compte donné à la transaction** dans Comptes, sinon
+« Dépenses à classer » 65900 / « Recettes à classer » 75900. Une pièce sans transaction n'entre qu'au niveau
+Complet (facture due, 401 / 467). Dans Pièces, une pièce vérifiée (ni À valider ni
+Refusé) dont une ligne n'a pas de compte porte en plus le badge orange **À catégoriser** ; l'état payé se
+dit **Payée** (« Valider : Payée », « À valider → Payée »). Un appui
 ouvre la **fiche de l'opération** : compte (proposé, à confirmer), pièce (changer, détacher,
 photographier, choisir dans Docs), et, en Complet, les **écritures** générées (achat du jour de la
 facture : 6xx contre 401 ; paiement : 401 contre 512x ; lettre de rapprochement ; virement entre
@@ -824,7 +836,7 @@ et produits). API : `GET /finances/balance?season_id&start&end`, `GET /finances/
 
 **Contrôle du FEC** (Seb, 30/10) : sous la ligne FEC, « FEC juste : n écritures équilibrées » ou
 « FEC à corriger » avec la liste : écritures déséquilibrées, débit ≠ crédit, lignes à classer
-(65900 / 75900 : Comptes › Sans compte), écritures hors saison, numéros hors plan (classe 1 à 7,
+(65900 / 75900 : Comptes › À catégoriser), écritures hors saison, numéros hors plan (classe 1 à 7,
 3 chiffres au moins), comptes sans libellé, lettrage qui ne s'équilibre pas. À savoir sans être
 faux : niveau Simple (trésorerie, sans tiers ni lettrage), pas d'à-nouveaux. L'assistant le lit
 (`finance_ag_document`, document `fec`). Pas d'œil pour le FEC (fichier texte) : téléchargement

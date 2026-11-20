@@ -87,7 +87,7 @@ const ETATS = {
   validee: ['À payer', ''],
   preparee: ['Préparé', ''],
   viree: ['Envoyé', ''],
-  remboursee: ['Payé', 'badge--success'],
+  remboursee: ['Payée', 'badge--success'],
 }
 // Une vente s'encaisse (financier.md §8.12) : À valider → À encaisser → Encaissée.
 const ETATS_VENTE = { ...ETATS, validee: ['À encaisser', ''], remboursee: ['Encaissée', 'badge--success'] }
@@ -97,11 +97,18 @@ const ETATS_VENTE = { ...ETATS, validee: ['À encaisser', ''], remboursee: ['Enc
 export function BadgeEtat({ note, proposition = false }) {
   const etats = note.nature === 'vente' ? ETATS_VENTE : ETATS
   let [label, classe] = note.don && note.statut === 'validee' ? ['Don', 'badge--success'] : etats[note.statut]
-  if (proposition && note.statut === 'envoyee' && note.nature !== 'vente') label = `À valider → ${note.operation ? 'Payé' : 'À payer'}`
+  if (proposition && note.statut === 'envoyee' && note.nature !== 'vente') label = `À valider → ${note.operation ? 'Payée' : 'À payer'}`
   if (note.plus_tard && note.statut === 'envoyee') label = 'À trancher'
   // « Déjà payée » (§7 septies) : validée, la ligne du compte reste à trouver dans Rapprocher.
   if (note.a_rapprocher && note.statut === 'validee') label = 'À rapprocher'
-  return <span className={`badge ${classe}`}>{label}</span>
+  // Vérifiée, mais une ligne sans compte du plan (Seb, 20/11) : « À catégoriser », en plus de son état.
+  const aCategoriser = !['envoyee', 'refusee'].includes(note.statut) && (note.depenses ?? []).some((d) => !d.categorie)
+  return (
+    <>
+      <span className={`badge ${classe}`}>{label}</span>
+      {aCategoriser && <span className="badge badge--warning">À catégoriser</span>}
+    </>
+  )
 }
 
 // Pastille ronde du nombre de choses à faire (sous-onglet Pièces et ses

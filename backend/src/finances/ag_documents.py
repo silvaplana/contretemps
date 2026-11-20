@@ -1441,7 +1441,7 @@ class AgDocuments:
         unclassified = [l for _, l in lines if l["account"] in {n for n, _ in UNCLASSIFIED.values()}]
         if unclassified:
             amount = sum(l["debit"] + l["credit"] for l in unclassified)
-            problems.append(f"{len(unclassified)} ligne(s) à classer ({_eur(amount / 100)}) : Comptes › Sans compte.")
+            problems.append(f"{len(unclassified)} ligne(s) à classer ({_eur(amount / 100)}) : Comptes › À catégoriser.")
         outside = [e["number"] for e in entries if not season.start_date <= e["date"] <= season.end_date]
         if outside:
             problems.append(f"{len(outside)} écriture(s) hors de la saison.")

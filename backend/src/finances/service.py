@@ -614,7 +614,7 @@ class Finances:
                 {"start": c.start_date.isoformat(), "end": c.end_date.isoformat(), "closedAt": c.closed_at.isoformat(timespec="seconds")}
                 for c in db.scalars(select(FinClosing).where(FinClosing.org_id == org_id, FinClosing.reopened_at.is_(None)).order_by(FinClosing.start_date))
             ],
-            # Puces « Sans compte » / « Sans pièce » (spec §8.4).
+            # Puces « À catégoriser » / « Justificatif manquant » (spec §8.4).
             "counts": self.accounting.counts(db, org_id, rows) if self.accounting is not None else None,
         }
 

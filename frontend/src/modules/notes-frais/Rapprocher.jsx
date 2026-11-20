@@ -174,7 +174,7 @@ export default function Rapprocher({ onChange, onOuvrir }) {
           </h3>
           {etat.lignes_sans_piece.length === 0 && <p className="muted">Aucune : chaque transaction bancaire de débit de la période a sa pièce.</p>}
           {etat.lignes_sans_piece.length > 0 && (
-            <p className="muted">Frais bancaires, honoraires, SACEM… : le libellé suffit souvent : « Justifier sans facture » le dit. Sinon, « Demander le justificatif » prévient la personne qui a payé. Un avis de virement reçu sans facture reste ici, sur sa transaction (Docs › Financier › VIREMENTS SANS FACTURE), jusqu’à la facture. Leur compte se choisit dans Comptes, filtre « Sans compte ».</p>
+            <p className="muted">Frais bancaires, honoraires, SACEM… : le libellé suffit souvent : « Justifier sans facture » le dit. Sinon, « Demander le justificatif » prévient la personne qui a payé. Un avis de virement reçu sans facture reste ici, sur sa transaction (Docs › Financier › VIREMENTS SANS FACTURE), jusqu’à la facture. Leur compte se choisit dans Comptes, filtre « À catégoriser ».</p>
           )}
           <div className="nf-liste">
             {etat.lignes_sans_piece.map((l) => (
