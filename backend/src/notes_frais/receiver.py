@@ -82,6 +82,7 @@ class RemboursementEntree(BaseModel):
 class LigneVente(BaseModel):
     categorie_id: int | None = None
     montant_centimes: int = Field(gt=0)
+    nom: str | None = Field(default=None, max_length=200)  # le nom d'un chèque d'une remise (financier.md §8.12)
 
 
 class PaieEntree(BaseModel):
@@ -373,7 +374,7 @@ class NotesDeFraisReceiver:
                 nf.etablir, db, m, nature=nature, fichier=contenu, person_id=person_id, fournisseur=fournisseur,
                 jour=date, montant_centimes=montant_centimes, description=description, valider=valider,
                 categorie_id=categorie_id, batch_id=batch_id, numero_piece=numero_piece,
-                lignes=lignes_paie if bulletin is not None else [(l.categorie_id, l.montant_centimes) for l in lues] if lues else None,
+                lignes=lignes_paie if bulletin is not None else [(l.categorie_id, l.montant_centimes, l.nom) for l in lues] if lues else None,
             )
             if isinstance(note, Preuve):
                 return nf.preuve_dict(db, m, note)
@@ -394,7 +395,7 @@ class NotesDeFraisReceiver:
             if "date" in champs:
                 champs["jour"] = champs.pop("date")
             if champs.get("lignes"):
-                champs["lignes"] = [(l["categorie_id"], l["montant_centimes"]) for l in champs["lignes"]]
+                champs["lignes"] = [(l["categorie_id"], l["montant_centimes"], l.get("nom")) for l in champs["lignes"]]
             if champs.get("paie"):
                 paie = champs.pop("paie")
                 champs["lignes"] = appeler(nf.lignes_paie, db, m.org_id, paie["brut"], paie["salarie"], paie["employeur"])

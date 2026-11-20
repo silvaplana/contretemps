@@ -61,7 +61,15 @@ IBAN (sans espaces) et le motif ou libellé ; null sinon.
 - `categorie` : exactement un des libellés de la liste donnée, celui qui convient le mieux ; \
 null si aucun ne convient.
 - `description` : quelques mots en français qui disent ce qui a été acheté ou payé \
-(ex. « Tissu pour costumes », « Cours de danse octobre 2025 »), sans le montant."""
+(ex. « Tissu pour costumes », « Cours de danse octobre 2025 »), sans le montant.
+- `cheques` : pour une remise de chèques qui liste ses chèques (bordereau détaillé, page du \
+cahier), un élément par chèque : `nom` (le nom écrit pour ce chèque, famille ou tireur) et \
+`montant` en euros ; null si la pièce ne liste pas les chèques un par un."""
+
+
+class ChequeJson(BaseModel):
+    nom: str | None
+    montant: float | None
 
 
 class TicketJson(BaseModel):
@@ -76,6 +84,7 @@ class TicketJson(BaseModel):
     motif: str | None
     categorie: str | None
     description: str | None
+    cheques: list[ChequeJson] | None
 
 
 def cout_usd(modele: str, jetons_entree: int, jetons_sortie: int) -> float:
@@ -144,4 +153,7 @@ class LecteurClaude:
             sorte=lu.sorte if lu.sorte in ("facture", "virement", "vente", "autre") else "facture",
             emetteur_personne=lu.emetteur_personne, client=lu.client,
             beneficiaire=lu.beneficiaire, iban=lu.iban, motif=lu.motif,
+            cheques=tuple(
+                ((c.nom or "").strip(), round(c.montant * 100)) for c in (lu.cheques or []) if c.montant is not None and c.montant > 0
+            ),
         )
