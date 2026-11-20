@@ -1190,6 +1190,64 @@ class AgDocuments:
             ],
         }
 
+    def income_statement(self, db: Session, member: Member, season: Season, start: str | None = None, end: str | None = None) -> dict:
+        """Comptes › Compte de résultat (Seb, 20/11) : charges (classe 6) et
+        produits (classe 7) de la période, par classe et par compte, à côté de
+        la saison d'avant sur la même période (comme les logiciels du métier :
+        N et N-1). En cours de saison, la période s'arrête au dernier jour
+        connu des banques, et la saison d'avant est prise aux mêmes dates un
+        an plus tôt. Montants en euros."""
+        accounts, start, end, cutoff = self._period(db, member, season, start, end)
+        end = min(end, max(cutoff, start)) if cutoff else end
+        current = {a.number: a for a in accounts if a.number[:1] in "67"}
+        previous_season = next(
+            (s for s in sorted(self.seasons(db, member.org_id), key=lambda s: s.start_date, reverse=True) if s.end_date < season.start_date),
+            None,
+        )
+        before: dict[str, Account] = {}
+        previous = None
+        if previous_season is not None:
+            p_start = max(_year_before(start), previous_season.start_date)
+            p_end = previous_season.end_date if end == season.end_date else min(_year_before(end), previous_season.end_date)
+            p_accounts, p_start, p_end, _ = self._period(db, member, previous_season, p_start, p_end)
+            before = {a.number: a for a in p_accounts if a.number[:1] in "67"}
+            previous = {"seasonName": previous_season.name, "start": p_start, "end": p_end}
+
+        def amount(a: Account | None, sign: int) -> int:
+            return 0 if a is None else sign * a.balance
+
+        def section(cls: str, sign: int) -> dict:
+            numbers = sorted(n for n in set(current) | set(before) if n[0] == cls)
+            groups = []
+            for code in sorted({n[:2] for n in numbers}):
+                rows = [
+                    {
+                        "number": n, "label": (current.get(n) or before[n]).label,
+                        "amount": amount(current.get(n), sign) / 100,
+                        "previous": amount(before.get(n), sign) / 100 if previous else None,
+                    }
+                    for n in numbers if n[:2] == code
+                ]
+                groups.append({
+                    "code": code, "label": CLASS_LABELS.get(code, "Autres"), "accounts": rows,
+                    "total": round(sum(r["amount"] for r in rows), 2),
+                    "previousTotal": round(sum(r["previous"] for r in rows), 2) if previous else None,
+                })
+            return {
+                "groups": groups,
+                "total": round(sum(g["total"] for g in groups), 2),
+                "previousTotal": round(sum(g["previousTotal"] for g in groups), 2) if previous else None,
+            }
+
+        charges, produits = section("6", 1), section("7", -1)
+        return {
+            "seasonId": season.id, "seasonName": season.name, "start": start, "end": end,
+            "full": end == season.end_date, "previous": previous,
+            "charges": charges, "produits": produits,
+            "result": round(produits["total"] - charges["total"], 2),
+            "previousResult": round(produits["previousTotal"] - charges["previousTotal"], 2) if previous else None,
+        }
+
     def balance_season(self, db: Session, org_id: int) -> Season | None:
         """La saison sur laquelle s'ouvre la Balance : la dernière saison
         terminée si elle n'est pas clôturée (celle dont on prépare le bilan),
@@ -1574,3 +1632,9 @@ def _c(cents: int) -> str:
 
 def _signed(cents: int) -> str:
     return _eur(cents / 100) if cents else ""
+
+
+def _year_before(day: str) -> str:
+    """Le même jour un an plus tôt (le 29 février devient le 28)."""
+    d = date.fromisoformat(day)
+    return (d.replace(year=d.year - 1) if not (d.month == 2 and d.day == 29) else d.replace(year=d.year - 1, day=28)).isoformat()

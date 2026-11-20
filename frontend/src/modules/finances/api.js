@@ -78,6 +78,16 @@ export function balance({ seasonId, start, end } = {}) {
   const qs = q.toString()
   return appel(`/balance${qs ? `?${qs}` : ''}`)
 }
+// Compte de résultat : la saison à côté de la saison d'avant, mêmes dates.
+export function compteDeResultat({ seasonId, start, end } = {}) {
+  const q = new URLSearchParams()
+  if (seasonId) q.set('season_id', seasonId)
+  if (start) q.set('start', start)
+  if (end) q.set('end', end)
+  const qs = q.toString()
+  return appel(`/income-statement${qs ? `?${qs}` : ''}`)
+}
+
 export const urlBalancePdf = (seasonId, start, end) => `${BASE}/balance/pdf?season_id=${seasonId}&start=${start}&end=${end}`
 
 // --- Bilan (sous-module, spec §4) ---

@@ -25,6 +25,11 @@ Comptes
 - ⋯ › Balance, ou la puce « Balance » à côté de Graphique et Tableau (aussi dans le volet Comptes à côté du bilan) : la Balance recalculée à l'ouverture de l'écran, avec la période écrite sous le titre (« Période : du … au … ») ;
   s'ouvre sur la dernière saison terminée si elle n'est pas clôturée, sinon sur la saison en cours. Saison, Du, Au, Télécharger le PDF ; puces Tous les comptes /
   Bilan (classes 1 à 5) / Résultat (classes 6 et 7) ; toucher un compte montre ses écritures ; toucher un numéro de pièce ouvre sa fiche. « ← Comptes » revient.
+- Puces « Grand-livre » et « Compte de résultat » à côté de « Balance » : le même écran, en haut les puces Balance | Grand-livre | Compte de résultat, la même saison et les mêmes dates.
+  Grand-livre : un compte choisi, ses écritures (date, pièce, libellé, débit, crédit) et le solde au fil des lignes.
+  Compte de résultat : charges puis produits par classe et par compte, le résultat (Excédent ou Déficit), à côté de la saison d'avant.
+  Saison pas finie : jusqu'au dernier jour connu des comptes en banque, comparée à la saison d'avant sur les mêmes dates un an plus tôt (c'est écrit sous le titre) ;
+  saison finie : saison entière contre saison d'avant entière. Toucher un compte ouvre son Grand-livre. Seul le Compte de résultat se compare à l'an dernier.
 - ⋯ › Soldes de départ : soldes au premier jour de la saison (niveau Complet). Bouton « Reprendre les soldes de la Balance
   2024-2025 (Docs › Financier) » (la saison précédente est nommée) : l'appli lit la Balance de la saison précédente déposée dans Docs › Financier (saison précédente ou en cours, n'importe quel sous-dossier, « Balance » dans le nom),
   remplit les cases, montre en haut l'écart éventuel avec les relevés ; sous chaque solde qui n'est pas à zéro, une phrase dit ce que c'est (factures non payées, fonds, compte d'attente à vider…) et propose la facture ou la transaction bancaire du même montant ; « Utiliser ces soldes » enregistre. Sans Balance dans Docs,

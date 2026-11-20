@@ -677,8 +677,8 @@ export default function Comptes({ onChange }) {
   if (volet === "soldes") {
     return <SoldesDepart onClose={() => setVolet(null)} />;
   }
-  if (volet === "balance") {
-    return <Balance onClose={() => setVolet(null)} />;
+  if (volet === "balance" || volet === "gl" || volet === "resultat") {
+    return <Balance onglet={volet} onClose={() => setVolet(null)} />;
   }
   if (volet) {
     return (
@@ -850,10 +850,17 @@ export default function Comptes({ onChange }) {
                   {d.label}
                 </button>
               ))}
-              {/* La Balance d'un geste, à côté de Graphique et Tableau (Seb, 12/11). */}
-              <button className="filter-chip" onClick={() => setVolet("balance")}>
-                Balance
-              </button>
+              {/* Ce qui sert à tout moment de l'année, à côté de Graphique et Tableau
+                  (Seb, 12/11 puis 20/11) : Balance, Grand-livre, Compte de résultat. */}
+              {[
+                { id: "balance", label: "Balance" },
+                { id: "gl", label: "Grand-livre" },
+                { id: "resultat", label: "Compte de résultat" },
+              ].map((d) => (
+                <button key={d.id} className="filter-chip" onClick={() => setVolet(d.id)}>
+                  {d.label}
+                </button>
+              ))}
             </div>
           </div>
 

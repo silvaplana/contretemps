@@ -372,3 +372,24 @@ def test_the_treasurer_deposits_the_documents_once_the_season_is_closed(world, d
     assert result["names"] == ["Synthèse Dépenses-Recettes 2025-2026.xlsx", "Rapport financier 2025-2026.docx"]
     name, files = deposited[0]
     assert name == "2025-2026" and files[0][1] and files[1] == ("Rapport financier 2025-2026.docx", b"PK rapport")
+
+
+def test_income_statement_compares_to_the_same_dates_of_the_season_before(world, db_session):
+    """Seb, 20/11 : Comptes › Compte de résultat, charges puis produits par
+    classe, à côté de la saison d'avant aux mêmes dates tant que la saison
+    n'est pas finie (les banques sont connues jusqu'au 30/09/2025)."""
+    _, _, documents = world
+    before = Season(id=6, name="2024-2025", start_date="2024-09-01", end_date="2025-08-31")
+    documents.seasons = lambda db, org: [before, SEASON]
+    r = documents.income_statement(db_session, TRESORIER, SEASON)
+    assert (r["start"], r["end"], r["full"]) == ("2025-09-01", "2025-09-30", False)
+    assert r["previous"] == {"seasonName": "2024-2025", "start": "2024-09-01", "end": "2024-09-30"}
+    charges = {a["number"]: a for g in r["charges"]["groups"] for a in g["accounts"]}
+    produits = {a["number"]: a for g in r["produits"]["groups"] for a in g["accounts"]}
+    assert charges["606"]["amount"] == 39.9 and charges["613"]["amount"] == 1600.0 and charges["606"]["previous"] == 0
+    assert produits["706"]["amount"] == 2298.0 and produits["707"]["amount"] == 150.0
+    assert r["result"] == round(r["produits"]["total"] - r["charges"]["total"], 2)
+    assert [g["code"] for g in r["charges"]["groups"]][:2] == ["60", "61"]
+    # Une saison finie se montre entière ; sans saison d'avant, pas de comparaison.
+    whole = documents.income_statement(db_session, TRESORIER, before)
+    assert whole["previous"] is None and whole["full"] is True
