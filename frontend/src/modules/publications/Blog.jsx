@@ -979,7 +979,9 @@ function Editeur({ actu, auteur, lieu, blog, mediaEnHaut, onRetour, onEnregistre
     ;(ajout === 'photo' ? champPhoto : champVideo).current?.click()
   }
 
-  async function envoyer(publier) {
+  // Rend true une fois l'actu gardée. `ajout` : des champs à garder avec
+  // elle, sans rien envoyer par mail (Documents spécifiques).
+  async function envoyer(publier, ajout = null) {
     setEnvoi(true)
     try {
       // Le lien collé sans « Ajouter » : ajouté maintenant.
@@ -997,8 +999,9 @@ function Editeur({ actu, auteur, lieu, blog, mediaEnHaut, onRetour, onEnregistre
             : m,
         ),
       )
-      const pret = { ...brouillon, media, categorie, sousCategorie }
+      const pret = { ...brouillon, ...ajout, media, categorie, sousCategorie }
       setBrouillon(pret)
+      if (ajout) return await onEnregistrer({ ...pret, publier })
       if (publier && essai) {
         // L'essai garde l'actu telle qu'elle est (publiée ou non) et reste ici.
         const gardee = await onEssai({ ...pret, publier: publiee }, adressesEssai().join(', '))
@@ -1008,10 +1011,20 @@ function Editeur({ actu, auteur, lieu, blog, mediaEnHaut, onRetour, onEnregistre
       // Brouillon : jamais de mail.
       const avecMail = publier && mail.oui
       await onEnregistrer({ ...pret, publier: avecMail ? mail.dansLeBlog || publiee : publier, parMail: avecMail })
+      return true
     } catch (e) {
       window.alert(e.message)
     } finally {
       setEnvoi(false)
+    }
+  }
+
+  // Une convocation tout juste créée (Documents spécifiques) : l'actu est
+  // gardée avec elle (en brouillon si elle n'était pas publiée), puis la
+  // convocation s'ouvre dans Docs pour la corriger ; ← ramène aux actus.
+  async function joindreEtOuvrir(document) {
+    if (await envoyer(publiee, { document })) {
+      window.dispatchEvent(new CustomEvent('app-ouvrir-docs', { detail: { id: document.id, retour: true } }))
     }
   }
 
@@ -1117,6 +1130,7 @@ function Editeur({ actu, auteur, lieu, blog, mediaEnHaut, onRetour, onEnregistre
                   changer({ document })
                   setSpecifiques(false)
                 }}
+                onCreer={joindreEtOuvrir}
               />
             )}
             <button
@@ -1462,8 +1476,10 @@ export default function Blog({ ecoleId, blog, prenom }) {
       } else {
         montrer(brouillon.publier ? 'Enregistrée' : 'Gardée en brouillon')
       }
+      return true
     } catch (e) {
       montrer(e.message)
+      return false
     }
   }
 

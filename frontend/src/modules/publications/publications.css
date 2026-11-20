@@ -1531,3 +1531,52 @@
   font-weight: 700;
   text-decoration: none;
 }
+/* « + Nouvelle convocation » (Seb, 20 novembre). */
+.editeur__ajouts .specifiques .specifiques__ajouter {
+  color: var(--accent);
+  font-weight: 700;
+}
+.specifiques__nouvelle {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 17px;
+}
+.specifiques__nouvelle p {
+  margin: 0;
+}
+.specifiques__choix,
+.specifiques__quand {
+  display: flex;
+  gap: 8px;
+}
+.editeur__ajouts .specifiques__choix button {
+  flex: 1;
+}
+.editeur__ajouts .specifiques__choix button[aria-checked='true'] {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+  font-weight: 700;
+}
+.specifiques__quand input {
+  flex: 1;
+  min-width: 0;
+  min-height: 48px;
+  padding: 0 10px;
+  box-sizing: border-box;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg);
+  color: var(--text-h);
+  font: inherit;
+  font-size: 17px;
+}
+.editeur__ajouts .specifiques__preparer {
+  border: 0;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 700;
+}
+.editeur__ajouts .specifiques__preparer:disabled {
+  opacity: 0.5;
+}

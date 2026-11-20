@@ -81,8 +81,11 @@ Nouvelle publication / Modifier
   vidéo ajoutée. Pour deux vidéos : garder en Brouillon, partager la deuxième vers ce brouillon.
 - « Documents spécifiques » (sous Document, pas pour une Brève) : déroule les documents à part de
   Docs, aujourd'hui « Convocation à l'AG ». La toucher montre les convocations d'AG de Docs, la plus
-  récente d'abord ; en toucher une la joint comme « Document ». S'il n'y en a pas : « Préparez-la dans
-  Docs › + › Convoquer l'AG ».
+  récente d'abord ; en toucher une la joint comme « Document ». Dessous, « + Nouvelle convocation » :
+  Ordinaire ou Extraordinaire, la date et l'heure, « Préparer la convocation » (et, si l'appli hésite,
+  « Où ranger la convocation ? »). L'actu est gardée avec la convocation (en brouillon si elle n'était
+  pas publiée) et la convocation s'ouvre dans Docs, en Brouillon, pour la corriger ; ← ramène aux
+  actus, où l'on rouvre l'actu par son crayon.
 - « Sondage » (sous Photo, Vidéo, Lien, Document ; pas pour une Brève) : « Question », les
   « Réponses » (2 à 10, ✕ en retire une, « + Ajouter une réponse »), « Plusieurs réponses possibles ».
   Le texte devient facultatif.
