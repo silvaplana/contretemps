@@ -47,3 +47,15 @@ def test_un_mail_a_chacun_reponses_au_club(db_session, monkeypatch):
     mail_ecole.envoyer_a_chacun(db_session, ecole.id, ["a@exemple.fr"], lambda a: ("S", "T", "<p>T</p>"),
                                 repondre_a="bureau@asc.fr")
     assert faux.envoyes[0]["repondre_a"] == "bureau@asc.fr"
+
+
+def test_aucun_mail_parti_le_dit(db_session, monkeypatch):
+    """Seb, 20 novembre : « Essai envoyé » s'affichait alors que rien n'était
+    parti. Si aucune adresse n'est servie, l'erreur remonte avec sa raison."""
+    import pytest
+
+    ecole = Ecoles().create(db_session, nom="ASC La Ciotat", code_postal="13600")
+    db_session.commit()
+    monkeypatch.setattr(mail_ecole, "_envoi", FauxEnvoi())
+    with pytest.raises(RuntimeError, match="refusé"):
+        mail_ecole.envoyer_a_chacun(db_session, ecole.id, ["panne@exemple.fr"], lambda a: ("S", "T", "<p>T</p>"))
