@@ -21,7 +21,7 @@ export default function NiveauComptable() {
 
   async function passerEnComplet(e) {
     e.preventDefault()
-    if (!window.confirm('Passer en Complet (partie double) ? On ne revient pas en Simple.')) return
+    if (!window.confirm('Passer en Engagement (partie double) ? On ne revient pas en Trésorerie.')) return
     try {
       setNiveau((await api.choisirNiveau('complet')).level)
     } catch (err) {
@@ -31,12 +31,12 @@ export default function NiveauComptable() {
 
   return (
     <span className="nf-qui-paie">
-      Documents comptables : {niveau === 'complet' ? 'Complet' : 'Simple'}
+      Documents comptables : {niveau === 'complet' ? 'Engagement (partie double)' : 'Trésorerie (recettes-dépenses)'}
       {niveau !== 'complet' && (
         <>
           {' '}
           <button type="button" className="btn btn--link" onClick={passerEnComplet}>
-            Passer en Complet
+            Passer en Engagement (partie double)
           </button>
         </>
       )}

@@ -480,6 +480,11 @@ les journaux de son grand livre (AC, HO, NF, VE).
 Admin › École › Personnalisation › Fonctionnalités, ligne Financier : **Simple** ou **Complet**,
 par organisation. Pas de troisième cas.
 
+**Noms à l'écran (Seb, 20/11)** : **Trésorerie (recettes-dépenses)** pour Simple et **Engagement
+(partie double)** pour Complet, les mots des pros. Dans le code et la base, `simple` / `complet`
+restent ; dans cette spec, Simple = Trésorerie, Complet = Engagement. On ne revient pas d'Engagement
+à Trésorerie.
+
 - **Simple** (comptabilité de trésorerie ; une association loi 1901 sous les seuils n'a rien
   d'autre à tenir) : comptes en banque, caisse, pièces rattachées, plan comptable, Synthèse,
   Rapport financier. Le Sambo reste en Simple.

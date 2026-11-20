@@ -633,7 +633,7 @@ class AgDocuments:
         if not member.is_treasurer:
             raise PermissionError("Réservé au trésorier")
         if self.accounting.level(db, member.org_id) != FULL:
-            raise ValueError("La clôture est au niveau Complet (Comptes › ⋯ › Plan comptable).")
+            raise ValueError("La clôture est en Engagement (partie double) (Comptes › ⋯ › Plan comptable).")
         if self.closing(db, member.org_id, season.id) is not None:
             raise ValueError("Saison déjà clôturée.")
         books = self.books(db, member, season)
@@ -854,7 +854,7 @@ class AgDocuments:
         if not member.is_treasurer:
             raise PermissionError("Réservé au trésorier")
         if self.accounting.level(db, member.org_id) != FULL:
-            raise ValueError("Les écritures à la main sont au niveau Complet (Comptes › ⋯ › Plan comptable).")
+            raise ValueError("Les écritures à la main sont en Engagement (partie double) (Comptes › ⋯ › Plan comptable).")
         if self.closing(db, member.org_id, season.id) is not None:
             raise ValueError("Saison clôturée : rouvrez-la d'abord.")
         try:
@@ -1662,7 +1662,7 @@ class AgDocuments:
         if wrong:
             problems.append(f"Lettrage qui ne s'équilibre pas : {', '.join(wrong[:10])}.")
         if self.accounting.level(db, member.org_id) != FULL:
-            notes.append("Niveau Simple : comptabilité de trésorerie, sans fournisseurs ni lettrage.")
+            notes.append("Trésorerie (recettes-dépenses) : sans fournisseurs ni lettrage.")
         if not any(e["journal"] == "AN" for e in entries):
             notes.append("Pas d'à-nouveaux : aucun solde de départ connu pour la saison.")
         return {"ok": not problems, "entries": len(entries), "lines": len(lines), "problems": problems, "notes": notes}

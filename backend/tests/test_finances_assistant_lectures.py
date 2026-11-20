@@ -65,7 +65,7 @@ def test_bilan_documents_et_rapport_lisibles(db_session, ecole):
     synthese = _lire(db_session, t, ecole, "finance_ag_document", {"document": "synthese"})
     assert synthese["season"] == saison.name and "unclassified" in synthese
     texte, carte = _proposer(db_session, t, ecole, "finance_ag_document", {"document": "balance"})
-    assert carte is None and "Complet" in texte
+    assert carte is None and "Engagement" in texte
     fec = _lire(db_session, t, ecole, "finance_ag_document", {"document": "fec"})
     assert fec["season"] == saison.name and {"ok", "entries", "problems", "notes"} <= fec.keys()
     texte, carte = _proposer(db_session, t, ecole, "recalculate_financial_report", {"report_id": bilans[0]["id"]})

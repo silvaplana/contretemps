@@ -114,7 +114,7 @@ export default function Preparer({ season }) {
     n: 7,
     titre: 'Clôturer la saison',
     reste: closing ? 0 : 1,
-    detail: closing ? `Clôturée le ${dateFr(closing.closedAt.slice(0, 10))}` : docs.data && docs.data.level !== 'complet' ? 'Au niveau Complet seulement' : pret ? 'Tout est prêt : la saison peut être clôturée' : 'Possible quand les étapes 1 à 6 sont vertes',
+    detail: closing ? `Clôturée le ${dateFr(closing.closedAt.slice(0, 10))}` : docs.data && docs.data.level !== 'complet' ? 'En Engagement (partie double) seulement' : pret ? 'Tout est prêt : la saison peut être clôturée' : 'Possible quand les étapes 1 à 6 sont vertes',
   })
 
   return (
@@ -296,7 +296,7 @@ function Etape4({ season, offBank, level, onChange, onErreur }) {
         <span className="fin-cp-s">
           {level === 'complet'
             ? 'Dues au dernier jour de la saison : en charge au jour de la facture, contre 401 Fournisseurs ou 467 Autres comptes débiteurs ou créditeurs.'
-            : 'Niveau Simple (trésorerie) : elles restent dans « Fournisseurs à payer » de la Synthèse, sans écriture.'}
+            : 'En Trésorerie (recettes-dépenses) : elles restent dans « Fournisseurs à payer » de la Synthèse, sans écriture.'}
         </span>
         {offBank.unpaid.map((u, i) => (
           <div key={i} className="fin-preparer__ligne fin-preparer__ligne--texte">
@@ -314,7 +314,7 @@ function Etape4({ season, offBank, level, onChange, onErreur }) {
         <span className="fin-cp-s">
           {level === 'complet'
             ? 'Ce qui n’est ni sur les relevés ni dans la caisse : une cotisation due (411), la régularisation du compte d’attente (471)… Une ligne par question : date, libellé, compte débité, compte crédité, montant.'
-            : 'Au niveau Complet (Comptes › ⋯ › Plan comptable).'}
+            : 'En Engagement (partie double) seulement (Comptes › ⋯ › Plan comptable).'}
         </span>
         {offBank.entries.map((e) => (
           <div key={e.id} className="fin-preparer__ligne fin-preparer__ligne--texte fin-preparer__ecriture">

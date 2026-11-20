@@ -198,7 +198,7 @@ export function Etape6Documents({ season, docs }) {
               <span className="fin-cp-t">{d.kind === AUTRE ? d.name : `${d.label} : ${d.name}`}</span>
               <span className="fin-cp-s">
                 {d.kind === AUTRE ? 'À faire à la main, d’après le fichier de l’an dernier' : d.model ? `Nommé comme « ${d.model} »` : 'Nom proposé par l’appli'}
-                {!d.available && ' · niveau Complet (Comptes › ⋯ › Plan comptable)'}
+                {!d.available && ' · en Engagement (partie double) (Comptes › ⋯ › Plan comptable)'}
               </span>
               {d.kind !== AUTRE && d.available && (
                 <span className="fin-cp-a">
@@ -277,7 +277,7 @@ export function Etape7Cloture({ season, docs, pret, onChange }) {
     }
   }
 
-  if (data.level !== 'complet') return <p className="muted">La clôture est au niveau Complet (Comptes › ⋯ › Plan comptable).</p>
+  if (data.level !== 'complet') return <p className="muted">La clôture est en Engagement (partie double) (Comptes › ⋯ › Plan comptable).</p>
   return (
     <div className="fin-preparer__corps">
       {closing ? (

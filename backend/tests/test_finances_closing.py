@@ -184,7 +184,7 @@ def test_closing_needs_full_level(db_session):
     finances = Finances(accounting=accounting)
     finances.import_files(db_session, TRESORIER, statements())
     documents = AgDocuments(ledger=finances.get_ledger, accounting=accounting, seasons=lambda db, org: SEASONS)
-    with pytest.raises(ValueError, match="Complet"):
+    with pytest.raises(ValueError, match="Engagement"):
         documents.close(db_session, TRESORIER, SEASON)
 
 
