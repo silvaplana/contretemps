@@ -75,6 +75,7 @@ class TicketLu:
     cheques: tuple[tuple[str, int], ...] = ()
     # Aucune catégorie ne convient : (numéro, libellé) du compte du plan à créer (financier.md §8.2 bis).
     compte_propose: tuple[str, str] | None = None
+    numero_facture: str | None = None
     salarie: str | None = None
     brut_centimes: int | None = None
     net_centimes: int | None = None

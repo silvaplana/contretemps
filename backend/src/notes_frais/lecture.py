@@ -63,6 +63,8 @@ IBAN (sans espaces) et le motif ou libellé ; null sinon.
 seulement, le nom du salarié (prénom et nom), le salaire brut, le net payé au salarié (« net à \
 payer », après l'impôt prélevé à la source) et le total des cotisations patronales (part de \
 l'employeur), en euros ; null sinon. Pour un bulletin, `montant_ttc` est le net payé.
+- `numero_facture` : le numéro de la facture ou du reçu tel qu'il est écrit (« F2025-0142 ») ; \
+null s'il n'y en a pas (ticket de caisse sans numéro, virement).
 - `categorie` : exactement un des libellés de la liste donnée, celui qui convient le mieux ; \
 null si aucun ne convient.
 - `description` : quelques mots en français qui disent ce qui a été acheté ou payé \
@@ -100,6 +102,7 @@ class TicketJson(BaseModel):
     description: str | None
     cheques: list[ChequeJson] | None
     compte_propose: CompteJson | None
+    numero_facture: str | None = None
     salarie: str | None = None
     salaire_brut: float | None = None
     net_paye: float | None = None
@@ -180,6 +183,7 @@ class LecteurClaude:
             cheques=tuple(
                 ((c.nom or "").strip(), round(c.montant * 100)) for c in (lu.cheques or []) if c.montant is not None and c.montant > 0
             ),
+            numero_facture=lu.numero_facture,
             salarie=lu.salarie, brut_centimes=centimes(lu.salaire_brut), net_centimes=centimes(lu.net_paye),
             employeur_centimes=centimes(lu.cotisations_employeur),
         )

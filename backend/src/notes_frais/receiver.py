@@ -93,6 +93,10 @@ class PaieEntree(BaseModel):
     employeur: int = Field(ge=0)  # cotisations de l'employeur
 
 
+class CompteEntree(BaseModel):
+    code: str = Field(min_length=1, max_length=10)
+
+
 class PaieReglage(BaseModel):
     active: bool
 
@@ -448,6 +452,10 @@ class NotesDeFraisReceiver:
         @app.post("/notes-frais/imports/{batch_id}/annuler")
         def annuler_import(batch_id: str, db: Session = db_dep, m: Membre = membre):
             return {"annulees": appeler(nf.annuler_import, db, m, batch_id)}
+
+        @app.post("/notes-frais/notes/{note_id}/compte")
+        def prendre_le_compte(note_id: int, corps: CompteEntree, db: Session = db_dep, m: Membre = membre):
+            return nf.notes_dicts(db, m, [appeler(nf.prendre_le_compte, db, m, note_id, corps.code)])[0]
 
         @app.post("/notes-frais/notes/{note_id}/payee")
         def payee(note_id: int, corps: PaiementEntree, db: Session = db_dep, m: Membre = membre):

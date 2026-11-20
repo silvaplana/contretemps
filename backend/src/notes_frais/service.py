@@ -580,6 +580,7 @@ class NotesDeFrais:
             "beneficiaire": (lu.beneficiaire or "")[:120] or None,
             "iban": lu.iban,
             "motif": (lu.motif or "")[:140] or None,
+            "numero_facture": " ".join((lu.numero_facture or "").split())[:40] or None,
             "salarie": " ".join((lu.salarie or "").split())[:120] or None,
             "paie": _paie_lue(lu),
             "cheques": [(nom[:120], centimes) for nom, centimes in lu.cheques if 0 < centimes <= MONTANT_MAX_CENTIMES],
@@ -1204,6 +1205,7 @@ class NotesDeFrais:
                 note.supplier = emetteur  # le nom lu, pour « Pour qui ? » (ou « + Quelqu'un d'extérieur »)
         note.titre = self._titre(note, jour)
         self._poser_numero(db, note, numero_piece)
+        note.invoice_number = lu.get("numero_facture")
         self._recopier_rib(db, note)
         if valider:
             note.statut, note.traitee_le, note.traitee_par = VALIDEE, _maintenant(), membre.person_id
@@ -2406,9 +2408,18 @@ class NotesDeFrais:
         return []
 
     def _au_nom_de(self, db: Session, note: NoteFrais, operation: OperationBancaire) -> bool:
-        """Le libellé de la ligne du compte porte le nom du bénéficiaire (ou du fournisseur)."""
+        """Le libellé de la ligne du compte porte le nom du bénéficiaire (ou du
+        fournisseur), ou le numéro de la facture ou de la pièce (Seb, 20/11)."""
         noms = set(re.findall(r"[a-z]{3,}", _sans_accents(f"{self.beneficiaire(db, note)} {note.supplier or ''}")))
-        return bool(noms & set(re.findall(r"[a-z]{3,}", _sans_accents(operation.libelle))))
+        if noms & set(re.findall(r"[a-z]{3,}", _sans_accents(operation.libelle))):
+            return True
+        libelle = re.sub(r"[^a-z0-9]", "", _sans_accents(operation.libelle))
+        references = [re.sub(r"[^a-z0-9]", "", _sans_accents(r or "")) for r in (note.invoice_number, note.piece_number)]
+        # Un vrai numéro : un chiffre, et une lettre ou au moins 6 chiffres (« 2025 » seul ne suffit pas).
+        return any(
+            r in libelle for r in references
+            if re.search(r"\d", r) and (re.search(r"[a-z]", r) and len(r) >= 4 or len(r) >= 6)
+        )
 
     def _payee_par_la_banque(self, db: Session, membre: Membre, note: NoteFrais, *, nom_sur: bool = False) -> bool:
         """« La banque décide » (Seb, 31/10) : une ligne du compte du même
@@ -2447,9 +2458,9 @@ class NotesDeFrais:
         note.bank_operation_id, note.deferred_at, note.paid_unmatched_at = operation_id, None, None
         db.commit()
         db.refresh(note)
-        if note.nature in A_LIGNES:
-            # La vente (financier.md §8.12) ou le bulletin de salaire (§8.11) donne ses comptes à la ligne de banque.
-            self.ports.banque.ventiler(db, note.org_id, operation_id, self._lignes_banque(note), membre.person_id)
+        # La pièce donne ses comptes à la ligne de banque (Seb, 20/11 ; vente §8.12, salaire §8.11), sauf si
+        # un compte y est déjà confirmé ou si les pièces ne font pas le montant (acompte, écart) : rien n'est écrit.
+        self.ports.banque.ventiler(db, note.org_id, operation_id, self._lignes_operation(db, note.org_id, operation_id), membre.person_id)
         self._adopter_avis(db, membre, note, operation_id)
         self._reranger(db, membre, note)
         self._apres_paiement(db, membre, note, prevenir=prevenir)
@@ -2490,6 +2501,25 @@ class NotesDeFrais:
                 self._exiger_complete(n)
             # Payée avant d'être dans l'appli (§7 quinquies) : rien à annoncer.
             self._rattacher(db, membre, n, operation_id, prevenir=not deja_payee)
+        return note
+
+    def prendre_le_compte(self, db: Session, membre: Membre, note_id: int, code: str) -> NoteFrais:
+        """« Garder le compte de la transaction » (Bilan › Préparer, Seb 20/11) :
+        la pièce rattachée prend le compte confirmé sur sa ligne de banque,
+        même payée, tant que la saison de la ligne n'est pas clôturée."""
+        self._exiger_tresorier(membre)
+        note = self._note(db, membre.org_id, note_id)
+        if note.nature in A_LIGNES or note.bank_operation_id is None:
+            raise ValueError("Cette pièce n'a pas un seul compte.")
+        if not self._detachable(db, note):
+            raise ValueError("La saison de cette ligne est clôturée.")
+        categorie = next((c for c in self.categories(db, membre.org_id) if c.code == code), None)
+        if categorie is None:
+            raise ValueError("Ce compte n'est pas un compte de dépenses : gardez celui de la pièce.")
+        for depense in note.depenses:
+            depense.categorie_id = categorie.id
+        db.commit()
+        db.refresh(note)
         return note
 
     def revenir(self, db: Session, membre: Membre, note_id: int) -> NoteFrais:
@@ -2535,8 +2565,7 @@ class NotesDeFrais:
             raise ValueError("Cette pièce n'est pas rattachée à une transaction bancaire.")
         if not self._detachable(db, note):
             raise ValueError("La saison de cette ligne est clôturée : on ne la détache plus.")
-        if note.nature in A_LIGNES:
-            self.ports.banque.deventiler(db, note.org_id, note.bank_operation_id, self._lignes_banque(note))
+        self.ports.banque.deventiler(db, note.org_id, note.bank_operation_id, self._lignes_operation(db, note.org_id, note.bank_operation_id))
         if note.statut == ENVOYEE:
             pass
         elif note.nature == VENTE:
@@ -2576,11 +2605,20 @@ class NotesDeFrais:
 
     @classmethod
     def _lignes_banque(cls, note: NoteFrais) -> list[tuple[str, int]]:
-        """Les lignes comme la banque les voit : une vente encaisse (+), un
-        salaire sort (641 et 645 en moins, 431 en plus : la somme fait le
-        débit du net payé)."""
+        """Les lignes comme la banque les voit : une vente encaisse (+), une
+        dépense sort (-) ; un salaire sort aussi (641 et 645 en moins, 431 en
+        plus : la somme fait le débit du net payé)."""
         lignes = cls._lignes_vente(note)
-        return [(numero, -montant) for numero, montant in lignes] if note.nature == SALAIRE else lignes
+        return lignes if note.nature == VENTE else [(numero, -montant) for numero, montant in lignes]
+
+    def _lignes_operation(self, db: Session, org_id: int, operation_id: int) -> list[tuple[str, int]]:
+        """Les comptes de toutes les pièces payées par la même ligne de banque
+        (un virement pour deux factures), additionnés par compte."""
+        par_compte: dict[str, int] = {}
+        for n in db.scalars(select(NoteFrais).where(NoteFrais.org_id == org_id, NoteFrais.bank_operation_id == operation_id)):
+            for numero, montant in self._lignes_banque(n):
+                par_compte[numero] = par_compte.get(numero, 0) + montant
+        return list(par_compte.items())
 
     @staticmethod
     def _en_especes(note: NoteFrais) -> bool:

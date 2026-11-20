@@ -117,6 +117,9 @@ class NoteFrais(Base):
     # Numéro de pièce donné à la validation (financier.md §8.7, Seb 10/11) :
     # « AC-2025-001 », par saison et par journal (AC achats, HO honoraires, NF notes de frais).
     piece_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    # Numéro de la facture du fournisseur, lu sur la pièce : retrouvé dans le libellé de la banque, il vaut le nom
+    # pour le rapprochement (financier.md §8.3 bis, Seb 20/11).
+    invoice_number: Mapped[str | None] = mapped_column(String(40), nullable=True)
     # « Déjà payée » (notes-de-frais.md §7 septies, Seb 9/11) : validée, payée hors de l'appli,
     # la ligne du compte reste à trouver dans Rapprocher ; pas dans Virements.
     paid_unmatched_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

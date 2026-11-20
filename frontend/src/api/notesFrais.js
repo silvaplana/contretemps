@@ -116,6 +116,8 @@ export const dernierImport = () => appel('/imports/dernier')
 export const annulerImport = (batchId) => appel(`/imports/${batchId}/annuler`, { method: 'POST' })
 export const ajouterPage = (noteId, f) => appel(`/notes/${noteId}/pages`, fichier(f))
 export const corriger = (noteId, champs) => appel(`/notes/${noteId}`, json('PATCH', champs))
+// « Garder le compte de la transaction » (Bilan › Préparer) : la pièce prend ce compte.
+export const prendreLeCompte = (noteId, code) => appel(`/notes/${noteId}/compte`, json('POST', { code }))
 export const supprimerNote = (noteId) => appel(`/notes/${noteId}`, { method: 'DELETE' })
 // Revenir en arrière d'une étape (Envoyé / Préparé → À payer, À payer → À valider).
 // « Plus tard » (revue) et « Régler l'écart » d'une pièce payée (§7 quinquies, Seb 6/11).

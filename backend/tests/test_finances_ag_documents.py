@@ -220,7 +220,7 @@ def test_preparation_counts_the_steps_and_confirms_accounts_in_bulk(world, db_se
     # Amazon, Galli et HelloAsso sont classés ; les virements internes n'ont pas de compte.
     sans = [l["label"] for l in classify["unsure"]] + [o["label"] for g in classify["sure"] for o in g["operations"]]
     assert sorted(sans) == ["PRLV MYSTERE", "RETRAIT DAB"] and classify["withoutAccount"] == 2 and classify["ok"] is False
-    assert [c["ok"] for c in etat["controls"]] == [True, True, False, False, True]
+    assert [c["ok"] for c in etat["controls"]] == [True, True, False, True, False, True]
     assert "2 transaction(s) sans compte" in etat["controls"][2]["detail"]
 
     # « Valider le compte » : les deux d'un coup sur 627 ; un virement interne ou une ligne déjà classée est ignoré.
@@ -229,7 +229,7 @@ def test_preparation_counts_the_steps_and_confirms_accounts_in_bulk(world, db_se
     ids = [rows["PRLV MYSTERE"]["id"], rows["RETRAIT DAB"]["id"], rows["CB AMAZON"]["id"], rows["VIR LIVRET"]["id"]]
     assert accounting.confirm_many(db_session, TRESORIER, ids, accounts["627"]["id"]) == 2
     etat = documents.preparation(db_session, TRESORIER, SEASON, calendar)
-    assert etat["classify"] == {"withoutAccount": 0, "unsure": [], "sure": [], "ok": True}
+    assert etat["classify"] == {"withoutAccount": 0, "unsure": [], "sure": [], "mismatches": [], "ok": True}
     assert etat["controls"][2]["ok"] is True
     # Un membre n'y a pas droit.
     from finances import Member
