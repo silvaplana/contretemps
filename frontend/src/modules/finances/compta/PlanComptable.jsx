@@ -97,7 +97,7 @@ export default function PlanComptable({ onClose }) {
       </div>
       <p className="muted">
         Le libellé est le vôtre ; le numéro suit le plan comptable des associations. Les mots-clés font proposer le compte
-        pour une transaction bancaire ; un compte marqué « gala » entre dans le bloc du gala de la Synthèse.
+        pour une transaction bancaire ; un compte marqué « gala » entre dans le bloc du gala du Compte de résultat.
       </p>
       <div className="fin-cp-champ">
         <span>Copies du plan</span>
@@ -379,7 +379,7 @@ function FicheCompte({ compte, natures, libres, officielles, classes, onClose, o
           <input className="field-input" value={form.keywords} onChange={champ('keywords')} placeholder="AMAZON, CASTORAMA" />
         </label>
         <label className="fin-cp-champ">
-          <span>Événement (ex. gala), pour le bloc de la Synthèse</span>
+          <span>Événement (ex. gala), pour le bloc du Compte de résultat</span>
           <input className="field-input" value={form.event} onChange={champ('event')} />
         </label>
         {compte && (

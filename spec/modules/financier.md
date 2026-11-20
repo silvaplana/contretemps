@@ -834,7 +834,7 @@ l'AG** :
 
 | Document | Forme | Niveau |
 |---|---|---|
-| Synthèse Dépenses-Recettes | Excel + à l'écran : charges et produits par compte groupés par classe (60, 61, 62…), total, résultat ; trésorerie par compte et caisse ; fournisseurs à payer ; un bloc par événement marqué (« Ressources du gala / Coût du gala / Bénéfice ») | Simple |
+| Synthèse Dépenses-Recettes (à l'écran : **Compte de résultat**, Seb 20/11 ; le fichier garde son nom) | Excel + à l'écran : charges et produits par compte groupés par classe (60, 61, 62…), total, résultat ; trésorerie par compte et caisse ; fournisseurs à payer ; un bloc par événement marqué (« Ressources du gala / Coût du gala / Bénéfice ») | Simple |
 | Rapport financier | Word + PDF, forme du modèle (A Recettes, B Dépenses, points à revoir, conclusion). Texte rédigé par le modèle d'après le bilan et les consignes ; **chaque montant et chaque pourcentage est placé par l'appli** (gabarit `{{…}}`) et vérifié comme dans l'AG (§5.1) | Simple |
 | Grand livre | PDF, format comptable standard (celui du logiciel de la trésorière, 10 novembre 2026) : bandeau nom de l'association + « Édition du », titre et période, « Comptes … à … », « Devise : EUR » ; un bloc par compte (numéro, libellé) avec Type (cadenas = validée par la clôture), date, journal, pièce (numéro de pièce), libellé, lettre, débit, crédit, solde ; « Total pour le compte n » ; « Total du Grand-Livre » | Complet |
 | Balance | PDF, même en-tête ; colonnes N° Compte, Intitulé, Total Période (débit, crédit), Solde Période (débit, crédit) ; « Total des comptes de Bilan » (classes 1 à 5), « Total des comptes de Résultat » (6 et 7), « Total de la Balance » | Complet |
