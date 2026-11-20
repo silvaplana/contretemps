@@ -1276,7 +1276,8 @@ comme les autres puces).
 - **Date** : celle de la pièce ; la saison suit la date, comme toute pièce (§8.3) ;
 - **Compte et montant**, une ou plusieurs lignes (« Ajouter une ligne », × pour en retirer) : un compte
   de produits (classe 7) ou un compte de tiers (par exemple 4671 Licences FFST à reverser), et un
-  montant ; le total s'affiche dès qu'il y a deux lignes. Une vente simple a une ligne ; un versement
+  montant ; le total s'affiche dès qu'il y a deux lignes. Une ligne peut être en moins (un remboursement
+  HelloAsso repris sur un versement, import-auto-pieces.md §4.2) tant que le total reste positif. Une vente simple a une ligne ; un versement
   HelloAsso en a plusieurs (756 Cotisations, 4671 Licences à reverser) ;
 - **Pièce** : la photo ou le fichier, facultatif. Sans fichier, **rien n'est créé dans Docs** (règle du
   10 novembre).

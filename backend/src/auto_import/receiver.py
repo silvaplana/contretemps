@@ -37,6 +37,7 @@ class RuleIn(BaseModel):
     mail_words: str = Field("", max_length=500)
     mail_need_amount: bool = True
     helloasso_accounts: dict[str, int | None] = Field(default_factory=dict)
+    helloasso_licences: dict[str, int] = Field(default_factory=dict)
 
 
 class RuleOut(RuleIn):
@@ -57,8 +58,11 @@ def _out(rule: AutoImportRule, pieces: int) -> RuleOut:
 class AutoImportReceiver:
     def __init__(
         self, client: AutoImport, app: FastAPI, membre_courant: Callable, places: Callable, formulas: Callable,
+        licence_account: Callable | None = None,
     ) -> None:
         self.client = client
+        # (db, org_id, add) → le compte des licences à reverser ; add : l'ajouter au plan s'il manque.
+        self.licence_account = licence_account
         # (db, org_id, season_id) → les formules de la campagne HelloAsso.
         self.formulas = formulas
         # (db, org_id) → sources et destinations possibles (drives, boîtes, saisons).
@@ -137,7 +141,15 @@ class AutoImportReceiver:
             return {
                 "formulas": self.formulas(db, m.org_id, season_id),
                 "accounts": [{"id": c.id, "libelle": c.libelle, "code": c.code} for c in accounts],
+                "licence_account": self.licence_account(db, m.org_id, False) if self.licence_account else None,
             }
+
+        @app.post("/auto-import-helloasso/licence-account")
+        def add_licence_account(db: Session = db_dep, m=membre):
+            """« Ajouter au plan » le compte des licences à reverser (§4.2)."""
+            if self.licence_account is None:
+                raise HTTPException(status_code=404, detail="Introuvable")
+            return self.licence_account(db, m.org_id, True)
 
         @app.get("/auto-import-docs-folders")
         def docs_folders(parent: int | None = None, db: Session = db_dep, m=membre):

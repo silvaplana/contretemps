@@ -33,3 +33,5 @@ export const pieces = (id) => requete(`/auto-import/${id}/pieces`)
 export const dossiersDocs = (parent) => requete(`/auto-import-docs-folders${parent ? `?parent=${parent}` : ''}`)
 // Source HelloAsso → { formulas: [nom], accounts: [{ id, libelle, code }] }
 export const helloasso = (saison) => requete(`/auto-import-helloasso${saison ? `?season_id=${saison}` : ''}`)
+// « Ajouter au plan » le compte des licences à reverser → { id, code, libelle }
+export const ajouterCompteLicences = () => requete('/auto-import-helloasso/licence-account', { method: 'POST' })

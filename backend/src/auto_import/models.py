@@ -44,6 +44,8 @@ class AutoImportRule(Base):
     # Source HelloAsso (§4.2) : formule de la campagne → compte de produits
     # (catégorie des ventes), dit une fois par la trésorière.
     helloasso_accounts: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    # Formule → part licence en centimes (vers le compte des licences à reverser).
+    helloasso_licences: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     # La personne qui a créé l'import : les pièces sont établies en son nom.
     created_by: Mapped[int | None] = mapped_column(Integer, nullable=True)
     last_run_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

@@ -378,8 +378,9 @@ class NotesDeFrais:
         return depense
 
     def _valider_ligne(self, nature: str, montant_centimes: int, jour: date) -> None:
-        """Une ligne de pièce : positive, sauf les cotisations d'un bulletin de salaire (431, en moins)."""
-        self._valider_saisie(-montant_centimes if nature == SALAIRE and montant_centimes < 0 else montant_centimes, jour)
+        """Une ligne de pièce : positive, sauf les cotisations d'un bulletin de salaire (431, en moins) et,
+        dans une vente, un remboursement repris par HelloAsso (import-auto-pieces.md §4.2) ; le total reste positif."""
+        self._valider_saisie(-montant_centimes if nature in (SALAIRE, VENTE) and montant_centimes < 0 else montant_centimes, jour)
 
     def _valider_saisie(self, montant_centimes: int, jour: date) -> None:
         if montant_centimes <= 0:
@@ -1062,6 +1063,9 @@ class NotesDeFrais:
         if note.nature == SALAIRE:
             if not note.depenses or note.depenses[0].montant_centimes <= 0 or NotesDeFrais.total(note) <= 0:
                 raise ValueError("Indiquez d'abord le salaire brut et les cotisations : le net payé doit être positif.")
+        elif note.nature == VENTE and note.depenses and NotesDeFrais.total(note) > 0:
+            if any(d.montant_centimes == 0 for d in note.depenses):
+                raise ValueError("Indiquez d'abord le montant.")
         elif any(d.montant_centimes <= 0 for d in note.depenses):
             raise ValueError("Indiquez d'abord le montant.")
 
