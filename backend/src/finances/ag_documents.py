@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import html
 import io
+import json
 import re
 from collections import defaultdict
 from collections.abc import Callable
@@ -43,8 +44,9 @@ from .accounting import Accounting
 from .balance_reader import read_balance
 from .exports import _CSS, _eur, _fr, html_to_pdf
 from .chart import is_cheque_deposit
-from .models import EXPENSE, FULL, INCOME, THIRD_PARTY, FinAccount, FinBudgetLine, FinCashLine, FinClosing, FinManualEntry, FinOpeningBalance, FinOperation, FinOperationAccount, FinSeasonNote, FinDocumentChoice
+from .models import EXPENSE, FULL, INCOME, THIRD_PARTY, FinAccount, FinBudgetLine, FinCashLine, FinClosing, FinManualEntry, FinOpeningBalance, FinOperation, FinOperationAccount, FinSeasonNote, FinDocumentChoice, FinDocumentTemplate
 from .ports import Member, Season
+from . import presentation
 from .season_documents import BASE, LABELS, ON_REQUEST, OTHER, RAPPORT, default_name, next_name, provisional_name, recognize
 
 # Numéros des comptes de trésorerie et de report (plan associatif).
@@ -138,6 +140,9 @@ class AgPorts:
     balance_file: Callable[[Session, Member, Season], tuple[str, Path] | None] | None = None
     # Lecture de secours de cette Balance par le modèle quand ses colonnes ne se lisent pas.
     balance_model: Callable[[Session, int, Path, str], list[tuple[str, str, int]]] | None = None
+    # (db, org_id, xlsx, nom, chiffres) → ([{cell, label, keys}], coût) : le repérage, une fois, des
+    # cases du tableau de l'an dernier (presentation.PresentationReader.read) ; None : présentation de l'appli.
+    presentation: Callable[[Session, int, bytes, str, dict], tuple[list[dict], float]] | None = None
     # Les fichiers du Bilan financier d'une saison dans Docs (id, nom, fichier) :
     # les documents de l'an dernier servent de modèle (§8.10, étape 6).
     previous_documents: Callable[[Session, Member, Season], list[tuple[int, str, Path]]] | None = None
@@ -1016,13 +1021,19 @@ class AgDocuments:
             if kind in ON_REQUEST and doc is None:
                 continue
             new = default_name(kind, season.name)
-            rows.append({
+            row = {
                 "kind": kind,
                 "label": LABELS[kind],
                 "lastYear": model["name"] if model else None,
                 "choice": "none" if doc is None else "same" if doc["nodeId"] is not None else "new",
                 "name": doc["name"] if doc else provisional_name(new) if provisional else new,
-            })
+                # Présentation de l'an dernier reprise (tableau Excel) : prête ou à préparer, et ce qui reste à vérifier.
+                "layout": None,
+            }
+            if row["choice"] == "same" and self._layout_possible(kind, doc["model"]):
+                template = self._template(db, member.org_id, doc["nodeId"])
+                row["layout"] = {"ready": template is not None, "warnings": json.loads(template.warnings) if template else []}
+            rows.append(row)
         produced = {d["kind"] for d in documents}
         return {
             "level": level,
@@ -1079,12 +1090,70 @@ class AgDocuments:
         return {"count": len(files), "place": place, "names": [name for name, _ in files]}
 
     def season_file(self, db: Session, member: Member, season: Season, kind: str, name: str | None = None) -> tuple[bytes, str, str]:
-        """Un document de la saison, produit sans le ranger dans Docs (Seb 10/11)."""
+        """Un document de la saison, produit sans le ranger dans Docs (Seb 10/11).
+        « Comme l'an dernier » sur un tableau Excel : avec sa présentation (Seb, 20/11)."""
         if kind not in KINDS:
             raise ValueError("Document inconnu")
-        content, default, media = self._build(db, member, season, kind)
         name = (name or "").strip().replace("/", "-")[:200]
+        laid_out = self._laid_out(db, member, season, kind)
+        if laid_out is not None:
+            content, default = laid_out, f"{KINDS[kind][0]} {season.name}.xlsx"
+            media = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        else:
+            content, default, media = self._build(db, member, season, kind)
         return content, name if name.lower().endswith("." + default.rsplit(".", 1)[-1]) else default, media
+
+    # ----- présentation de l'an dernier (Seb, 20/11) -----
+
+    # Pour l'instant le Compte de résultat seulement, sur un tableur.
+    def _layout_possible(self, kind: str, model_name: str | None) -> bool:
+        return kind == "synthese" and self.ports.presentation is not None and Path(model_name or "").suffix.lower() in (".xls", ".xlsx", ".xlsm", ".ods")
+
+    @staticmethod
+    def _template(db: Session, org_id: int, node_id: int) -> FinDocumentTemplate | None:
+        return db.scalar(select(FinDocumentTemplate).where(FinDocumentTemplate.org_id == org_id, FinDocumentTemplate.node_id == node_id))
+
+    def _model_file(self, db: Session, member: Member, season: Season, kind: str) -> tuple[int, str, Path] | None:
+        """Le fichier de l'an dernier choisi « Comme l'an dernier » pour ce document."""
+        doc = next((d for d in self.season_documents(db, member, season)["documents"] if d["kind"] == kind and d["nodeId"] is not None), None)
+        if doc is None or not self._layout_possible(kind, doc["model"]):
+            return None
+        previous = self._previous(db, member.org_id, season)
+        return next((f for f in self.ports.previous_documents(db, member, previous) if f[0] == doc["nodeId"]), None)
+
+    def _laid_out(self, db: Session, member: Member, season: Season, kind: str) -> bytes | None:
+        """Le document dans le fichier de l'an dernier : le repérage des cases
+        est fait par le modèle la première fois, puis gardé ; les montants sont
+        toujours posés par l'appli. None : présentation de l'appli."""
+        found = self._model_file(db, member, season, kind)
+        if found is None:
+            return None
+        node_id, model_name, path = found
+        xlsx = presentation.to_xlsx(path, model_name)
+        if xlsx is None:
+            return None
+        fees = self.ports.fees(db, member.org_id, season.start_date, season.end_date) if self.ports.fees else []
+        available = presentation.figures(self.synthese(db, member, season), fees)
+        template = self._template(db, member.org_id, node_id)
+        if template is None:
+            mapping, cost = self.ports.presentation(db, member.org_id, xlsx, model_name, available)
+            template = FinDocumentTemplate(org_id=member.org_id, node_id=node_id, kind=kind, mapping=json.dumps(mapping, ensure_ascii=False), cost_usd=cost)
+            db.add(template)
+        content, warnings = presentation.fill(xlsx, json.loads(template.mapping), available)
+        template.warnings = json.dumps(warnings, ensure_ascii=False)
+        db.commit()
+        return content
+
+    def reset_layout(self, db: Session, member: Member, season: Season, kind: str) -> dict:
+        """« Refaire la présentation » : le repérage est oublié, le prochain « Produire » le refait."""
+        if not member.is_treasurer:
+            raise PermissionError("Réservé au trésorier")
+        found = self._model_file(db, member, season, kind)
+        template = self._template(db, member.org_id, found[0]) if found else None
+        if template is not None:
+            db.delete(template)
+            db.commit()
+        return self.season_documents(db, member, season)
 
     def notes(self, db: Session, org_id: int, season: Season) -> dict[str, str]:
         """Les explications de la trésorière sur la saison : {numéro: note}."""

@@ -617,6 +617,7 @@ button.fin-cp-compte:last-child {
 .fin-rapport__texte h4 { margin-top: 6px; font-size: 18px; }
 .fin-rapport__neuf { background: #fff4c9; color: #1b1d1f; border-radius: 4px; }
 .fin-rapport .btn { min-height: 48px; }
+.fin-docs__averifier { display: block; }
 .fin-docs__cloture { border-left: 3px solid var(--accent); padding-left: 12px; }
 .fin-docs__cloture p { margin: 0 0 6px; }
 .fin-docs__cloture ul { margin: 0; padding-left: 20px; }

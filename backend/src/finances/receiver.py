@@ -765,8 +765,16 @@ class FinancesReceiver:
         @app.get("/finances/seasons/{season_id}/documents/{kind}/file")
         def season_file(season_id: int, kind: str, name: str | None = None, db: Session = db_dep, member: Member = member_dep) -> Response:
             """Un document de la saison, téléchargé : rien n'est rangé dans Docs (Seb 10/11)."""
-            content, filename, media = ag_call(documents.season_file, db, member, season_by_id(db, member, season_id), kind, name)
+            try:
+                content, filename, media = ag_call(documents.season_file, db, member, season_by_id(db, member, season_id), kind, name)
+            except AnalysisError as exc:  # la présentation de l'an dernier n'a pas pu être préparée
+                raise HTTPException(status_code=502, detail=str(exc)) from exc
             return Response(content, media_type=media, headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename)}"})
+
+        @app.delete("/finances/seasons/{season_id}/documents/{kind}/layout")
+        def reset_season_file_layout(season_id: int, kind: str, db: Session = db_dep, member: Member = member_dep) -> dict:
+            """« Refaire la présentation » d'un document « Comme l'an dernier » (Seb, 20/11)."""
+            return ag_call(documents.reset_layout, db, member, season_by_id(db, member, season_id), kind)
 
         @app.get("/finances/seasons/{season_id}/documents/{kind}/preview")
         def season_file_preview(season_id: int, kind: str, request: Request, name: str | None = None, db: Session = db_dep, member: Member = member_dep) -> dict:

@@ -155,6 +155,8 @@ Bilan
   Chaque document a sa ligne sous son nom officiel avec trois touches : « Comme l'an dernier » (même nom, année avancée ; grisée sans fichier
   l'an dernier), « Nouveau » (nom officiel), « Non » ; dessous « Fichier : … ». En haut « Tout comme l'an dernier » et « Tout nouveau ». On produit
   un document à la fois : « Produire », puis « Voir » et « Télécharger ». En Engagement, avant la clôture, le fichier porte « (provisoire) ».
+  Compte de résultat en « Comme l'an dernier » sur un tableau Excel : le premier « Produire » prépare la présentation de l'an dernier (une ou deux
+  minutes), les suivants sont immédiats ; sous la ligne, « À vérifier dans le fichier » liste les cases à compléter à la main ; « Refaire la présentation » recommence.
   Les fichiers de l'an dernier non reconnus sont sous « Aussi dans Docs l'an dernier, à refaire à la main » (liste pour corriger la nature).
   Rien n'est rangé dans Docs : on télécharge et on dépose soi-même. 7. Clôturer la saison (Engagement (partie double)), quand les étapes 1
   à 6 sont vertes : Clôturer / Rouvrir, avec la trace des clôtures rouvertes ; une fois clôturée, « Déposer les documents

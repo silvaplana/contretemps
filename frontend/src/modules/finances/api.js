@@ -193,6 +193,8 @@ export const choisirDocuments = (seasonId, items) => appel(`/seasons/${seasonId}
 // « Voir » dans OnlyOffice, en lecture seule, sans ranger le fichier dans Docs (Seb 13/11).
 export const apercuDocumentSaison = (seasonId, kind, nom) => appel(`/seasons/${seasonId}/documents/${kind}/preview?name=${encodeURIComponent(nom)}`)
 export const apercuRapportFinancier = (reportId, nom) => appel(`/reports/${reportId}/rapport/preview?name=${encodeURIComponent(nom)}`)
+// « Refaire la présentation » d'un document « Comme l'an dernier » (Seb, 20/11).
+export const refaireMiseEnPage = (seasonId, kind) => appel(`/seasons/${seasonId}/documents/${kind}/layout`, { method: 'DELETE' })
 // Étape 7 : la trésorière dépose les documents de la saison clôturée dans Docs (Seb 13/11).
 export const deposerDocumentsSaison = (seasonId) => appel(`/seasons/${seasonId}/documents/deposit`, { method: 'POST' })
 // Budget prévisionnel de la saison suivante (Bilan › Préparer, étape 6).

@@ -1252,9 +1252,20 @@ n'attend jamais une pièce : une ligne sans pièce reçoit son compte à la main
    que la saison n'est pas clôturée, le nom du fichier et le titre du document portent « (provisoire) »
    (`AgDocuments.provisional`), comme dans les logiciels du métier ; après la clôture, le nom officiel,
    celui qu'on dépose dans Docs. En Trésorerie, pas de clôture, pas de mention. Un document de chiffres ne
-   se corrige pas à la main : on corrige l'écriture et on le reproduit. **À venir** (Seb, 20/11) : « Comme
-   l'an dernier » reprend aussi la présentation des fichiers Excel et Word (cases repérées une fois par le
-   modèle, validées, chiffres posés par l'appli) ; les PDF gardent la présentation de l'appli.
+   se corrige pas à la main : on corrige l'écriture et on le reproduit.
+   **« Comme l'an dernier » reprend la présentation (Seb, 20/11), première étape : le Compte de résultat
+   sur un tableur** (.xlsx, .xls, .ods ; `finances/presentation.py`). Un seul bouton « Produire ». Au premier,
+   le fichier de l'an dernier est converti en .xlsx s'il le faut (LibreOffice), et le modèle regarde ses cases
+   **une fois** : pour chaque case à montant tapé, quels chiffres de l'appli elle additionne (clés :
+   `compte.<numéro>`, `honoraires.<professeur>`, `tresorerie.<compte>`, totaux, résultat, événements). Ce
+   repérage est gardé (`fin_document_templates`, par école et par fichier de l'an dernier). Ensuite, et aux
+   « Produire » suivants sans le modèle, **l'appli seule** recopie le fichier, avance les années des textes
+   (« 2024/2025 », « 31/08/25 »), **pose chaque montant** et garde les formules. Une case sans source est
+   vidée et listée « à compléter à la main » ; un compte qui a un montant et pas de ligne dans le tableau est
+   listé aussi (sinon le total du tableau serait faux sans le dire). « Refaire la présentation » oublie le
+   repérage (`DELETE /finances/seasons/{id}/documents/{nature}/layout`). Les autres documents en « Comme l'an
+   dernier » gardent pour l'instant la présentation de l'appli, et l'écran le dit ; à venir : Word, puis PDF
+   reconstruits.
    Chaque document prend **le nom de celui de l'an dernier, les années avancées d'un an**
    (« Balance 2024-2025.pdf » → « Balance 2025-2026.pdf »), au format que l'appli produit ; sans
    fichier l'an dernier : Synthèse, Balance, Rapport financier. Voir et Télécharger

@@ -7,6 +7,7 @@ import io
 import pymupdf
 import pytest
 from openpyxl import load_workbook
+from openpyxl.styles import Font
 from test_finances import COURANT, LIVRET, TRESORIER, make_statement
 
 from finances import Accounting, AgDocuments, AgPorts, Finances, Season
@@ -480,3 +481,66 @@ def test_budget_next_season_typed_by_the_treasurer(world, db_session):
     sheet = load_workbook(io.BytesIO(content)).active
     assert sheet["A1"].value == "Contretemps — Budget prévisionnel 2026-2027"
     assert [c.value for c in sheet[3]] == ["Compte", "Libellé", "Réalisé 2025-2026", "Prévu 2026-2027"]
+
+
+def test_same_as_last_year_keeps_last_year_layout_and_the_app_places_the_amounts(world, db_session, tmp_path):
+    """Seb, 20/11 : « Comme l'an dernier » sur un tableau Excel reprend sa
+    présentation. Le repérage des cases est fait une fois (ici un faux
+    lecteur), l'appli pose les montants, avance les années, garde les formules,
+    vide et signale une case sans source, signale un compte sans ligne."""
+    from openpyxl import Workbook
+
+    _, _, documents = world
+    wb = Workbook()
+    ws = wb.active
+    ws["A1"] = "ASSOCIATION - DEPENSES – RECETTES 2024/2025"
+    ws["A2"], ws["B2"] = "Location", 9999
+    ws["A3"], ws["B3"] = "Technicien", 170
+    ws["A4"], ws["B4"] = "Total", "=SUM(B2:B3)"
+    ws["A5"] = "Solde au 31/08/25"
+    ws["A1"].font = Font(bold=True)
+    old = tmp_path / "Synthese 2024-2025.xlsx"
+    wb.save(old)
+    documents.seasons = lambda db, org: [Season(id=0, name="2024-2025", start_date="2024-09-01", end_date="2025-08-31"), SEASON]
+    documents.ports.previous_documents = lambda db, member, season: [(41, "Synthèse bilan 2024-2025.xlsx", old)]
+    calls = []
+
+    def reader(db, org_id, xlsx, name, available):
+        calls.append(sorted(available))
+        return [{"cell": "B2", "label": "Location", "keys": ["compte.613"]}, {"cell": "B3", "label": "Technicien", "keys": []}], 0.02
+
+    documents.ports.presentation = reader
+    row = next(r for r in documents.season_documents(db_session, TRESORIER, SEASON)["rows"] if r["kind"] == "synthese")
+    assert row["choice"] == "same" and row["layout"] == {"ready": False, "warnings": []}
+
+    content, name, _ = documents.season_file(db_session, TRESORIER, SEASON, "synthese", row["name"])
+    assert name == "Synthèse bilan 2025-2026.xlsx" and "compte.613" in calls[0] and "tresorerie.total" in calls[0]
+    sheet = load_workbook(io.BytesIO(content)).active
+    assert sheet["A1"].value == "ASSOCIATION - DEPENSES – RECETTES 2025/2026" and sheet["A1"].font.bold
+    assert sheet["B2"].value == 1600.0 and sheet["B3"].value is None and sheet["B4"].value == "=SUM(B2:B3)"
+    assert sheet["A5"].value == "Solde au 31/08/26"
+
+    row = next(r for r in documents.season_documents(db_session, TRESORIER, SEASON)["rows"] if r["kind"] == "synthese")
+    assert row["layout"]["ready"] is True
+    assert row["layout"]["warnings"][0] == "« Technicien » (case B3) : pas de chiffre dans l'appli, à compléter à la main."
+    assert any("606" in w and "39,90 €" in w for w in row["layout"]["warnings"])  # un compte sans ligne dans le tableau
+
+    documents.season_file(db_session, TRESORIER, SEASON, "synthese", row["name"])
+    assert len(calls) == 1  # le repérage n'est fait qu'une fois
+    documents.reset_layout(db_session, TRESORIER, SEASON, "synthese")
+    documents.season_file(db_session, TRESORIER, SEASON, "synthese", row["name"])
+    assert len(calls) == 2  # « Refaire la présentation »
+
+    # « Nouveau » : la présentation de l'appli, sans le modèle.
+    documents.set_document_choices(db_session, TRESORIER, SEASON, [
+        {"nodeId": 41, "name": "Synthèse bilan 2024-2025.xlsx", "kind": "synthese", "selected": False}, {"nodeId": None, "kind": "synthese", "selected": True}])
+    content, _, _ = documents.season_file(db_session, TRESORIER, SEASON, "synthese")
+    assert "Synthèse Dépenses-Recettes" in load_workbook(io.BytesIO(content)).active["A1"].value and len(calls) == 2
+
+
+def test_next_year_in_texts():
+    from finances.presentation import next_year
+
+    assert next_year("RECETTES 2024/2025") == "RECETTES 2025/2026"
+    assert next_year("Saison 2024-25, solde au 31/08/2025 et 01/09/24") == "Saison 2025-26, solde au 31/08/2026 et 01/09/25"
+    assert next_year("Banque cpte 401") == "Banque cpte 401"

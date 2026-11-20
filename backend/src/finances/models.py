@@ -341,6 +341,27 @@ class FinWrittenReport(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_now)
 
 
+class FinDocumentTemplate(Base):
+    """« Comme l'an dernier » avec la présentation de l'an dernier (spec §8.10,
+    étape 6, Seb 20/11) : pour un fichier Excel de la saison précédente
+    (node_id, le fichier de Docs), le repérage fait une fois par le modèle
+    (JSON : [{cell, label, keys}], quelles clés de l'appli chaque case
+    additionne) et ce qui restait à vérifier à la dernière production. Pas de
+    clé étrangère vers Docs : le module ne connaît que le numéro du fichier."""
+
+    __tablename__ = "fin_document_templates"
+    __table_args__ = (UniqueConstraint("org_id", "node_id"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    org_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    node_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    kind: Mapped[str] = mapped_column(String(20), nullable=False)
+    mapping: Mapped[str] = mapped_column(Text, nullable=False)
+    warnings: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    cost_usd: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_now)
+
+
 class FinOpeningBalance(Base):
     """Soldes de départ d'une saison (spec §8.7), saisis par le trésorier
     pour la première saison dans l'appli : un solde signé (centimes, positif
