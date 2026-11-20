@@ -122,7 +122,9 @@ Bilan
   compte : « À confirmer une par une » (toucher ouvre la fiche de l'opération ; une remise de chèques y est toujours,
   « à ventiler entre ses comptes » : dans sa fiche, « Ventiler comme les remises précédentes » puis répartir les
   montants) et « Comptes proposés par l'appli »
-  regroupées par compte avec « Valider le compte 6226 Honoraires : 48 lignes » ; 4. Compter la caisse et les factures non payées : la caisse et les
+  regroupées par compte avec « Valider le compte 6226 Honoraires : 48 lignes » ; au-dessus, s'il y en a, « Pièce et
+  transaction pas dans le même compte (n) » : sur chaque ligne « Garder 606 (la pièce) » ou « Garder 627 (la
+  transaction) » ; une pièce rattachée donne d'elle-même son compte à sa transaction ; 4. Compter la caisse et les factures non payées : la caisse et les
   factures validées pas encore payées (au niveau Complet, dues au jour de la facture contre 401 / 467 ; au niveau Simple,
   dans « Fournisseurs à payer » de la Synthèse), puis les écritures à la main (niveau Complet) : « Ajouter une écriture »
   ouvre une fenêtre date / libellé / compte débité / compte crédité / montant, pour une cotisation due (411) ou le compte

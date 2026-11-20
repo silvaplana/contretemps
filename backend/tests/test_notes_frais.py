@@ -2349,3 +2349,43 @@ def test_un_emplacement_par_saison_repris_par_les_suivantes(client, db_session, 
     lecteur = LecteurFacture(date="2026-03-10", montant_centimes=2500, commercant="Leroy Merlin", description="Peinture")
     monkeypatch.setattr(main.notes_frais_client.ports, "lecteur", lecteur)
     assert _etablir(client, tresorier, "achat")["rangement"] == "Financier › FACTURES"
+
+
+def test_numero_de_facture_rattache_et_la_piece_impose_son_compte(client, db_session, ecole, monkeypatch):
+    """Seb, 20/11 : le numéro de la facture dans le libellé de la banque vaut
+    le nom (rattachée toute seule) ; la pièce rattachée écrit son compte sur
+    la transaction ; un compte déjà confirmé différent est signalé dans
+    Bilan › Préparer, et la trésorière choisit lequel garder."""
+    from saisons.models import Saison
+
+    tresorier, org = ecole["tresorier"], ecole["ecole"].id
+    t = entetes_session(tresorier)
+    saison = Saison(ecole_id=org, nom="2025-2026", date_debut=date(2025, 9, 1), date_fin=date(2026, 8, 31))
+    db_session.add(saison)
+    db_session.commit()
+    plan = {a["number"]: a for a in client.get("/finances/chart", headers=t).json()["accounts"]}
+    categories = {c["code"]: c for c in client.get("/notes-frais/categories", headers=t).json() if c["code"]}
+    premier, second = sorted(categories)[:2]
+    payee = _operation(db_session, org, -12000, "2026-03-10", "PRLV SEPA F2026-0042 REF 77")
+    from finances.models import FinAccount
+
+    db_session.get(FinAccount, payee.account_id).bank_balance = 100000  # un solde connu : le Grand livre se calcule
+    db_session.commit()
+    monkeypatch.setattr(main.notes_frais_client.ports, "lecteur", LecteurFacture(
+        date="2026-03-05", montant_centimes=12000, commercant="Quincaillerie Martin", emetteur_personne=False, numero_facture="F2026-0042",
+    ))
+    note = _etablir(client, tresorier, "achat", categorie_id=str(categories[premier]["id"]))
+    assert note["operation_id"] == payee.id  # ni le nom ni « Martin » dans le libellé : le numéro a suffi
+    assert client.post(f"/notes-frais/notes/{note['id']}/valider", headers=t).json()["statut"] == "remboursee"
+    lignes = client.get(f"/finances/operations/{payee.id}", headers=t).json()["lines"]
+    assert [(l["number"], l["amount"]) for l in lignes] == [(premier, -120.0)]
+
+    # Un autre compte confirmé sur la transaction : l'écart est signalé.
+    client.put(f"/finances/operations/{payee.id}/accounts", json={"lines": [{"accountId": plan[second]["id"]}]}, headers=t)
+    etat = client.get(f"/finances/seasons/{saison.id}/preparation", headers=t).json()
+    [ecart] = etat["classify"]["mismatches"]
+    assert ecart["piece"]["account"] == premier and ecart["account"]["number"] == second and not etat["classify"]["ok"]
+    # « Garder le compte de la transaction » : la pièce le prend, plus d'écart.
+    reponse = client.post(f"/notes-frais/notes/{note['id']}/compte", json={"code": second}, headers=t)
+    assert reponse.status_code == 200, reponse.text
+    assert client.get(f"/finances/seasons/{saison.id}/preparation", headers=t).json()["classify"]["mismatches"] == []

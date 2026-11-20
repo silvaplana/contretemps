@@ -54,6 +54,20 @@ export default function Preparer({ season }) {
     }
   }
 
+  // Pièce et transaction pas dans le même compte : la trésorière garde l'un des deux.
+  async function trancher(ecart, garder) {
+    setEnCours(`ecart-${ecart.id}`)
+    try {
+      if (garder === 'piece') await api.ventiler(ecart.id, [{ accountId: ecart.piece.accountId }])
+      else await nfApi.prendreLeCompte(ecart.piece.id, ecart.account.number)
+      charger()
+    } catch (err) {
+      setErreur(err.message)
+    } finally {
+      setEnCours(null)
+    }
+  }
+
   function ouvrirRapprocher() {
     sessionApi.sauvegarderEcran('financier-pieces', 'rapprocher')
     requestSousOnglet('pieces')
@@ -64,7 +78,8 @@ export default function Preparer({ season }) {
 
   const { statements, opening, classify, controls, offBank, comparison } = etat
   const aRapprocher = rapprocher ? rapprocher.paires.length + rapprocher.sans_paiement.filter((p) => p.a_rapprocher).length : 0
-  const resteEtape3 = aRapprocher + classify.withoutAccount
+  const ecarts = classify.mismatches ?? []
+  const resteEtape3 = aRapprocher + classify.withoutAccount + ecarts.length
   const controlesKo = controls.filter((c) => !c.ok).length
   const etapes = [
     { n: 1, titre: 'Obtenir les relevés', reste: statements.missing, detail: statements.ok ? `${statements.accounts} compte(s), tous les mois sont là` : `${statements.missing} mois à importer` },
@@ -74,7 +89,7 @@ export default function Preparer({ season }) {
       reste: opening.toCarry ? 1 : opening.mismatches,
       detail: opening.ok ? SOURCES[opening.source] : opening.toCarry ? 'Les soldes de l’an dernier ne sont pas repris : seule la trésorerie des relevés est connue' : `${opening.mismatches} compte(s) en écart avec les relevés`,
     },
-    { n: 3, titre: 'Rapprocher les factures et classer les transactions bancaires', reste: resteEtape3, detail: resteEtape3 === 0 ? 'Chaque transaction bancaire a sa pièce ou son compte' : `${aRapprocher} facture(s) à rapprocher, ${classify.withoutAccount} transaction(s) bancaire(s) sans compte` },
+    { n: 3, titre: 'Rapprocher les factures et classer les transactions bancaires', reste: resteEtape3, detail: resteEtape3 === 0 ? 'Chaque transaction bancaire a sa pièce ou son compte' : `${aRapprocher} facture(s) à rapprocher, ${classify.withoutAccount} transaction(s) bancaire(s) sans compte${ecarts.length ? `, ${ecarts.length} écart(s) de compte` : ''}` },
     {
       n: 4,
       titre: 'Compter la caisse et les factures non payées',
@@ -120,7 +135,7 @@ export default function Preparer({ season }) {
             {ouverte === 1 && e.n === 1 && <RelevesGrille seasonId={season.id} onClose={() => setOuverte(null)} onImport={charger} />}
             {ouverte === 2 && e.n === 2 && <SoldesDepart initialSeasonId={season.id} onClose={() => setOuverte(null)} />}
             {ouverte === 3 && e.n === 3 && (
-              <Etape3 rapprocher={rapprocher} aRapprocher={aRapprocher} classify={classify} enCours={enCours} onRapprocher={ouvrirRapprocher} onValider={validerCompte} onFiche={setFicheOp} />
+              <Etape3 rapprocher={rapprocher} aRapprocher={aRapprocher} classify={classify} ecarts={ecarts} enCours={enCours} onRapprocher={ouvrirRapprocher} onValider={validerCompte} onTrancher={trancher} onFiche={setFicheOp} />
             )}
             {ouverte === 4 && e.n === 4 && <Etape4 season={season} offBank={offBank} level={etat.level} onChange={charger} onErreur={setErreur} />}
             {ouverte === 6 && e.n === 6 && (
@@ -160,7 +175,7 @@ const SOURCES = {
 // Étape 3 : d'abord Rapprocher (les pièces), puis un compte sur chaque
 // transaction bancaire : à confirmer une par une quand l'appli ne propose
 // rien, sinon par compte entier (« Valider le compte »).
-function Etape3({ rapprocher, aRapprocher, classify, enCours, onRapprocher, onValider, onFiche }) {
+function Etape3({ rapprocher, aRapprocher, classify, ecarts, enCours, onRapprocher, onValider, onTrancher, onFiche }) {
   return (
     <div className="fin-preparer__corps">
       <div className="fin-preparer__bloc">
@@ -174,6 +189,36 @@ function Etape3({ rapprocher, aRapprocher, classify, enCours, onRapprocher, onVa
           Ouvrir Rapprocher les factures
         </button>
       </div>
+
+      {ecarts.length > 0 && (
+        <div className="fin-preparer__bloc">
+          <span className="fin-cp-t">Pièce et transaction pas dans le même compte · {ecarts.length}</span>
+          {ecarts.map((e) => (
+            <div key={e.id} className="fin-preparer__groupe">
+              <button type="button" className="fin-preparer__ligne" onClick={() => onFiche(e.id)}>
+                <span className="fin-preparer__libelle">
+                  {e.label}
+                  <span className="muted"> · {dateFr(e.date)}</span>
+                </span>
+                <span className="fin-preparer__montant">{euros(e.amount)}</span>
+                <span className="fin-cp-proposition">
+                  Pièce « {e.piece.title} » : {e.piece.account} {e.piece.accountLabel} · Transaction : {e.account.number} {e.account.label}
+                </span>
+              </button>
+              <div className="nf-boutons">
+                <button type="button" className="btn btn--secondary" disabled={enCours !== null || !e.piece.accountId} onClick={() => onTrancher(e, 'piece')}>
+                  Garder {e.piece.account} (la pièce)
+                </button>
+                {!e.account.split && (
+                  <button type="button" className="btn btn--secondary" disabled={enCours !== null} onClick={() => onTrancher(e, 'transaction')}>
+                    Garder {e.account.number} (la transaction)
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="fin-preparer__bloc">
         <span className="fin-cp-t">À confirmer une par une · {classify.unsure.length}</span>

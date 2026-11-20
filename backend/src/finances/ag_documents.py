@@ -733,9 +733,23 @@ class AgDocuments:
         # 3. Un compte sur chaque transaction bancaire.
         rows = [r for r in self.ledger(db, member)["rows"] if season.start_date <= r["date"] <= season.end_date and not r.get("transfer")]
         self.accounting.annotate(db, member.org_id, rows)
-        unsure, by_account = [], {}
+        unsure, by_account, mismatches = [], {}, []
+        confirmed = self.accounting._lines(db, member.org_id)
+        chart = {a.id: a for a in self.accounting.accounts(db, member.org_id)}
         for r in rows:
             if r["account"] is not None:
+                # Pièce et transaction pas dans le même compte (Seb, 20/11) : le compte confirmé l'a emporté,
+                # le trésorier choisit lequel garder. Une vente ou un salaire a plusieurs comptes : pas comparé.
+                piece = r.get("piece") or {}
+                numbers = [chart[l.account_id].number for l in confirmed.get(r["id"], [])]
+                if piece.get("account") and piece.get("nature") not in ("vente", "salaire") and piece["account"] not in numbers:
+                    keep = next((a for a in chart.values() if a.number == piece["account"] and a.active), None)
+                    mismatches.append({
+                        "id": r["id"], "date": r["date"], "label": r["label"], "amount": r["amount"],
+                        "piece": {"id": piece["id"], "title": piece["title"], "account": piece["account"],
+                                  "accountId": keep.id if keep else None, "accountLabel": keep.label if keep else ""},
+                        "account": {k: r["account"][k] for k in ("number", "label", "split")},
+                    })
                 continue
             cheque = is_cheque_deposit(r["label"], r.get("details", ""))
             line = {"id": r["id"], "date": r["date"], "label": r["label"], "amount": r["amount"], "piece": r.get("piece"), "chequeDeposit": cheque}
@@ -747,13 +761,17 @@ class AgDocuments:
                 group = by_account.setdefault(r["proposal"]["id"], {"account": {k: r["proposal"][k] for k in ("id", "number", "label")}, "operations": []})
                 group["operations"].append({**line, "reason": r["proposal"]["reason"]})
         sure = sorted(by_account.values(), key=lambda g: g["account"]["number"])
-        classify = {"withoutAccount": len(unsure) + sum(len(g["operations"]) for g in sure), "unsure": unsure, "sure": sure, "ok": not unsure and not sure}
+        classify = {
+            "withoutAccount": len(unsure) + sum(len(g["operations"]) for g in sure), "unsure": unsure, "sure": sure,
+            "mismatches": mismatches, "ok": not unsure and not sure and not mismatches,
+        }
         # 5. Contrôles, en clair.
         fec = self.fec_check(db, member, season)
         controls = [
             {"label": "Relevés complets sur la saison", "ok": statements["ok"], "detail": "" if statements["ok"] else f"{missing} mois à importer"},
             {"label": "Soldes de départ repris et égaux aux relevés", "ok": opening_step["ok"], "detail": "" if opening_step["ok"] else "l'an dernier n'est pas repris" if to_carry else f"{len(mismatches)} compte(s) en écart"},
-            {"label": "Un compte du plan sur chaque transaction bancaire", "ok": classify["ok"], "detail": "" if classify["ok"] else f"{classify['withoutAccount']} transaction(s) sans compte"},
+            {"label": "Un compte du plan sur chaque transaction bancaire", "ok": not classify["withoutAccount"], "detail": "" if not classify["withoutAccount"] else f"{classify['withoutAccount']} transaction(s) sans compte"},
+            {"label": "Pièce et transaction dans le même compte", "ok": not mismatches, "detail": "" if not mismatches else f"{len(mismatches)} écart(s) à trancher"},
             {"label": "FEC juste", "ok": fec["ok"], "detail": "" if fec["ok"] else " ".join(fec["problems"])},
         ]
         # 4. Hors banque : caisse, factures non payées (401 / 467x au niveau Complet).

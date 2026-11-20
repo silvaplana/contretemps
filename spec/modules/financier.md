@@ -1106,6 +1106,24 @@ n'attend jamais une pièce : une ligne sans pièce reçoit son compte à la main
    départ = relevés, un compte sur chaque transaction, FEC juste) ; 6 renvoie à Documents. Documents =
    l'écran des bilans d'avant ; Clôture = la clôture portée par le bilan le plus avancé de la saison
    (Officiel, Validé, dernier), niveau Complet.
+
+   **Pièce et compte (Seb, 20/11, « vas-y »)**, comme les logiciels du métier :
+   - Rapprochement : le numéro de la facture (lu sur la pièce, `nf_notes.invoice_number`) ou le
+     numéro de pièce de l'appli trouvé dans le libellé de la banque vaut le nom : montant + nom
+     **ou numéro** = rattachée toute seule ; le montant seul reste une proposition.
+   - **La pièce impose son compte** : rattachée (à la validation pour une pièce À valider), elle
+     écrit ses comptes sur la transaction bancaire, pour toutes les natures (avant : ventes et
+     salaires seulement), additionnés quand un virement paie plusieurs pièces. Rien n'est écrit si un
+     compte y est déjà confirmé, si une ligne de la pièce n'a pas de compte, ou si les pièces ne font
+     pas le montant de la banque (acompte, écart) : la proposition reste. Détacher retire ces
+     comptes s'ils n'ont pas été changés depuis. Les règles (mots-clés, habitudes) ne servent qu'aux
+     transactions sans pièce.
+   - Étape 3, bloc **« Pièce et transaction pas dans le même compte (n) »** (et le contrôle de
+     l'étape 5) : une transaction au compte confirmé dont la pièce (un seul compte, hors vente et
+     salaire) est classée ailleurs ; « Garder 606 (la pièce) » remet la transaction sur le compte
+     de la pièce, « Garder 627 (la transaction) » donne ce compte à la pièce (même payée, tant que la
+     saison n'est pas clôturée ; un compte de dépenses seulement ; caché si la transaction est
+     ventilée).
 3. **Codée le 10 novembre 2026** : étape 4 **Hors banque** = la caisse (solde, renvoi à Comptes ›
    Caisse) et les **factures validées pas encore payées** (`AgPorts.unpaid`, désormais avec date,
    nature, compte de charge et nom) : au niveau Complet, une facture datée de la saison entre en
