@@ -8,6 +8,7 @@ from app.main import app, core
 from comptes import Comptes
 from ecoles import Ecoles
 from groups import rights
+from publications import mailing
 from publications.publications import blogs_of, publish_right
 
 
@@ -84,10 +85,8 @@ def test_une_actu_envoyee_par_mail_a_chaque_adherent(client, db_session, club, e
     (envoi,) = envois
     assert envoi["adresses"] == ["famille@ex.fr", "seb@asc.fr", "zoe@ex.fr"]
     sujet, texte, html = envoi["mails"][0]
-    assert sujet == "Actus · Stage de Noël samedi 20 décembre."
+    assert sujet == "Stage de Noël samedi 20 décembre."
     assert "Stage de Noël samedi 20 décembre." in texte
-    assert "Lire sur l’appli" in html and "https://asc." in html
-    assert "/api/publications/desinscription/" in html
     # Une seule fois, et l'actu le dit à qui publie.
     assert core.publications_client.send_mail(db_session, actu["id"]) == 0
     assert client.post(f"{club['blog']}/posts/{actu['id']}/mail", json={}).status_code == 409
@@ -102,8 +101,6 @@ def test_essai_a_une_adresse_sans_rien_marquer(client, db_session, club, envois)
     assert essai.json() == {"recipients": 1, "test": True}
     # L'essai part tout de suite, à cette seule adresse.
     assert envois[0]["adresses"] == ["moi@exemple.fr"]
-    # Brouillon : pas de « Lire sur l'appli ».
-    assert "Lire sur l’appli" not in envois[0]["mails"][0][2]
     # Rien n'est marqué : l'envoi pour de bon reste possible.
     assert client.post(f"{club['blog']}/posts/{actu['id']}/mail", json={}).status_code == 200
     assert client.post(f"{club['blog']}/posts/{actu['id']}/mail", json={"test_address": "pas-une-adresse"}).status_code == 400
@@ -149,8 +146,9 @@ def test_ne_plus_recevoir_les_actus_par_mail(client, db_session, club, envois):
     actu = _actu(client, club)
     client.post(f"{club['blog']}/posts/{actu['id']}/mail", json={})
     core.publications_client.send_mail(db_session, actu["id"])
-    html_zoe = envois[0]["mails"][envois[0]["adresses"].index("zoe@ex.fr")][2]
-    lien = html_zoe.split("/api")[1].split('"')[0]
+    # Plus de lien dans le mail (Seb, 20 novembre), mais ceux des mails
+    # déjà envoyés marchent toujours.
+    lien = f"/publications/desinscription/{mailing.optout_token(club['ecole'].id, 'zoe@ex.fr')}"
 
     page = client.get(lien)
     assert page.status_code == 200 and "Vous ne recevrez plus les actus par mail" in page.text
@@ -181,7 +179,7 @@ def test_texte_mis_en_forme_dans_le_mail(client, db_session, club, envois):
     client.post(f"{club['blog']}/posts/{actu['id']}/mail", json={})
     core.publications_client.send_mail(db_session, actu["id"])
     sujet, texte, html = envois[0]["mails"][0]
-    assert sujet == "Actus · Stage de Noël"
+    assert sujet == "Stage de Noël"
     assert "Stage de Noël\nSamedi 20 décembre" in texte and "[g]" not in texte
     assert "Samedi <strong>20 décembre</strong>" in html
 
@@ -198,3 +196,25 @@ def test_essai_qui_ne_part_pas_le_dit(client, db_session, club, monkeypatch):
     refus = client.post(f"{club['blog']}/posts/{actu['id']}/mail", json={"test_address": "moi@exemple.fr"})
     assert refus.status_code == 502
     assert "expéditeur refusé" in refus.json()["detail"]
+
+
+def test_un_simple_mail(client, db_session, club, envois):
+    """Seb, 20 novembre : l'actu tombait dans Promotions de Gmail. « Il faut
+    que ça ressemble juste à un mail » : Bonjour Prénom, le message,
+    Cordialement, la signature, et c'est tout."""
+    _avec_contact(db_session, club)
+    actu = _actu(client, club)
+    client.post(f"{club['blog']}/posts/{actu['id']}/mail", json={})
+    core.publications_client.send_mail(db_session, actu["id"])
+    mails = dict(zip(envois[0]["adresses"], envois[0]["mails"]))
+    sujet, texte, html = mails["zoe@ex.fr"]
+    assert sujet == "Stage de Noël samedi 20 décembre."
+    assert texte == "Bonjour Zoé,\n\nStage de Noël samedi 20 décembre.\n\nCordialement,\n" + club["ecole"].nom
+    assert "Bonjour Zoé," in html and "Cordialement," in html
+    assert "<a " not in html and "Lire sur" not in html and "Ne plus recevoir" not in html
+    # Une adresse de famille : les deux prénoms.
+    assert mails["famille@ex.fr"][1].startswith("Bonjour Lou et Léo,")
+
+    # Un essai à une adresse inconnue de l'école : « Bonjour, ».
+    client.post(f"{club['blog']}/posts/{actu['id']}/mail", json={"test_address": "moi@exemple.fr"})
+    assert envois[1]["mails"][0][1].startswith("Bonjour,\n")

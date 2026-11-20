@@ -624,13 +624,13 @@ class Publications:
 
     def _mail(self, db: Session, blog: Blog, post: Post, addresses: list[str]) -> list[str]:
         ecole = db.get(Ecole, post.org_id)
-        app_url = self.org_url(db, post.org_id) if self.org_url else ""
         sha = next((m.photo_sha for m in post.media if m.photo_sha), None)
         path = self.storage.thumbnail_path(post.org_id, sha) if sha else None
         images = [("photo", path.read_bytes())] if path is not None and path.exists() else None
+        names = mailing.first_names(db, post.org_id)
         return self.send_mails(
             db, post.org_id, addresses,
-            lambda address: mailing.content(blog, post, ecole.nom, app_url, address, images is not None),
+            lambda address: mailing.content(blog, post, ecole.nom, images is not None, names.get(address, "")),
             images=images,
         )
 

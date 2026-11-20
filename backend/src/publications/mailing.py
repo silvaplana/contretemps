@@ -1,8 +1,9 @@
 """A post sent by mail to the members (Seb, 19 November 2026;
-spec/modules/actualites.md §12.13), like the newsletters of Substack or Ghost:
-one mail per address through the core's service (ecoles/mail_ecole.py:
-envoyer_a_chacun, Brevo), replies to the club's address, a « Lire sur
-l'appli » button, and « Ne plus recevoir les actus par mail »."""
+spec/modules/actualites.md §12.13): one mail per address through the core's
+service (ecoles/mail_ecole.py: envoyer_a_chacun, Brevo), replies to the
+club's address, written like an ordinary mail (Seb, 20 November). The
+« Ne plus recevoir les actus par mail » page stays for the links of the
+mails already sent."""
 
 from __future__ import annotations
 
@@ -54,6 +55,22 @@ def people(db: Session, org_id: int) -> list[tuple[str, str]]:
         members = db.scalars(select(Compte).where(Compte.ecole_id == org_id, Compte.saison_id == season))
         found = {(f"{m.prenom} {m.nom}".strip(), a) for m in members for a in m.emails}
     return sorted(found)
+
+
+def first_names(db: Session, org_id: int) -> dict[str, str]:
+    """Address → « Lou et Léo », for « Bonjour … » at the top of the mail
+    (Seb, 20 November: a personal mail, not a newsletter, stays out of
+    Gmail's Promotions tab)."""
+    season = saison_courante_id(db, org_id)
+    names: dict[str, list[str]] = {}
+    with toutes_saisons(db):
+        members = db.scalars(select(Compte).where(Compte.ecole_id == org_id, Compte.saison_id == season))
+        for m in members:
+            first = (m.prenom or "").strip()
+            for a in m.emails:
+                if first and first not in names.setdefault(a, []):
+                    names[a].append(first)
+    return {a: " et ".join([", ".join(sorted(n)[:-1]), sorted(n)[-1]] if len(n) > 1 else n) for a, n in names.items() if n}
 
 
 # --- « Ne plus recevoir les actus par mail » ---
@@ -116,53 +133,37 @@ def subject(blog: Blog, post: Post) -> str:
     headline = post.title if blog.with_categories and post.title else (formatting.plain(post.body).strip().splitlines() or [""])[0]
     if len(headline) > SUBJECT_CHARS:
         headline = headline[: SUBJECT_CHARS - 1].rstrip() + "…"
-    return f"{blog.name} · {headline}" if headline else f"Nouveau dans {blog.name}"
+    # No « Actus · » before it: a personal mail (Seb, 20 November).
+    return headline or f"Nouveau dans {blog.name}"
 
 
-def content(blog: Blog, post: Post, school: str, app_url: str, address: str, photo: bool):
-    """(subject, text, html) for one address. « Lire sur l'appli » only for a
-    published post; a mail alone (still a draft) has none."""
-    optout = f"{app_url}/api/publications/desinscription/{optout_token(post.org_id, address)}"
-    read = post.published_at is not None
+def content(blog: Blog, post: Post, school: str, photo: bool, name: str = ""):
+    """(subject, text, html) for one address, written like an ordinary mail
+    (Seb, 20 November: the newsletter look sent it to Gmail's Promotions):
+    « Bonjour Prénom, », the post, « Cordialement, », the author and the
+    school. Nothing else: no « Lire sur l'appli », no unsubscribe link (the
+    addresses already opted out stay out). The post's own links stay, they
+    are part of the message."""
     links = [(m.link_title or m.link_url, m.link_url) for m in post.media if m.link_url]
     title = post.title if blog.with_categories and post.title else ""
+    hello = f"Bonjour {name}," if name else "Bonjour,"
+    signature = ["Cordialement,", post.author_name, school] if post.author_name else ["Cordialement,", school]
 
-    body = formatting.plain(post.body)
-    lines = [title, body] if title else [body]
+    lines = [hello, title, formatting.plain(post.body)]
     lines += [f"{t} : {u}" for t, u in links]
-    if read:
-        lines.append(f"Lire sur l’appli : {app_url}")
-    lines.append(f"Vous recevez ce mail parce que vous êtes adhérent de {school}. Pour répondre, répondez à ce mail.")
-    lines.append(f"Ne plus recevoir les actus par mail : {optout}")
+    lines.append("\n".join(signature))
     text = "\n\n".join(x for x in lines if x)
 
-    parts = []
+    p = '<p style="margin:0 0 16px;font-size:17px;line-height:1.5">'
+    parts = [f"{p}{escape(hello)}</p>"]
     if title:
-        parts.append(f'<h1 style="margin:0;font-size:21px">{escape(title)}</h1>')
+        parts.append(f"{p}<strong>{escape(title)}</strong></p>")
     if post.body:
-        parts.append(f'<p style="margin:0;font-size:17px;line-height:1.5">{formatting.to_html(post.body)}</p>')
+        parts.append(f"{p}{formatting.to_html(post.body)}</p>")
     if photo:
-        parts.append('<img src="cid:photo" alt="" style="display:block;width:100%;max-width:560px;border-radius:10px">')
+        parts.append('<p style="margin:0 0 16px"><img src="cid:photo" alt="" style="display:block;width:100%;max-width:560px"></p>')
     for t, u in links:
-        parts.append(f'<p style="margin:0;font-size:17px"><a href="{escape(u, True)}">{escape(t)}</a></p>')
-    if read:
-        parts.append(
-            f'<p style="margin:0"><a href="{escape(app_url, True)}" style="display:inline-block;padding:14px 22px;'
-            'border-radius:24px;background:#17181c;color:#ffffff;font-size:17px;font-weight:700;'
-            'text-decoration:none">Lire sur l’appli</a></p>'
-        )
-    if post.author_name:
-        parts.append(f'<p style="margin:0;font-size:15px;color:#5f6368">{escape(post.author_name)}</p>')
-    html = (
-        '<div style="background:#f4f4f2;padding:20px 12px;font-family:Roboto,Arial,sans-serif;color:#1f1f1f">'
-        '<div style="max-width:600px;margin:0 auto;background:#ffffff;border:1px solid #e3e3e3;border-radius:12px;'
-        'padding:20px;display:block">'
-        f'<p style="margin:0 0 16px;font-size:17px;font-weight:700">{escape(school)} · {escape(blog.name)}</p>'
-        + '<div style="height:16px"></div>'.join(parts)
-        + "</div>"
-        '<p style="max-width:600px;margin:16px auto 0;font-size:14px;line-height:1.5;color:#5f6368;text-align:center">'
-        f"Vous recevez ce mail parce que vous êtes adhérent de {escape(school)}.<br>"
-        "Pour répondre, répondez simplement à ce mail.<br>"
-        f'<a href="{escape(optout, True)}" style="color:#1a5fb4">Ne plus recevoir les actus par mail</a></p></div>'
-    )
+        parts.append(f'{p}<a href="{escape(u, True)}">{escape(t)}</a></p>')
+    parts.append(f"{p}{'<br>'.join(escape(x) for x in signature)}</p>")
+    html = '<div style="font-family:Arial,sans-serif;color:#1f1f1f;max-width:600px">' + "".join(parts) + "</div>"
     return subject(blog, post), text, html
