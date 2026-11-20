@@ -533,6 +533,24 @@ Les catégories par mots-clés de §3.2 (`categories.py`) restent pour l'écran 
 compte du plan porte ses mots-clés de proposition (repris et enrichis par l'historique confirmé :
 même fournisseur → même compte). Pas de « type » à l'écran : on dit « compte » et « nature ».
 
+### 8.2 ter Proposer des comptes (Seb, 20 novembre 2026)
+
+Maquette https://claude.ai/artifact/1i4V8WhNst2j8mQup5SvSH. En bas du Plan comptable, le bouton principal
+**« Proposer des comptes »** (« Ajouter un compte » passe en second) ouvre **Comptes proposés** : des
+sous-comptes qui rendraient la Balance plus claire. **Règles fixes, pas de modèle** (`Accounting._groups`) :
+dans un compte de dépenses ou de recettes, sur les douze derniers mois, les transactions confirmées sur ce
+seul compte dont le nom (libellé de banque sans dates, numéros ni mots de la banque : VIR, SEPA, CARTE…)
+revient **au moins trois fois sans être tout le compte**, hors saisons clôturées, et qui n'est pas déjà le
+mot-clé d'un compte. Numéro : celui du compte suivi du premier chiffre libre (613 → 6131). Chaque
+proposition : case cochée, numéro « sous 613 Locations », nom modifiable (le nom lu dans la banque), « 9
+transactions « MAIRIE LA CIOTAT », toutes de 120,00 € », et l'effet « ces 9 transactions passent de 613 à
+6131 ; mot-clé : … ». **Rien n'est créé avant « Créer les comptes cochés (n) »** : le compte est créé avec la
+nature du compte d'origine et son mot-clé, et ses transactions y passent. Retour au plan avec le bandeau
+« n comptes créés · **Annuler** » pendant 10 secondes (les transactions reviennent, les comptes disparaissent)
+et la marque « Nouveau ». `GET` / `POST /finances/chart/proposals`, `POST /finances/chart/proposals/undo`.
+Pas de table nouvelle. Écart avec la maquette : le nom proposé est celui de la banque, pas un nom rédigé
+(« Honoraires des professeurs ») ; on le change dans la case.
+
 ### 8.2 bis Proposer un compte quand aucun ne convient (Seb, 19-20 novembre 2026)
 
 Demande de Seb : « lorsqu'il lit une facture, qu'il propose un compte du plan comptable s'il existe,

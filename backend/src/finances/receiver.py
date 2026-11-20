@@ -110,6 +110,13 @@ class RenameRequest(BaseModel):
     ledgerNumber: str | None = None
 
 
+class ProposedAccountsRequest(BaseModel):
+    """Corps de POST /finances/chart/proposals : les propositions cochées
+    ({parentId, key, label}) ; de DELETE : les comptes créés à annuler ({id, parentId})."""
+
+    items: list[dict]
+
+
 class ChartAccountRequest(BaseModel):
     """Corps de POST /finances/chart et PUT /finances/chart/{id} : un compte
     du plan (spec §8.2)."""
@@ -467,6 +474,20 @@ class FinancesReceiver:
         def memorize_chart(data: SnapshotRequest, db: Session = db_dep, member: Member = member_dep) -> dict:
             """« Mémoriser le plan comptable » (§8.7) : une copie de plus dans le journal, que Repartir à zéro remet en place."""
             return call(accounting.memorize_chart, db, member, data.comment)
+
+        @app.get("/finances/chart/proposals")
+        def get_chart_proposals(db: Session = db_dep, member: Member = member_dep) -> dict:
+            """« Proposer des comptes » (§8.2, Seb 20/11) : des sous-comptes d'après les transactions."""
+            return {"proposals": call(accounting.propose_accounts, db, member)}
+
+        @app.post("/finances/chart/proposals")
+        def create_chart_proposals(data: ProposedAccountsRequest, db: Session = db_dep, member: Member = member_dep) -> dict:
+            return call(accounting.create_proposed, db, member, data.items)
+
+        @app.post("/finances/chart/proposals/undo", status_code=204)
+        def undo_chart_proposals(data: ProposedAccountsRequest, db: Session = db_dep, member: Member = member_dep) -> Response:
+            call(accounting.undo_proposed, db, member, data.items)
+            return Response(status_code=204)
 
         @app.post("/finances/chart", status_code=201)
         def create_chart_account(data: ChartAccountRequest, db: Session = db_dep, member: Member = member_dep) -> dict:

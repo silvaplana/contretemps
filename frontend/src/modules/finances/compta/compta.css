@@ -618,6 +618,12 @@ button.fin-cp-compte:last-child {
 .fin-rapport__neuf { background: #fff4c9; color: #1b1d1f; border-radius: 4px; }
 .fin-rapport .btn { min-height: 48px; }
 .fin-docs__averifier { display: block; }
+.fin-proposes__carte { display: grid; gap: 8px; }
+.fin-proposes__carte.is-active { border-color: var(--accent); }
+.fin-proposes__coche { display: flex; align-items: center; gap: 12px; min-height: 48px; cursor: pointer; }
+.fin-proposes__coche input { width: 24px; height: 24px; margin: 0; accent-color: var(--accent); }
+.fin-proposes__bandeau { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 16px; border-radius: 12px; background: #1f2430; color: #fff; }
+.fin-proposes__bandeau .btn { min-height: 48px; color: #fcd34d; font-weight: 700; }
 .fin-docs__cloture { border-left: 3px solid var(--accent); padding-left: 12px; }
 .fin-docs__cloture p { margin: 0 0 6px; }
 .fin-docs__cloture ul { margin: 0; padding-left: 20px; }
