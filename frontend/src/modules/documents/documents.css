@@ -5,7 +5,8 @@
 .dx {
   --dx-folder: #f2b731;
   --dx-folder-back: #d99a12;
-  --dx-folder-bg: #fdf3d6;
+  /* Fond sombre : --folder-bg et --input-bg viennent d'api/apparence.js. */
+  --dx-folder-bg: var(--folder-bg, #fdf3d6);
   --dx-tray: #2f8f9d;
   --dx-tray-back: #1f6b76;
   --dx-page: #ffffff;
@@ -81,7 +82,7 @@
   padding: 0 14px;
   border: 1.5px solid var(--dx-line);
   border-radius: 12px;
-  background: #fff;
+  background: var(--input-bg, #fff);
   color: var(--text);
   font: inherit;
   font-size: 17px;
