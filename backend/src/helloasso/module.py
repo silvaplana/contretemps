@@ -5,6 +5,8 @@ spec/modules/helloasso.md). Éteint par défaut (Seb, 18 novembre 2026) : une
 from registry import Module, guide_file
 
 from . import members, money, payment
+from .actions import actions
+from .lectures import lectures
 from .campaign import Campaigns
 from .connection import Connection
 from .receiver import HelloAssoReceiver
@@ -50,7 +52,7 @@ def mount(app, core) -> None:
         eur_per_usd=getattr(core, "eur_per_usd", lambda: 0.9),
     )
     core.helloasso_sync.on_new.append(core.helloasso_checker.on_new)
-    ChecksReceiver(app, core.helloasso_checker, core.helloasso_receiver._registration)
+    core.helloasso_checks = ChecksReceiver(app, core.helloasso_checker, core.helloasso_receiver._registration)
     # Statistiques de la saison (spec §7.8) : les comptes et les licences
     # viennent d'autres modules, branchés par l'appli (helloasso_contretemps).
     core.helloasso_stats = Sources()
@@ -58,5 +60,10 @@ def mount(app, core) -> None:
 
 
 MODULE = Module(
-    key="helloasso", label="HelloAsso", mount=mount, guide=guide_file(__file__), enabled_by_default=False
+    key="helloasso", label="HelloAsso", mount=mount, guide=guide_file(__file__), enabled_by_default=False,
+    # L'assistant (Seb, 20 novembre 2026) : lectures et actions des écrans, jamais la connexion.
+    actions=lambda core: [
+        *lectures(core.helloasso_receiver, core.helloasso_stats),
+        *actions(core.helloasso_receiver, core.helloasso_checks),
+    ],
 )

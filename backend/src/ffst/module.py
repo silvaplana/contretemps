@@ -6,6 +6,7 @@ which brings the members and their form answers."""
 from registry import Module, guide_file
 
 from .club import Club
+from .lectures import lectures
 from .receiver import FfstReceiver
 
 
@@ -21,4 +22,6 @@ MODULE = Module(
     mount=mount,
     guide=guide_file(__file__),
     enabled_by_default=False,
+    # L'assistant lit les listes (Seb, 20 novembre 2026) ; rien n'agit sur le site de la FFST.
+    actions=lambda core: lectures(core.ffst_receiver),
 )
