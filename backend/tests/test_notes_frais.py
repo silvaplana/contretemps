@@ -1420,6 +1420,44 @@ def test_credits_sans_vente_dans_rapprocher_seulement_si_l_ecole_saisit_des_vent
     assert [c["id"] for c in credits] == [credit.id]
 
 
+def test_remise_de_cheques_detaillee_une_ligne_par_cheque(client, db_session, ecole, monkeypatch):
+    """Une remise qui liste ses chèques (financier.md §8.12) : une ligne par
+    chèque, avec son nom et le compte de la dernière vente à ce nom (sinon de
+    la dernière vente) ; encaissée, la banque est ventilée par compte."""
+    import json
+
+    tresorier = ecole["tresorier"]
+    t = entetes_session(tresorier)
+    org = ecole["ecole"].id
+    client.get("/finances/chart", headers=t)
+    comptes = {c["code"]: c["id"] for c in client.get("/notes-frais/categories?ventes=true", headers=t).json()}
+    avant = [{"categorie_id": comptes["706"], "montant_centimes": 15000, "nom": "Famille Martin"},
+             {"categorie_id": comptes["756"], "montant_centimes": 4500, "nom": "Club voisin"}]
+    _etablir(client, tresorier, "vente", contenu=None, fournisseur="Remise d'octobre", date="2026-10-02", lignes=json.dumps(avant), valider="true")
+
+    monkeypatch.setattr(
+        main.notes_frais_client.ports, "lecteur",
+        LecteurFacture(sorte="vente", date="2026-10-20", montant_centimes=24000, description="Remise de chèques",
+                       cheques=(("famille martin", 15000), ("Durand", 9000))),
+    )
+    remise = _etablir(client, tresorier, None)
+    assert remise["nature"] == "vente" and remise["total_centimes"] == 24000
+    assert [(d["description"], d["montant_centimes"], d["categorie"]["code"]) for d in remise["depenses"]] == [
+        ("famille martin", 15000, "706"), ("Durand", 9000, "756"),
+    ]
+    # Les noms se corrigent dans la fiche, ligne par ligne.
+    lignes = [{"categorie_id": comptes["706"], "montant_centimes": 15000, "nom": "Famille Martin"},
+              {"categorie_id": comptes["706"], "montant_centimes": 9000, "nom": "Famille Durand"}]
+    corrige = client.patch(f"/notes-frais/notes/{remise['id']}", json={"lignes": lignes}, headers=t).json()
+    assert [d["description"] for d in corrige["depenses"]] == ["Famille Martin", "Famille Durand"]
+    client.post(f"/notes-frais/notes/{remise['id']}/valider", headers=t)
+    credit = _operation(db_session, org, 24000, "2026-10-21", "REM CHQ 0004531")
+    encaissee = client.post(f"/notes-frais/notes/{remise['id']}/payee", json={"operation_id": credit.id}, headers=t)
+    assert encaissee.status_code == 200, encaissee.text
+    # Deux chèques sur le même compte : une seule ligne de ventilation.
+    assert [(l["number"], l["amount"]) for l in client.get(f"/finances/operations/{credit.id}", headers=t).json()["lines"]] == [("706", 240.0)]
+
+
 # --- Personnes extérieures (§7 quater) ---
 
 

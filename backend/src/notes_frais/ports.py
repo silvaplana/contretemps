@@ -71,6 +71,8 @@ class TicketLu:
     beneficiaire: str | None = None
     iban: str | None = None
     motif: str | None = None
+    # Une remise de chèques détaillée (financier.md §8.12) : (nom écrit, centimes) de chaque chèque.
+    cheques: tuple[tuple[str, int], ...] = ()
     salarie: str | None = None
     brut_centimes: int | None = None
     net_centimes: int | None = None

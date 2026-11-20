@@ -18,8 +18,12 @@ export default function VenteModal({ note, onClose, onFait }) {
   const [jour, setJour] = useState(note?.depenses[0]?.date ?? api.aujourdhui())
   const [lignes, setLignes] = useState(() =>
     note?.depenses.length
-      ? note.depenses.map((d) => ({ categorieId: d.categorie?.id ?? '', montant: api.versTexteMontant(d.montant_centimes || null) }))
-      : [{ categorieId: '', montant: '' }],
+      ? note.depenses.map((d) => ({
+          categorieId: d.categorie?.id ?? '',
+          montant: api.versTexteMontant(d.montant_centimes || null),
+          nom: note.depenses.length > 1 ? d.description : '',
+        }))
+      : [{ categorieId: '', montant: '', nom: '' }],
   )
   const [comptes, setComptes] = useState([])
   const [joint, setJoint] = useState(null)
@@ -58,7 +62,8 @@ export default function VenteModal({ note, onClose, onFait }) {
     return lignes.map((l) => {
       const centimes = api.versCentimes(l.montant)
       if (!centimes) throw new Error('Indiquez le montant de chaque ligne, par exemple 480,00.')
-      return { categorie_id: l.categorieId ? Number(l.categorieId) : null, montant_centimes: centimes }
+      // Plusieurs lignes (remise de chèques, §8.12) : le nom de chacune.
+      return { categorie_id: l.categorieId ? Number(l.categorieId) : null, montant_centimes: centimes, nom: lignes.length > 1 ? l.nom?.trim() || null : null }
     })
   }
 
@@ -130,6 +135,17 @@ export default function VenteModal({ note, onClose, onFait }) {
       <span className="nf-label">Compte et montant</span>
       {lignes.map((l, rang) => (
         <div key={rang} className="nf-vente-ligne">
+          {lignes.length > 1 && (
+            <input
+              className="nf-vente-ligne__nom"
+              aria-label={`Nom de la ligne ${rang + 1}`}
+              value={l.nom ?? ''}
+              onChange={(e) => changerLigne(rang, 'nom', e.target.value)}
+              maxLength={200}
+              placeholder="Nom (chèque de…)"
+              disabled={!modifiable}
+            />
+          )}
           <select
             aria-label={`Compte de la ligne ${rang + 1}`}
             value={l.categorieId}
@@ -166,7 +182,7 @@ export default function VenteModal({ note, onClose, onFait }) {
         </div>
       ))}
       {modifiable && (
-        <button type="button" className="btn btn--link" onClick={() => setLignes([...lignes, { categorieId: '', montant: '' }])}>
+        <button type="button" className="btn btn--link" onClick={() => setLignes([...lignes, { categorieId: '', montant: '', nom: '' }])}>
           Ajouter une ligne
         </button>
       )}
