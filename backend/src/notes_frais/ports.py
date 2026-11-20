@@ -73,6 +73,8 @@ class TicketLu:
     motif: str | None = None
     # Une remise de chèques détaillée (financier.md §8.12) : (nom écrit, centimes) de chaque chèque.
     cheques: tuple[tuple[str, int], ...] = ()
+    # Aucune catégorie ne convient : (numéro, libellé) du compte du plan à créer (financier.md §8.2 bis).
+    compte_propose: tuple[str, str] | None = None
     salarie: str | None = None
     brut_centimes: int | None = None
     net_centimes: int | None = None
@@ -241,6 +243,9 @@ class Ports:
     # Les comptes d'une vente (financier.md §8.12) : (numéro, libellé) des
     # comptes de produits actifs ; ils deviennent des catégories à part.
     plan_ventes: Callable[[Session, int], list[tuple[str, str]]] | None = None
+    # Créer (ou réactiver) un compte du plan proposé par la lecture : (db, org_id,
+    # numéro, libellé, recette ?) ; la catégorie suit (financier.md §8.2 bis).
+    creer_compte: Callable[[Session, int, str, str, bool], None] | None = None
     # La paie (financier.md §8.11) : les comptes d'un bulletin de salaire (641, 645, 431) qui
     # manquent au plan, (numéro, libellé) ; les y ajouter (« L'association a des salariés » :
     # oui), ou retirer 431 (non). La paie est allumée quand 431 est dans le plan.

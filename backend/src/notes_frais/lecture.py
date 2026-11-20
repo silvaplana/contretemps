@@ -67,6 +67,10 @@ l'employeur), en euros ; null sinon. Pour un bulletin, `montant_ttc` est le net 
 null si aucun ne convient.
 - `description` : quelques mots en français qui disent ce qui a été acheté ou payé \
 (ex. « Tissu pour costumes », « Cours de danse octobre 2025 »), sans le montant.
+- `compte_propose` : seulement si `categorie` est null, le compte du plan comptable des \
+associations (règlement ANC 2018-06) qui conviendrait : `numero` (3 à 6 chiffres, classe 6 \
+pour une dépense, classe 7 pour une recette de l'association) et `libelle` court en \
+français (ex. 6064 « Fournitures administratives ») ; null sinon.
 - `cheques` : pour une remise de chèques qui liste ses chèques (bordereau détaillé, page du \
 cahier), un élément par chèque : `nom` (le nom écrit pour ce chèque, famille ou tireur) et \
 `montant` en euros ; null si la pièce ne liste pas les chèques un par un."""
@@ -75,6 +79,11 @@ cahier), un élément par chèque : `nom` (le nom écrit pour ce chèque, famill
 class ChequeJson(BaseModel):
     nom: str | None
     montant: float | None
+
+
+class CompteJson(BaseModel):
+    numero: str | None
+    libelle: str | None
 
 
 class TicketJson(BaseModel):
@@ -90,6 +99,7 @@ class TicketJson(BaseModel):
     categorie: str | None
     description: str | None
     cheques: list[ChequeJson] | None
+    compte_propose: CompteJson | None
     salarie: str | None = None
     salaire_brut: float | None = None
     net_paye: float | None = None
@@ -163,6 +173,10 @@ class LecteurClaude:
             sorte=lu.sorte if lu.sorte in ("facture", "virement", "vente", "salaire", "autre") else "facture",
             emetteur_personne=lu.emetteur_personne, client=lu.client,
             beneficiaire=lu.beneficiaire, iban=lu.iban, motif=lu.motif,
+            compte_propose=(
+                (lu.compte_propose.numero.strip(), " ".join(lu.compte_propose.libelle.split())[:80])
+                if lu.categorie is None and lu.compte_propose and lu.compte_propose.numero and lu.compte_propose.libelle else None
+            ),
             cheques=tuple(
                 ((c.nom or "").strip(), round(c.montant * 100)) for c in (lu.cheques or []) if c.montant is not None and c.montant > 0
             ),

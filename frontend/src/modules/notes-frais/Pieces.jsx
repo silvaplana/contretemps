@@ -5,7 +5,7 @@ import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
 import PlanComptable from '../finances/compta/PlanComptable.jsx'
 import { telechargerFichier } from '../../utils/telechargement.js'
-import { BadgeEtat, ChampsRib, Compte, naturesProposees, PaiementVu, Pieces as Vignettes, PreuveVirement, qui, raisonProposee, ribVide, useSalaries } from './commun.jsx'
+import { BadgeEtat, ChampsRib, Compte, naturesProposees, ProposerCompte, PaiementVu, Pieces as Vignettes, PreuveVirement, qui, raisonProposee, ribVide, useSalaries } from './commun.jsx'
 import { DetailDepenses } from './MesNotesDeFrais.jsx'
 import { masquerIban } from './EnvoiModal.jsx'
 import Virements from './Virements.jsx'
@@ -375,6 +375,21 @@ function NoteModalDepense({ note, nature, onClose, onFait }) {
     if (corrigeable) chargerCategories()
   }, [corrigeable, chargerCategories])
 
+  // Aucun compte ne convenait à la lecture : « Créer le compte » proposé (financier.md §8.2 bis), on reste sur la fiche.
+  async function creerCompte() {
+    setErreur('')
+    setEnCours(true)
+    try {
+      const n = await api.creerCompte(depense.id)
+      setCategories(await api.categories())
+      setCategorieId(n.depenses.find((d) => d.id === depense.id)?.categorie?.id ?? '')
+    } catch (err) {
+      setErreur(err.message)
+    } finally {
+      setEnCours(false)
+    }
+  }
+
   async function agir(action) {
     setErreur('')
     setEnCours(true)
@@ -587,6 +602,7 @@ function NoteModalDepense({ note, nature, onClose, onFait }) {
               </option>
             ))}
           </select>
+          {depense?.compte_propose && !categorieId && <ProposerCompte compte={depense.compte_propose} enCours={enCours} onCreer={creerCompte} />}
           <label htmlFor="nf-description">Description</label>
           <input id="nf-description" value={description} onChange={(e) => setDescription(e.target.value)} maxLength={200} />
           <label>Justificatif</label>

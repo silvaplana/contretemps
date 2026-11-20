@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import * as api from '../../api/notesFrais.js'
 import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
-import { BadgeEtat, naturesProposees, Pieces as Vignettes } from './commun.jsx'
+import { BadgeEtat, naturesProposees, Pieces as Vignettes, ProposerCompte } from './commun.jsx'
 import { ChoixTransactionModal } from './Rapprocher.jsx'
 
 // Fiche d'une vente (financier.md §8.12, maquette validée par Seb le 19/11) :
@@ -181,6 +181,29 @@ export default function VenteModal({ note, onClose, onFait }) {
           )}
         </div>
       ))}
+      {modifiable &&
+        note?.depenses.map((d, rang) =>
+          d.compte_propose && !lignes[rang]?.categorieId ? (
+            <ProposerCompte
+              key={d.id}
+              compte={d.compte_propose}
+              enCours={enCours}
+              onCreer={async () => {
+                setErreur('')
+                setEnCours(true)
+                try {
+                  const n = await api.creerCompte(d.id)
+                  setComptes(await api.categories({ ventes: true }))
+                  changerLigne(rang, 'categorieId', n.depenses[rang]?.categorie?.id ?? '')
+                } catch (err) {
+                  setErreur(err.message)
+                } finally {
+                  setEnCours(false)
+                }
+              }}
+            />
+          ) : null,
+        )}
       {modifiable && (
         <button type="button" className="btn btn--link" onClick={() => setLignes([...lignes, { categorieId: '', montant: '', nom: '' }])}>
           Ajouter une ligne

@@ -1458,6 +1458,38 @@ def test_remise_de_cheques_detaillee_une_ligne_par_cheque(client, db_session, ec
     assert [(l["number"], l["amount"]) for l in client.get(f"/finances/operations/{credit.id}", headers=t).json()["lines"]] == [("706", 240.0)]
 
 
+def test_aucun_compte_ne_convient_la_lecture_propose_d_en_creer_un(client, ecole, monkeypatch):
+    """financier.md §8.2 bis : la même lecture propose un compte du plan
+    quand aucun ne convient ; « Créer ce compte » l'ajoute au plan et le pose
+    sur la ligne. Un compte de la mauvaise classe n'est pas proposé."""
+    tresorier = ecole["tresorier"]
+    t = entetes_session(tresorier)
+    client.get("/finances/chart", headers=t)
+    monkeypatch.setattr(
+        main.notes_frais_client.ports, "lecteur",
+        LecteurFacture(date="2026-10-15", montant_centimes=8900, commercant="Danse Shop", description="Chaussons",
+                       compte_propose=("6068", "Fournitures de danse")),
+    )
+    achat = _etablir(client, tresorier, "achat")
+    ligne = achat["depenses"][0]
+    assert ligne["categorie"] is None and ligne["compte_propose"] == "6068 Fournitures de danse"
+    assert client.post(f"/notes-frais/depenses/{ligne['id']}/creer-compte", headers=entetes_session(ecole["eleve"])).status_code == 403
+    cree = client.post(f"/notes-frais/depenses/{ligne['id']}/creer-compte", headers=t)
+    assert cree.status_code == 200, cree.text
+    assert cree.json()["depenses"][0]["categorie"]["code"] == "6068" and cree.json()["depenses"][0]["compte_propose"] is None
+    plan = client.get("/finances/chart", headers=t).json()["accounts"]
+    assert [(a["label"], a["nature"]) for a in plan if a["number"] == "6068"] == [("Fournitures de danse", "depense")]
+    assert "6068" in {c["code"] for c in client.get("/notes-frais/categories", headers=t).json()}
+
+    # Une recette lue avec un compte de charges proposé : rien n'est proposé.
+    monkeypatch.setattr(
+        main.notes_frais_client.ports, "lecteur",
+        LecteurFacture(sorte="vente", date="2026-10-16", montant_centimes=5000, client="Famille Roux", compte_propose=("6068", "X")),
+    )
+    vente = _etablir(client, tresorier, None)
+    assert vente["nature"] == "vente" and vente["depenses"][0]["compte_propose"] is None
+
+
 # --- Personnes extérieures (§7 quater) ---
 
 

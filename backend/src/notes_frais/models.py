@@ -138,6 +138,9 @@ class Depense(Base):
     lue_par_ia: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     # La pièce ne portait qu'un mois : dernier jour retenu, à vérifier (§7 quinquies).
     date_approximative: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
+    # Aucun compte du plan ne convenait à la lecture : celui qu'elle propose de créer,
+    # « 6064 Fournitures de danse » (financier.md §8.2 bis), jusqu'à ce qu'on le crée ou choisisse.
+    suggested_account: Mapped[str | None] = mapped_column(String(100), nullable=True)
     # Null : « À envoyer » (§4.1).
     note_id: Mapped[int | None] = mapped_column(ForeignKey("nf_notes.id"), nullable=True, index=True)
     creee_le: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_maintenant)

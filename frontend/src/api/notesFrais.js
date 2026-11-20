@@ -148,6 +148,8 @@ export const payee = (noteId, operationId, aussi = [], manuel = false) =>
   appel(`/notes/${noteId}/payee`, json('POST', { operation_id: operationId, aussi, manuel }))
 // Rattachée à tort : la pièce rend la ligne du compte (tant que la saison n'est pas clôturée).
 export const detacher = (noteId) => appel(`/notes/${noteId}/detacher`, { method: 'POST' })
+// Le compte proposé par la lecture, créé au plan comptable (financier.md §8.2 bis).
+export const creerCompte = (depenseId) => appel(`/depenses/${depenseId}/creer-compte`, { method: 'POST' })
 // Vente encaissée en espèces : elle entre dans la caisse (financier.md §8.12).
 export const especes = (noteId) => appel(`/notes/${noteId}/especes`, { method: 'POST' })
 export const definirCategories = (libelles) => appel('/categories', json('PUT', { libelles }))
