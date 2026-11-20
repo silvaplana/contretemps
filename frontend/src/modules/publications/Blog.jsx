@@ -785,6 +785,42 @@ function ChoixDocument({ ecoleId, onChoisir, onFermer }) {
   )
 }
 
+// Le mail tel qu'il arrive (Seb, 20 novembre) : l'objet, « Bonjour Prénom, »,
+// le texte, les liens, le document joint, « Cordialement, ». Comme
+// backend publications/mailing.py : content.
+function ApercuMail({ objet, titre, texte, liens, document, prenom, ecole }) {
+  return (
+    <div className="apercu-mail">
+      <p className="apercu-mail__objet">{objet.trim() || 'Objet du mail'}</p>
+      <p>Bonjour {prenom || 'Prénom'},</p>
+      {titre?.trim() && (
+        <p>
+          <strong>{titre}</strong>
+        </p>
+      )}
+      {texte && <TexteRiche texte={texte} />}
+      {liens.map((m) => (
+        <p key={m.cle ?? m.lien} className="apercu-mail__lien">
+          {m.titre || m.lien}
+        </p>
+      ))}
+      {document && (
+        <p className="apercu-mail__piece">
+          <Icon name="paperclip" size={18} />
+          {document.name}
+        </p>
+      )}
+      <p>
+        Cordialement,
+        <br />
+        {prenom}
+        {prenom && <br />}
+        {ecole}
+      </p>
+    </div>
+  )
+}
+
 function Editeur({ actu, auteur, lieu, blog, mediaEnHaut, onRetour, onEnregistrer, onEssai, onSupprimer }) {
   // Chaque photo ou vidéo a une clé, pour la retirer.
   const [brouillon, setBrouillon] = useState(() => ({
@@ -799,7 +835,7 @@ function Editeur({ actu, auteur, lieu, blog, mediaEnHaut, onRetour, onEnregistre
   // Par mail (§12.13, Seb 19 novembre) : aux adhérents ou, pour essayer, à
   // une adresse qu'on écrit ; « Publier dans <blog> » décoché = un mail seul.
   const dejaParMail = actu.envoyeeParMail != null || actu.mailEnPartance
-  const [mail, setMail] = useState({ oui: false, dansLeBlog: true, essai: false, adresses: [], saisie: '' })
+  const [mail, setMail] = useState({ oui: false, objet: '', dansLeBlog: true, essai: false, adresses: [], saisie: '' })
   const changerMail = (champs) => setMail((m) => ({ ...m, ...champs }))
   const [infoMail, setInfoMail] = useState(null) // { destinataires, repondreA, gens }
   useEffect(() => {
@@ -865,6 +901,7 @@ function Editeur({ actu, auteur, lieu, blog, mediaEnHaut, onRetour, onEnregistre
     if (!mail.oui) return ''
     if (!infoMail) return 'Un instant…'
     if (!infoMail.repondreA) return 'Ajoutez l’adresse mail du club dans Admin › École › Coordonnées'
+    if (!mail.objet.trim()) return 'Écrivez l’objet du mail'
     if (mail.essai && !adressesEssai().length) return 'Écrivez l’adresse de l’essai'
     return ''
   }
@@ -1004,13 +1041,13 @@ function Editeur({ actu, auteur, lieu, blog, mediaEnHaut, onRetour, onEnregistre
       if (ajout) return await onEnregistrer({ ...pret, publier })
       if (publier && essai) {
         // L'essai garde l'actu telle qu'elle est (publiée ou non) et reste ici.
-        const gardee = await onEssai({ ...pret, publier: publiee }, adressesEssai().join(', '))
+        const gardee = await onEssai({ ...pret, publier: publiee }, adressesEssai().join(', '), mail.objet.trim())
         if (gardee) changer({ id: gardee.id, media: pret.media })
         return
       }
       // Brouillon : jamais de mail.
       const avecMail = publier && mail.oui
-      await onEnregistrer({ ...pret, publier: avecMail ? mail.dansLeBlog || publiee : publier, parMail: avecMail })
+      await onEnregistrer({ ...pret, publier: avecMail ? mail.dansLeBlog || publiee : publier, parMail: avecMail, objetMail: mail.objet.trim() })
       return true
     } catch (e) {
       window.alert(e.message)
@@ -1264,6 +1301,17 @@ function Editeur({ actu, auteur, lieu, blog, mediaEnHaut, onRetour, onEnregistre
             </div>
             {mail.oui && (
               <div className="editeur__mail-choix">
+                {/* L'objet d'abord (Seb, 20 novembre). */}
+                <label className="editeur__mail-objet">
+                  <span>Objet du mail</span>
+                  <input
+                    type="text"
+                    maxLength={200}
+                    autoFocus
+                    value={mail.objet}
+                    onChange={(e) => changerMail({ objet: e.target.value })}
+                  />
+                </label>
                 {!publiee && (
                   <label className="editeur__mail-case">
                     <input type="checkbox" checked={mail.dansLeBlog} onChange={(e) => changerMail({ dansLeBlog: e.target.checked })} />
@@ -1297,6 +1345,8 @@ function Editeur({ actu, auteur, lieu, blog, mediaEnHaut, onRetour, onEnregistre
           </div>
         )}
         <div className="actus__periode">Ce que verront les autres</div>
+        {/* L'actu et le mail, les deux (Seb, 20 novembre). */}
+        {mail.oui && !dejaParMail && <div className="editeur__apercu-titre">Dans {blog.nom}</div>}
         <div className="editeur__apercu">
           <CarteActu
             lieu={lieu}
@@ -1313,6 +1363,20 @@ function Editeur({ actu, auteur, lieu, blog, mediaEnHaut, onRetour, onEnregistre
             }}
           />
         </div>
+        {mail.oui && !dejaParMail && (
+          <>
+            <div className="editeur__apercu-titre">Dans le mail</div>
+            <ApercuMail
+              objet={mail.objet}
+              titre={blog.avecCategories ? brouillon.titre : ''}
+              texte={brouillon.texte}
+              liens={brouillon.media.filter((m) => m.lien)}
+              document={brouillon.document}
+              prenom={auteur}
+              ecole={infoMail?.ecole ?? ''}
+            />
+          </>
+        )}
         {actu.id && (
           <button type="button" className="editeur__supprimer" onClick={() => onSupprimer(actu)}>
             Supprimer
@@ -1454,7 +1518,7 @@ export default function Blog({ ecoleId, blog, prenom }) {
       const actu = await api.enregistrer(lieu, brouillon)
       const vientDePublier = brouillon.publier && !edite.publieeLe
       // Par mail (§12.13) : il part 10 s après, « Annuler » le retient.
-      const parMail = brouillon.parMail ? await api.envoyerMail(lieu, actu.id) : null
+      const parMail = brouillon.parMail ? await api.envoyerMail(lieu, actu.id, null, brouillon.objetMail) : null
       setEdite(null)
       await charger()
       const adresses = (n) => `${n} ${n > 1 ? 'adresses' : 'adresse'}`
@@ -1484,10 +1548,10 @@ export default function Blog({ ecoleId, blog, prenom }) {
   }
 
   // « Envoyer l'essai » : l'actu est gardée telle quelle et l'éditeur reste ouvert.
-  async function essayer(brouillon, adresse) {
+  async function essayer(brouillon, adresse, objet) {
     try {
       const actu = await api.enregistrer(lieu, brouillon)
-      await api.envoyerMail(lieu, actu.id, adresse)
+      await api.envoyerMail(lieu, actu.id, adresse, objet)
       montrer(`Essai envoyé à ${adresse.split(', ').length > 1 ? adresse.replace(/, ([^,]*)$/, ' et $1') : adresse}`)
       return actu
     } catch (e) {

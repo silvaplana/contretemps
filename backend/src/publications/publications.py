@@ -141,6 +141,9 @@ class Publications:
         # the address of the school's app.
         self.send_mails = None
         self.org_url = None
+        # (db, DocNode) -> (file name, bytes) | None: the post's document,
+        # attached to the mail (wired by module.py, from Documents).
+        self.document_file = None
 
     # --- Blogs (§12.2, §12.3) ---
 
@@ -575,10 +578,13 @@ class Publications:
         ecole = db.get(Ecole, blog.org_id)
         return len(mailing.recipients(db, blog, can_read)), (ecole.email_contact or "").strip() or None
 
-    def request_mail(self, db: Session, blog: Blog, post: Post, test_address: str | None = None) -> int:
+    def request_mail(self, db: Session, blog: Blog, post: Post, test_address: str | None = None,
+                     subject: str | None = None) -> int:
         """A test goes at once to those addresses, and marks nothing. Otherwise
         the mail leaves 10 s later, like the notification (« Annuler »), once
-        per post. Returns how many addresses. Raises mailing.InvalidMail."""
+        per post. `subject`: the « Objet du mail » typed. Returns how many
+        addresses. Raises mailing.InvalidMail."""
+        subject = (subject or "").strip()[:200] or None
         count, reply_to = self.mail_info(db, blog)
         if reply_to is None:
             raise mailing.InvalidMail(
@@ -586,10 +592,11 @@ class Publications:
             )
         if test_address is not None:
             # Raises RuntimeError when nothing left: the screen says so.
-            return len(self._mail(db, blog, post, mailing.clean_addresses(test_address)))
+            return len(self._mail(db, blog, post, mailing.clean_addresses(test_address), subject))
         if post.mail_requested_at is not None:
             raise mailing.InvalidMail("Déjà envoyée par mail")
         post.mail_requested_at = _now()
+        post.mail_subject = subject
         db.commit()
         self._schedule_mail(post.id)
         return count
@@ -612,7 +619,7 @@ class Publications:
         db.commit()
         blog = db.get(Blog, post.blog_id)
         try:
-            sent = self._mail(db, blog, post, mailing.recipients(db, blog, can_read))
+            sent = self._mail(db, blog, post, mailing.recipients(db, blog, can_read), post.mail_subject)
         except RuntimeError:
             # Nothing left: the card says « Envoyée par mail à 0 adresse ».
             post.mailed_to = 0
@@ -622,16 +629,20 @@ class Publications:
         db.commit()
         return len(sent)
 
-    def _mail(self, db: Session, blog: Blog, post: Post, addresses: list[str]) -> list[str]:
+    def _mail(self, db: Session, blog: Blog, post: Post, addresses: list[str], subject: str | None = None) -> list[str]:
         ecole = db.get(Ecole, post.org_id)
         sha = next((m.photo_sha for m in post.media if m.photo_sha), None)
         path = self.storage.thumbnail_path(post.org_id, sha) if sha else None
         images = [("photo", path.read_bytes())] if path is not None and path.exists() else None
         names = mailing.first_names(db, post.org_id)
+        # The post's document goes with it (Seb, 20 November).
+        node = self.document(db, post)
+        attached = self.document_file(db, node) if node is not None and self.document_file else None
         return self.send_mails(
             db, post.org_id, addresses,
-            lambda address: mailing.content(blog, post, ecole.nom, images is not None, names.get(address, "")),
+            lambda address: mailing.content(blog, post, ecole.nom, images is not None, names.get(address, ""), subject),
             images=images,
+            pieces_jointes=[attached] if attached else None,
         )
 
     def _schedule_mail(self, post_id: int) -> None:

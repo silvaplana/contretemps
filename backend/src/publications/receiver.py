@@ -257,7 +257,8 @@ class PublicationsReceiver:
         blog = self._publisher(db, appelant, ecole_id, blog_id)
         count, reply_to = self.client.mail_info(db, blog)
         people = [{"name": n, "email": e} for n, e in mailing.people(db, blog.org_id)]
-        return MailInfoOut(recipients=count, reply_to=reply_to, people=people)
+        ecole = db.get(Ecole, blog.org_id)
+        return MailInfoOut(recipients=count, reply_to=reply_to, people=people, school=ecole.nom if ecole else "")
 
     def mail(self, ecole_id: int, blog_id: int, post_id: int, data: MailIn, db: Session = Depends(get_db),
              appelant: Compte = Depends(rbac.compte_appelant)):
@@ -266,7 +267,7 @@ class PublicationsReceiver:
         if data.test_address is None and post.mail_requested_at is not None:
             raise HTTPException(status_code=409, detail="Déjà envoyée par mail")
         try:
-            count = self.client.request_mail(db, blog, post, data.test_address)
+            count = self.client.request_mail(db, blog, post, data.test_address, data.subject)
         except mailing.InvalidMail as erreur:
             raise HTTPException(status_code=400, detail=str(erreur)) from erreur
         except RuntimeError as erreur:  # l'envoi refusé (SMTP), dit tel quel

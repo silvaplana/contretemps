@@ -788,7 +788,9 @@ Comme dans WhatsApp (maquette « Sondage », https://claude.ai/artifact/DRaBaxfS
 Comme les lettres de Substack ou Ghost (maquette « Actu envoyée par mail »,
 https://claude.ai/artifact/Nyjz67cSVg7jo8CdBgggsL).
 
-- Dans l'éditeur, interrupteur « Envoyer par mail ». Dessous : « Publier aussi dans <blog> » (décoché :
+- Dans l'éditeur, interrupteur « Envoyer par mail ». Dessous, d'abord **« Objet du mail »** (Seb,
+  20 novembre ; vide au départ, obligatoire : « Écrivez l'objet du mail » ; gardé dans
+  `pub_posts.mail_subject` pour l'envoi 10 s après), puis « Publier aussi dans <blog> » (décoché :
   un mail seul, rien dans le blog, pas de notification) ; « Aux adhérents de la saison (N adresses) »
   ou « Pour essayer, à une ou plusieurs adresses : ». Le bouton principal dit ce qui se passe :
   « Publier et envoyer », « Enregistrer et envoyer », « Envoyer le mail », « Envoyer l'essai ».
@@ -800,10 +802,12 @@ https://claude.ai/artifact/Nyjz67cSVg7jo8CdBgggsL).
   du club** (Admin › École › Coordonnées), jamais à Brevo qui ne reçoit rien (Seb) ; sans adresse
   de contact, pas d'envoi.
 - Le mail ressemble à un simple mail (Seb, 20 novembre : la mise en page de lettre d'information le
-  faisait ranger par Gmail dans Promotions) : sujet = titre ou 1re ligne (80 caractères au plus, sans
-  « Actus · »), « Bonjour <prénom>, » (« Bonjour Lou et Léo, » pour une adresse de famille,
+  faisait ranger par Gmail dans Promotions) : sujet = l'objet saisi (sans objet, ancienne demande :
+  le titre ou la 1re ligne, 80 caractères au plus, sans « Actus · »), « Bonjour <prénom>, » (« Bonjour Lou et Léo, » pour une adresse de famille,
   « Bonjour, » pour une adresse inconnue de l'école), le texte, la première photo, les liens de la
-  publication, puis « Cordialement, », le prénom de qui publie et le nom de l'école. Rien d'autre : ni
+  publication, puis « Cordialement, », le prénom de qui publie et le nom de l'école. Le document de la
+  publication part en pièce jointe : le fichier de Docs tel quel, ou le PDF d'une convocation à l'AG.
+  « Ce que verront les autres » montre les deux : « Dans <blog> » (la carte) et « Dans le mail ». Rien d'autre : ni
   « Lire sur l'appli », ni lien « Ne plus recevoir les actus par mail » (Seb : « pas de lien, pas de
   désabonnement »). Les adresses déjà désinscrites restent exclues et la page de désinscription répond
   toujours aux liens des mails déjà partis.

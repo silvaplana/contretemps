@@ -7,6 +7,7 @@ from db import SessionLocal
 from ecoles import mail_ecole
 from registry import Module, guide_file
 
+from . import mailing
 from .actions import actions
 from .instagram import InstagramApp, InstagramRelay
 from .publications import Publications, org_rights
@@ -21,6 +22,9 @@ def mount(app, core) -> None:
     )
     core.publications_client.send_mails = mail_ecole.envoyer_a_chacun
     core.publications_client.org_url = _org_url
+    core.publications_client.document_file = lambda db, node: mailing.document_attachment(
+        core.documents_client, db, node
+    )
     core.publications_instagram = InstagramRelay(core.publications_client, app=InstagramApp.from_env())
     PublicationsReceiver(client=core.publications_client, instagram=core.publications_instagram, app=app,
                          org_url=_org_url)

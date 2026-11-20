@@ -127,9 +127,35 @@ def optout_page(school: str, out: bool) -> str:
     )
 
 
+# --- The post's document, attached ---
+
+def document_attachment(docs, db: Session, node) -> tuple[str, bytes] | None:
+    """(name, bytes) of a post's document: the file as stored in Docs, or
+    for a convocation to the AG (a file the app fills), its PDF."""
+    from documents import assembly
+    from documents.models import DocVersion, StoredFile
+
+    if node.kind == "folder":
+        return None
+    version = db.get(DocVersion, node.current_version_id or 0)
+    stored = db.get(StoredFile, version.stored_file_id) if version is not None else None
+    if stored is not None:
+        path = docs.storage.path(node.org_id, stored.sha256)
+        return (node.name, path.read_bytes()) if path.exists() else None
+    app_version = docs.apps.current_version(db, node)
+    if app_version is not None and assembly.block_of(app_version.content) is not None:
+        school = docs.mailer.org(db, node.org_id)[0] if docs.mailer is not None else ""
+        return f"{node.name}.pdf", assembly.convocation_pdf(app_version.content, node.name, school)
+    return None
+
+
 # --- The mail itself ---
 
-def subject(blog: Blog, post: Post) -> str:
+def subject(blog: Blog, post: Post, typed: str | None = None) -> str:
+    """The « Objet du mail » typed (Seb, 20 November), else the title or the
+    first line."""
+    if typed:
+        return typed
     headline = post.title if blog.with_categories and post.title else (formatting.plain(post.body).strip().splitlines() or [""])[0]
     if len(headline) > SUBJECT_CHARS:
         headline = headline[: SUBJECT_CHARS - 1].rstrip() + "…"
@@ -137,7 +163,7 @@ def subject(blog: Blog, post: Post) -> str:
     return headline or f"Nouveau dans {blog.name}"
 
 
-def content(blog: Blog, post: Post, school: str, photo: bool, name: str = ""):
+def content(blog: Blog, post: Post, school: str, photo: bool, name: str = "", typed_subject: str | None = None):
     """(subject, text, html) for one address, written like an ordinary mail
     (Seb, 20 November: the newsletter look sent it to Gmail's Promotions):
     « Bonjour Prénom, », the post, « Cordialement, », the author and the
@@ -166,4 +192,4 @@ def content(blog: Blog, post: Post, school: str, photo: bool, name: str = ""):
         parts.append(f'{p}<a href="{escape(u, True)}">{escape(t)}</a></p>')
     parts.append(f"{p}{'<br>'.join(escape(x) for x in signature)}</p>")
     html = '<div style="font-family:Arial,sans-serif;color:#1f1f1f;max-width:600px">' + "".join(parts) + "</div>"
-    return subject(blog, post), text, html
+    return subject(blog, post, typed_subject), text, html
