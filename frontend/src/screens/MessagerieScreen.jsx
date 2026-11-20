@@ -3,6 +3,7 @@ import * as conversationsApi from '../api/conversations.js'
 import * as messagesApi from '../api/messages.js'
 import Icon from '../components/Icon.jsx'
 import SegmentedTabs from '../components/SegmentedTabs.jsx'
+import { useLieu } from '../app/lieu.js'
 import * as mailApi from '../modules/mail/api.js'
 import MailScreen from '../modules/mail/MailScreen.jsx'
 import { pucesMail } from '../modules/mail/puces.jsx'
@@ -272,6 +273,16 @@ export default function MessagerieScreen({
   }
 
   const surLaListe = !voirMail && !selected && !frame && !nouvelleDiscussion
+  // Pour l'assistant (app/lieu.js) : Chat et ce qui y est ouvert ; Mail le dit lui-même (Boite.jsx).
+  const contact = frame?.cible.type === 'conversation' ? frame.cible.conversation : frame?.cible.compte
+  useLieu(voirMail ? [] : ['Chat', nouvelleDiscussion && !selected && !frame && 'Nouvelle discussion'], [
+    !voirMail && selected && { nature: 'conversation', id: selected.id, nom: selected.nom },
+    !voirMail && !selected && contact && {
+      nature: frame.cible.type === 'conversation' ? 'conversation' : 'fiche de contact',
+      id: contact.id,
+      nom: contact.nom && [contact.prenom, contact.nom].filter(Boolean).join(' '),
+    },
+  ])
 
   return (
     <>

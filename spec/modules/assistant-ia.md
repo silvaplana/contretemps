@@ -19,6 +19,14 @@ pour Contretemps est marqué *(Contretemps)*.
 - À l'ouverture, deux ou trois suggestions **propres à l'onglet ouvert** (Docs : le dossier ; Présence :
   les absences ; Administration : créer un cours…), plus « Fais une note de frais » partout. Créer un
   groupe n'est suggéré qu'aux administrateurs. Le fichier de l'appli a les siennes (Seb, 19 octobre).
+- **Il sait où est la personne** (Seb, 20/11) : chaque question part avec le chemin de l'écran, avec
+  ses libellés (« Financier › Bilan › Préparer › 3. Rapprocher… », « Administration › Élèves »,
+  « Messagerie › Mail › Boîte du club › Boîte de réception »), et ce qui y est ouvert (transaction,
+  pièce, bilan, AG, prévisionnel, élève, professeur, cours, conversation, mail, dossier HelloAsso…,
+  avec son numéro et un nom lisible) : « cette transaction » suffit. Chaque écran le déclare
+  (`frontend/src/app/lieu.js`, `useLieu`) ; ailleurs, l'onglet seul. Le serveur vérifie et plafonne ce
+  que le navigateur envoie (8 libellés, 5 éléments ouverts). Dans Docs, rien ne change (dossier,
+  sélection, fichier de l'appli ouvert).
 - Code : `backend/src/assistant/`, `frontend/src/modules/documents/Assistant.jsx`, `AssistantGlobal.jsx`.
 
 ## 2. Règles

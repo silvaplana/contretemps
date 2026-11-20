@@ -3,6 +3,7 @@ import { useApparence } from '../../api/apparence.js'
 import { useSaisonConsultee } from '../../api/saison.js'
 import { MODULES, listeImposee } from '../../app/modules.js'
 import * as sessionApi from '../../api/session.js'
+import { useLieu } from '../../app/lieu.js'
 import SegmentedTabs from '../../components/SegmentedTabs.jsx'
 import AdminCours from './AdminCours.jsx'
 import AdminEleves from './AdminEleves.jsx'
@@ -118,6 +119,8 @@ export default function AdminScreen({
   // Un module éteint depuis : retour aux élèves.
   const onglet = sousOnglets.some((o) => o.value === subTab) ? subTab : 'eleves'
   const ongletModule = ongletsModules.find((o) => o.value === onglet)
+  // Pour l'assistant (app/lieu.js) : le sous-onglet, avec les mots de l'école.
+  useLieu([{ ecole: motEcole, eleves: motEleves, professeurs: motProfs, cours: motCours }[onglet] ?? ongletModule?.label])
 
   return (
     <div className="screen screen--admin">

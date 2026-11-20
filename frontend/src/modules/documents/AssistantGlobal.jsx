@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { ajouterProduit } from '../../api/assistant.js'
+import { lieuActuel } from '../../app/lieu.js'
 import { documentsApi } from '../../api/documents.js'
 import Assistant from './Assistant.jsx'
 import { docsBranche, ecrireStockage, fichierBranche, lireStockage, ouvrirDansDocs } from './assistantGlobal.js'
@@ -38,6 +39,7 @@ function useBureau() {
 const ONGLETS = {
   presence: 'Présence', heures: 'Heures', choregraphie: 'Chorégraphies', messagerie: 'Messagerie',
   admin: 'Administration', profil: 'Profil', supervision: 'Supervision', docs: 'Docs',
+  financier: 'Financier', 'notes-frais': 'Mes notes de frais', sparring: 'Fights', ffst: 'FFST',
 }
 
 // Suggestions de l'accueil selon l'onglet (Seb, 19 octobre : celles de Docs
@@ -122,14 +124,17 @@ export default function AssistantGlobal({ etat, onglet, onNavigate, admin = fals
     if (!bureau) etat.fermer()
   }
 
-  // Lu au moment d'envoyer : le dossier ouvert dans Docs, ou l'onglet.
+  // Lu au moment d'envoyer : le dossier ouvert dans Docs, ou l'onglet, le
+  // chemin de l'écran et ce qui y est ouvert (app/lieu.js ; Seb, 20/11).
   function contexte() {
     const docs = docsBranche()
     // Un fichier de l'appli ouvert : l'assistant travaille dessus.
     const ouvert = onglet === 'docs' ? fichierBranche()?.contexte() : null
     if (ouvert) return ouvert
     if (onglet === 'docs' && docs) return docs.contexte()
-    return { onglet: ONGLETS[onglet] ?? onglet }
+    const nom = ONGLETS[onglet] ?? (onglet?.startsWith('blog-') ? 'Blog' : onglet)
+    const lieu = lieuActuel()
+    return { onglet: nom, chemin: [nom, ...lieu.chemin], ouvert: lieu.ouvert }
   }
 
   function redimensionner(e) {

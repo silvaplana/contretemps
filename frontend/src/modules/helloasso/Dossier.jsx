@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import Modal from '../../components/Modal.jsx'
 import { enEuros } from '../../utils/euros.js'
 import * as api from './api.js'
+import { useLieu } from '../../app/lieu.js'
 import { MailModal, dehors, useToast } from './Contact.jsx'
 
 // Vérification des dossiers (spec/modules/helloasso.md §7.5, maquette
@@ -38,6 +39,7 @@ function useValider(ecoleId, eleve, apres) {
 function DossierModal({ ecoleId, eleve, check, onClose, onEcrire, onValider }) {
   const [fichiers, setFichiers] = useState([])
   const [erreur, setErreur] = useState('')
+  useLieu([], { nature: 'dossier de l’adhérent', id: eleve.id, nom: `${eleve.prenom} ${eleve.nom}` })
   useEffect(() => {
     api
       .adherent(ecoleId, eleve.id)
@@ -163,6 +165,7 @@ function VerificationModal({ ecoleId, onClose }) {
   const [erreur, setErreur] = useState('')
   const [toast, montrer] = useToast()
   const [lancee, setLancee] = useState(false)
+  useLieu([], { nature: 'fenêtre', nom: 'Vérification des adhérents' })
   useEffect(() => {
     api
       .verification(ecoleId)

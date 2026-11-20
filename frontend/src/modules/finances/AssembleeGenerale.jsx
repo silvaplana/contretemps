@@ -12,6 +12,7 @@ import Icon from '../../components/Icon.jsx'
 import { enEuros } from '../../utils/euros.js'
 import { telechargerFichier } from '../../utils/telechargement.js'
 import * as api from './api.js'
+import { useLieu } from '../../app/lieu.js'
 import './finances.css'
 import { mots } from '../../api/mots.js'
 
@@ -280,6 +281,7 @@ function AssemblyPanel({ assemblyId, season, options, onClose, onCreated }) {
   const [kind, setKind] = useState(null)
   // PowerPoint des autres AG utilisables comme modèle.
   const [sources, setSources] = useState([])
+  useLieu([], assemblyId == null ? { nature: 'AG', nom: 'Nouvelle AG' } : { nature: 'AG', id: assemblyId, nom: assembly?.name })
 
   const load = useCallback(async () => {
     const data = await api.assemblee(assemblyId)

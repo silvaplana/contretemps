@@ -14,6 +14,7 @@ import RevueReleves from "./RevueReleves.jsx";
 import RelevesGrille, { RELEVES_EVENT } from "./RelevesGrille.jsx";
 import Caisse from "./compta/Caisse.jsx";
 import FicheOperation from "./compta/FicheOperation.jsx";
+import { useLieu } from "../../app/lieu.js";
 import PlanComptable, {
   PLAN_EVENTS,
   nomCompte,
@@ -400,6 +401,22 @@ export default function Comptes({ onChange }) {
   const [ficheOp, setFicheOp] = useState(null);
   const [volet, setVolet] = useState(null); // null | 'plan' | 'soldes' | 'releves' | 'balance'
   const [manque, setManque] = useState(null); // null | 'account' | 'piece'
+  // Pour l'assistant (app/lieu.js) : le volet ouvert, sinon le compte, l'affichage
+  // et le filtre ; la Balance dit elle-même où elle en est.
+  const compteVu = (ledger?.allAccounts ?? []).find((a) => String(a.id) === view);
+  useLieu(
+    banqueOuverte
+      ? ["Comptes", "Se connecter aux comptes en banque"]
+      : volet
+        ? ["Comptes", { plan: "Plan comptable", soldes: "Soldes de départ", releves: "Relevés" }[volet]]
+        : [
+            "Comptes",
+            view === CAISSE_VIEW ? "Caisse" : compteVu ? shortName(compteVu) : "Tous",
+            display === "table" ? "Tableau" : "Graphique",
+            { account: "À catégoriser", piece: "Justificatif manquant" }[manque],
+          ],
+    compteVu && fiche === compteVu.id && { nature: "compte en banque", id: compteVu.id, nom: compteVu.name },
+  );
 
   const load = useCallback(async () => {
     try {

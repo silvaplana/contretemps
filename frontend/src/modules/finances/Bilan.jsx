@@ -11,6 +11,7 @@ import DocumentsAG from './compta/DocumentsAG.jsx'
 import Preparer from './compta/Preparer.jsx'
 import { prendreSaisonDemandee } from './navigation.js'
 import * as sessionApi from '../../api/session.js'
+import { useLieu } from '../../app/lieu.js'
 import { enEuros } from '../../utils/euros.js'
 import { telechargerFichier } from '../../utils/telechargement.js'
 import * as api from './api.js'
@@ -146,6 +147,10 @@ export default function Bilan() {
     window.addEventListener(NEW_EVENT, open)
     return () => window.removeEventListener(NEW_EVENT, open)
   }, [])
+
+  // Pour l'assistant (app/lieu.js) : Préparer ou la liste des bilans, et la saison choisie.
+  const saison = seasons?.find((s) => s.id === seasonId)
+  useLieu(['Bilan', onglet === 'documents' ? 'Liste des bilans' : 'Préparer'], saison && { nature: 'saison', id: saison.id, nom: saison.name })
 
   if (error) return <p className="login-screen__erreur">{error}</p>
   if (!seasons) return <p className="muted">Chargement…</p>
@@ -409,6 +414,7 @@ function ReportPanel({ reportId, season, options, onClose, onCreated }) {
   // Bilan produit replié par défaut (Seb, 29 octobre) : les documents de l'AG
   // restent visibles dessous ; déplié après « Produire le bilan ».
   const [deplie, setDeplie] = useState(false)
+  useLieu([], reportId == null ? { nature: 'bilan', nom: 'Nouveau bilan' } : { nature: 'bilan', id: reportId, nom: report?.name })
 
   const load = useCallback(async () => {
     const data = await api.bilan(reportId)

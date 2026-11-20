@@ -7,6 +7,7 @@
 import { useEffect, useState } from 'react'
 import { telechargerFichier } from '../../../utils/telechargement.js'
 import * as api from '../api.js'
+import { useLieu } from '../../../app/lieu.js'
 import { demanderEtape, requestFichePiece } from '../navigation.js'
 import './compta.css'
 
@@ -100,6 +101,7 @@ export default function Balance({ onClose, onglet = 'balance' }) {
   }, [demande])
 
   const saison = data?.seasons.find((s) => s.id === data.seasonId)
+  useLieu(['Comptes', VUES.find((v) => v.id === vue)?.label], saison && { nature: 'saison', id: saison.id, nom: saison.name })
 
   function basculer(numero) {
     setOuverts((o) => {

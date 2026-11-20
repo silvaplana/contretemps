@@ -3,6 +3,7 @@ import Icon from '../components/Icon.jsx'
 import Modal from '../components/Modal.jsx'
 import { isAdmin } from '../data/roles.js'
 import { mots } from '../api/mots.js'
+import { useLieu } from '../app/lieu.js'
 
 const CYCLE = ['present', 'absent', 'retard']
 const ICONS = { present: 'check', absent: 'x', retard: 'clock' }
@@ -67,6 +68,11 @@ export default function PresenceScreen({
   showAdd,
   setShowAdd,
 }) {
+  // Pour l'assistant (app/lieu.js) : le cours choisi dans l'en-tête.
+  useLieu([], [
+    cours && { nature: 'cours', id: cours.id, nom: cours.nom },
+    showAdd && { nature: 'fenêtre', nom: 'Ajouter une date de présence' },
+  ])
   if (!cours) return null
 
   const rosterEleves = eleves.filter((el) => el.coursIds.includes(cours.id))

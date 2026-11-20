@@ -5,6 +5,7 @@ octobre)."""
 from __future__ import annotations
 
 from dataclasses import replace
+from typing import Any
 
 from comptes import Compte, rbac, roles
 from comptes.models import RoleCompte
@@ -27,6 +28,11 @@ class Contexte(BaseModel):
     # Onglet de l'appli quand on n'est pas dans Docs (l'assistant est
     # ouvert partout, Seb 16 octobre).
     onglet: str | None = Field(default=None, max_length=40)
+    # Hors de Docs, le chemin de l'écran (libellés) et ce qui y est ouvert
+    # ({nature, id, nom}) : vérifiés et plafonnés par assistant._lieu ; une
+    # valeur mal formée est ignorée sans refuser la question (Seb, 20/11).
+    chemin: Any = None
+    ouvert: Any = None
     space: str | None = None
     folder_id: int | None = None
     selection_id: int | None = None

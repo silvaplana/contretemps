@@ -15,9 +15,16 @@ import { nomCompte } from './PlanComptable.jsx'
 import { Etape6Documents, Etape7Cloture, useDocumentsSaison } from './DocumentsSaison.jsx'
 import EcrituresFinAnnee from './EcrituresFinAnnee.jsx'
 import * as api from '../api.js'
+import { useLieu } from '../../../app/lieu.js'
 import './compta.css'
 
 const { euros, dateFr } = api
+
+// L'étape dépliée, pour l'assistant (app/lieu.js).
+function LieuEtape({ etape }) {
+  useLieu(['Bilan', 'Préparer', etape])
+  return null
+}
 
 export default function Preparer({ season }) {
   const [etat, setEtat] = useState(null)
@@ -133,6 +140,7 @@ export default function Preparer({ season }) {
               </span>
               <span className="fin-cp-s">{e.detail}</span>
             </button>
+            {ouverte === e.n && <LieuEtape etape={`${e.n}. ${e.titre}`} />}
             {ouverte === 1 && e.n === 1 && <RelevesGrille seasonId={season.id} onClose={() => setOuverte(null)} onImport={charger} />}
             {ouverte === 2 && e.n === 2 && <SoldesDepart initialSeasonId={season.id} onClose={() => setOuverte(null)} />}
             {ouverte === 3 && e.n === 3 && (

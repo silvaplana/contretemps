@@ -11,6 +11,7 @@ import {
   useProgressionTeleversement,
 } from '../../utils/videoUploads.js'
 import * as sessionApi from '../../api/session.js'
+import { useLieu } from '../../app/lieu.js'
 import * as partage from './partage.js'
 import * as api from './api.js'
 import AdressesEssai from './AdressesEssai.jsx'
@@ -1453,6 +1454,7 @@ const aEditer = (actu) => ({ ...actu, categorie: actu.categories[0]?.nom ?? '', 
 
 export default function Blog({ ecoleId, blog, prenom }) {
   const lieu = useMemo(() => ({ ecoleId, blogId: blog.id }), [ecoleId, blog.id])
+  useLieu([blog.nom]) // l'onglet du blog, à son nom, pour l'assistant
   const [fil, setFil] = useState(null) // { peutPublier, mediaEnHaut, actus, brouillons }
   // Au retour d'Instagram, les paramètres s'ouvrent sur le résultat.
   const [parametres, setParametres] = useState(() => Boolean(retourInstagram) && [null, blog.id].includes(blogDuRetourInstagram()))

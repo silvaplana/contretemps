@@ -95,9 +95,10 @@ dossier ou d'un fichier.
 - Pour toute modification (créer, ranger, renommer), utilise un outil « proposer_… ». La \
 proposition s'affiche à la personne avec « Faire » et « Annuler » : elle décide. Dis-le en \
 une phrase, sans prétendre que c'est fait. Tu sauras au message suivant si elle l'a faite.
-- Un message commence par le contexte (l'onglet de l'appli, ou dans Docs le dossier ouvert) : \
-sers-t'en pour comprendre « ce dossier » ou « ce fichier ». Tu es le même assistant dans tous \
-les onglets, avec la même conversation.
+- Un message commence par le contexte (l'écran de l'appli et ce qui y est ouvert, ou dans Docs \
+le dossier ouvert) : sers-t'en pour comprendre « ce dossier », « ce fichier », « cette \
+transaction », « cet élève », « ce bilan »… : c'est celui qui est ouvert (son id sert aux outils). \
+Tu es le même assistant dans tous les onglets, avec la même conversation.
 
 Tu peux aussi proposer des changements dans les données de l'école (élèves, inscriptions aux \
 cours, paiements, commentaire de l'administration, élève en rouge, présences, heures des \
@@ -122,6 +123,32 @@ fabrique, et liste ce dossier pour vérifier : il lui sera proposé avec « Fair
 rangé dans le dossier qu'elle regarde. Donne-lui un nom clair en français (ex. \
 « Courbe des inscriptions.pdf »)."""
 CONSIGNE += CONSIGNE_FICHIER
+
+
+def _texte(valeur, longueur: int) -> str:
+    """Un libellé envoyé par le navigateur, sur une ligne, plafonné ; "" sinon."""
+    if isinstance(valeur, bool) or not isinstance(valeur, (str, int)):
+        return ""
+    return " ".join(str(valeur).replace("«", "").replace("»", "").split())[:longueur]
+
+
+def _lieu(contexte: dict) -> tuple[list[str], list[str]]:
+    """L'écran où est la personne et ce qui y est ouvert (frontend app/lieu.js) :
+    `chemin`, des libellés ; `ouvert`, des {nature, id, nom}. Donnée du
+    navigateur : ce qui n'a pas la bonne forme est ignoré, tout est plafonné."""
+    chemin = contexte.get("chemin")
+    chemin = [_texte(x, 60) for x in chemin[:8]] if isinstance(chemin, list) else []
+    ouvert = contexte.get("ouvert")
+    ouverts = []
+    for o in ouvert[:20] if isinstance(ouvert, list) else []:
+        if len(ouverts) == 5:
+            break
+        if not isinstance(o, dict) or not (nature := _texte(o.get("nature"), 40)):
+            continue
+        nom, ident = _texte(o.get("nom"), 120), _texte(o.get("id"), 40)
+        if nom or ident:
+            ouverts.append(" ".join(x for x in (nature, nom and f"« {nom} »", ident and f"(id {ident})") if x))
+    return [c for c in chemin if c], ouverts
 
 
 def _prop(type_, description, **autres):
@@ -327,7 +354,12 @@ class Assistant:
         espace = contexte.get("space") if contexte.get("space") in ESPACES else "private"
         lignes = [f"Contexte : la personne est dans l'espace « {ESPACES[espace]} »"]
         dossier_id = contexte.get("folder_id")
-        if contexte.get("onglet"):
+        chemin, ouverts = _lieu(contexte)
+        if chemin:
+            # Hors de Docs, l'écran où est la personne (Seb, 20/11). Pas de
+            # dossier ouvert (« ici » = les fichiers vont à la racine de Privé).
+            lignes = [f"Contexte : la personne est dans « {' › '.join(chemin)} » de l'appli, pas dans Docs"]
+        elif contexte.get("onglet"):
             # Hors de Docs : pas de dossier ouvert (« ici » = les fichiers vont à la racine de Privé).
             lignes = [f"Contexte : la personne est dans l'onglet « {contexte['onglet']} » de l'appli, pas dans Docs"]
         elif dossier_id:
@@ -361,6 +393,8 @@ class Assistant:
                     pass
             if noms:
                 lignes.append(f"Elle a sélectionné {len(noms)} éléments : {', '.join(noms)}.")
+        if ouverts:
+            lignes.append(f"Elle a ouvert : {' ; '.join(ouverts)}.")
         if contexte.get("app_id"):
             try:
                 lignes.append(self.fichier_appli.contexte(db, member, int(contexte["app_id"]), contexte.get("form")))

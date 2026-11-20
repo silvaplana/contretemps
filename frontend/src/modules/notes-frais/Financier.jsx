@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import * as api from '../../api/notesFrais.js'
 import * as finApi from '../finances/api.js'
 import * as sessionApi from '../../api/session.js'
+import { useLieu } from '../../app/lieu.js'
 import MenuEntete from '../../components/MenuEntete.jsx'
 import SegmentedTabs from '../../components/SegmentedTabs.jsx'
 import AssembleeGenerale, { requestGeneralTemplate, requestNewAssembly } from '../finances/AssembleeGenerale.jsx'
@@ -153,6 +154,18 @@ export default function Financier({ docs = null }) {
   }, [])
   useEffect(rechargerAFaire, [rechargerAFaire])
   const totalAFaire = Object.values(aFaire).reduce((a, b) => a + b, 0)
+  // Pour l'assistant (app/lieu.js) : le sous-onglet ; chacun ajoute la suite.
+  const volet = sousOnglet === 'bilan' && aCote && large
+  useLieu(
+    aide ? ['Aide en ligne comptabilité'] : [SOUS_ONGLETS.find((o) => o.value === sousOnglet)?.label, pour && `Pour ${pour.personne.nom}`],
+    [
+      volet && { nature: 'volet', nom: `À côté du bilan : ${NOMS_A_COTE[aCote]}` },
+      docsPlein && sousOnglet === 'bilan' && { nature: 'volet', nom: 'Docs' },
+      exterieurs && { nature: 'fenêtre', nom: 'Extérieurs' },
+      emplacements && { nature: 'fenêtre', nom: 'Emplacement des pièces manuelles' },
+      importAuto && { nature: 'fenêtre', nom: 'Importation automatique de pièces' },
+    ],
+  )
 
   if (aide) {
     return (
@@ -182,7 +195,6 @@ export default function Financier({ docs = null }) {
       setPour({ personne, action })
     }} />
   )
-  const volet = sousOnglet === 'bilan' && aCote && large
 
   return (
     <div className={`screen nf-screen${volet ? ' nf-screen--a-cote' : ''}`}>
