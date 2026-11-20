@@ -136,6 +136,12 @@ class WriteRequest(BaseModel):
     model: str | None = None
 
 
+class CorrectionRequest(BaseModel):
+    """Corps de POST /finances/reports/{id}/rapport/correction : ce qu'il faut changer."""
+
+    instruction: str
+
+
 class ResetSeasonRequest(BaseModel):
     confirm: str  # le nom de la saison, retapé
     snapshotId: int | None = None  # la copie du plan à remettre (sinon la dernière)
@@ -759,8 +765,16 @@ class FinancesReceiver:
         @app.get("/finances/seasons/{season_id}/documents/{kind}/file")
         def season_file(season_id: int, kind: str, name: str | None = None, db: Session = db_dep, member: Member = member_dep) -> Response:
             """Un document de la saison, téléchargé : rien n'est rangé dans Docs (Seb 10/11)."""
-            content, filename, media = ag_call(documents.season_file, db, member, season_by_id(db, member, season_id), kind, name)
+            try:
+                content, filename, media = ag_call(documents.season_file, db, member, season_by_id(db, member, season_id), kind, name)
+            except AnalysisError as exc:  # la présentation de l'an dernier n'a pas pu être préparée
+                raise HTTPException(status_code=502, detail=str(exc)) from exc
             return Response(content, media_type=media, headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename)}"})
+
+        @app.delete("/finances/seasons/{season_id}/documents/{kind}/layout")
+        def reset_season_file_layout(season_id: int, kind: str, db: Session = db_dep, member: Member = member_dep) -> dict:
+            """« Refaire la présentation » d'un document « Comme l'an dernier » (Seb, 20/11)."""
+            return ag_call(documents.reset_layout, db, member, season_by_id(db, member, season_id), kind)
 
         @app.get("/finances/seasons/{season_id}/documents/{kind}/preview")
         def season_file_preview(season_id: int, kind: str, request: Request, name: str | None = None, db: Session = db_dep, member: Member = member_dep) -> dict:
@@ -823,6 +837,29 @@ class FinancesReceiver:
                     )
                 except AnalysisError as exc:
                     raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+            @app.post("/finances/reports/{report_id}/rapport/correction")
+            async def correct_report(report_id: int, data: CorrectionRequest, db: Session = db_dep, member: Member = member_dep) -> dict:
+                """« Ce qu'il faut changer » (Seb, 20/11) : le modèle applique la consigne,
+                le reste du texte ne bouge pas, les chiffres restent ceux de l'appli."""
+                season = season_of(db, member, report_id)
+                try:
+                    return await run_in_threadpool(written.correct, db, member, report_id, season, data.instruction)
+                except AnalysisError as exc:
+                    raise HTTPException(status_code=502, detail=str(exc)) from exc
+                except LookupError as exc:
+                    raise HTTPException(status_code=404, detail=str(exc)) from exc
+                except ValueError as exc:
+                    raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+            @app.delete("/finances/reports/{report_id}/rapport/correction")
+            def undo_correction(report_id: int, db: Session = db_dep, member: Member = member_dep) -> dict:
+                """« Annuler la dernière correction »."""
+                season_of(db, member, report_id)
+                try:
+                    return {"rapport": written.undo(db, report_id)}
+                except LookupError as exc:
+                    raise HTTPException(status_code=404, detail=str(exc)) from exc
 
             @app.post("/finances/reports/{report_id}/rapport/docs")
             def written_in_docs(report_id: int, format: str = "docx", db: Session = db_dep, member: Member = member_dep) -> dict:

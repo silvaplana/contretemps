@@ -21,6 +21,7 @@ from finances import (
     WrittenReports,
 )
 from finances.balance_reader import BalanceModelReader
+from finances.presentation import PresentationReader
 from finances.bank import Bank
 from finances.enablebanking import EnableBankingClient
 from registry import Module, Right, guide_file
@@ -36,6 +37,7 @@ from .adapter import (
     FINANCES_ACCESS,
     adresse_ecole,
     honoraires_payes,
+    lectures_du_rapport,
     repartir_a_zero,
     membre_appelant,
     nom_ecole,
@@ -131,6 +133,8 @@ def mount(app, core) -> None:
             previous_documents=bilan_financier_dans_docs(core.documents_client),
             deposit=deposer_bilan_financier(core.documents_client),
             balance_model=BalanceModelReader(noter_cout=note_cost("lecture_balance"), plafond_atteint=ressources.plafond_assistant_atteint).read,
+            # « Comme l'an dernier » avec la présentation du tableau de l'an dernier (Seb, 20/11).
+            presentation=PresentationReader(note_cost=note_cost("presentation_document"), limit_reached=ressources.plafond_assistant_atteint).read,
         ),
     )
     # Rapport financier (spec §8.6) : le modèle rédige, l'appli place les chiffres.
@@ -141,6 +145,7 @@ def mount(app, core) -> None:
         note_cost=note_cost("rapport_financier"),
         org_name=nom_ecole,
         store=ranger_dans_docs(core.documents_client),
+        readings=lectures_du_rapport(),
     )
     finances_bank = Bank(
         client=_client_bancaire(), finances=finances_client, encrypt=chiffrer, decrypt=dechiffrer,
