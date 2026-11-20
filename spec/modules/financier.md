@@ -1114,6 +1114,17 @@ sans que la trésorière l'ait vu :
 6. **Produire les documents** (§8.6) **et comparer à l'an dernier** compte par compte, écart de
    plus de 30 % marqué « ? » : la trésorière l'explique en une ligne (reprise dans le Rapport) ou
    retourne pointer.
+   **Budget prévisionnel de la saison suivante** (Seb, 20/11 ; maquette
+   https://claude.ai/artifact/CZxrkQGxWLxEwepgf8jkSW, Budget.dc.html ; niveaux Simple et Complet) : une ligne
+   toujours présente parmi les documents, « Budget prévisionnel : Budget prévisionnel 2026-2027.xlsx », « À
+   remplir » tant que rien n'est tapé. Elle ouvre un tableau : une ligne par compte de charges et de produits actif
+   du plan (sans « à classer »), le **réalisé** de la saison en face (même à 0), la case **Prévu** tapée et
+   gardée tout de suite (pas de bouton Enregistrer) ; totaux et résultat prévu calculés. « Reprendre le
+   réalisé » remplit chaque ligne avec le chiffre de la saison, à corriger. « Produire le document » télécharge
+   l'Excel (Compte, Libellé, Réalisé N, Prévu N+1, totaux, résultat) ; Voir / Télécharger comme les autres ; le
+   dépôt de l'étape 7 l'emporte seulement s'il est rempli. L'appli ne décide d'aucun chiffre. Rattaché à la
+   saison qu'on clôture (`fin_budget_lines`, par numéro de compte), nommé avec la saison suivante (celle qui
+   existe, sinon les années avancées d'un an). Le Prévisionnel (onglet) reste la prévision de trésorerie.
 
 **Documents de référence** (question de Seb) : pas « voici un PDF, refais pareil ». Ceux de l'an
 dernier servent à trois choses : le plan comptable et les regroupements (déjà installés chez

@@ -159,6 +159,10 @@ class NoteRequest(BaseModel):
     note: str
 
 
+class BudgetRequest(BaseModel):
+    lines: dict[str, float | None]
+
+
 class DocumentChoicesRequest(BaseModel):
     """Corps de PUT /finances/seasons/{id}/documents : cases et natures (§8.10, étape 6)."""
 
@@ -660,6 +664,21 @@ class FinancesReceiver:
         def set_season_note(season_id: int, number: str, data: NoteRequest, db: Session = db_dep, member: Member = member_dep) -> dict:
             """L'explication de la trésorière sur un compte (§8.10, étape 6) ; vide = effacée."""
             return ag_call(documents.set_note, db, member, season_by_id(db, member, season_id), number, data.note)
+
+        @app.get("/finances/seasons/{season_id}/budget")
+        def get_budget(season_id: int, db: Session = db_dep, member: Member = member_dep) -> dict:
+            """Budget prévisionnel de la saison suivante (§8.10, étape 6)."""
+            return ag_call(documents.budget, db, member, season_by_id(db, member, season_id))
+
+        @app.put("/finances/seasons/{season_id}/budget")
+        def set_budget(season_id: int, data: BudgetRequest, db: Session = db_dep, member: Member = member_dep) -> dict:
+            """Les montants prévus tapés ({numéro: euros}, null = effacé)."""
+            return ag_call(documents.set_budget, db, member, season_by_id(db, member, season_id), data.lines)
+
+        @app.post("/finances/seasons/{season_id}/budget/realised")
+        def take_realised(season_id: int, db: Session = db_dep, member: Member = member_dep) -> dict:
+            """« Reprendre le réalisé » : chaque ligne prend le chiffre de la saison."""
+            return ag_call(documents.take_realised, db, member, season_by_id(db, member, season_id))
 
         @app.get("/finances/balance")
         def get_balance(season_id: int | None = None, start: str | None = None, end: str | None = None, db: Session = db_dep, member: Member = member_dep) -> dict:
