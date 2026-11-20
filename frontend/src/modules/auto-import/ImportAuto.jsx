@@ -235,9 +235,36 @@ function Formules({ regle, onChange }) {
   )
 }
 
+// Source HelloAsso : destination par défaut Docs › Saison … › Financier › VENTES › COTISATIONS
+// (Seb, 20/11), aussi loin que ces dossiers existent (au moins VENTES).
+async function dossierCotisations(saison) {
+  const pile = []
+  const noms = [(n) => n.includes(saison), (n) => n === 'FINANCIER', (n) => n === 'VENTES', (n) => n === 'COTISATIONS']
+  for (const convient of noms) {
+    const enfants = await api.dossiersDocs(pile[pile.length - 1]?.id)
+    const trouve = enfants.find((e) => convient(e.name.toUpperCase()))
+    if (!trouve) break
+    pile.push(trouve)
+  }
+  return pile.length >= 3 ? { id: pile[pile.length - 1].id, path: pile.map((p) => p.name).join('/') } : null
+}
+
 function Fiche({ etat, regle, onChange, onRetour }) {
   const [message, setMessage] = useState(null)
   const [enCours, setEnCours] = useState(false)
+  const saison = etat.seasons.find((s) => s.id === regle.season_id)?.name
+  const sansDestination = regle.target_kind === 'none' || (regle.target_kind === 'docs' && !regle.target_ref)
+  useEffect(() => {
+    if (regle.source_kind !== 'helloasso' || !saison || !sansDestination) return
+    let fini = false
+    dossierCotisations(saison.toUpperCase()).then(
+      (d) => !fini && d && onChange({ target_kind: 'docs', target_ref: d.id, target_path: d.path }),
+      () => {},
+    )
+    return () => {
+      fini = true
+    }
+  }, [regle.source_kind, saison, sansDestination]) // eslint-disable-line react-hooks/exhaustive-deps
   async function regarder() {
     setEnCours(true)
     try {
