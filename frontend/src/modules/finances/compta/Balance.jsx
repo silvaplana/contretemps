@@ -7,7 +7,7 @@
 import { useEffect, useState } from 'react'
 import { telechargerFichier } from '../../../utils/telechargement.js'
 import * as api from '../api.js'
-import { requestFichePiece } from '../navigation.js'
+import { demanderEtape, requestFichePiece } from '../navigation.js'
 import './compta.css'
 
 const BALANCE_EVENT = 'finances-balance'
@@ -203,6 +203,16 @@ export default function Balance({ onClose, onglet = 'balance' }) {
       )}
 
       {erreur && <p className="login-screen__erreur">{erreur}</p>}
+
+      {/* Seb, 20/11 : sans soldes de départ, la Balance et le Grand-livre ne sont pas exacts. */}
+      {data?.openingMissing && vue !== 'resultat' && (
+        <p className="fin-cp-alerte">
+          Soldes de départ pas encore repris : banque, tiers et fonds incomplets.{' '}
+          <button type="button" className="btn btn--link" onClick={() => demanderEtape(data.seasonId, 2)}>
+            Reprendre les soldes de départ (Bilan › Préparer, étape 2)
+          </button>
+        </p>
+      )}
 
       {data && vue === 'gl' && (
         <GrandLivre

@@ -28,3 +28,22 @@ export const FICHE_PIECE_EVENT = 'financier-fiche-piece'
 export function requestFichePiece(noteId) {
   window.dispatchEvent(new CustomEvent(FICHE_PIECE_EVENT, { detail: noteId }))
 }
+
+// Comptes › Balance demande Bilan › Préparer sur une saison, une étape dépliée
+// (les soldes de départ manquent) : lu une fois par Bilan.jsx puis Preparer.jsx.
+let etapeDemandee = null
+
+export function demanderEtape(seasonId, etape) {
+  etapeDemandee = { seasonId, etape }
+  requestSousOnglet('bilan')
+}
+
+export function prendreSaisonDemandee() {
+  return etapeDemandee?.seasonId ?? null
+}
+
+export function prendreEtapeDemandee() {
+  const e = etapeDemandee?.etape ?? null
+  etapeDemandee = null
+  return e
+}
