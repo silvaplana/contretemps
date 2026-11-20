@@ -173,8 +173,9 @@ Niveau aussi réglable dans Admin › École › Personnalisation › Fonctionna
 
 Règles de l'appli
 - Chaque transaction bancaire ou ligne de caisse va sur un compte du plan. L'appli propose un compte (mots-clés du compte, puis
-  historique des libellés) ; rien n'est compté sur un compte tant que le trésorier ne l'a pas confirmé. Une ligne sans
-  compte confirmé va dans « Dépenses à classer » (659) ou « Recettes à classer » (759) des documents de l'AG.
+  historique des libellés) ; une proposition n'est comptée sur un compte qu'une fois confirmée par le trésorier, ou
+  posée automatiquement quand elle est sûre (marque « auto », à valider dans Bilan › Préparer). Une ligne sans
+  compte va dans « Dépenses à classer » (659) ou « Recettes à classer » (759) des documents de l'AG.
 - Les virements entre les comptes de l'association n'ont pas de compte du plan (ni recette ni dépense).
 - Une pièce (facture, ticket, note) se rattache à la ligne qui la paie ; elle ne change pas les montants.
 - Simple : comptabilité de trésorerie, chaque ligne contre son compte ; Synthèse et Rapport financier.
