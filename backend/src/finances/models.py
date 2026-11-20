@@ -287,8 +287,9 @@ class FinChartAccount(Base):
 class FinOperationAccount(Base):
     """Ventilation d'une opération bancaire sur les comptes du plan (spec
     §8.4) : une ligne par compte, les montants (centimes, signés comme
-    l'opération) font le total de l'opération. Confirmée par le trésorier ;
-    une proposition de l'appli n'est jamais écrite ici."""
+    l'opération) font le total de l'opération. Confirmée par le trésorier,
+    ou posée par la catégorisation automatique (`auto`, Seb 20/11) quand la
+    proposition est sûre : modifiable, à valider dans Bilan › Préparer."""
 
     __tablename__ = "fin_operation_accounts"
 
@@ -298,6 +299,7 @@ class FinOperationAccount(Base):
     amount: Mapped[int] = mapped_column(Integer, nullable=False)
     confirmed_by: Mapped[int | None] = mapped_column(Integer, nullable=True)
     confirmed_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_now)
+    auto: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
 
 
 class FinCashLine(Base):

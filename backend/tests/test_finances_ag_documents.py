@@ -341,6 +341,8 @@ def test_season_documents_follow_last_year_and_are_never_stored_in_docs(world, d
         ("balance", "Balance 2025-2026.pdf"), ("rapport", "Rapport financier AG2026.docx"),
         ("autre", "notes trésorière.docx"), ("synthese", "Synthèse Dépenses-Recettes 2025-2026.xlsx"),
     ]
+    # À l'écran, le nom officiel ; le fichier garde son nom (Seb, 20/11).
+    assert next(d for d in data["documents"] if d["kind"] == "synthese")["label"] == "Compte de résultat"
 
     content, name, media = documents.season_file(db_session, TRESORIER, SEASON, "synthese", "Recettes-Depenses-2025-2026.xlsx")
     assert name == "Recettes-Depenses-2025-2026.xlsx" and "spreadsheet" in media and content

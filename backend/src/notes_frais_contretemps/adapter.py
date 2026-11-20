@@ -430,12 +430,15 @@ class BanqueContretemps:
         from finances.models import FinOperation, FinOperationAccount
 
         operation = db.get(FinOperation, operation_id)
-        if operation is None or db.scalar(select(FinOperationAccount.id).where(FinOperationAccount.operation_id == operation_id)):
+        existantes = list(db.scalars(select(FinOperationAccount).where(FinOperationAccount.operation_id == operation_id)))
+        if operation is None or any(not l.auto for l in existantes):
             return  # le compte déjà confirmé dans Comptes reste
         comptes = self._comptes(db, org_id, lignes)
         # Une ligne sans compte, ou une somme qui ne fait pas la banque : rien n'est confirmé, l'écart se voit.
         if any(a is None for a, _ in comptes) or sum(m for _, m in comptes) != operation.amount:
             return
+        for ligne in existantes:  # un compte posé automatiquement cède à la pièce
+            db.delete(ligne)
         db.add_all(FinOperationAccount(operation_id=operation_id, account_id=a, amount=m, confirmed_by=person_id) for a, m in comptes)
         db.commit()
 

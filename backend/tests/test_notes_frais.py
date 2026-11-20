@@ -2393,3 +2393,38 @@ def test_numero_de_facture_rattache_et_la_piece_impose_son_compte(client, db_ses
     reponse = client.post(f"/notes-frais/notes/{note['id']}/compte", json={"code": second}, headers=t)
     assert reponse.status_code == 200, reponse.text
     assert client.get(f"/finances/seasons/{saison.id}/preparation", headers=t).json()["classify"]["mismatches"] == []
+
+
+def test_compte_auto_cede_a_la_piece_et_se_valide_dans_preparer(client, db_session, ecole, monkeypatch):
+    """Seb, 20/11 : un compte posé automatiquement est à valider dans
+    Bilan › Préparer ; une pièce rattachée ensuite impose son compte."""
+    from finances.models import FinAccount, FinOperationAccount
+    from saisons.models import Saison
+
+    tresorier, org = ecole["tresorier"], ecole["ecole"].id
+    t = entetes_session(tresorier)
+    saison = Saison(ecole_id=org, nom="2025-2026", date_debut=date(2025, 9, 1), date_fin=date(2026, 8, 31))
+    db_session.add(saison)
+    db_session.commit()
+    plan = {a["number"]: a for a in client.get("/finances/chart", headers=t).json()["accounts"]}
+    categories = {c["code"]: c for c in client.get("/notes-frais/categories", headers=t).json() if c["code"]}
+    premier, second = sorted(categories)[:2]
+    payee = _operation(db_session, org, -12000, "2026-03-10", "PRLV SEPA F2026-0042 REF 77")
+    db_session.get(FinAccount, payee.account_id).bank_balance = 100000
+    db_session.add(FinOperationAccount(operation_id=payee.id, account_id=plan[second]["id"], amount=-12000, auto=True))
+    db_session.commit()
+    etat = client.get(f"/finances/seasons/{saison.id}/preparation", headers=t).json()["classify"]
+    [groupe] = etat["sure"]
+    assert groupe["account"]["number"] == second and groupe["operations"][0]["reason"] == "Posé automatiquement"
+    assert etat["withoutAccount"] == 1 and not etat["ok"]
+
+    monkeypatch.setattr(main.notes_frais_client.ports, "lecteur", LecteurFacture(
+        date="2026-03-05", montant_centimes=12000, commercant="Quincaillerie Martin", emetteur_personne=False, numero_facture="F2026-0042",
+    ))
+    note = _etablir(client, tresorier, "achat", categorie_id=str(categories[premier]["id"]))
+    assert note["operation_id"] == payee.id
+    client.post(f"/notes-frais/notes/{note['id']}/valider", headers=t)
+    lignes = client.get(f"/finances/operations/{payee.id}", headers=t).json()["lines"]
+    assert [(l["number"], l["amount"]) for l in lignes] == [(premier, -120.0)]
+    etat = client.get(f"/finances/seasons/{saison.id}/preparation", headers=t).json()["classify"]
+    assert etat["sure"] == [] and etat["mismatches"] == []

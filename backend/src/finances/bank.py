@@ -352,6 +352,8 @@ class Bank:
             db.commit()
             raise BankError(str(exc)) from exc
         self.finances._link_transfers(db, connection.org_id)
+        if self.finances.accounting is not None:
+            self.finances.accounting.auto_classify(db, connection.org_id)
         connection.last_sync_at, connection.last_error = _now(), None
         db.commit()
         return {"added": added}

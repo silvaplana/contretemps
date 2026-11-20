@@ -2,7 +2,7 @@ Financier : onglet de la barre du bas (sous « Plus » sur téléphone). Cinq so
 Comptes, Pièces, Bilan, AG, Prévisionnel. Le menu ⋯ en haut à droite change selon le sous-onglet.
 
 Comptes
-- Puces des comptes : Tous, chaque compte en banque, Caisse. Puces « À catégoriser (n) » (pas de compte) et « Justificatif manquant (n) » (un compte, pas de pièce) : les lignes à compléter. Sous chaque transaction : son compte et un badge « À catégoriser », « Justificatif manquant » ou « Justifiée » (pièces rattachées qui font tout le montant, ou justifiée sans facture ; sinon « Justificatif manquant · reste 100,00 € »). La Balance part des transactions bancaires : chacune va sur le compte de ses pièces rattachées, sinon sur celui choisi dans Comptes, sinon « à classer ».
+- Puces des comptes : Tous, chaque compte en banque, Caisse. Puces « À catégoriser (n) » (pas de compte) et « Justificatif manquant (n) » (un compte, pas de pièce) : les lignes à compléter. Sous chaque transaction : son compte (marque « auto » s'il a été posé automatiquement, voir plus bas) et un badge « À catégoriser », « Justificatif manquant » ou « Justifiée » (pièces rattachées qui font tout le montant, ou justifiée sans facture ; sinon « Justificatif manquant · reste 100,00 € »). La Balance part des transactions bancaires : chacune va sur le compte de ses pièces rattachées, sinon sur celui choisi dans Comptes, sinon « à classer ».
 - Graphique / Tableau : la courbe du solde ou la liste des lignes. Liste des catégories, menu « Tous les mois » (un mois précis, tous les mois depuis la première opération), recherche d'une opération.
 - Toucher une ligne : sa fiche (compte du plan proposé à confirmer, ventilation sur plusieurs comptes, pièce, écritures).
   Le crayon à côté de « Compte » ouvre le Plan comptable à la place de la fiche pour ajouter le compte qui manque ;
@@ -52,6 +52,11 @@ Pièces
   pré-remplis, à relire ; dans la fiche, « Prendre une photo » ou « Joindre un fichier » remplit les montants vides.
   Les transactions bancaires sans compte se classent dans Comptes (filtre « À catégoriser »), badge
   bleu sur le sous-onglet Comptes.
+  La catégorisation peut être automatique : à l'arrivée d'une transaction, l'appli pose elle-même le compte
+  quand elle est sûre (le même libellé déjà mis au moins 2 fois dans ce compte et jamais ailleurs, ou un
+  mot-clé du compte, à ajouter dans Plan comptable). Ce compte porte la marque « auto », se change comme un
+  autre et se valide en lot dans Bilan › Préparer, étape 3 (« Posé automatiquement »). Sinon l'appli propose
+  seulement « 627 ? », à confirmer. Une pièce rattachée impose toujours son compte.
 - « + » : Saisir une dépense. Prendre en photo (enchaîner : Pièce suivante, Encore une page de celle-ci), Choisir des
   fichiers (ou un zip), ou Saisir à la main (fiche vide ; « Prendre une photo » ou « Joindre un fichier » y ajoute quand même le justificatif). Chaque pièce est lue ; l'appli propose la nature (facture d'un prof de
   l'école = Honoraires, d'une ou pour une autre personne = sa Note de frais, société = Achat) et la transaction bancaire qui la
@@ -134,7 +139,7 @@ Bilan
   compte face à la saison précédente (montant, écart, %), « ? » au-delà de 30 % ou compte nouveau / disparu, une ligne
   d'explication à écrire (reprise dans le Rapport financier), puis les documents : « Documents à produire, d'après Docs ›
   Financier › Bilan financier <saison précédente> » (chaque fichier de l'an dernier avec une case à cocher et « reconnu comme »
-  pour corriger sa nature), puis « Documents 2025-2026 », nommés comme ceux de l'an dernier : Voir (un PDF s'ouvre dans un nouvel onglet ; Excel, Word et FEC
+  pour corriger sa nature), puis « Documents 2025-2026 », chacun affiché « nom officiel : nom du fichier », nommés comme ceux de l'an dernier (« Compte de résultat : Synthèse bilan 2025-2026.xlsx ») : Voir (un PDF s'ouvre dans un nouvel onglet ; Excel, Word et FEC
   dans l'éditeur, en lecture seule, ← revient), Télécharger ;
   Rapport financier : Rédiger, puis Voir, Word, PDF ; « Autre » = à faire à la main ; « Ajouter un document que l'appli sait faire ».
   Rien n'est rangé dans Docs : on télécharge et on dépose soi-même. 7. Clôturer la saison (niveau Complet), quand les étapes 1
@@ -168,8 +173,9 @@ Niveau aussi réglable dans Admin › École › Personnalisation › Fonctionna
 
 Règles de l'appli
 - Chaque transaction bancaire ou ligne de caisse va sur un compte du plan. L'appli propose un compte (mots-clés du compte, puis
-  historique des libellés) ; rien n'est compté sur un compte tant que le trésorier ne l'a pas confirmé. Une ligne sans
-  compte confirmé va dans « Dépenses à classer » (659) ou « Recettes à classer » (759) des documents de l'AG.
+  historique des libellés) ; une proposition n'est comptée sur un compte qu'une fois confirmée par le trésorier, ou
+  posée automatiquement quand elle est sûre (marque « auto », à valider dans Bilan › Préparer). Une ligne sans
+  compte va dans « Dépenses à classer » (659) ou « Recettes à classer » (759) des documents de l'AG.
 - Les virements entre les comptes de l'association n'ont pas de compte du plan (ni recette ni dépense).
 - Une pièce (facture, ticket, note) se rattache à la ligne qui la paie ; elle ne change pas les montants.
 - Simple : comptabilité de trésorerie, chaque ligne contre son compte ; Synthèse et Rapport financier.

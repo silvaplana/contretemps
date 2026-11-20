@@ -779,6 +779,16 @@ reste affichée), **Justificatif manquant** (un compte, ni pièce rattachée ni 
 **Justifiée** (un compte et des pièces rattachées qui font **tout** le montant, ou justifiée sans facture dans
 Rapprocher ; une transaction de 300 € avec 200 € de pièces reste « Justificatif manquant · reste 100,00 € ») ; puces
 **À catégoriser** et **Justificatif manquant** avec compteur.
+**La catégorisation peut être automatique (Seb, 20/11, comme les logiciels du métier)** : à l'arrivée des
+transactions (import de relevés ou synchronisation de la banque), une transaction sans compte, sans pièce
+rattachée, hors remise de chèques et hors saison clôturée reçoit le compte proposé **seulement si la proposition
+est sûre** : une **habitude** (le même libellé déjà mis par le trésorier au moins **2 fois** dans ce compte et
+jamais dans un autre, toutes saisons de l'appli confondues ; ce que l'appli a posé elle-même ne compte pas) ou
+un **mot-clé** du compte (règles explicites du trésorier, dans Plan comptable). Le compte posé porte la marque
+**auto** (colonne `fin_operation_accounts.auto`), se modifie comme un autre, et se valide en lot dans Bilan ›
+Préparer, étape 3 (« Posé automatiquement », compté parmi les transactions à valider) ; une fois validé ou
+modifié, la marque disparaît. Une pièce rattachée ensuite remplace un compte auto (la pièce impose son
+compte) ; un compte confirmé n'est jamais touché. Une proposition incertaine reste « 627 ? », à confirmer.
 **D'où viennent les montants de la Balance (Seb, 20/11)** : la Balance, le Grand livre et le Compte de
 résultat partent des **transactions bancaires** (et de la caisse), jamais des pièces : chaque transaction
 fait 512 d'un côté et, de l'autre, **le compte de la ou des pièces rattachées** (écrit sur la transaction au
@@ -1173,7 +1183,10 @@ n'attend jamais une pièce : une ligne sans pièce reçoit son compte à la main
    est **reconnu d'après son contenu** (haut de la première page d'un PDF, premières lignes d'un
    Excel, d'un Word, d'un texte), puis tout le contenu, puis son nom (quelqu'un a pu prendre des
    libertés avec les noms) : Synthèse, Balance, Grand livre, Bilan actif-passif, Honoraires, FEC,
-   Rapport financier, sinon « Autre : à faire à la main ». La trésorière coche ce qu'on refait et
+   Rapport financier, sinon « Autre : à faire à la main ». **Chaque document s'affiche « Nom officiel :
+   nom du fichier produit »** (Seb, 20/11), par exemple « Compte de résultat : Synthèse bilan 2025-2026.xlsx » :
+   la Synthèse Dépenses-Recettes s'appelle **Compte de résultat** à l'écran, son fichier garde le nom de
+   l'an dernier (année avancée), ou « Synthèse Dépenses-Recettes <saison>.xlsx » sans modèle. La trésorière coche ce qu'on refait et
    corrige la nature (« reconnu comme », table `fin_document_choices`, `GET/PUT
    /finances/seasons/{id}/documents`) ; « Ajouter un document que l'appli sait faire » complète.
    Chaque document prend **le nom de celui de l'an dernier, les années avancées d'un an**

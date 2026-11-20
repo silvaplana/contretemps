@@ -140,6 +140,7 @@ export function Etape6Documents({ season, docs }) {
                 reportId={reportId}
                 seasonName={season.name}
                 titre={d.name}
+                nature={d.label}
                 sansDocs
                 rediger={rapportId != null}
                 onErreur={setErreur}
@@ -147,8 +148,8 @@ export function Etape6Documents({ season, docs }) {
               />
             ) : (
               <div key={`${d.kind}-${d.nodeId}`} className="fin-docs__doc">
-                <span className="fin-cp-t">{d.name}</span>
-                <span className="fin-cp-s">Rapport financier : texte rédigé d’après les chiffres de la saison, à relire{d.model ? ` · nommé comme « ${d.model} »` : ''}</span>
+                <span className="fin-cp-t">{d.label} : {d.name}</span>
+                <span className="fin-cp-s">Texte rédigé d’après les chiffres de la saison, à relire{d.model ? ` · nommé comme « ${d.model} »` : ''}</span>
                 <span className="fin-cp-a">
                   <button type="button" className="btn btn--secondary" onClick={rediger}>
                     <Icon name="edit" size={16} /> Rédiger
@@ -158,10 +159,10 @@ export function Etape6Documents({ season, docs }) {
             )
           ) : (
             <div key={`${d.kind}-${d.nodeId}`} className="fin-docs__doc">
-              <span className="fin-cp-t">{d.name}</span>
+              {/* Nom officiel : nom du fichier produit (Seb, 20/11). */}
+              <span className="fin-cp-t">{d.kind === AUTRE ? d.name : `${d.label} : ${d.name}`}</span>
               <span className="fin-cp-s">
-                {d.kind === AUTRE ? 'À faire à la main, d’après le fichier de l’an dernier' : d.label}
-                {d.kind !== AUTRE && d.model ? ` · nommé comme « ${d.model} »` : ''}
+                {d.kind === AUTRE ? 'À faire à la main, d’après le fichier de l’an dernier' : d.model ? `Nommé comme « ${d.model} »` : 'Nom proposé par l’appli'}
                 {!d.available && ' · niveau Complet (Comptes › ⋯ › Plan comptable)'}
               </span>
               {d.kind !== AUTRE && d.available && (
