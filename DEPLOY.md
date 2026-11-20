@@ -310,6 +310,7 @@ déploiement (§5).
 | Installer le plan comptable de Contretemps | Même chose, pour de vrai : ajoute les comptes manquants, renomme ceux qui existent déjà, garde le reste (spec financier.md §8.2). Relançable. |
 | Lire un essai du Labo de Fights | Sans numéro : la liste des essais du Labo (école, nom, signes) et les 80 dernières lignes du journal de `sparring-worker` (l'erreur d'une lecture échouée). Avec le numéro d'un essai : la vidéo telle que lue, les signes, les gestes image par image et les postures gardées (`app.lire_essai_labo`), pour qu'un fil Claude comprenne un signe manqué (accord de Seb du 12/11/2026). N'écrit rien. |
 | Lire une séance de Fights | Sans numéro : les 10 dernières séances (école, nom, heures, morceaux, durée lue, combats, signes) et le journal de `sparring-worker`. Avec le numéro d'une séance (dans « Numéro de l'essai ») : chaque morceau (fichier, durée, rotation), les sons entendus, les personnes vues seconde par seconde, les signes et les combats avec les réglages du jour (`app.lire_seance_fights`). N'écrit rien (accord de Seb du 13/11/2026). |
+| Lire le journal de l'appli | Les 200 dernières demandes au serveur échouées sur les téléphones (heure du téléphone, fiche, demande, raison), envoyées par l'appli dès que la connexion revient (`app.journal_appli`, fichier `journal-appli.log` à côté de la base). N'écrit rien (accord de Seb du 20/11/2026). |
 
 - Fichiers : `.github/workflows/maintenance.yml` (le formulaire) et le début
   de `deploy.sh` (la liste fermée des tâches). La clé ne peut toujours lancer

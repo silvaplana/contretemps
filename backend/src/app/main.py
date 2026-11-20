@@ -136,6 +136,11 @@ from app.diagnostic_fights import install as installer_diagnostic_fights  # noqa
 
 installer_diagnostic_fights(app)
 
+# Demandes au serveur échouées sur les téléphones (Seb, 20/11/2026).
+from app.journal_appli import install as installer_journal_appli  # noqa: E402
+
+installer_journal_appli(app)
+
 
 @app.get("/health")
 def health() -> dict:

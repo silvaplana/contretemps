@@ -14,6 +14,7 @@
 
 import { ENTETE_SAISON, lireSaisonConsultee, signalerSaison } from './saison.js'
 import { compteEnCours, jetonEnCours, lireEcoleChoisie, remplacerJeton } from './session.js'
+import * as journal from '../utils/journalAppli.js'
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 export const ENTETE_COMPTE = 'X-Compte-Id'
@@ -47,14 +48,29 @@ export function installerIdentiteAppelant() {
     if (saison) entetes.set(ENTETE_SAISON, String(saison.id))
     const ecoleChoisie = lireEcoleChoisie()
     if (ecoleChoisie) entetes.set(ENTETE_ECOLE, String(ecoleChoisie))
-    return fetchNatif(entree, { ...options, headers: entetes }).then((reponse) => {
-      // Session prolongée (30 jours glissants) : le serveur remet de temps
-      // en temps un jeton neuf, qui remplace l'ancien.
-      const renouvele = reponse.headers.get(ENTETE_JETON_RENOUVELE)
-      if (renouvele && jetonEnCours() === jeton) remplacerJeton(renouvele)
-      if ([401, 403, 409].includes(reponse.status)) analyserRefus(reponse)
-      return reponse
-    })
+    // Journal de l'appli (voir utils/journalAppli.js) : chemin sans la base,
+    // jamais la demande d'envoi du journal elle-même.
+    const methode = options.method ?? (entree instanceof Request ? entree.method : 'GET')
+    const chemin = url.slice(url.indexOf(BASE_URL) + BASE_URL.length) || url
+    const aNoter = !chemin.startsWith(journal.CHEMIN_JOURNAL)
+    return fetchNatif(entree, { ...options, headers: entetes }).then(
+      (reponse) => {
+        // Session prolongée (30 jours glissants) : le serveur remet de temps
+        // en temps un jeton neuf, qui remplace l'ancien.
+        const renouvele = reponse.headers.get(ENTETE_JETON_RENOUVELE)
+        if (renouvele && jetonEnCours() === jeton) remplacerJeton(renouvele)
+        if ([401, 403, 409].includes(reponse.status)) analyserRefus(reponse)
+        if (aNoter && (reponse.status >= 500 || reponse.status === 401)) {
+          journal.noter(methode, chemin, `réponse ${reponse.status}`)
+        } else if (aNoter && reponse.ok) journal.envoyer()
+        return reponse
+      },
+      (erreur) => {
+        // Abandon voulu par l'écran (AbortController) : pas un problème.
+        if (aNoter && erreur?.name !== 'AbortError') journal.noter(methode, chemin, `pas de réponse (${erreur?.message ?? erreur})`)
+        throw erreur
+      },
+    )
   }
 }
 
