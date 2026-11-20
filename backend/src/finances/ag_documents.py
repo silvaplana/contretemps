@@ -44,9 +44,9 @@ from .accounting import Accounting
 from .balance_reader import read_balance
 from .exports import _CSS, _eur, _fr, html_to_pdf
 from .chart import is_cheque_deposit
-from .models import EXPENSE, FULL, INCOME, THIRD_PARTY, FinAccount, FinBudgetLine, FinCashLine, FinClosing, FinManualEntry, FinOpeningBalance, FinOperation, FinOperationAccount, FinSeasonNote, FinDocumentChoice, FinDocumentTemplate
+from .models import EXPENSE, FULL, INCOME, THIRD_PARTY, FinAccount, FinBudgetLine, FinCashLine, FinClosing, FinManualEntry, FinOpeningBalance, FinOperation, FinOperationAccount, FinSeasonNote, FinDocumentChoice, FinDocumentTemplate, FinYearEndEntry
 from .ports import Member, Season
-from . import presentation
+from . import presentation, year_end
 from .season_documents import BASE, LABELS, ON_REQUEST, OTHER, RAPPORT, default_name, next_name, provisional_name, recognize
 
 # Numéros des comptes de trésorerie et de report (plan associatif).
@@ -416,6 +416,20 @@ class AgDocuments:
                 account(debit.number, debit.label, debit.nature, debit.event).lines.append(Line(day, "OD", e.label, "", e.amount, 0))
                 account(credit.number, credit.label, credit.nature, credit.event).lines.append(Line(day, "OD", e.label, "", 0, e.amount))
 
+        # Complet : les écritures de fin d'année validées (§8.14), recalculées depuis les choix.
+        if full:
+            previous = self._previous(db, member.org_id, season)
+            carried = previous is not None and self.closing(db, member.org_id, previous.id) is not None
+            by_number = {a.number: a for a in chart.values()}
+            for day, label, debit, credit, cents in year_end.lines(
+                self._year_end_entries(db, member.org_id), {a.id: a.number for a in chart.values()}, season.id,
+                date.fromisoformat(season.start_date), date.fromisoformat(season.end_date), previous.id if carried else None,
+            ):
+                for number, d, c in ((debit, cents, 0), (credit, 0, cents)):
+                    a = by_number.get(number)
+                    label_, nature = (a.label, a.nature) if a else year_end.ACCOUNTS[number][:2]
+                    account(number, label_, nature, a.event if a else None).lines.append(Line(day.isoformat(), "OD", label, "", d, c))
+
         # Caisse : compte du plan contre 530 (un retrait est déjà passé par
         # la banque ci-dessus).
         for l in cash_lines:
@@ -689,7 +703,7 @@ class AgDocuments:
             for line in db.scalars(select(FinOperationAccount).where(FinOperationAccount.operation_id.in_(operation_ids))):
                 db.delete(line)
                 lines += 1
-        for model in (FinClosing, FinOpeningBalance, FinSeasonNote, FinManualEntry):
+        for model in (FinClosing, FinOpeningBalance, FinSeasonNote, FinManualEntry, FinYearEndEntry):
             for row in db.scalars(select(model).where(model.org_id == member.org_id, model.season_id == season.id)):
                 db.delete(row)
         db.commit()
@@ -912,6 +926,153 @@ class AgDocuments:
             raise ValueError("Saison clôturée : rouvrez-la d'abord.")
         db.delete(entry)
         db.commit()
+
+    # ----- Écritures de fin d'année (§8.14, Seb 20/11) -----
+
+    def _year_end_entries(self, db: Session, org_id: int, season_id: int | None = None) -> list[FinYearEndEntry]:
+        query = select(FinYearEndEntry).where(FinYearEndEntry.org_id == org_id).order_by(FinYearEndEntry.id)
+        return list(db.scalars(query if season_id is None else query.where(FinYearEndEntry.season_id == season_id)))
+
+    def _year_end_candidates(self, db: Session, member: Member, season: Season) -> list[dict]:
+        chart = {a.id: a for a in self.accounting.accounts(db, member.org_id)}
+        confirmed = self.accounting._lines(db, member.org_id)
+        operations = []
+        for r in self.ledger(db, member)["rows"]:
+            split = confirmed.get(r["id"]) or []
+            a = chart.get(split[0].account_id) if len(split) == 1 else None
+            if a is None or r.get("transfer") or a.nature not in (EXPENSE, INCOME):
+                continue
+            operations.append({
+                "id": r["id"], "date": date.fromisoformat(r["date"]), "label": r["label"], "amount": round(r["amount"] * 100),
+                "accountId": a.id, "number": a.number, "accountLabel": a.label, "nature": a.nature,
+            })
+        return year_end.candidates(
+            operations, date.fromisoformat(season.start_date), date.fromisoformat(season.end_date), self.next_season_name(db, member.org_id, season)
+        )
+
+    def year_end(self, db: Session, member: Member, season: Season) -> dict:
+        """L'écran des écritures de fin d'année : ce que l'appli propose (ou,
+        une fois validés, les choix gardés), le choix conseillé et sa raison,
+        l'écriture de chaque ligne, le résultat avant ces écritures."""
+        if not member.keeps_accounts:
+            raise PermissionError("Réservé aux trésoriers")
+        if self.accounting.level(db, member.org_id) != FULL:
+            raise ValueError("Les écritures de fin d'année sont en Engagement (partie double) (Comptes › ⋯ › Plan comptable).")
+        start, end = date.fromisoformat(season.start_date), date.fromisoformat(season.end_date)
+        stored = self._year_end_entries(db, member.org_id, season.id)
+        chart = {a.id: a for a in self.accounting.accounts(db, member.org_id)}
+        if stored:
+            rows = [
+                {"key": e.key, "kind": e.kind, "label": e.label, "text": e.text, "reason": e.reason, "date": e.date, "amount": e.amount,
+                 "accountId": e.account_id, "keep": e.keep, "years": e.years}
+                for e in stored
+            ]
+        else:
+            rows = [{**c, "keep": year_end.advised(c["kind"], c["amount"]), "years": year_end.DEFAULT_YEARS if c["kind"] == year_end.DEPRECIATION else None}
+                    for c in self._year_end_candidates(db, member, season)]
+
+        def name(number: str) -> str:
+            a = next((a for a in chart.values() if a.number == number), None)
+            return f"{number} {a.label if a else year_end.ACCOUNTS[number][0]}"
+
+        def entry(row: dict, years: int | None) -> dict:
+            """Montant, effet sur le résultat et écriture de la ligne (pour une durée, si amortissement)."""
+            account = chart.get(row["accountId"])
+            mine = f"{account.number} {account.label}" if account else "?"
+            if row["kind"] == year_end.DEPRECIATION:
+                dotation = year_end.allowance(row["amount"], row["date"], years, start, end)
+                months = min(year_end.month_index(end) - year_end.month_index(row["date"]) + 1, years * 12)
+                return {
+                    "amount": dotation / 100, "effect": year_end.effect(row["kind"], row["amount"], dotation) / 100,
+                    "note": f"Sur {years} ans : {_eur(row['amount'] / years / 100)} par an, {_eur(dotation / 100)} cette saison ({months} mois). "
+                            "L'achat sort des dépenses de la saison et passe au bilan.",
+                    "lines": [
+                        {"account": name(year_end.ASSET), "debit": row["amount"] / 100, "credit": 0},
+                        {"account": mine, "debit": 0, "credit": row["amount"] / 100},
+                        {"account": name(year_end.ALLOWANCE), "debit": dotation / 100, "credit": 0},
+                        {"account": name(year_end.DEPRECIATED), "debit": 0, "credit": dotation / 100},
+                    ],
+                }
+            other = name(year_end.COUNTERPART[row["kind"]])
+            debit, credit = (other, mine) if row["kind"] == year_end.PREPAID_EXPENSE else (mine, other)
+            amount = row["amount"] / 100
+            return {
+                "amount": amount, "effect": year_end.effect(row["kind"], row["amount"]) / 100,
+                "lines": [{"account": debit, "debit": amount, "credit": 0}, {"account": credit, "debit": 0, "credit": amount}],
+            }
+
+        items = []
+        for row in rows:
+            item = {
+                "key": row["key"], "kind": row["kind"], "title": year_end.TITLES[row["kind"]], "text": row["text"], "reason": row["reason"],
+                "advised": year_end.advised(row["kind"], row["amount"]), "keep": row["keep"], "years": row["years"],
+            }
+            if row["kind"] == year_end.DEPRECIATION:
+                item["byYears"] = {str(y): entry(row, y) for y in year_end.YEARS}
+                item["purchase"] = row["amount"] / 100
+            else:
+                item.update(entry(row, None))
+            items.append(item)
+        # Le résultat sans ces écritures : celui des livres, moins ce que les choix validés y ont mis.
+        books = self.books(db, member, season)
+        books.pop("_cutoff")
+        result = -sum(a.balance for a in books.values() if a.nature in (EXPENSE, INCOME))
+        done = sum(
+            year_end.effect(e.kind, e.amount, year_end.allowance(e.amount, e.date, e.years or year_end.DEFAULT_YEARS, start, end) if e.kind == year_end.DEPRECIATION else 0)
+            for e in stored if e.keep
+        )
+        return {
+            "items": items, "validated": bool(stored), "resultBefore": (result - done) / 100,
+            "season": season.name, "next": self.next_season_name(db, member.org_id, season), "endDate": season.end_date,
+            "closed": self.closing(db, member.org_id, season.id) is not None,
+        }
+
+    def _year_end_open(self, db: Session, member: Member, season: Season) -> None:
+        if not member.is_treasurer:
+            raise PermissionError("Réservé au trésorier")
+        if self.accounting.level(db, member.org_id) != FULL:
+            raise ValueError("Les écritures de fin d'année sont en Engagement (partie double) (Comptes › ⋯ › Plan comptable).")
+        if self.closing(db, member.org_id, season.id) is not None:
+            raise ValueError("Saison clôturée : rouvrez-la d'abord.")
+
+    def set_year_end(self, db: Session, member: Member, season: Season, items: list[dict]) -> dict:
+        """« Valider mes choix » : écrit le choix de chaque ligne proposée
+        (celui conseillé si rien n'est dit), et crée dans le plan les comptes
+        que les écritures gardées mouvementent (486, 487, 408, 2154, 28154, 6811)."""
+        self._year_end_open(db, member, season)
+        chosen = {str(i.get("key")): i for i in items}
+        candidates = self._year_end_candidates(db, member, season)
+        for e in self._year_end_entries(db, member.org_id, season.id):
+            db.delete(e)
+        db.flush()
+        taken = {a.number for a in self.accounting.accounts(db, member.org_id)}
+        for c in candidates:
+            choice = chosen.get(c["key"], {})
+            keep = bool(choice["keep"]) if choice.get("keep") is not None else year_end.advised(c["kind"], c["amount"])
+            years = None
+            if c["kind"] == year_end.DEPRECIATION:
+                years = int(choice.get("years") or year_end.DEFAULT_YEARS)
+                if years not in year_end.YEARS:
+                    raise ValueError("Durée d'amortissement : 3, 5 ou 10 ans.")
+            db.add(FinYearEndEntry(
+                org_id=member.org_id, season_id=season.id, key=c["key"], kind=c["kind"], label=c["label"][:120], text=c["text"][:400], reason=c["reason"][:200],
+                date=c["date"], amount=c["amount"], account_id=c["accountId"], keep=keep, years=years, created_by=member.person_id,
+            ))
+            for number in year_end.needed_accounts(c["kind"]) if keep else ():
+                if number not in taken:
+                    label, nature, heading = year_end.ACCOUNTS[number]
+                    self.accounting.create_account(db, member, {"number": number, "label": label, "nature": nature, "natureLabel": heading})
+                    taken.add(number)
+        db.commit()
+        return self.year_end(db, member, season)
+
+    def cancel_year_end(self, db: Session, member: Member, season: Season) -> dict:
+        """« Annuler » : les choix validés sont effacés, leurs écritures avec ; les propositions reviennent."""
+        self._year_end_open(db, member, season)
+        for e in self._year_end_entries(db, member.org_id, season.id):
+            db.delete(e)
+        db.commit()
+        return self.year_end(db, member, season)
 
     # Au-delà de cet écart (en %), un compte est marqué « ? » jusqu'à son explication.
     FLAG_PCT = 30
@@ -1446,7 +1607,7 @@ class AgDocuments:
         équilibre les deux colonnes. Montants en centimes."""
         books = self.books(db, member, season)
         cutoff = books.pop("_cutoff")
-        actif = {"creances": [], "tresorerie": []}
+        actif = {"immobilisations": [], "creances": [], "tresorerie": []}
         passif = {"fonds": [], "dettes": []}
         result = -sum(a.balance for a in books.values() if a.nature in (EXPENSE, INCOME))  # excédent positif
         for a in sorted(books.values(), key=lambda a: a.number):
@@ -1455,6 +1616,8 @@ class AgDocuments:
             line = {"number": a.number, "label": a.label, "amount": abs(a.balance)}
             if a.number.startswith("1"):
                 passif["fonds"].append({**line, "amount": -a.balance})  # créditeur = positif ; un report débiteur se lit en négatif
+            elif a.number.startswith("2"):
+                actif["immobilisations"].append({**line, "amount": a.balance})  # un amortissement (28) se lit en négatif
             elif a.balance > 0:
                 actif["tresorerie" if a.number.startswith("5") else "creances"].append(line)
             else:
@@ -1473,7 +1636,7 @@ class AgDocuments:
             total = sum(l["amount"] for l in lines)
             return f"<tr class='sous'><td class='l'>{e(title)}</td><td>{_signed(total)}</td></tr>{rows}"
 
-        actif = bloc("Créances", b["actif"]["creances"]) + bloc("Trésorerie", b["actif"]["tresorerie"])
+        actif = (bloc("Immobilisations", b["actif"]["immobilisations"]) if b["actif"]["immobilisations"] else "") + bloc("Créances", b["actif"]["creances"]) + bloc("Trésorerie", b["actif"]["tresorerie"])
         passif = bloc("Fonds associatifs", b["passif"]["fonds"]) + bloc("Dettes", b["passif"]["dettes"])
         ecart = b["totalActif"] - b["totalPassif"]
         body = (

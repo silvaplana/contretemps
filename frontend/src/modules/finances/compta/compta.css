@@ -639,3 +639,21 @@ button.fin-cp-compte:last-child {
 
 /* Budget prévisionnel : la case « Prévu » d'une ligne (Seb, 20/11). */
 .fin-budget__prevu { width: 120px; min-height: 48px; text-align: right; font-size: 17px; }
+
+/* Écritures de fin d'année (étape 4, §8.14) : une ligne par proposition, deux touches qui nomment la saison. */
+.fin-finannee__ligne { display: grid; gap: 8px; padding: 12px 0; border-top: 1px solid var(--border); }
+.fin-finannee__tete { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+.fin-finannee__conseil { font-weight: 500; }
+.fin-finannee__choix { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.fin-finannee__choix--3 { grid-template-columns: repeat(3, 1fr); }
+.fin-finannee__choix .btn { min-height: 48px; min-width: 0; padding: 6px 10px; }
+.fin-finannee__choix .btn[aria-pressed="true"] { border-color: var(--accent); font-weight: 600; box-shadow: inset 0 0 0 1px var(--accent); }
+.fin-finannee__ligne .btn--link { min-height: 48px; justify-self: start; padding: 0; }
+.fin-finannee__ecriture { overflow-x: auto; }
+.fin-finannee__ecriture table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.fin-finannee__ecriture th, .fin-finannee__ecriture td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); font-weight: 400; }
+.fin-finannee__ecriture th:nth-child(n+2), .fin-finannee__ecriture td:nth-child(n+2) { text-align: right; white-space: nowrap; }
+.fin-finannee__resultat { display: grid; gap: 4px; padding-top: 12px; border-top: 2px solid currentColor; font-variant-numeric: tabular-nums; }
+.fin-finannee__resultat > span { display: flex; justify-content: space-between; gap: 12px; }
+.fin-finannee__final { font-weight: 700; }
+.fin-finannee__fait { font-weight: 600; }

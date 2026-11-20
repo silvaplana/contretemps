@@ -160,6 +160,16 @@ class SnapshotRequest(BaseModel):
     comment: str = ""
 
 
+class YearEndChoice(BaseModel):
+    key: str
+    keep: bool | None = None
+    years: int | None = None
+
+
+class YearEndRequest(BaseModel):
+    items: list[YearEndChoice] = []
+
+
 class ManualEntryRequest(BaseModel):
     date: str
     label: str
@@ -678,6 +688,20 @@ class FinancesReceiver:
         @app.post("/finances/seasons/{season_id}/manual-entries", status_code=201)
         def add_manual_entry(season_id: int, data: ManualEntryRequest, db: Session = db_dep, member: Member = member_dep) -> dict:
             return {"entries": ag_call(documents.add_manual_entry, db, member, season_by_id(db, member, season_id), data.model_dump())}
+
+        @app.get("/finances/seasons/{season_id}/year-end")
+        def year_end(season_id: int, db: Session = db_dep, member: Member = member_dep) -> dict:
+            """Les écritures de fin d'année proposées ou validées (§8.14, Engagement)."""
+            return ag_call(documents.year_end, db, member, season_by_id(db, member, season_id))
+
+        @app.post("/finances/seasons/{season_id}/year-end")
+        def set_year_end(season_id: int, data: YearEndRequest, db: Session = db_dep, member: Member = member_dep) -> dict:
+            """« Valider mes choix »."""
+            return ag_call(documents.set_year_end, db, member, season_by_id(db, member, season_id), [i.model_dump() for i in data.items])
+
+        @app.delete("/finances/seasons/{season_id}/year-end")
+        def cancel_year_end(season_id: int, db: Session = db_dep, member: Member = member_dep) -> dict:
+            return ag_call(documents.cancel_year_end, db, member, season_by_id(db, member, season_id))
 
         @app.delete("/finances/manual-entries/{entry_id}", status_code=204)
         def delete_manual_entry(entry_id: int, db: Session = db_dep, member: Member = member_dep) -> Response:

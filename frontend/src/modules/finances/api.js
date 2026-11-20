@@ -219,6 +219,10 @@ export const preparation = (seasonId) => appel(`/seasons/${seasonId}/preparation
 export const ecrituresManuelles = (seasonId) => appel(`/seasons/${seasonId}/manual-entries`)
 export const ajouterEcriture = (seasonId, donnees) => appel(`/seasons/${seasonId}/manual-entries`, json('POST', donnees))
 export const supprimerEcriture = (id) => appel(`/manual-entries/${id}`, { method: 'DELETE' })
+// Étape 4 : les écritures de fin d'année (§8.14, Engagement) : propositions, « Valider mes choix », « Annuler ».
+export const ecrituresFinAnnee = (seasonId) => appel(`/seasons/${seasonId}/year-end`)
+export const validerEcrituresFinAnnee = (seasonId, items) => appel(`/seasons/${seasonId}/year-end`, json('POST', { items }))
+export const annulerEcrituresFinAnnee = (seasonId) => appel(`/seasons/${seasonId}/year-end`, { method: 'DELETE' })
 // Étape 6 : l'explication d'un compte en écart avec la saison précédente (vide = effacée).
 export const expliquerCompte = (seasonId, number, note) => appel(`/seasons/${seasonId}/notes/${encodeURIComponent(number)}`, json('PUT', { note }))
 export const validerCompte = (seasonId, operationIds, accountId) =>

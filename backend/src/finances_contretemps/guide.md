@@ -140,7 +140,11 @@ Bilan
   montants) et « Comptes proposés par l'appli »
   regroupées par compte avec « Valider le compte 6226 Honoraires : 48 lignes » ; au-dessus, s'il y en a, « Pièce et
   transaction pas dans le même compte (n) » : sur chaque ligne « Garder 606 (la pièce) » ou « Garder 627 (la
-  transaction) » ; une pièce rattachée donne d'elle-même son compte à sa transaction ; 4. Compter la caisse et les factures non payées : la caisse et les
+  transaction) » ; une pièce rattachée donne d'elle-même son compte à sa transaction ; 4. Compter la caisse et les factures non payées : en Engagement, d'abord « Écritures de fin d'année » :
+  l'appli propose ce qui ne tombe pas sur la bonne saison (charge payée d'avance, produit reçu d'avance, facture pas encore
+  reçue, amortissement), le choix conseillé est déjà fait avec sa raison ; deux touches par ligne qui nomment la saison
+  (« Compter en 2026-2027 » / « Laisser en 2025-2026 » ; amortissement : 3, 5 ou 10 ans, « Étaler sur 5 ans » / « Tout en 2025-2026 »),
+  « Voir l'écriture », le résultat avant et après, puis « Valider mes choix » (« Annuler » ensuite) ; puis la caisse et les
   factures validées pas encore payées (en Engagement, dues au jour de la facture contre 401 / 467 ; en Trésorerie (recettes-dépenses),
   dans « Fournisseurs à payer » du Compte de résultat), puis les écritures à la main (Engagement (partie double)) : « Ajouter une écriture »
   ouvre une fenêtre date / libellé / compte débité / compte crédité / montant, pour une cotisation due (411) ou le compte
