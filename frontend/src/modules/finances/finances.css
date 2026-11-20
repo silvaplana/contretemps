@@ -1936,3 +1936,68 @@ button.fin-releves__case {
   flex-direction: column;
   gap: 0.25rem;
 }
+
+/* Financier › ⋯ › Aide en ligne comptabilité (Seb, 20/11/2026). */
+.fin-aide {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 17px;
+  line-height: 1.45;
+}
+.fin-aide h2 {
+  margin: 4px 0 0;
+}
+.fin-aide h3 {
+  margin: 16px 0 0;
+  font-size: 19px;
+}
+.fin-aide p,
+.fin-aide ul {
+  margin: 0;
+}
+.fin-aide ul {
+  padding-left: 22px;
+}
+.fin-aide__exemples {
+  color: var(--text-muted);
+}
+.fin-aide__groupe {
+  font-weight: 600;
+}
+.fin-aide__schema {
+  width: 100%;
+  max-width: 350px;
+  height: auto;
+}
+.fin-aide__etat rect {
+  stroke-width: 1.5;
+}
+.fin-aide__etat text {
+  font-size: 15px;
+  fill: var(--text);
+}
+.fin-aide__etat--afaire rect {
+  fill: var(--warning-bg);
+  stroke: var(--warning-text);
+}
+.fin-aide__etat--encours rect {
+  fill: var(--surface);
+  stroke: var(--border);
+}
+.fin-aide__etat--fini rect {
+  fill: var(--success-bg);
+  stroke: var(--success-text);
+}
+.fin-aide__fleche {
+  fill: none;
+  stroke: var(--text-muted);
+  stroke-width: 1.5;
+}
+#fin-aide-fleche path {
+  fill: var(--text-muted);
+}
+.fin-aide__mot {
+  font-size: 13px;
+  fill: var(--text-muted);
+}

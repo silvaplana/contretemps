@@ -1,5 +1,7 @@
 Financier : onglet de la barre du bas (sous « Plus » sur téléphone). Cinq sous-onglets en haut :
 Comptes, Pièces, Bilan, AG, Prévisionnel. Le menu ⋯ en haut à droite change selon le sous-onglet.
+En bas de chaque menu ⋯ : « Aide en ligne comptabilité », une page qui définit pièce, transaction, compte et classe,
+explique le rattachement, les documents du bilan, le point de départ et les états d'une transaction et d'une pièce ; ← Financier revient.
 
 Comptes
 - Puces des comptes : Tous, chaque compte en banque, Caisse. Puces « À catégoriser (n) » (pas de compte) et « Justificatif manquant (n) » (un compte, pas de pièce) : les lignes à compléter. Sous chaque transaction : son compte (marque « auto » s'il a été posé automatiquement, voir plus bas) et un badge « À catégoriser », « Justificatif manquant » ou « Justifiée » (pièces rattachées qui font tout le montant, ou justifiée sans facture ; sinon « Justificatif manquant · reste 100,00 € »). La Balance part des transactions bancaires : chacune va sur le compte de ses pièces rattachées, sinon sur celui choisi dans Comptes, sinon « à classer ».
