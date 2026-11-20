@@ -825,7 +825,15 @@ l'AG, `spec/modules/procurations.md`). Le toucher liste les convocations d'AG qu
 dans Docs (fichiers à remplir dont le nom commence par « Convocation »), la plus récente d'abord ; en
 choisir une la joint comme le bouton Document : sur l'actu, un bouton à son nom l'ouvre, chacun y
 répond (Je viens, Je donne procuration, Je ne viens pas). Rien de nouveau côté serveur : la recherche
-de Docs suffit. Une autre nature de document spécifique s'ajoute à la liste `SPECIFIQUES` de
+de Docs suffit.
+
+« + Nouvelle convocation » (Seb, 20 novembre : « tu dois créer un document Convoquer l'AG et l'ouvrir
+en édition ») : les deux questions de Docs › + › Convoquer l'AG (Ordinaire ou Extraordinaire, date et
+heure ; « Où ranger la convocation ? » si l'appli hésite), par la même route (`POST
+/documents/orgs/{id}/assemblies`). L'actu est alors gardée avec la convocation jointe (en brouillon si
+elle n'était pas publiée, sans mail), puis la convocation s'ouvre dans Docs sur Préparer › Aperçu ; ←
+ramène aux actus (fermer un fichier à remplir ouvert depuis un autre onglet y ramène désormais,
+comme un fichier ordinaire). Une autre nature de document spécifique s'ajoute à la liste `SPECIFIQUES` de
 `DocumentsSpecifiques.jsx`.
 
 ### 12.15 Texte mis en forme (Seb, 19 novembre 2026)

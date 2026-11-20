@@ -1401,7 +1401,11 @@ export default function Explorer({ orgId, memoire }) {
           key={appli.id}
           api={api}
           item={appli}
-          onClose={() => setAppli(null)}
+          onClose={() => {
+            setAppli(null)
+            // Ouvert depuis une actu (Documents spécifiques) : ← y ramène.
+            revenirApresFichier()
+          }}
           onToast={montrerToast}
           onShare={(x) => setPartage(x)}
           onProperties={(id) => setProprietes({ id, tab: 'Infos' })}
