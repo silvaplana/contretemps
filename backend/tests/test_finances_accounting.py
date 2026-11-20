@@ -91,6 +91,12 @@ def test_three_states_to_classify_receipt_missing_justified(finances, db_session
     # Amazon : un compte, pas de pièce → Justificatif manquant ; Mystère, justifiée sans facture : non.
     assert accounting.counts(db_session, 1, list(annotated.values())) == {"withoutAccount": 0, "withoutPiece": 1}
 
+    # 300 € payés, 200 € de pièces rattachées : pas Justifiée, il reste 100 € à justifier.
+    partial = Accounting(pieces=lambda db, org_id: {mystere["id"]: {"id": 1, "title": "Deux factures", "kind": "Achat", "amount": -mystere["amount"] * 2 / 3}})
+    row = partial.annotate(db_session, 1, [dict(mystere)])[0]
+    assert row["toJustify"] == round(abs(mystere["amount"]) / 3, 2)
+    assert partial.counts(db_session, 1, [row]) == {"withoutAccount": 0, "withoutPiece": 1}
+
 
 def test_confirm_then_history_proposes_same_account(accounting, finances, db_session):
     ledger = finances.get_ledger(db_session, TRESORIER)

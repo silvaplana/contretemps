@@ -104,10 +104,11 @@ function shortName(account) {
 }
 
 // L'état d'une transaction bancaire (spec §8.4) : "account" À catégoriser,
-// "piece" Justificatif manquant, "ok" Justifiée (pièce rattachée ou justifiée sans facture).
+// "piece" Justificatif manquant, "ok" Justifiée (pièces qui font tout le montant, ou justifiée sans facture).
 function etat(row) {
   if (row.account == null) return "account";
-  return row.piece || row.justified ? "ok" : "piece";
+  if (row.justified) return "ok";
+  return row.piece && !(row.toJustify > 0) ? "ok" : "piece";
 }
 
 function rowLabel(row) {
@@ -1055,6 +1056,9 @@ export default function Comptes({ onChange }) {
                               ) : etat(row) === "piece" ? (
                                 <span className="badge badge--warning">
                                   Justificatif manquant
+                                  {row.piece && row.toJustify > 0
+                                    ? ` · reste ${euros(row.toJustify)}`
+                                    : ""}
                                 </span>
                               ) : (
                                 <span className="badge badge--success">

@@ -2,7 +2,7 @@ Financier : onglet de la barre du bas (sous « Plus » sur téléphone). Cinq so
 Comptes, Pièces, Bilan, AG, Prévisionnel. Le menu ⋯ en haut à droite change selon le sous-onglet.
 
 Comptes
-- Puces des comptes : Tous, chaque compte en banque, Caisse. Puces « À catégoriser (n) » (pas de compte) et « Justificatif manquant (n) » (un compte, pas de pièce) : les lignes à compléter. Sous chaque transaction : son compte et un badge « À catégoriser », « Justificatif manquant » ou « Justifiée » (pièce rattachée, ou justifiée sans facture).
+- Puces des comptes : Tous, chaque compte en banque, Caisse. Puces « À catégoriser (n) » (pas de compte) et « Justificatif manquant (n) » (un compte, pas de pièce) : les lignes à compléter. Sous chaque transaction : son compte et un badge « À catégoriser », « Justificatif manquant » ou « Justifiée » (pièces rattachées qui font tout le montant, ou justifiée sans facture ; sinon « Justificatif manquant · reste 100,00 € »). La Balance part des transactions bancaires : chacune va sur le compte de ses pièces rattachées, sinon sur celui choisi dans Comptes, sinon « à classer ».
 - Graphique / Tableau : la courbe du solde ou la liste des lignes. Liste des catégories, menu « Tous les mois » (un mois précis, tous les mois depuis la première opération), recherche d'une opération.
 - Toucher une ligne : sa fiche (compte du plan proposé à confirmer, ventilation sur plusieurs comptes, pièce, écritures).
   Le crayon à côté de « Compte » ouvre le Plan comptable à la place de la fiche pour ajouter le compte qui manque ;

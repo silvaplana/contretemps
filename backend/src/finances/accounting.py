@@ -389,6 +389,9 @@ class Accounting:
                 )
                 row["proposal"] = self._proposal(by_id, proposal)
             row["piece"] = pieces.get(row["id"])
+            # Ce qui reste à justifier (Seb, 20/11) : les pièces rattachées ne font pas tout le montant.
+            piece_cents = round(abs(float(row["piece"].get("amount") or 0)) * 100) if row["piece"] else 0
+            row["toJustify"] = max(abs(round(row["amount"] * 100)) - piece_cents, 0) / 100 if row["piece"] else 0
         return rows
 
     @staticmethod
@@ -493,11 +496,14 @@ class Accounting:
 
     def counts(self, db: Session, org_id: int, rows: list[dict]) -> dict:
         """Compteurs des puces « À catégoriser » (pas de compte) et « Justificatif
-        manquant » (un compte, ni pièce ni justification sans facture) (§8.4)."""
+        manquant » (un compte, ni justification sans facture ni pièces qui font
+        tout le montant) (§8.4)."""
         real = [r for r in rows if not r.get("transfer")]
         return {
             "withoutAccount": sum(r["account"] is None for r in real),
-            "withoutPiece": sum(r["account"] is not None and r["piece"] is None and not r.get("justified") for r in real),
+            "withoutPiece": sum(
+                r["account"] is not None and not r.get("justified") and (r["piece"] is None or r.get("toJustify", 0) > 0) for r in real
+            ),
         }
 
     # ----- caisse -----

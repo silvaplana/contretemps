@@ -776,8 +776,15 @@ filtres se cumulent et le graphique montre alors le cumul des opérations retenu
 Dans Comptes › Tableau, chaque opération porte son **compte** et l'un de **trois états** (Seb, 20 novembre
 2026, comme les logiciels du métier) : **À catégoriser** (pas de compte confirmé ; la proposition « 606 Achats ? »
 reste affichée), **Justificatif manquant** (un compte, ni pièce rattachée ni « Justifier sans facture »),
-**Justifiée** (un compte et une pièce rattachée, ou justifiée sans facture dans Rapprocher) ; puces
-**À catégoriser** et **Justificatif manquant** avec compteur. Dans Pièces, une pièce vérifiée (ni À valider ni
+**Justifiée** (un compte et des pièces rattachées qui font **tout** le montant, ou justifiée sans facture dans
+Rapprocher ; une transaction de 300 € avec 200 € de pièces reste « Justificatif manquant · reste 100,00 € ») ; puces
+**À catégoriser** et **Justificatif manquant** avec compteur.
+**D'où viennent les montants de la Balance (Seb, 20/11)** : la Balance, le Grand livre et le Compte de
+résultat partent des **transactions bancaires** (et de la caisse), jamais des pièces : chaque transaction
+fait 512 d'un côté et, de l'autre, **le compte de la ou des pièces rattachées** (écrit sur la transaction au
+rattachement quand les pièces font le montant), sinon **le compte donné à la transaction** dans Comptes, sinon
+« Dépenses à classer » 65900 / « Recettes à classer » 75900. Une pièce sans transaction n'entre qu'au niveau
+Complet (facture due, 401 / 467). Dans Pièces, une pièce vérifiée (ni À valider ni
 Refusé) dont une ligne n'a pas de compte porte en plus le badge orange **À catégoriser** ; l'état payé se
 dit **Payée** (« Valider : Payée », « À valider → Payée »). Un appui
 ouvre la **fiche de l'opération** : compte (proposé, à confirmer), pièce (changer, détacher,
