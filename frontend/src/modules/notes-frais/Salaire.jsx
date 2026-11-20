@@ -28,6 +28,29 @@ export default function SalaireModal({ note, onClose, onFait }) {
   const [erreur, setErreur] = useState('')
   const [enCours, setEnCours] = useState(false)
   const [debits, setDebits] = useState(null) // « Autre transaction… »
+  const [lecture, setLecture] = useState('')
+
+  // Le bulletin joint est lu : ce qui n'est pas encore saisi se remplit, à relire.
+  async function joindre(fichier) {
+    setJoint(fichier)
+    if (!fichier || !modifiable || brut) return
+    setLecture('Lecture du bulletin…')
+    try {
+      const lu = await api.lireTicket(fichier)
+      if (lu.paie) {
+        setBrut(api.versTexteMontant(lu.paie.brut))
+        setSalarie(api.versTexteMontant(lu.paie.salarie))
+        setEmployeur(api.versTexteMontant(lu.paie.employeur))
+        if (lu.salarie && !qui) setQui(lu.salarie)
+        if (lu.date && note === null) setJour(lu.date)
+        setLecture('Montants lus sur le bulletin : vérifiez-les.')
+      } else {
+        setLecture('Les montants n’ont pas pu être lus : saisissez-les.')
+      }
+    } catch {
+      setLecture('Les montants n’ont pas pu être lus : saisissez-les.')
+    }
+  }
 
   const c = { brut: api.versCentimes(brut) || 0, salarie: api.versCentimes(salarie) || 0, employeur: api.versCentimes(employeur) || 0 }
   const net = c.brut - c.salarie
@@ -120,8 +143,9 @@ export default function SalaireModal({ note, onClose, onFait }) {
             </div>
           )}
           {note === null && !joint && <p className="muted">Facultatif. Sans fichier, rien n’est créé dans Docs.</p>}
-          <input ref={camera} type="file" accept="image/*" capture="environment" hidden onChange={(e) => setJoint(e.target.files?.[0] ?? null)} />
-          <input ref={galerie} type="file" accept="image/*,application/pdf" hidden onChange={(e) => setJoint(e.target.files?.[0] ?? null)} />
+          {joint && lecture && <p className="muted">{lecture}</p>}
+          <input ref={camera} type="file" accept="image/*" capture="environment" hidden onChange={(e) => joindre(e.target.files?.[0] ?? null)} />
+          <input ref={galerie} type="file" accept="image/*,application/pdf" hidden onChange={(e) => joindre(e.target.files?.[0] ?? null)} />
         </>
       )}
       {note && note.statut !== 'refusee' && (

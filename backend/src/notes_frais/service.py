@@ -107,6 +107,17 @@ def _fin_de_mois(jour: date) -> date:
     return (jour.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
 
 
+def _paie_lue(lu: TicketLu) -> dict | None:
+    """Les montants d'un bulletin de salaire lu, en centimes, s'ils tiennent
+    debout : {brut, salarie, employeur}, où `salarie` = brut − net payé
+    (cotisations, CSG et impôt prélevé à la source). Sinon None : la
+    trésorière saisit à la main."""
+    brut, net, employeur = lu.brut_centimes, lu.net_centimes, lu.employeur_centimes or 0
+    if lu.sorte != "salaire" or not brut or not net or not 0 < net <= brut <= MONTANT_MAX_CENTIMES or employeur < 0:
+        return None
+    return {"brut": brut, "salarie": brut - net, "employeur": employeur}
+
+
 def _date_du_nom(nom: str) -> date | None:
     """La date écrite dans un nom de fichier (« 2026.02.28 Boyer 02.pdf »,
     « facture_28-02-2026.pdf ») ; None sinon ou si elle est dans le futur."""
@@ -568,6 +579,8 @@ class NotesDeFrais:
             "beneficiaire": (lu.beneficiaire or "")[:120] or None,
             "iban": lu.iban,
             "motif": (lu.motif or "")[:140] or None,
+            "salarie": " ".join((lu.salarie or "").split())[:120] or None,
+            "paie": _paie_lue(lu),
             "cheques": [(nom[:120], centimes) for nom, centimes in lu.cheques if 0 < centimes <= MONTANT_MAX_CENTIMES],
         }
 
@@ -1120,6 +1133,13 @@ class NotesDeFrais:
                     lu = self.lire_ticket(db, membre, contenu, type_mime, nom)
                 except LectureImpossible:
                     lu = {}
+        if nature is None and lu.get("sorte") == "salaire" and lu.get("paie") and self.paie_active(db, membre.org_id):
+            nature = SALAIRE
+        if nature == SALAIRE and not lignes and lu.get("paie"):
+            # Bulletin lu (financier.md §8.11) : brut, cotisations du salarié et de l'employeur pré-remplis.
+            paie = lu["paie"]
+            lignes = self.lignes_paie(db, membre.org_id, paie["brut"], paie["salarie"], paie["employeur"])
+            categorie_id, montant_centimes = lignes[0]
         if nature is None and lu.get("sorte") == "virement" and lien is None:
             return self._preuve_de_virement(db, membre, lu, fichier)
         date_approximative = False
@@ -1171,7 +1191,7 @@ class NotesDeFrais:
         if nature in SANS_PERSONNE:
             note.person_id = membre.person_id
             # Une vente : de qui vient l'argent (à qui l'association a facturé), sinon ce que dit la pièce.
-            lu_qui = (lu.get("client") or lu.get("description")) if nature == VENTE else emetteur
+            lu_qui = (lu.get("client") or lu.get("description")) if nature == VENTE else lu.get("salarie") if nature == SALAIRE else emetteur
             note.supplier = " ".join((fournisseur or lu_qui or "").split())[:120] or None
         else:
             note.person_id = personne.person_id if personne is not None else PERSONNE_A_CHOISIR
