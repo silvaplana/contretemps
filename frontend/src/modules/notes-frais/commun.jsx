@@ -153,6 +153,18 @@ export function qui(note) {
   return note.personne?.nom ?? (note.fournisseur ? `${note.fournisseur} ?` : 'Pour qui ?')
 }
 
+// Aucun compte du plan ne convenait à la lecture (financier.md §8.2 bis) : celui qu'elle propose, à créer d'un toucher.
+export function ProposerCompte({ compte, enCours, onCreer }) {
+  return (
+    <p className="nf-proposer-compte">
+      <span className="muted">Aucun compte ne convient. Proposé : {compte}</span>
+      <button type="button" className="btn btn--secondary" disabled={enCours} onClick={onCreer}>
+        Créer ce compte
+      </button>
+    </p>
+  )
+}
+
 // La preuve d'un virement lue avec la pièce (§7 quinquies) : « Rattacher à cette transaction »
 // la rattache à la transaction vue sur le compte, ou la passe Envoyé en attendant.
 export function PreuveVirement({ note, onPaye }) {

@@ -481,6 +481,21 @@ def comptes_de_charges(db: Session, org_id: int) -> list[tuple[str, str]]:
     ]
 
 
+def creer_compte(db: Session, org_id: int, numero: str, libelle: str, recette: bool) -> None:
+    """Le compte proposé par la lecture (financier.md §8.2 bis), ajouté au
+    plan du Financier ; déjà là mais inactif, il est réactivé."""
+    from finances.models import EXPENSE, INCOME, FinChartAccount
+
+    compte = db.scalar(select(FinChartAccount).where(FinChartAccount.org_id == org_id, FinChartAccount.number == numero))
+    if compte is None:
+        db.add(FinChartAccount(org_id=org_id, number=numero, label=libelle[:80], nature=INCOME if recette else EXPENSE, keywords=[]))
+    elif (compte.nature == INCOME) != recette:
+        raise ValueError(f"Le compte {numero} existe déjà comme compte de {'charges' if recette else 'produits'}.")
+    else:
+        compte.active = True
+    db.commit()
+
+
 def comptes_de_produits(db: Session, org_id: int) -> list[tuple[str, str]]:
     """Les comptes d'une vente = les comptes de produits actifs du plan
     comptable du Financier (financier.md §8.12)."""

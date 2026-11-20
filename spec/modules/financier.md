@@ -519,6 +519,22 @@ Les catégories par mots-clés de §3.2 (`categories.py`) restent pour l'écran 
 compte du plan porte ses mots-clés de proposition (repris et enrichis par l'historique confirmé :
 même fournisseur → même compte). Pas de « type » à l'écran : on dit « compte » et « nature ».
 
+### 8.2 bis Proposer un compte quand aucun ne convient (Seb, 19-20 novembre 2026)
+
+Demande de Seb : « lorsqu'il lit une facture, qu'il propose un compte du plan comptable s'il existe,
+ou sinon qu'il propose d'en créer un ». Le premier cas existait (mémoire du même fournisseur, sinon
+la lecture choisit parmi les comptes). **Codé le 20 novembre 2026** pour le second, dans **la même
+lecture** (pas de requête de plus, même coût) : quand aucun compte de la liste ne convient, la
+lecture renvoie aussi `compte_propose`, un compte du plan comptable des associations (numéro de 3 à
+6 chiffres, classe 6 pour une dépense, 7 pour une vente, et un libellé court). Il est gardé sur la
+ligne (`nf_depenses.suggested_account`, « 6068 Fournitures de danse ») tant qu'aucun compte n'est
+choisi. La fiche de la pièce le montre sous le compte : « Aucun compte ne convient. Proposé : 6068
+Fournitures de danse » et **« Créer ce compte »**, qui l'ajoute au plan (ou le réactive s'il y est,
+inactif), le pose sur la ligne et range la pièce en conséquence. Rien n'est créé sans ce toucher ;
+choisir un autre compte suffit à ignorer la proposition. Une proposition de la mauvaise classe (un
+compte de charges pour une vente) est écartée. Port `Ports.creer_compte` (adapter Contretemps : table
+`fin_chart_accounts`). Route `POST /notes-frais/depenses/{id}/creer-compte`, trésorier.
+
 ### 8.3 Pièces (sous-onglet)
 
 Financier › **Pièces** : le classeur des justificatifs. Puces **Achats** · **Honoraires** ·

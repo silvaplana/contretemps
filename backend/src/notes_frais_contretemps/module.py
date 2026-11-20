@@ -20,6 +20,7 @@ from .adapter import (
     comptes_de_charges,
     ajouter_comptes_paie,
     comptes_de_produits,
+    creer_compte,
     comptes_paie_manquants,
     membre_appelant,
     retirer_comptes_paie,
@@ -109,6 +110,7 @@ def mount(app, core) -> None:
             plan=comptes_de_charges,
             # Comptes d'une vente = comptes de produits (financier.md §8.12).
             plan_ventes=comptes_de_produits,
+            creer_compte=creer_compte,
             # Comptes d'un bulletin de salaire (641, 645, 431), ajoutés d'un toucher (financier.md §8.11).
             paie_manquants=comptes_paie_manquants,
             ajouter_paie=ajouter_comptes_paie,

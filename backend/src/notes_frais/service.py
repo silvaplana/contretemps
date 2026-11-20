@@ -569,6 +569,7 @@ class NotesDeFrais:
             "iban": lu.iban,
             "motif": (lu.motif or "")[:140] or None,
             "cheques": [(nom[:120], centimes) for nom, centimes in lu.cheques if 0 < centimes <= MONTANT_MAX_CENTIMES],
+            "compte_propose": lu.compte_propose if lu.compte_propose and re.fullmatch(r"[67]\d{2,5}", lu.compte_propose[0]) else None,
         }
 
     # --- Notes : côté membre (§4.4) ---
@@ -1193,6 +1194,11 @@ class NotesDeFrais:
                 categorie_id if categorie_id is not None else self._categorie_habituelle(db, note) or lu.get("categorie_id"),
             ),
         )
+        if depense.categorie_id is None and lu.get("compte_propose"):
+            # Aucun compte ne convenait (financier.md §8.2 bis) : celui que la lecture propose, à créer d'un toucher.
+            numero, libelle = lu["compte_propose"]
+            if numero.startswith("7" if nature == VENTE else "6"):
+                depense.suggested_account = f"{numero} {libelle}"[:100]
         db.add(depense)
         for autre in (lignes or [])[1:]:
             autre_categorie, autre_montant = autre[:2]
@@ -1530,6 +1536,27 @@ class NotesDeFrais:
         db.refresh(note)
         self._reranger(db, membre, note)
         self._ranger(db, membre, note)
+        return note
+
+    def creer_compte_propose(self, db: Session, membre: Membre, depense_id: int) -> NoteFrais:
+        """« Créer le compte » (financier.md §8.2 bis) : le compte que la
+        lecture a proposé entre au plan comptable et devient le compte de la ligne."""
+        self._exiger_tresorier(membre)
+        depense = db.get(Depense, depense_id)
+        if depense is None or depense.org_id != membre.org_id or depense.note is None:
+            raise LookupError("Dépense introuvable.")
+        if not depense.suggested_account or self.ports.creer_compte is None:
+            raise ValueError("Aucun compte à créer pour cette ligne.")
+        numero, _, libelle = depense.suggested_account.partition(" ")
+        self.ports.creer_compte(db, membre.org_id, numero, libelle, depense.note.nature == VENTE)
+        categorie = next((c for c in self.categories(db, membre.org_id, ventes=depense.note.nature == VENTE) if c.code == numero), None)
+        if categorie is None:
+            raise ValueError(f"Le compte {numero} n'a pas pu être ajouté.")
+        depense.categorie_id, depense.suggested_account = categorie.id, None
+        db.commit()
+        note = depense.note
+        db.refresh(note)
+        self._reranger(db, membre, note)
         return note
 
     def _poser_lignes(
@@ -2792,6 +2819,8 @@ class NotesDeFrais:
             "sans_justificatif": not depense.pieces,
             "lue_par_ia": depense.lue_par_ia,
             "date_approximative": depense.date_approximative,
+            # Le compte que la lecture propose de créer, tant qu'aucun n'est choisi (financier.md §8.2 bis).
+            "compte_propose": depense.suggested_account if depense.categorie_id is None else None,
             "pieces": [{"id": p.id, "type_mime": p.type_mime, "nom": p.nom, "preuve": p.is_proof} for p in depense.pieces],
         }
 

@@ -949,3 +949,12 @@
 .nf-emp__nouveau { flex: 1; min-width: 0; font: inherit; min-height: 48px; padding: 0 12px; }
 .nf-emp__defaut { align-self: flex-start; min-height: 48px; }
 .nf-emp select { font: inherit; min-height: 48px; }
+
+/* « Créer ce compte » proposé par la lecture (financier.md §8.2 bis). */
+.nf-proposer-compte {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 8px;
+}

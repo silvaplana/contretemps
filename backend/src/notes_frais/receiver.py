@@ -473,6 +473,11 @@ class NotesDeFraisReceiver:
         def detacher(note_id: int, db: Session = db_dep, m: Membre = membre):
             return nf.notes_dicts(db, m, [appeler(nf.detacher, db, m, note_id)])[0]
 
+        @app.post("/notes-frais/depenses/{depense_id}/creer-compte")
+        def creer_compte_propose(depense_id: int, db: Session = db_dep, m: Membre = membre):
+            """« Créer le compte » proposé par la lecture (financier.md §8.2 bis)."""
+            return nf.notes_dicts(db, m, [appeler(nf.creer_compte_propose, db, m, depense_id)])[0]
+
         @app.post("/notes-frais/notes/{note_id}/especes")
         def encaisser_especes(note_id: int, db: Session = db_dep, m: Membre = membre):
             """Vente « Encaissée en espèces » (financier.md §8.12) : elle entre dans la caisse."""

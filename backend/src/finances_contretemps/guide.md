@@ -31,6 +31,7 @@ Comptes
   on remplit les cases à la main. Saisons suivantes : reportés par la clôture, rien à faire.
 
 Pièces
+- Fiche d'une pièce lue : si aucun compte ne convenait, sous le compte « Aucun compte ne convient. Proposé : 6068 Fournitures de danse » et le bouton « Créer ce compte » (il entre au plan et devient le compte de la ligne).
 - Puces : Virements, Rapprocher, Notes de frais, Honoraires, Achats, Ventes, À trancher (les pièces mises « plus tard » et les pièces refusées, fichiers dans Docs › Financier › A TRAITER). Un badge compte les pièces qui attendent. Ventes = les pièces de
   recette (remise de chèques, reçu, facture émise, subvention) : « + » › Saisir à la main › Vente, ou une photo lue
   comme une recette. Fiche d'une vente : De qui ou quoi, Date, Compte et montant (« Ajouter une ligne » pour plusieurs
