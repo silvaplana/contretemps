@@ -123,3 +123,72 @@ def test_in_docs_returns_the_stored_file_id(writer, db_session):
     assert stored[-1] == (["AG"], ["Rapport financier 2025-2026.docx"])
     with pytest.raises(LookupError):
         w.in_docs(db_session, TRESORIER, 2, SEASON, "docx")
+
+
+def scripted_client(responses, seen):
+    """Un faux modèle qui rend, tour après tour, les blocs donnés."""
+    class Stream:
+        def __init__(self, message):
+            self.message = message
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def get_final_message(self):
+            return self.message
+
+    def stream(**params):
+        seen.append(params)
+        usage = SimpleNamespace(input_tokens=1000, output_tokens=500, cache_read_input_tokens=0, cache_creation_input_tokens=0)
+        return Stream(SimpleNamespace(model="claude-sonnet-5-5", stop_reason="tool_use", usage=usage, content=responses.pop(0)))
+
+    return SimpleNamespace(beta=SimpleNamespace(messages=SimpleNamespace(stream=stream)))
+
+
+def test_a_correction_keeps_the_rest_reads_the_app_and_can_be_undone(writer, db_session):
+    """Seb, 20/11 : « Ce qu'il faut changer » sous le rapport ; le modèle lit
+    l'appli (effectifs), ajoute une partie, les montants restent des repères ;
+    « Annuler la dernière correction » rend le rapport d'avant."""
+    w, seen, _ = writer
+    first = w.write(db_session, TRESORIER, 1, SEASON, "", "claude-sonnet-5-5", [])
+    corrected = {
+        **DRAFT, "points": [], "impossible": None,
+        "complements": [{
+            "titre": "Effectifs", "paragraphes": ["Nous comptons 163 élèves pour {{produits.706}} de cotisations."],
+            "tableau": {"entetes": ["Saison", "Élèves"], "lignes": [["2024-2025", "151"], ["2025-2026", "163"]]},
+        }],
+    }
+    read = []
+    w.readings = ([{"name": "resume_ecole", "description": "", "input_schema": {"type": "object", "properties": {}}}],
+                  lambda db, member, name, args: read.append((name, args)) or "163 élèves, 12 cours.")
+    w._client = scripted_client([
+        [SimpleNamespace(type="tool_use", id="t1", name="resume_ecole", input={"saison": None})],
+        [SimpleNamespace(type="tool_use", id="t2", name="rendre_rapport", input=corrected)],
+    ], seen)
+    result = w.correct(db_session, TRESORIER, 1, SEASON, "Ajoute un comparatif du nombre d'élèves.")
+    assert read == [("resume_ecole", {"saison": None})]
+    # Le modèle a reçu le brouillon à repères, pas les montants finis, puis la lecture.
+    calls = [x for x in seen if isinstance(x, dict)]
+    assert "{{produits.706}}" in calls[-2]["messages"][0]["content"] and calls[-1]["messages"][-1]["content"][0]["content"] == "163 élèves, 12 cours."
+    assert seen[-1][0] == "cost" and "correction" in seen[-1][2]
+    assert result["recettes"] == first["recettes"] and result["correction"] == "Ajoute un comparatif du nombre d'élèves."
+    assert result["complements"][0]["paragraphes"] == ["Nous comptons 163 élèves pour 2 298,00 € de cotisations."]
+    assert "draft" not in result
+    content, _, _ = w._build(db_session, TRESORIER, 1, SEASON, "docx")
+    doc = Document(__import__("io").BytesIO(content))
+    assert "Effectifs" in [p.text for p in doc.paragraphs] and doc.tables[0].rows[2].cells[1].text == "163"
+    pdf, _, _ = w._build(db_session, TRESORIER, 1, SEASON, "pdf")
+    assert "163 élèves" in "".join(p.get_text() for p in pymupdf.open(stream=pdf, filetype="pdf"))
+
+    # Une donnée introuvable : rien n'est changé, le message le dit.
+    w._client = scripted_client([[SimpleNamespace(type="tool_use", id="t3", name="rendre_rapport", input={**corrected, "impossible": "Je ne trouve pas les effectifs de 2019."})]], seen)
+    with pytest.raises(ValueError, match="2019"):
+        w.correct(db_session, TRESORIER, 1, SEASON, "Compare à 2019.")
+    assert w.get(db_session, 1)["id"] == result["id"]
+
+    assert w.undo(db_session, 1)["id"] == first["id"]
+    with pytest.raises(LookupError):
+        w.undo(db_session, 1)  # la rédaction elle-même ne s'annule pas

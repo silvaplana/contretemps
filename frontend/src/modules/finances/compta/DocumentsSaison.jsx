@@ -9,6 +9,7 @@ import { telechargerFichier } from '../../../utils/telechargement.js'
 import { RapportFinancier } from './DocumentsAG.jsx'
 import Apercu from './Apercu.jsx'
 import BudgetPrevisionnel from './BudgetPrevisionnel.jsx'
+import RapportCorrection from './RapportCorrection.jsx'
 import * as api from '../api.js'
 import './compta.css'
 
@@ -51,6 +52,7 @@ export function useDocumentsSaison(seasonId) {
 export function Etape6Documents({ season, docs }) {
   const { data, setData, erreur, setErreur, charger } = docs
   const [budget, setBudget] = useState(false)
+  const [rapportOuvert, setRapportOuvert] = useState(null) // le nom du fichier : le rapport à lire et corriger
   const [rapportId, setRapportId] = useState(null)
   const [ajout, setAjout] = useState('')
   const [produits, setProduits] = useState([]) // noms des documents produits depuis l'ouverture de l'écran
@@ -71,6 +73,7 @@ export function Etape6Documents({ season, docs }) {
     )
 
   const reportId = rapportId ?? data.reportId
+  if (rapportOuvert) return <RapportCorrection reportId={reportId} titre={rapportOuvert} onClose={() => setRapportOuvert(null)} />
 
   // Les choix tels qu'à l'écran, envoyés en entier à chaque changement : un
   // fichier de l'an dernier coché = « Comme l'an dernier », un document ajouté
@@ -107,12 +110,26 @@ export function Etape6Documents({ season, docs }) {
     setEnCours(d.name)
     try {
       const reponse = await fetch(api.urlDocumentSaison(season.id, d.kind, d.name))
-      if (!reponse.ok) throw new Error(`Le document n’a pas pu être produit (${reponse.status})`)
+      if (!reponse.ok) {
+        const detail = await reponse.json().catch(() => null)
+        throw new Error(detail?.detail || `Le document n’a pas pu être produit (${reponse.status})`)
+      }
       setProduits((p) => [...p, d.name])
+      if (d.layout) charger() // la présentation de l'an dernier est prête, avec ce qui reste à vérifier
     } catch (err) {
       setErreur(err.message)
     } finally {
       setEnCours('')
+    }
+  }
+
+  // « Refaire la présentation » : le repérage est oublié, le prochain « Produire » le refait.
+  async function refaire(r) {
+    try {
+      setData({ ...(await api.refaireMiseEnPage(season.id, r.kind)), reportId: data.reportId })
+      setProduits((p) => p.filter((n) => n !== r.name))
+    } catch (err) {
+      setErreur(err.message)
     }
   }
 
@@ -161,7 +178,7 @@ export function Etape6Documents({ season, docs }) {
           </span>
         )}
         {data.rows.map((r) => {
-          const d = { kind: r.kind, name: r.name }
+          const d = { kind: r.kind, name: r.name, layout: r.layout }
           const produit = produits.includes(r.name)
           return (
             <div key={r.kind} className="fin-docs__doc">
@@ -182,6 +199,7 @@ export function Etape6Documents({ season, docs }) {
                 {r.choice !== 'same' && !r.lastYear && 'Pas de fichier l’an dernier · '}
                 {r.choice === 'none' ? 'Pas produit' : `Fichier : ${r.name}`}
                 {produit && r.choice !== 'none' && (data.provisional ? ' · Produit, provisoire' : ' · Produit')}
+                {r.choice === 'same' && (r.layout ? ' · présentation de l’an dernier' : ' · présentation de l’appli')}
               </span>
               {r.choice !== 'none' &&
                 (r.kind === RAPPORT ? (
@@ -193,7 +211,7 @@ export function Etape6Documents({ season, docs }) {
                       sansDocs
                       rediger={rapportId != null}
                       onErreur={setErreur}
-                      onApercu={() => setApercu({ titre: r.name, charger: () => api.apercuRapportFinancier(reportId, r.name.replace(/\.docx$/, '')) })}
+                      onApercu={() => setRapportOuvert(r.name)}
                     />
                   ) : (
                     <span className="fin-cp-a">
@@ -205,11 +223,29 @@ export function Etape6Documents({ season, docs }) {
                 ) : (
                   <span className="fin-cp-a">
                     <button type="button" className="btn btn--secondary" onClick={() => produire(d)} disabled={enCours === r.name}>
-                      {enCours === r.name ? 'Calcul…' : produit ? 'Produire à nouveau' : 'Produire'}
+                      {enCours === r.name ? (r.layout && !r.layout.ready ? 'Préparation…' : 'Calcul…') : produit ? 'Produire à nouveau' : 'Produire'}
                     </button>
                     {produit && voirEtTelecharger(d)}
+                    {produit && r.layout?.ready && (
+                      <button type="button" className="btn btn--secondary" onClick={() => refaire(r)}>
+                        Refaire la présentation
+                      </button>
+                    )}
                   </span>
                 ))}
+              {enCours === r.name && r.layout && !r.layout.ready && (
+                <span className="fin-cp-s">Préparation de la présentation d’après « {r.lastYear} », une ou deux minutes la première fois…</span>
+              )}
+              {r.layout?.ready && r.layout.warnings.length > 0 && (
+                <span className="fin-cp-alerte">
+                  À vérifier dans le fichier :
+                  {r.layout.warnings.map((w) => (
+                    <span key={w} className="fin-docs__averifier">
+                      {w}
+                    </span>
+                  ))}
+                </span>
+              )}
               {r.kind === 'fec' && r.choice !== 'none' && data.fecCheck && (
                 <span className={data.fecCheck.ok ? 'fin-cp-s' : 'fin-cp-alerte'}>
                   {data.fecCheck.ok ? `FEC juste : ${data.fecCheck.entries} écriture(s) équilibrée(s)` : `FEC à corriger : ${data.fecCheck.problems.join(' ')}`}

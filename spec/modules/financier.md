@@ -842,6 +842,21 @@ l'AG** :
 | Honoraires versés aux professeurs (DAS-2) | Excel : total par prof et par mois, pour la DAS-2 ; à l'étape 6 seulement par « Ajouter un document » | Complet |
 | FEC (à l'étape 6 seulement par « Ajouter un document ») | Fichier des écritures comptables (art. A47 A-1 du LPF) : texte, 18 colonnes séparées par une tabulation, dates AAAAMMJJ, montants à virgule, ISO-8859-15. Les écritures du Grand livre (§8.7), regroupées en écritures numérotées par date (même journal, même jour, même opération ; les à-nouveaux en une seule). Pièce vide : le numéro d'écriture. Comptes de tiers dans CompteNum (pas de CompAux pour l'instant) | Simple |
 
+**Corriger le Rapport financier par une consigne** (Seb, 20/11 ; maquette
+https://claude.ai/artifact/SSZArsbq9CQtTU1cE2vzkz) : Bilan › Préparer › étape 6 › Rapport financier › **Voir** ouvre
+le texte du rapport dans l'appli (« ← Étapes du bilan » revient), Word et PDF dessous, puis la case **« Ce qu'il faut
+changer »** et le bouton **Corriger**. Le modèle reçoit le rapport tel qu'il l'a rédigé (avec ses repères `{{clé}}`)
+et la consigne ; il n'applique que la consigne, le reste est recopié ; les montants restent des repères placés par
+l'appli. Il peut **lire l'appli** par les lectures de l'assistant, limitées ici aux comptes d'ensemble (résumé de
+l'école : élèves, professeurs, cours ; liste des cours ; saisons ; d'une autre saison au besoin), jamais une fiche ni un
+contact, même pour un trésorier qui n'est pas administrateur (`finances_contretemps.adapter.lectures_du_rapport`, port
+`WrittenReports.readings`). Une partie nouvelle (un comparatif) va dans `complements` (titre, paragraphes, tableau),
+placée avant la conclusion, dans le Word et le PDF aussi. Une donnée introuvable : rien n'est changé et l'écran le dit.
+Le passage changé est surligné ; **« Annuler la dernière correction »** rend le rapport d'avant. Pas de liste des
+consignes passées (Seb). Chaque correction est une ligne de `fin_written_reports` (le brouillon à repères et la
+consigne sont dans son JSON, pas de migration) ; `POST` / `DELETE /finances/reports/{id}/rapport/correction`. Ce n'est
+pas l'assistant du haut : la case sait déjà de quel rapport et de quelle saison on parle.
+
 **Balance | Grand-livre | Compte de résultat** (Seb, 20/11 ; maquette
 https://claude.ai/artifact/RfYkidna3tjwFtmnsJ4E4Q) : Comptes réunit ce qui sert à tout moment de l'année.
 Trois puces à côté de Graphique et Tableau ouvrent le même écran (puces en haut, même Saison / Du / Au).
@@ -1246,9 +1261,20 @@ n'attend jamais une pièce : une ligne sans pièce reçoit son compte à la main
    que la saison n'est pas clôturée, le nom du fichier et le titre du document portent « (provisoire) »
    (`AgDocuments.provisional`), comme dans les logiciels du métier ; après la clôture, le nom officiel,
    celui qu'on dépose dans Docs. En Trésorerie, pas de clôture, pas de mention. Un document de chiffres ne
-   se corrige pas à la main : on corrige l'écriture et on le reproduit. **À venir** (Seb, 20/11) : « Comme
-   l'an dernier » reprend aussi la présentation des fichiers Excel et Word (cases repérées une fois par le
-   modèle, validées, chiffres posés par l'appli) ; les PDF gardent la présentation de l'appli.
+   se corrige pas à la main : on corrige l'écriture et on le reproduit.
+   **« Comme l'an dernier » reprend la présentation (Seb, 20/11), première étape : le Compte de résultat
+   sur un tableur** (.xlsx, .xls, .ods ; `finances/presentation.py`). Un seul bouton « Produire ». Au premier,
+   le fichier de l'an dernier est converti en .xlsx s'il le faut (LibreOffice), et le modèle regarde ses cases
+   **une fois** : pour chaque case à montant tapé, quels chiffres de l'appli elle additionne (clés :
+   `compte.<numéro>`, `honoraires.<professeur>`, `tresorerie.<compte>`, totaux, résultat, événements). Ce
+   repérage est gardé (`fin_document_templates`, par école et par fichier de l'an dernier). Ensuite, et aux
+   « Produire » suivants sans le modèle, **l'appli seule** recopie le fichier, avance les années des textes
+   (« 2024/2025 », « 31/08/25 »), **pose chaque montant** et garde les formules. Une case sans source est
+   vidée et listée « à compléter à la main » ; un compte qui a un montant et pas de ligne dans le tableau est
+   listé aussi (sinon le total du tableau serait faux sans le dire). « Refaire la présentation » oublie le
+   repérage (`DELETE /finances/seasons/{id}/documents/{nature}/layout`). Les autres documents en « Comme l'an
+   dernier » gardent pour l'instant la présentation de l'appli, et l'écran le dit ; à venir : Word, puis PDF
+   reconstruits.
    Chaque document prend **le nom de celui de l'an dernier, les années avancées d'un an**
    (« Balance 2024-2025.pdf » → « Balance 2025-2026.pdf »), au format que l'appli produit ; sans
    fichier l'an dernier : Synthèse, Balance, Rapport financier. Voir et Télécharger

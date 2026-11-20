@@ -62,6 +62,54 @@ SCHEMA = {
     "additionalProperties": False,
 }
 
+# Corriger le rapport par une consigne (Seb, 20/11) : le modèle rend le rapport
+# entier, le reste recopié tel quel, et peut ajouter une partie avant la conclusion.
+CORRECTION = """Voici le rapport financier déjà rédigé (JSON, avec ses repères {{clé}}) et une consigne \
+du trésorier. Applique UNIQUEMENT la consigne. Tout le reste est recopié mot pour mot, repères compris.
+
+- Un montant ou un pourcentage du bilan s'écrit toujours par son repère {{clé}} (liste fournie).
+- Pour toute autre donnée de l'association (nombre d'élèves, cours, saisons…), lis-la avec les outils de \
+lecture ; n'écris jamais un nombre que tu n'as pas lu. Les outils acceptent le nom d'une autre saison.
+- Une partie nouvelle (par exemple un comparatif) va dans « complements » : un titre, des paragraphes, et \
+un tableau si c'est plus clair. Elle est placée avant la conclusion.
+- Si la consigne demande une donnée que tu ne trouves pas, ne l'invente pas : explique-le dans « impossible » \
+et rends le rapport inchangé.
+Quand le rapport est prêt, appelle rendre_rapport une seule fois."""
+
+CORRECTION_SCHEMA = {
+    "type": "object",
+    "properties": {
+        **SCHEMA["properties"],
+        "complements": {
+            "type": "array",
+            "description": "Parties ajoutées avant la conclusion.",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "titre": {"type": "string"},
+                    "paragraphes": {"type": "array", "items": {"type": "string"}},
+                    "tableau": {
+                        "type": ["object", "null"],
+                        "properties": {
+                            "entetes": {"type": "array", "items": {"type": "string"}},
+                            "lignes": {"type": "array", "items": {"type": "array", "items": {"type": "string"}}},
+                        },
+                        "required": ["entetes", "lignes"],
+                        "additionalProperties": False,
+                    },
+                },
+                "required": ["titre", "paragraphes", "tableau"],
+                "additionalProperties": False,
+            },
+        },
+        "impossible": {"type": ["string", "null"], "description": "Ce qui n'a pas pu être fait, ou null."},
+    },
+    "required": [*SCHEMA["required"], "complements", "impossible"],
+    "additionalProperties": False,
+}
+_PARTS = ("introduction", "recettes", "depenses", "points", "conclusion", "complements")
+MAX_TURNS = 8
+
 _PLACEHOLDER = re.compile(r"\{\{\s*([\w.\-]+)\s*\}\}")
 _PERCENT = re.compile(r"\d+(?:[,.]\d+)?\s?%")
 
@@ -137,7 +185,7 @@ def fill(text: str, available: dict[str, dict]) -> tuple[str, list[str]]:
 
 
 class WrittenReports:
-    def __init__(self, synthese, seasons, note_cost=None, client: anthropic.Anthropic | None = None, org_name=None, store=None, notes=None) -> None:
+    def __init__(self, synthese, seasons, note_cost=None, client: anthropic.Anthropic | None = None, org_name=None, store=None, notes=None, readings=None) -> None:
         """synthese(db, member, season) : la Synthèse (ag_documents) ;
         seasons(db, org_id) ; note_cost(db, org_id, dollars, détail) ;
         org_name(db, org_id) ; store(db, member, chemin, fichiers)."""
@@ -146,6 +194,9 @@ class WrittenReports:
         self.note_cost = note_cost
         # notes(db, org_id, season) : les explications de la trésorière compte par compte (§8.10, étape 6).
         self.notes = notes
+        # readings = (outils, lire(db, member, nom, args) -> texte) : ce que le modèle peut lire
+        # de l'appli pour une correction (effectifs, cours, saisons) ; None : rien.
+        self.readings = readings
         self._client = client
         self.org_name = org_name
         self.store = store
@@ -166,6 +217,7 @@ class WrittenReports:
     @staticmethod
     def _dict(row: FinWrittenReport) -> dict:
         content = json.loads(row.content)
+        content.pop("draft", None)  # le brouillon à repères ne sert qu'aux corrections
         return {
             "id": row.id,
             "prompt": row.prompt,
@@ -182,12 +234,7 @@ class WrittenReports:
         """Fait rédiger le rapport, place les chiffres, garde le texte."""
         if model not in MODELS:
             raise AnalysisError(f"Modèle inconnu : {model}")
-        seasons = self.seasons(db, member.org_id)
-        index = next((i for i, s in enumerate(seasons) if s.id == season.id), None)
-        previous = seasons[index - 1] if index else None
-        current = self.synthese(db, member, season)
-        before = self.synthese(db, member, previous) if previous is not None else None
-        available = figures(current, before)
+        available, current, previous = self._figures(db, member, season)
         data = {
             "saison": season.name,
             "periode": {"debut": current["start"], "fin": current["cutoff"]},
@@ -223,7 +270,7 @@ class WrittenReports:
             draft = json.loads(block or "")
         except json.JSONDecodeError as exc:
             raise AnalysisError("Rapport illisible.", cost) from exc
-        content = self.compose(draft, available, season, current)
+        content = {**self.compose(draft, available, season, current), "draft": {k: draft.get(k) for k in _PARTS if k in draft}}
         row = FinWrittenReport(
             report_id=report_id, prompt=prompt.strip(), model=model, served_by=response.model or model, cost_usd=cost,
             content=json.dumps(content, ensure_ascii=False), created_by=member.person_id,
@@ -233,6 +280,92 @@ class WrittenReports:
         if cost and self.note_cost is not None:
             self.note_cost(db, member.org_id, cost, f"Rapport financier {season.name}")
         return self._dict(row)
+
+    def _figures(self, db: Session, member: Member, season: Season) -> tuple[dict, dict, Season | None]:
+        seasons = self.seasons(db, member.org_id)
+        index = next((i for i, s in enumerate(seasons) if s.id == season.id), None)
+        previous = seasons[index - 1] if index else None
+        current = self.synthese(db, member, season)
+        before = self.synthese(db, member, previous) if previous is not None else None
+        return figures(current, before), current, previous
+
+    # ----- correction par consigne (Seb, 20/11) -----
+
+    def correct(self, db: Session, member: Member, report_id: int, season: Season, instruction: str) -> dict:
+        """« Ce qu'il faut changer » : le modèle applique la consigne au rapport
+        déjà rédigé (le reste ne bouge pas), en lisant l'appli s'il le faut ;
+        les montants restent des repères placés par l'appli. Une ligne de plus
+        dans `fin_written_reports`, qu'« Annuler la dernière correction » retire."""
+        instruction = instruction.strip()
+        if not instruction:
+            raise ValueError("Écrivez ce qu'il faut changer.")
+        row = db.scalar(select(FinWrittenReport).where(FinWrittenReport.report_id == report_id).order_by(FinWrittenReport.id.desc()))
+        if row is None:
+            raise LookupError("Pas encore de rapport : faites-le rédiger d'abord.")
+        before = json.loads(row.content)
+        # Rapport d'avant le 20/11 : pas de brouillon gardé, on part du texte fini.
+        base = before.get("draft") or {k: before[k] for k in _PARTS if k in before}
+        available, current, _ = self._figures(db, member, season)
+        tools, read = self.readings or ([], None)
+        text = (
+            "Rapport actuel (JSON) :\n" + json.dumps(base, ensure_ascii=False, indent=1)
+            + "\n\nRepères disponibles :\n" + json.dumps({k: f["label"] for k, f in available.items()}, ensure_ascii=False)
+            + f"\n\nSaison du rapport : {season.name}\n\nConsigne du trésorier :\n{instruction}"
+        )
+        messages: list[dict] = [{"role": "user", "content": text}]
+        give = {"name": "rendre_rapport", "description": "Rend le rapport corrigé, entier.", "input_schema": CORRECTION_SCHEMA}
+        cost, served, draft = 0.0, row.model, None
+        for _ in range(MAX_TURNS):
+            params = {
+                "model": row.model, "max_tokens": 8000, "system": CORRECTION, "messages": messages,
+                "tools": [*tools, give], "tool_choice": {"type": "any"},
+            }
+            try:
+                with self._anthropic().beta.messages.stream(**params) as stream:
+                    response = stream.get_final_message()
+            except Exception as exc:  # noqa: BLE001 - toute erreur de l'appel en message clair
+                raise AnalysisError(f"La correction a échoué : {exc}", cost) from exc
+            cost += cost_usd(response.model or row.model, response.usage)
+            served = response.model or served
+            calls = [b for b in response.content if b.type == "tool_use"]
+            final = next((b for b in calls if b.name == "rendre_rapport"), None)
+            if final is not None:
+                draft = dict(final.input)
+                break
+            if not calls:
+                break
+            messages.append({"role": "assistant", "content": response.content})
+            messages.append({"role": "user", "content": [
+                {"type": "tool_result", "tool_use_id": b.id, "content": read(db, member, b.name, dict(b.input)) if read else "Lecture indisponible."}
+                for b in calls
+            ]})
+        if cost and self.note_cost is not None:
+            self.note_cost(db, member.org_id, cost, f"Rapport financier {season.name}, correction")
+        if draft is None:
+            raise AnalysisError("La correction n'a pas abouti.", cost)
+        if draft.get("impossible"):
+            raise ValueError(str(draft["impossible"]))
+        content = {
+            **self.compose(draft, available, season, current),
+            "draft": {k: draft.get(k) for k in _PARTS if k in draft},
+            "correction": instruction,
+        }
+        new = FinWrittenReport(
+            report_id=report_id, prompt=row.prompt, model=row.model, served_by=served, cost_usd=cost,
+            content=json.dumps(content, ensure_ascii=False), created_by=member.person_id,
+        )
+        db.add(new)
+        db.commit()
+        return self._dict(new)
+
+    def undo(self, db: Session, report_id: int) -> dict | None:
+        """« Annuler la dernière correction » : le rapport d'avant revient."""
+        row = db.scalar(select(FinWrittenReport).where(FinWrittenReport.report_id == report_id).order_by(FinWrittenReport.id.desc()))
+        if row is None or "correction" not in json.loads(row.content):
+            raise LookupError("Aucune correction à annuler.")
+        db.delete(row)
+        db.commit()
+        return self.get(db, report_id)
 
     @staticmethod
     def compose(draft: dict, available: dict[str, dict], season: Season, synthese: dict) -> dict:
@@ -255,6 +388,17 @@ class WrittenReports:
             "depenses": many(draft.get("depenses", [])),
             "points": many(draft.get("points", [])),
             "conclusion": one(draft.get("conclusion", "")),
+            "complements": [
+                {
+                    "titre": one(c.get("titre", "")),
+                    "paragraphes": many(c.get("paragraphes", [])),
+                    "tableau": {
+                        "entetes": [one(h) for h in c["tableau"].get("entetes", [])],
+                        "lignes": [[one(cell) for cell in line] for line in c["tableau"].get("lignes", [])],
+                    } if c.get("tableau") else None,
+                }
+                for c in draft.get("complements") or []
+            ],
             "warnings": warnings,
         }
 
@@ -278,6 +422,18 @@ class WrittenReports:
             doc.add_heading("Points à revoir", level=2)
             for p in content["points"]:
                 doc.add_paragraph(p, style="List Bullet")
+        for c in content.get("complements", []):
+            doc.add_heading(c["titre"], level=2)
+            for p in c["paragraphes"]:
+                doc.add_paragraph(p)
+            if c["tableau"]:
+                table = doc.add_table(rows=1, cols=len(c["tableau"]["entetes"]))
+                table.style = "Table Grid"
+                for cell, text in zip(table.rows[0].cells, c["tableau"]["entetes"]):
+                    cell.text = text
+                for line in c["tableau"]["lignes"]:
+                    for cell, text in zip(table.add_row().cells, line):
+                        cell.text = text
         doc.add_heading("Conclusion", level=2)
         doc.add_paragraph(content["conclusion"])
         buffer = io.BytesIO()
@@ -297,6 +453,14 @@ class WrittenReports:
         ]
         if content["points"]:
             parts.append("<h2>Points à revoir</h2><ul>" + "".join(f"<li>{e(p)}</li>" for p in content["points"]) + "</ul>")
+        for c in content.get("complements", []):
+            parts.append(f"<h2>{e(c['titre'])}</h2>" + "".join(f"<p>{e(p)}</p>" for p in c["paragraphes"]))
+            if c["tableau"]:
+                parts.append(
+                    "<table><tr>" + "".join(f"<th>{e(h)}</th>" for h in c["tableau"]["entetes"]) + "</tr>"
+                    + "".join("<tr>" + "".join(f"<td>{e(x)}</td>" for x in line) + "</tr>" for line in c["tableau"]["lignes"])
+                    + "</table>"
+                )
         parts.append(f"<h2>Conclusion</h2><p>{e(content['conclusion'])}</p>")
         return html_to_pdf("".join(parts), _CSS + " body { font-size: 11pt; } p { margin: 6pt 0; }", landscape=False)
 
