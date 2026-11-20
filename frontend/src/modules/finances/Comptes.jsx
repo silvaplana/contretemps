@@ -103,6 +103,13 @@ function shortName(account) {
   return account?.name ?? "";
 }
 
+// L'état d'une transaction bancaire (spec §8.4) : "account" À catégoriser,
+// "piece" Justificatif manquant, "ok" Justifiée (pièce rattachée ou justifiée sans facture).
+function etat(row) {
+  if (row.account == null) return "account";
+  return row.piece || row.justified ? "ok" : "piece";
+}
+
 function rowLabel(row) {
   return row.transfer
     ? `Virement ${row.transfer.from} → ${row.transfer.to}`
@@ -388,7 +395,7 @@ export default function Comptes({ onChange }) {
   // Compte dont la fiche est ouverte (« Voir le compte »), par son id.
   const [fiche, setFiche] = useState(null);
   // Fiche d'une opération (appui sur une ligne, spec §8.4), volet
-  // ⋯ › Plan comptable (§8.2), puces Sans compte / Sans pièce.
+  // ⋯ › Plan comptable (§8.2), puces À catégoriser / Justificatif manquant.
   const [ficheOp, setFicheOp] = useState(null);
   const [volet, setVolet] = useState(null); // null | 'plan' | 'soldes' | 'releves' | 'balance'
   const [manque, setManque] = useState(null); // null | 'account' | 'piece'
@@ -558,7 +565,7 @@ export default function Comptes({ onChange }) {
     return ledger.rows.filter(
       (row) =>
         (selectedRows === null || selectedRows.has(row)) &&
-        (manque === null || (!row.transfer && row[manque] == null)) &&
+        (manque === null || (!row.transfer && etat(row) === manque)) &&
         (month === "" || row.date.startsWith(month)) &&
         (wanted === "" ||
           normaliserRecherche(searchText(row, ledger.allAccounts)).includes(
@@ -796,12 +803,12 @@ export default function Comptes({ onChange }) {
                 {[
                   {
                     id: "account",
-                    label: "Sans compte",
+                    label: "À catégoriser",
                     n: ledger.counts.withoutAccount,
                   },
                   {
                     id: "piece",
-                    label: "Sans pièce",
+                    label: "Justificatif manquant",
                     n: ledger.counts.withoutPiece,
                   },
                 ].map((m) => (
@@ -1031,7 +1038,8 @@ export default function Comptes({ onChange }) {
                           <span className="history-details">
                             {subline.filter(Boolean).join(" · ")}
                           </span>
-                          {/* Compte du plan confirmé, proposé (à confirmer) ou à choisir, et pièce (spec §8.4). */}
+                          {/* Trois états (spec §8.4, Seb 20/11) : À catégoriser (pas de compte ; la proposition
+                              « 606 Achats ? » reste), Justificatif manquant (un compte, pas de pièce), Justifiée. */}
                           {!row.transfer && (
                             <span className="fin-cp-sous">
                               {row.account
@@ -1039,14 +1047,18 @@ export default function Comptes({ onChange }) {
                                   (row.account.split ? " (ventilé)" : "")
                                 : row.proposal
                                   ? `${nomCompte(row.proposal)} ?`
-                                  : "Compte à choisir"}
-                              {row.piece ? (
-                                <span className="badge badge--success">
-                                  {row.piece.kind}
+                                  : null}
+                              {etat(row) === "account" ? (
+                                <span className="badge badge--warning">
+                                  À catégoriser
+                                </span>
+                              ) : etat(row) === "piece" ? (
+                                <span className="badge badge--warning">
+                                  Justificatif manquant
                                 </span>
                               ) : (
-                                <span className="badge badge--warning">
-                                  sans pièce
+                                <span className="badge badge--success">
+                                  Justifiée
                                 </span>
                               )}
                             </span>

@@ -39,6 +39,7 @@ from .adapter import (
     repartir_a_zero,
     membre_appelant,
     nom_ecole,
+    operations_justifiees,
     pieces_des_operations,
     pieces_a_payer,
     dossier_ag,
@@ -74,7 +75,7 @@ def mount(app, core) -> None:
 
     # Comptabilité (spec §8) : plan comptable, compte sur chaque ligne,
     # caisse ; la pièce d'une ligne vient des dépenses du module Notes de frais.
-    finances_accounting = Accounting(pieces=pieces_des_operations)
+    finances_accounting = Accounting(pieces=pieces_des_operations, justified=operations_justifiees)
     # Le PDF de chaque relevé importé va dans Docs › Saison › Financier ›
     # RELEVES BANCAIRES › <compte> (Seb, 30/10).
     finances_client = Finances(

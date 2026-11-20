@@ -123,6 +123,18 @@ def pieces_des_operations(db: Session, ecole_id: int) -> dict[int, dict]:
     }
 
 
+def operations_justifiees(db: Session, ecole_id: int) -> set[int]:
+    """Les transactions bancaires justifiées sans facture dans Rapprocher
+    (notes-de-frais.md §7 octies) : « Justifiée » dans Comptes."""
+    from notes_frais.models import OperationReceipt
+
+    return set(db.scalars(
+        select(OperationReceipt.bank_operation_id).where(
+            OperationReceipt.org_id == ecole_id, OperationReceipt.no_receipt_reason.is_not(None),
+        )
+    ))
+
+
 def _compte_des_depenses(note) -> str | None:
     codes = {d.categorie.code if d.categorie else None for d in note.depenses}
     return codes.pop() if len(codes) == 1 else None

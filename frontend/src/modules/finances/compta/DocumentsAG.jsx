@@ -134,7 +134,7 @@ export default function DocumentsAG({ reportId, seasonName }) {
           </p>
           {data.synthese.unclassified !== 0 && (
             <p className="fin-cp-proposition fin-cp-proposition--aucune">
-              {euros(data.synthese.unclassified)} de lignes sans compte, sur « à classer » : Comptes › Sans compte.
+              {euros(data.synthese.unclassified)} de lignes sans compte, sur « à classer » : Comptes › À catégoriser.
             </p>
           )}
         </>

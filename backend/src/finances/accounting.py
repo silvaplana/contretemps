@@ -53,11 +53,17 @@ def _check(member: Member) -> None:
 
 
 class Accounting:
-    def __init__(self, pieces: Callable[[Session, int], dict[int, dict]] | None = None) -> None:
+    def __init__(
+        self,
+        pieces: Callable[[Session, int], dict[int, dict]] | None = None,
+        justified: Callable[[Session, int], set[int]] | None = None,
+    ) -> None:
         """pieces(db, org_id) : la pièce rattachée à chaque opération
         bancaire ({operation_id: {"id", "title", "kind"}}), fournie par
-        l'appli hôte (les dépenses du module notes de frais)."""
+        l'appli hôte (les dépenses du module notes de frais) ;
+        justified(db, org_id) : les opérations justifiées sans facture."""
         self.pieces = pieces
+        self.justified = justified
 
     # ----- réglage -----
 
@@ -367,8 +373,10 @@ class Accounting:
         lines = self._lines(db, org_id)
         history = self._history(db, org_id)
         pieces = self.pieces(db, org_id) if self.pieces is not None else {}
+        justified = self.justified(db, org_id) if self.justified is not None else set()
         for row in rows:
             row["account"] = row["proposal"] = row["piece"] = None
+            row["justified"] = row["id"] in justified
             if row.get("transfer"):
                 continue
             confirmed = lines.get(row["id"])
@@ -484,9 +492,13 @@ class Accounting:
         return done
 
     def counts(self, db: Session, org_id: int, rows: list[dict]) -> dict:
-        """Compteurs des puces « Sans compte » et « Sans pièce » (§8.4)."""
+        """Compteurs des puces « À catégoriser » (pas de compte) et « Justificatif
+        manquant » (un compte, ni pièce ni justification sans facture) (§8.4)."""
         real = [r for r in rows if not r.get("transfer")]
-        return {"withoutAccount": sum(r["account"] is None for r in real), "withoutPiece": sum(r["piece"] is None for r in real)}
+        return {
+            "withoutAccount": sum(r["account"] is None for r in real),
+            "withoutPiece": sum(r["account"] is not None and r["piece"] is None and not r.get("justified") for r in real),
+        }
 
     # ----- caisse -----
 

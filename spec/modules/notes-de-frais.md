@@ -258,10 +258,10 @@ date de la pièce, `financier.md` §8.3 bis) :
   Le trésorier décide, l'appli ne rattache jamais seule à un autre montant ;
 - rien : la pièce reste À valider, puis suit le circuit des virements.
 **Chaque pièce garde la validation d'un trésorier** (ou du Super User ; Seb, 31 octobre soir) : rien
-ne passe Payé sans son toucher. Le bouton principal dit ce qui va se passer : **« Valider : Payé »**
+ne passe Payé sans son toucher. Le bouton principal dit ce qui va se passer : **« Valider : Payée »**
 quand une ligne est rattachée (sans mail ni notification, c'était déjà réglé), **« Valider : À
 payer »** sinon. Le badge de la pièce, dans la liste comme sur la fiche, dit la même chose :
-**« À valider → Payé »** ou **« À valider → À payer »** (Seb, 1er novembre : voir l'état proposé sans ouvrir). Pas de nouvel onglet : tout de suite dans la revue après les photos, ou plus tard
+**« À valider → Payée »** ou **« À valider → À payer »** (Seb, 1er novembre : voir l'état proposé sans ouvrir). Pas de nouvel onglet : tout de suite dans la revue après les photos, ou plus tard
 depuis la pastille de sa nature (badge « à valider »). Une pièce déjà validée (note envoyée par un
 membre, virement fait) dont la ligne arrive passe Payé directement.
 Deux pièces du même nom et du même montant (Boyer 948 € en novembre et en janvier) : la ligne va à
@@ -312,7 +312,7 @@ facture émise, reçu HelloAsso) : nature Vente, saisie avec le même « + », v
 instantané exécuté », « avis d'opération ») n'est pas une dépense. L'appli la reconnaît, retrouve
 la pièce qu'elle paie (même montant, nom du bénéficiaire ou motif), la range comme page de cette
 pièce ; si la ligne du compte est là, elle est rattachée (la preuve porte le nom) et la pièce
-attend « Valider : Payé » ; sinon **Rattacher à cette transaction** (« C'est payé » avant le 10 novembre) la passe Envoyé, la banque la verra. L'IBAN lu remplit le RIB de la personne s'il
+attend « Valider : Payée » ; sinon **Rattacher à cette transaction** (« C'est payé » avant le 10 novembre) la passe Envoyé, la banque la verra. L'IBAN lu remplit le RIB de la personne s'il
 manque. Virement vers un compte de l'association : « virement interne, rien à faire » ; sans pièce
 qui corresponde : « aucune pièce », avec la ligne du compte si elle y est déjà (« pas encore sur le
 compte » sinon) ; rien n'est créé dans les deux cas. Étude sur les 40 pièces de la saison 2025-2026 :
@@ -335,7 +335,7 @@ l'appli propose : **nature**, **qui** (ou fournisseur), **rangement** dans Docs 
 HONORAIRES › Sophie Boyer »), **ligne du compte** (rattachée « même nom, même montant » ; proposée
 avec l'écart ou « paie aussi » ; « même montant, autre nom » ; ou aucune) et ce que la pièce
 **deviendrait** (Payé ; Payé si c'est bien cette ligne ; À payer, rattachée plus tard quand la
-ligne arrivera). Trois choix par ligne : **Valider** (« Valider : Payé », « C'est ce paiement »,
+ligne arrivera). Trois choix par ligne : **Valider** (« Valider : Payée », « C'est ce paiement »,
 « Valider : À payer »), **Autre…** (la fiche : nature, qui, date, montant, lignes possibles,
 Refuser), **Plus tard**. En haut, **« Valider les pièces sûres (N) »** (ligne rattachée, personne
 connue) ; en bas, « Annuler cet import ». Fermer la revue laisse le reste À valider dans sa puce.

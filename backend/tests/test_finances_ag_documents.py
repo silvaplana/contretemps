@@ -197,7 +197,7 @@ def test_fec_has_the_18_columns_and_balanced_entries(world, db_session):
 
     # Contrôle : le prélèvement sans compte empêche le FEC d'être juste.
     check = documents.fec_check(db_session, TRESORIER, SEASON)
-    assert not check["ok"] and check["problems"] == ["1 ligne(s) à classer (12,00 €) : Comptes › Sans compte."]
+    assert not check["ok"] and check["problems"] == ["1 ligne(s) à classer (12,00 €) : Comptes › À catégoriser."]
     assert any("Niveau Simple" in n for n in check["notes"])
     accounts = {a["number"]: a for a in accounting.chart(db_session, TRESORIER)["accounts"]}
     finances = world[0]

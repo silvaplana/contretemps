@@ -1730,6 +1730,10 @@ def test_transaction_sans_piece_justifiee_ou_justificatif_demande(client, db_ses
     etat = client.get("/notes-frais/rapprochement", params=periode, headers=entetes).json()
     assert [l["id"] for l in etat["lignes_sans_piece"]] == [amazon.id]
     assert etat["justifiees"] == [{"id": frais.id, "date": "2026-03-05", "libelle": "FRAIS TENUE DE COMPTE", "montant_centimes": -1200, "compte": "Compte courant", "avis": None, "raison": "Frais bancaires du CIC"}]
+    # Dans Financier › Comptes, elle est « Justifiée » (Seb, 20/11).
+    from finances_contretemps.adapter import operations_justifiees
+
+    assert operations_justifiees(db_session, org) == {frais.id}
 
     # Demander le justificatif : notification + mail à la personne, « demandé à … le … » sur la transaction.
     margot = next(p for p in client.get("/notes-frais/personnes", headers=entetes).json() if "Margot" in p["nom"])

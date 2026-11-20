@@ -73,7 +73,23 @@ def test_default_chart_and_keyword_proposal(accounting, finances, db_session):
     assert by_label["PRLV MYSTERE"]["proposal"] is None
     # La pièce vient du port (l'opération 2 = Pesenti).
     assert by_label["VIR FACT PESENTI"]["piece"]["title"] == "Pesenti"
-    assert ledger["counts"] == {"withoutAccount": 5, "withoutPiece": 4}
+    # Rien n'a de compte : tout est « À catégoriser », rien n'est encore « Justificatif manquant ».
+    assert ledger["counts"] == {"withoutAccount": 5, "withoutPiece": 0}
+
+
+def test_three_states_to_classify_receipt_missing_justified(finances, db_session):
+    """Seb, 20/11 : À catégoriser (pas de compte), Justificatif manquant (un
+    compte, pas de pièce), Justifiée (pièce rattachée ou justifiée sans facture)."""
+    rows = {r["label"]: r for r in finances.get_ledger(db_session, TRESORIER)["rows"]}
+    amazon, mystere = rows["CB 0309 AMAZON 0010 CB*9481"], rows["PRLV MYSTERE"]
+    accounting = Accounting(pieces=lambda db, org_id: {}, justified=lambda db, org_id: {mystere["id"]})
+    accounts = {a["number"]: a for a in accounting.chart(db_session, TRESORIER)["accounts"]}
+    for row in (amazon, mystere):
+        accounting.set_lines(db_session, TRESORIER, row["id"], [{"accountId": accounts["627"]["id"]}])
+    annotated = {r["id"]: r for r in accounting.annotate(db_session, 1, [dict(amazon), dict(mystere)])}
+    assert annotated[mystere["id"]]["justified"] and not annotated[amazon["id"]]["justified"]
+    # Amazon : un compte, pas de pièce → Justificatif manquant ; Mystère, justifiée sans facture : non.
+    assert accounting.counts(db_session, 1, list(annotated.values())) == {"withoutAccount": 0, "withoutPiece": 1}
 
 
 def test_confirm_then_history_proposes_same_account(accounting, finances, db_session):

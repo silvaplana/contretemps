@@ -48,7 +48,7 @@ export default function Revue({ notes: initiales, batchId, onOuvrir, onFermer, o
     const possible = proposee(note)
     const action = () =>
       note.operation || !possible ? api.valider(note.id) : api.payee(note.id, possible.operation.id, possible.aussi?.map((a) => a.id) ?? [])
-    return agir(note, action, 'ok', (n) => `${n.statut === 'remboursee' ? 'Validée : Payé' : 'Validée : À payer'}${n.rangement ? ` · rangée dans ${n.rangement}` : ''}`)
+    return agir(note, action, 'ok', (n) => `${n.statut === 'remboursee' ? 'Validée : Payée' : 'Validée : À payer'}${n.rangement ? ` · rangée dans ${n.rangement}` : ''}`)
   }
 
   // Nom lu à une lettre près d'une personne de l'école : l'appli propose, la
@@ -184,7 +184,7 @@ export default function Revue({ notes: initiales, batchId, onOuvrir, onFermer, o
                   <dt>Deviendrait</dt>
                   <dd>
                     {n.operation
-                      ? 'Payé'
+                      ? 'Payée'
                       : possible
                         ? 'Payé, si c’est bien cette ligne'
                         : 'À payer, et passera par Virements ; ou « Déjà payée » : enregistrée, son paiement se retrouvera dans Rapprocher'}
@@ -199,7 +199,7 @@ export default function Revue({ notes: initiales, batchId, onOuvrir, onFermer, o
                 {!faite && (
                   <div className="nf-revue__actions">
                     <button type="button" className="btn btn--primary" disabled={enCours !== null} onClick={() => valider(n)}>
-                      {n.operation ? 'Valider : Payé' : possible ? 'Rattacher à la transaction bancaire' : 'Valider : À payer'}
+                      {n.operation ? 'Valider : Payée' : possible ? 'Rattacher à la transaction bancaire' : 'Valider : À payer'}
                     </button>
                     {!n.operation && !possible && (
                       <button type="button" className="btn btn--secondary" disabled={enCours !== null} onClick={() => dejaPayee(n)}>
