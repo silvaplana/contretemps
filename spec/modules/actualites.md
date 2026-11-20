@@ -799,9 +799,14 @@ https://claude.ai/artifact/Nyjz67cSVg7jo8CdBgggsL).
   l'enseigne au nom de l'école, `spec/core.md` §9 bis). **Les réponses vont à l'adresse de contact
   du club** (Admin › École › Coordonnées), jamais à Brevo qui ne reçoit rien (Seb) ; sans adresse
   de contact, pas d'envoi.
-- Le mail : sujet « <blog> · <titre ou 1re ligne> » (80 caractères au plus), le texte, la première
-  photo dans le mail, les liens, « Lire sur l'appli » (seulement si la publication est publiée), et en
-  bas « Ne plus recevoir les actus par mail » (lien signé, page publique avec « Annuler »).
+- Le mail ressemble à un simple mail (Seb, 20 novembre : la mise en page de lettre d'information le
+  faisait ranger par Gmail dans Promotions) : sujet = titre ou 1re ligne (80 caractères au plus, sans
+  « Actus · »), « Bonjour <prénom>, » (« Bonjour Lou et Léo, » pour une adresse de famille,
+  « Bonjour, » pour une adresse inconnue de l'école), le texte, la première photo, les liens de la
+  publication, puis « Cordialement, », le prénom de qui publie et le nom de l'école. Rien d'autre : ni
+  « Lire sur l'appli », ni lien « Ne plus recevoir les actus par mail » (Seb : « pas de lien, pas de
+  désabonnement »). Les adresses déjà désinscrites restent exclues et la page de désinscription répond
+  toujours aux liens des mails déjà partis.
 - Comme la notification : le mail part 10 s après, « Annuler » le retient (dépublier aussi). Une
   publication ne part par mail qu'une fois ; la modifier ensuite ne renvoie rien. Sa carte porte
   « Envoyée par mail à N adresses », vu seulement par qui publie.
