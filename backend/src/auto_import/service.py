@@ -312,7 +312,7 @@ class AutoImport:
         return self.notes.etablir(
             db, self._membre(rule), nature="vente", fichier=(content, f.name, mime) if link else None, lien=link,
             jour=f.day, lignes=[(account, amount) for account, amount, _ in f.sale_lines] or None,
-            fournisseur=f.supplier, description=f.description,
+            fournisseur=f.supplier, description=f.description, lire=False,
         )
 
     @staticmethod
