@@ -1420,6 +1420,44 @@ def test_credits_sans_vente_dans_rapprocher_seulement_si_l_ecole_saisit_des_vent
     assert [c["id"] for c in credits] == [credit.id]
 
 
+def test_remise_de_cheques_detaillee_une_ligne_par_cheque(client, db_session, ecole, monkeypatch):
+    """Une remise qui liste ses chèques (financier.md §8.12) : une ligne par
+    chèque, avec son nom et le compte de la dernière vente à ce nom (sinon de
+    la dernière vente) ; encaissée, la banque est ventilée par compte."""
+    import json
+
+    tresorier = ecole["tresorier"]
+    t = entetes_session(tresorier)
+    org = ecole["ecole"].id
+    client.get("/finances/chart", headers=t)
+    comptes = {c["code"]: c["id"] for c in client.get("/notes-frais/categories?ventes=true", headers=t).json()}
+    avant = [{"categorie_id": comptes["706"], "montant_centimes": 15000, "nom": "Famille Martin"},
+             {"categorie_id": comptes["756"], "montant_centimes": 4500, "nom": "Club voisin"}]
+    _etablir(client, tresorier, "vente", contenu=None, fournisseur="Remise d'octobre", date="2026-10-02", lignes=json.dumps(avant), valider="true")
+
+    monkeypatch.setattr(
+        main.notes_frais_client.ports, "lecteur",
+        LecteurFacture(sorte="vente", date="2026-10-20", montant_centimes=24000, description="Remise de chèques",
+                       cheques=(("famille martin", 15000), ("Durand", 9000))),
+    )
+    remise = _etablir(client, tresorier, None)
+    assert remise["nature"] == "vente" and remise["total_centimes"] == 24000
+    assert [(d["description"], d["montant_centimes"], d["categorie"]["code"]) for d in remise["depenses"]] == [
+        ("famille martin", 15000, "706"), ("Durand", 9000, "756"),
+    ]
+    # Les noms se corrigent dans la fiche, ligne par ligne.
+    lignes = [{"categorie_id": comptes["706"], "montant_centimes": 15000, "nom": "Famille Martin"},
+              {"categorie_id": comptes["706"], "montant_centimes": 9000, "nom": "Famille Durand"}]
+    corrige = client.patch(f"/notes-frais/notes/{remise['id']}", json={"lignes": lignes}, headers=t).json()
+    assert [d["description"] for d in corrige["depenses"]] == ["Famille Martin", "Famille Durand"]
+    client.post(f"/notes-frais/notes/{remise['id']}/valider", headers=t)
+    credit = _operation(db_session, org, 24000, "2026-10-21", "REM CHQ 0004531")
+    encaissee = client.post(f"/notes-frais/notes/{remise['id']}/payee", json={"operation_id": credit.id}, headers=t)
+    assert encaissee.status_code == 200, encaissee.text
+    # Deux chèques sur le même compte : une seule ligne de ventilation.
+    assert [(l["number"], l["amount"]) for l in client.get(f"/finances/operations/{credit.id}", headers=t).json()["lines"]] == [("706", 240.0)]
+
+
 # --- Personnes extérieures (§7 quater) ---
 
 
@@ -2203,6 +2241,35 @@ def test_bulletin_de_salaire_refuse_des_cotisations_plus_grandes_que_le_brut(cli
         headers=entetes_session(tresorier),
     )
     assert reponse.status_code == 400
+
+
+def test_bulletin_de_salaire_lu_pre_remplit_brut_et_cotisations(client, ecole, monkeypatch):
+    """Une photo de bulletin, paie allumée : l'appli le reconnaît, propose la
+    nature Bulletin de salaire et pré-remplit brut, cotisations du salarié
+    (brut − net payé) et de l'employeur ; la trésorière relit et valide.
+    Paie éteinte (Contretemps) : rien ne change, la pièce reste un achat."""
+    t = entetes_session(ecole["tresorier"])
+    client.get("/finances/chart", headers=t)
+    lu = dict(sorte="salaire", date="2026-10-31", montant_centimes=139000, commercant="ASC La Ciotat",
+              emetteur_personne=False, salarie="Paul Dupont", brut_centimes=180000, net_centimes=139000, employeur_centimes=52000)
+    monkeypatch.setattr(main.notes_frais_client.ports, "lecteur", LecteurFacture(**lu))
+
+    assert _etablir(client, ecole["tresorier"], None)["nature"] == "achat"
+
+    client.put("/notes-frais/paie", json={"active": True}, headers=t)
+    bulletin = _etablir(client, ecole["tresorier"], None)
+    assert bulletin["nature"] == "salaire" and bulletin["statut"] == "envoyee"
+    assert bulletin["fournisseur"] == "Paul Dupont" and bulletin["titre"] == "Salaire Paul Dupont octobre 2026"
+    assert [(d["categorie"]["code"], d["montant_centimes"]) for d in bulletin["depenses"]] == [("641", 180000), ("645", 52000), ("431", -93000)]
+    assert bulletin["total_centimes"] == 139000
+
+    # La fiche « Bulletin de salaire » lit aussi la photo jointe : les montants reviennent.
+    lecture = client.post("/notes-frais/lecture", files={"fichier": ("b.pdf", io.BytesIO(b"%PDF"), "application/pdf")}, headers=t).json()
+    assert lecture["paie"] == {"brut": 180000, "salarie": 41000, "employeur": 52000} and lecture["salarie"] == "Paul Dupont"
+
+    # Montants incohérents (net plus grand que le brut) : rien n'est pré-rempli.
+    monkeypatch.setattr(main.notes_frais_client.ports, "lecteur", LecteurFacture(**{**lu, "net_centimes": 190000}))
+    assert _etablir(client, ecole["tresorier"], None)["nature"] != "salaire"
 
 
 def test_la_paie_est_eteinte_par_defaut_et_s_allume_dans_fonctionnalites(client, ecole):

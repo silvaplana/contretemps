@@ -34,7 +34,7 @@ Pièces
 - Puces : Virements, Rapprocher, Notes de frais, Honoraires, Achats, Ventes, À trancher (les pièces mises « plus tard » et les pièces refusées, fichiers dans Docs › Financier › A TRAITER). Un badge compte les pièces qui attendent. Ventes = les pièces de
   recette (remise de chèques, reçu, facture émise, subvention) : « + » › Saisir à la main › Vente, ou une photo lue
   comme une recette. Fiche d'une vente : De qui ou quoi, Date, Compte et montant (« Ajouter une ligne » pour plusieurs
-  comptes), Pièce facultative ; « Valider : À encaisser ». Rangée dans Docs › Financier › VENTES › le nom du compte.
+  comptes, ou les chèques d'une remise : chaque ligne a alors son « Nom (chèque de…) »), Pièce facultative ; « Valider : À encaisser ». Rangée dans Docs › Financier › VENTES › le nom du compte.
   Bloc Encaissement de la fiche : « Transaction bancaire proposée » avec « Rattacher à cette transaction bancaire »
   (la vente passe Encaissée, la ligne de banque prend ses comptes), « Autre transaction… » (choisir un crédit),
   « Pas encore encaissée », « Encaissée en espèces » (lignes dans la Caisse) ; une fois encaissée : les écritures
@@ -47,6 +47,8 @@ Pièces
   431, 512) ; « Valider : À payer ». Bloc « Paiement du net » : « Rattacher à cette transaction bancaire » (le
   virement du net prend les comptes du bulletin), « Autre transaction… », « Détacher ». Le prélèvement de l'URSSAF
   se classe dans 431 URSSAF à payer (proposé par l'appli). Rangé dans Docs › Financier › SALAIRES › mois.
+  Une photo ou un PDF de bulletin est reconnu : la pièce arrive en « Bulletin de salaire » avec les montants
+  pré-remplis, à relire ; dans la fiche, « Prendre une photo » ou « Joindre un fichier » remplit les montants vides.
   Les transactions bancaires sans compte se classent dans Comptes (filtre « Sans compte »), badge
   bleu sur le sous-onglet Comptes.
 - « + » : Saisir une dépense. Prendre en photo (enchaîner : Pièce suivante, Encore une page de celle-ci), Choisir des

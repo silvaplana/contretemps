@@ -107,6 +107,17 @@ def _fin_de_mois(jour: date) -> date:
     return (jour.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
 
 
+def _paie_lue(lu: TicketLu) -> dict | None:
+    """Les montants d'un bulletin de salaire lu, en centimes, s'ils tiennent
+    debout : {brut, salarie, employeur}, où `salarie` = brut − net payé
+    (cotisations, CSG et impôt prélevé à la source). Sinon None : la
+    trésorière saisit à la main."""
+    brut, net, employeur = lu.brut_centimes, lu.net_centimes, lu.employeur_centimes or 0
+    if lu.sorte != "salaire" or not brut or not net or not 0 < net <= brut <= MONTANT_MAX_CENTIMES or employeur < 0:
+        return None
+    return {"brut": brut, "salarie": brut - net, "employeur": employeur}
+
+
 def _date_du_nom(nom: str) -> date | None:
     """La date écrite dans un nom de fichier (« 2026.02.28 Boyer 02.pdf »,
     « facture_28-02-2026.pdf ») ; None sinon ou si elle est dans le futur."""
@@ -569,6 +580,9 @@ class NotesDeFrais:
             "beneficiaire": (lu.beneficiaire or "")[:120] or None,
             "iban": lu.iban,
             "motif": (lu.motif or "")[:140] or None,
+            "salarie": " ".join((lu.salarie or "").split())[:120] or None,
+            "paie": _paie_lue(lu),
+            "cheques": [(nom[:120], centimes) for nom, centimes in lu.cheques if 0 < centimes <= MONTANT_MAX_CENTIMES],
         }
 
     # --- Notes : côté membre (§4.4) ---
@@ -1089,7 +1103,7 @@ class NotesDeFrais:
         numero_piece: str | None = None,
         lien: dict | None = None,
         lire: bool = True,
-        lignes: list[tuple[int | None, int]] | None = None,
+        lignes: list[tuple] | None = None,
     ) -> NoteFrais | Preuve:
         """Une pièce établie par un trésorier : une photo (ou un fichier) =
         une note d'une dépense, créée aussitôt. La lecture remplit ce qu'elle
@@ -1104,11 +1118,13 @@ class NotesDeFrais:
         jamais rangé, déplacé ni effacé par l'appli. `lire=False` : pas de
         lecture payante (pièce reconstituée par l'appli, tout est déjà connu).
         Vente (financier.md §8.12) : `lignes` = (catégorie, montant) de chaque
-        compte de produits, la première porte le fichier ; une pièce lue comme
-        une recette (« vente ») est proposée en Vente."""
+        compte de produits, la première porte le fichier, et un 3e élément
+        facultatif : le nom écrit pour cette ligne (un chèque d'une remise) ;
+        une pièce lue comme une recette (« vente ») est proposée en Vente, une
+        remise qui liste ses chèques, une ligne par chèque."""
         self._exiger_tresorier(membre)
         if lignes:
-            categorie_id, montant_centimes = lignes[0]
+            categorie_id, montant_centimes = lignes[0][:2]
         if nature is not None and nature not in NATURES:
             raise ValueError("Nature inconnue.")
         lu = {}
@@ -1121,6 +1137,13 @@ class NotesDeFrais:
                     lu = self.lire_ticket(db, membre, contenu, type_mime, nom)
                 except LectureImpossible:
                     lu = {}
+        if nature is None and lu.get("sorte") == "salaire" and lu.get("paie") and self.paie_active(db, membre.org_id):
+            nature = SALAIRE
+        if nature == SALAIRE and not lignes and lu.get("paie"):
+            # Bulletin lu (financier.md §8.11) : brut, cotisations du salarié et de l'employeur pré-remplis.
+            paie = lu["paie"]
+            lignes = self.lignes_paie(db, membre.org_id, paie["brut"], paie["salarie"], paie["employeur"])
+            categorie_id, montant_centimes = lignes[0]
         if nature is None and lu.get("sorte") == "virement" and lien is None:
             return self._preuve_de_virement(db, membre, lu, fichier)
         date_approximative = False
@@ -1146,6 +1169,16 @@ class NotesDeFrais:
             proche = self._personne_proche(db, membre, lu_sur, jour)
         if nature is None and lu.get("sorte") == "vente":
             nature = VENTE
+        cheques = lu.get("cheques") or []
+        if nature == VENTE and not lignes and montant_centimes is None and len(cheques) > 1 and sum(c for _, c in cheques) == montant:
+            # Remise de chèques détaillée (financier.md §8.12) : une ligne par chèque, le nom rapproché
+            # d'une fiche de l'appli, le compte de la dernière vente à ce nom (proposition, à vérifier).
+            lignes = []
+            for nom, centimes in cheques:
+                personne_cheque = self._reconnaitre_personne(db, membre, nom, jour) or self._personne_proche(db, membre, nom, jour)
+                nom = personne_cheque.nom if personne_cheque is not None else nom
+                lignes.append((self._compte_du_cheque(db, membre.org_id, nom), centimes, nom))
+            categorie_id, montant = lignes[0][:2]
         if nature is None:
             # Seb, 31/10 : seul un prof de l'école donne des honoraires ; un
             # extérieur qui facture, c'est une note de frais à son nom.
@@ -1162,7 +1195,7 @@ class NotesDeFrais:
         if nature in SANS_PERSONNE:
             note.person_id = membre.person_id
             # Une vente : de qui vient l'argent (à qui l'association a facturé), sinon ce que dit la pièce.
-            lu_qui = (lu.get("client") or lu.get("description")) if nature == VENTE else emetteur
+            lu_qui = (lu.get("client") or lu.get("description")) if nature == VENTE else lu.get("salarie") if nature == SALAIRE else emetteur
             note.supplier = " ".join((fournisseur or lu_qui or "").split())[:120] or None
         else:
             note.person_id = personne.person_id if personne is not None else PERSONNE_A_CHOISIR
@@ -1177,18 +1210,21 @@ class NotesDeFrais:
         db.flush()
         depense = Depense(
             org_id=membre.org_id, person_id=note.person_id, date=jour, montant_centimes=montant,
-            description=description, lue_par_ia=bool(lu), date_approximative=date_approximative, note_id=note.id,
+            description=(lignes[0][2] if lignes and len(lignes[0]) > 2 and lignes[0][2] else description)[:200],
+            lue_par_ia=bool(lu), date_approximative=date_approximative, note_id=note.id,
             categorie_id=self._categorie(
                 db, membre.org_id,
                 categorie_id if categorie_id is not None else self._categorie_habituelle(db, note) or lu.get("categorie_id"),
             ),
         )
         db.add(depense)
-        for autre_categorie, autre_montant in (lignes or [])[1:]:
+        for autre in (lignes or [])[1:]:
+            autre_categorie, autre_montant = autre[:2]
             self._valider_ligne(nature, autre_montant, jour)
             db.add(Depense(
                 org_id=membre.org_id, person_id=note.person_id, date=jour, montant_centimes=autre_montant,
-                description=description, note_id=note.id, categorie_id=self._categorie(db, membre.org_id, autre_categorie),
+                description=((autre[2] if len(autre) > 2 else None) or description)[:200], lue_par_ia=bool(lu),
+                note_id=note.id, categorie_id=self._categorie(db, membre.org_id, autre_categorie),
             ))
         db.flush()
         db.refresh(note)
@@ -1521,7 +1557,7 @@ class NotesDeFrais:
         return note
 
     def _poser_lignes(
-        self, db: Session, note: NoteFrais, lignes: list[tuple[int | None, int]], jour: date | None, description: str | None
+        self, db: Session, note: NoteFrais, lignes: list[tuple], jour: date | None, description: str | None
     ) -> None:
         """Les lignes d'une vente (financier.md §8.12) ou d'un bulletin de salaire (§8.11) : (catégorie, montant)
         dans l'ordre ; la première dépense garde le fichier, celles en trop
@@ -1529,13 +1565,15 @@ class NotesDeFrais:
         jour = jour or (note.depenses[0].date if note.depenses else date.today())
         description = " ".join((description if description is not None else (note.depenses[0].description if note.depenses else "")).split())[:200]
         existantes = list(note.depenses)
-        for rang, (categorie_id, montant) in enumerate(lignes):
+        for rang, (categorie_id, montant, *nom) in enumerate(lignes):
             self._valider_ligne(note.nature, montant, jour)
             depense = existantes[rang] if rang < len(existantes) else None
             if depense is None:
                 depense = Depense(org_id=note.org_id, person_id=note.person_id, note_id=note.id, date=jour, montant_centimes=montant)
                 db.add(depense)
-            depense.date, depense.montant_centimes, depense.description = jour, montant, description
+            # Le nom d'un chèque (remise détaillée, §8.12), sinon la description commune.
+            depense.date, depense.montant_centimes = jour, montant
+            depense.description = " ".join((nom[0] if nom and nom[0] else description).split())[:200]
             depense.categorie_id = self._categorie(db, note.org_id, categorie_id)
         for depense in existantes[len(lignes):]:
             if depense.pieces:
@@ -2491,8 +2529,23 @@ class NotesDeFrais:
 
     @staticmethod
     def _lignes_vente(note: NoteFrais) -> list[tuple[str, int]]:
-        """(numéro du compte, centimes) de chaque ligne ; "" sans compte."""
-        return [((d.categorie.code or "") if d.categorie else "", d.montant_centimes) for d in note.depenses]
+        """(numéro du compte, centimes) par compte, dans l'ordre des lignes ;
+        "" sans compte. Les chèques d'une remise sur le même compte s'additionnent."""
+        par_compte: dict[str, int] = {}
+        for d in note.depenses:
+            numero = (d.categorie.code or "") if d.categorie else ""
+            par_compte[numero] = par_compte.get(numero, 0) + d.montant_centimes
+        return list(par_compte.items())
+
+    def _compte_du_cheque(self, db: Session, org_id: int, nom: str) -> int | None:
+        """Le compte d'un chèque d'une remise : celui de la dernière ligne de
+        vente au même nom, sinon celui de la dernière vente."""
+        requete = (
+            select(Depense.categorie_id).join(NoteFrais, Depense.note_id == NoteFrais.id)
+            .where(NoteFrais.org_id == org_id, NoteFrais.nature == VENTE, Depense.categorie_id.is_not(None))
+            .order_by(Depense.id.desc()).limit(1)
+        )
+        return db.scalar(requete.where(func.lower(Depense.description) == nom.lower())) or db.scalar(requete)
 
     @classmethod
     def _lignes_banque(cls, note: NoteFrais) -> list[tuple[str, int]]:

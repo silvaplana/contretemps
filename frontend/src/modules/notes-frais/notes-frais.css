@@ -923,6 +923,12 @@
   text-align: right;
   min-width: 0;
 }
+/* Le nom d'une ligne (un chèque d'une remise, §8.12) : sur toute la largeur, au-dessus du compte. */
+.nf-vente-ligne .nf-vente-ligne__nom {
+  grid-column: 1 / -1;
+  text-align: left;
+  margin-top: 6px;
+}
 
 /* Vente : la transaction proposée, le bouton dessous (financier.md §8.12). */
 .nf-encaissement {

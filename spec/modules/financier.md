@@ -1237,8 +1237,13 @@ l'association et les écritures. Rattaché au virement du net, le bulletin **ven
 banque (641 et 645 au débit, 431 au crédit) ; le prélèvement de l'URSSAF se classe dans 431 (proposé
 par le mot-clé URSSAF), qui revient à zéro. Pas de 421 : le net est payé par la banque le jour du
 virement (le bulletin non payé au 31/08 reste dans « Fournisseurs à payer », pas encore en charge au
-Complet). Le lecteur ne reconnaît pas encore les bulletins : une pièce lue (par exemple du kDrive)
-change de nature en « Bulletin de salaire » et les montants se saisissent.
+Complet). **Lecture des bulletins (Seb, 20/11, « fais les 4 et merge »)** : paie allumée, le lecteur
+reconnaît un bulletin (photo, PDF, pièce du kDrive) et la pièce arrive en « Bulletin de salaire » avec le
+salarié, la date, le brut, les cotisations du salarié (= brut − net à payer, impôt prélevé à la source
+compris) et celles de l'employeur pré-remplis, À valider : la trésorière relit et valide. Dans la fiche,
+joindre le bulletin remplit les montants encore vides (« Montants lus sur le bulletin : vérifiez-les. »).
+Montants incohérents (net plus grand que le brut) ou paie éteinte : rien n'est pré-rempli, la pièce suit
+le chemin habituel.
 **Éteint par défaut, rien ne change pour Contretemps** : « L'association a des salariés » (non par
 défaut) sur la ligne Financier de Fonctionnalités ; « Oui » ajoute au plan 641, 645 et 431 (le mot
 URSSAF passe de 645 à 431), et Pièces montre la puce Salaires et la nature Bulletin de salaire ;
@@ -1316,8 +1321,16 @@ paiement** (échéance, `cash_out_date`), chacune répartie au prorata de l'adh�
 72 € de licence, en 3 fois : chaque échéance donne 76 € en 756 et 24 € en 4671 ; les trois versements
 additionnés font le total. Codé avec l'étape 6 d'Importation automatique de pièces, pas ici.
 
-**Plus tard, étape à part** : la remise de chèques détaillée chèque par chèque (une sous-ligne par
-chèque rapprochée d'une famille, §8.3).
+**Remise de chèques détaillée chèque par chèque** (Seb, « fais les 4 », 20 novembre 2026 ; codée le
+20 novembre) : une vente a **un nom par ligne** quand elle en a plusieurs (« Nom (chèque de…) »,
+au-dessus du compte et du montant ; `nf_depenses.description`). Une pièce lue qui liste ses chèques
+(bordereau détaillé, page du cahier : la lecture renvoie `cheques`, nom et montant de chacun, dans la
+même requête) devient une vente **à une ligne par chèque** quand leur somme fait le total lu : le nom
+est rapproché d'une fiche de l'appli (même nom, ou à une lettre près), le compte est celui de la
+dernière ligne de vente à ce nom, sinon celui de la dernière vente ; tout se corrige dans la fiche.
+Encaissée, la ligne de banque est ventilée **par compte** (les chèques d'un même compte
+s'additionnent ; la caisse de même). Pas encore : le paiement sur la fiche de l'élève, « qui n'a pas
+payé », le compte déduit de l'inscription (§8.3).
 
 **Données** : pas de table ni de colonne nouvelles. `nf_notes.nature = "vente"`, `supplier` = « De
 qui ou quoi » ; une ligne = une `nf_depenses` (compte = `nf_categories` reflet d'un compte de produits
