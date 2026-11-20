@@ -91,9 +91,11 @@ Nouvelle publication / Modifier
   Le texte devient facultatif.
 - « En haut jusqu'au » (Important seulement). « Envoyer une notification ».
 - « Envoyer par mail » (interrupteur, qui publie) : chaque personne de la saison qui lit le blog
-  reçoit son propre mail (photo, texte, liens, bouton « Lire sur l'appli »). Les réponses arrivent à
-  l'adresse mail du club (Admin › École › Coordonnées, « Adresse mail de contact ») ; sans elle, le
-  bouton dit de l'ajouter. Dessous :
+  reçoit son propre mail, comme un mail ordinaire : « Bonjour Prénom, », le texte, la photo, les
+  liens, le document de la publication en pièce jointe, « Cordialement, », le prénom de qui publie
+  et le nom de l'école. Les réponses arrivent à l'adresse mail du club (Admin › École › Coordonnées,
+  « Adresse mail de contact ») ; sans elle, le bouton dit de l'ajouter. Dessous :
+  - « Objet du mail » d'abord : tant qu'il est vide, l'éditeur dit « Écrivez l'objet du mail ».
   - « Publier aussi dans <blog> » (nouvelle publication) : décoché, c'est seulement un mail, rien
     n'apparaît dans le blog ; bouton « Envoyer le mail ».
   - « Aux adhérents de la saison (N adresses) » ; bouton « Publier et envoyer » (« Enregistrer et
@@ -104,9 +106,8 @@ Nouvelle publication / Modifier
     « Envoyer l'essai » : rien n'est publié, l'éditeur reste ouvert.
   - Après l'envoi : « Annuler » pendant 10 s retient le mail. Ensuite la carte porte « Envoyée par
     mail à N adresses » (seulement pour qui publie) et le mail ne peut plus repartir.
-- Dans le mail, « Ne plus recevoir les actus par mail » ouvre une page qui le confirme, avec
-  « Annuler ».
-- Dessous, la publication telle que les autres la verront.
+- Dessous, la publication telle que les autres la verront ; avec « Envoyer par mail », deux aperçus :
+  « Dans <blog> » (la carte) et « Dans le mail » (l'objet, puis le mail tel qu'il arrive).
 - Boutons « Brouillon » et « Publier » (« Enregistrer » si déjà publiée). Après Publier, retour au fil
   et « Annuler » pendant 10 s : elle repasse en brouillon et la notification ne part pas.
 - « Supprimer » en bas, avec « Annuler » pendant 10 s.

@@ -131,11 +131,15 @@ class MailInfoOut(BaseModel):
     recipients: int
     reply_to: str | None = None
     people: list[MailPersonOut] = []
+    # For the mail's preview in the editor (« Cordialement, … <école> »).
+    school: str = ""
 
 
 class MailIn(BaseModel):
     # A test to this one address; none: every member.
     test_address: str | None = None
+    # « Objet du mail » (Seb, 20 November); none: the title or first line.
+    subject: str | None = None
 
 
 class MailOut(BaseModel):

@@ -49,11 +49,13 @@ def envoyer_a_chacun(
     contenu: Callable[[str], tuple[str, str, str]],
     repondre_a: str | None = None,
     images: list[tuple[str, bytes]] | None = None,
+    pieces_jointes: list[tuple[str, bytes]] | None = None,
 ) -> list[str]:
     """Un mail par adresse, au nom de l'école (personne ne voit les autres) :
     pour écrire aux adhérents (Publications, Mail ; Seb, 19 novembre 2026).
     `contenu(adresse)` rend (sujet, texte, html), propre à chacun (lien de
-    désinscription). Les réponses vont à `repondre_a`, sinon à l'email de
+    désinscription). `pieces_jointes` : (nom, contenu), les mêmes pour
+    tous (le document d'une actu, Seb 20 novembre). Les réponses vont à `repondre_a`, sinon à l'email de
     contact de l'école, jamais à l'expéditeur de l'enseigne (Brevo, qui ne
     reçoit rien). Une adresse refusée n'arrête pas les autres. Rend les
     adresses servies ; lève une exception si l'envoi n'est pas configuré, ou
@@ -73,7 +75,7 @@ def envoyer_a_chacun(
         sujet, texte, html = contenu(adresse)
         try:
             _envoi.envoyer_confirmation(
-                adresse, sujet, texte, [], html, expediteur=expediteur, images=images, repondre_a=reponse
+                adresse, sujet, texte, pieces_jointes or [], html, expediteur=expediteur, images=images, repondre_a=reponse
             )
             servies.append(adresse)
         except Exception as erreur:  # noqa: BLE001 - une adresse refusée n'arrête pas les autres

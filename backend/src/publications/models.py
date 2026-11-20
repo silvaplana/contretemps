@@ -83,6 +83,8 @@ class Post(Base):
     mail_requested_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     mail_sent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     mailed_to: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # The subject typed for the mail (Seb, 20 November), kept for the send 10 s later.
+    mail_subject: Mapped[str | None] = mapped_column(String(200), nullable=True)
     # The member's record of the season it was written in; the first name is
     # kept so that the post still shows it once that season is over.
     author_id: Mapped[int | None] = mapped_column(ForeignKey("comptes.id"), nullable=True)

@@ -1580,3 +1580,60 @@
 .editeur__ajouts .specifiques__preparer:disabled {
   opacity: 0.5;
 }
+/* L'objet du mail, saisi d'abord (Seb, 20 novembre). */
+.editeur__mail-objet {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 8px;
+  font-size: 17px;
+  font-weight: 600;
+}
+.editeur__mail-objet input {
+  min-height: 52px;
+  padding: 0 14px;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-weight: 400;
+}
+.editeur__mail-objet input:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+/* L'actu et le mail dans l'aperçu. */
+.editeur__apercu-titre {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+.apercu-mail {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 2px dashed var(--border);
+  border-radius: 20px;
+  font-size: 17px;
+  line-height: 1.5;
+}
+.apercu-mail p {
+  margin: 0;
+}
+.apercu-mail__objet {
+  font-weight: 700;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+.apercu-mail__lien {
+  color: var(--accent);
+  text-decoration: underline;
+  overflow-wrap: anywhere;
+}
+.apercu-mail__piece {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}

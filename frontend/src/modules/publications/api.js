@@ -179,10 +179,16 @@ export const reagir = async (lieu, id, emoji) =>
 // d'adresses ; `essai` : une seule adresse, tout de suite, rien n'est marqué.
 export async function infoMail(lieu) {
   const r = await appel(`${blog(lieu)}/mail`)
-  return { destinataires: r.recipients, repondreA: r.reply_to, gens: r.people.map((p) => ({ nom: p.name, email: p.email })) }
+  return {
+    destinataires: r.recipients,
+    repondreA: r.reply_to,
+    gens: r.people.map((p) => ({ nom: p.name, email: p.email })),
+    ecole: r.school,
+  }
 }
-export const envoyerMail = async (lieu, id, essai = null) =>
-  (await appel(`${blog(lieu)}/posts/${id}/mail`, json('POST', { test_address: essai }))).recipients
+// `objet` : l'« Objet du mail » saisi (Seb, 20 novembre).
+export const envoyerMail = async (lieu, id, essai = null, objet = null) =>
+  (await appel(`${blog(lieu)}/posts/${id}/mail`, json('POST', { test_address: essai, subject: objet }))).recipients
 export const annulerMail = (lieu, id) => appel(`${blog(lieu)}/posts/${id}/mail`, { method: 'DELETE' })
 
 export const depublier = (lieu, id) => appel(`${blog(lieu)}/posts/${id}/unpublish`, { method: 'POST' })

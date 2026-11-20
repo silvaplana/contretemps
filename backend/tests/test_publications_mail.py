@@ -22,9 +22,9 @@ def envois(monkeypatch):
     """Ce que le service du core aurait envoyé : (adresses, contenu de la 1re)."""
     faits = []
 
-    def envoyer_a_chacun(db, ecole_id, adresses, contenu, repondre_a=None, images=None):
+    def envoyer_a_chacun(db, ecole_id, adresses, contenu, repondre_a=None, images=None, pieces_jointes=None):
         faits.append({"ecole": ecole_id, "adresses": list(adresses), "mails": [contenu(a) for a in adresses],
-                      "images": images})
+                      "images": images, "pieces_jointes": pieces_jointes})
         return list(adresses)
 
     monkeypatch.setattr(core.publications_client, "send_mails", envoyer_a_chacun)
@@ -218,3 +218,48 @@ def test_un_simple_mail(client, db_session, club, envois):
     # Un essai à une adresse inconnue de l'école : « Bonjour, ».
     client.post(f"{club['blog']}/posts/{actu['id']}/mail", json={"test_address": "moi@exemple.fr"})
     assert envois[1]["mails"][0][1].startswith("Bonjour,\n")
+
+
+def test_objet_du_mail_saisi(client, db_session, club, envois):
+    """Seb, 20 novembre : dès que le mail est coché, on saisit l'objet."""
+    _avec_contact(db_session, club)
+    actu = _actu(client, club)
+    client.post(f"{club['blog']}/posts/{actu['id']}/mail",
+                json={"test_address": "moi@exemple.fr", "subject": "  Stage de Noël le 20  "})
+    assert envois[0]["mails"][0][0] == "Stage de Noël le 20"
+    # L'envoi pour de bon part 10 s après : l'objet est gardé jusque-là.
+    client.post(f"{club['blog']}/posts/{actu['id']}/mail", json={"subject": "Le stage de Noël"})
+    core.publications_client.send_mail(db_session, actu["id"])
+    assert {m[0] for m in envois[1]["mails"]} == {"Le stage de Noël"}
+
+
+def test_le_document_de_l_actu_joint_au_mail(client, db_session, club, envois):
+    """Seb, 20 novembre : le document de l'actu part en pièce jointe."""
+    import hashlib
+
+    from documents.models import DocNode, DocVersion, StoredFile
+
+    _avec_contact(db_session, club)
+    eid = club["ecole"].id
+    contenu = b"%PDF-1.4 planning"
+    sha = hashlib.sha256(contenu).hexdigest()
+    chemin = core.documents_client.storage.path(eid, sha)
+    chemin.parent.mkdir(parents=True, exist_ok=True)
+    chemin.write_bytes(contenu)
+    stocke = StoredFile(org_id=eid, sha256=sha, size=len(contenu), mime="application/pdf")
+    fichier = DocNode(org_id=eid, space="public", kind="file", name="Planning.pdf")
+    db_session.add_all([stocke, fichier])
+    db_session.flush()
+    version = DocVersion(node_id=fichier.id, number=1, stored_file_id=stocke.id, filename="Planning.pdf")
+    db_session.add(version)
+    db_session.flush()
+    fichier.current_version_id = version.id
+    db_session.commit()
+
+    actu = _actu(client, club, document_id=fichier.id)
+    client.post(f"{club['blog']}/posts/{actu['id']}/mail", json={"test_address": "moi@exemple.fr"})
+    assert envois[0]["pieces_jointes"] == [("Planning.pdf", contenu)]
+    # Sans document : rien de joint.
+    sans = _actu(client, club)
+    client.post(f"{club['blog']}/posts/{sans['id']}/mail", json={"test_address": "moi@exemple.fr"})
+    assert envois[1]["pieces_jointes"] is None
