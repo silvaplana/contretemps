@@ -192,7 +192,7 @@ export default function SoldesDepart({ onClose, initialSeasonId }) {
             <p className="muted">Solde positif = débiteur (banque, caisse), négatif = dû (fournisseurs, report).</p>
             <p className="muted">
               Ces soldes sont la première ligne de chaque compte au début de la saison. Ils servent pour le Grand livre et la Balance,
-              la trésorerie de la Synthèse et du Rapport financier, et ce que la clôture reporte sur la saison suivante. Ils ne changent
+              la trésorerie du Compte de résultat et du Rapport financier, et ce que la clôture reporte sur la saison suivante. Ils ne changent
               ni les dépenses, ni les recettes, ni le résultat.
             </p>
           </>

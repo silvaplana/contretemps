@@ -141,7 +141,7 @@ Bilan
   transaction pas dans le même compte (n) » : sur chaque ligne « Garder 606 (la pièce) » ou « Garder 627 (la
   transaction) » ; une pièce rattachée donne d'elle-même son compte à sa transaction ; 4. Compter la caisse et les factures non payées : la caisse et les
   factures validées pas encore payées (en Engagement, dues au jour de la facture contre 401 / 467 ; en Trésorerie (recettes-dépenses),
-  dans « Fournisseurs à payer » de la Synthèse), puis les écritures à la main (Engagement (partie double)) : « Ajouter une écriture »
+  dans « Fournisseurs à payer » du Compte de résultat), puis les écritures à la main (Engagement (partie double)) : « Ajouter une écriture »
   ouvre une fenêtre date / libellé / compte débité / compte crédité / montant, pour une cotisation due (411) ou le compte
   d'attente (471), la poubelle supprime ; 5. Passer les contrôles, en clair (relevés complets, soldes de départ égaux aux
   relevés, un compte sur chaque transaction bancaire, FEC juste, écarts expliqués) ; 6. Produire les documents et comparer à l'an dernier : chaque
@@ -167,7 +167,7 @@ Bilan
 - En bas de Préparer, « Repartir à zéro sur cette saison » (voir plus bas).
 - ⋯ › Nouveau bilan : la liste des bilans (pour l'AG), « ← Étapes du bilan » revient ; choisir un bilan de la liste. Puces d'état : Brouillon, Validé, Officiel.
 - Dans un bilan : Calculer, puis « Résultat » (à déplier) : recettes et dépenses par compte, analyse, présentation du tableau.
-- En dessous, Documents de l'AG : Synthèse Dépenses-Recettes (Excel), FEC (fichier des écritures, pour le
+- En dessous, Documents de l'AG : Compte de résultat (Excel, fichier « Synthèse Dépenses-Recettes »), FEC (fichier des écritures, pour le
   comptable ou l'administration fiscale, avec son contrôle juste / à corriger juste dessous), et en Engagement (partie double)
   Balance, Grand livre, Bilan actif-passif (PDF), Honoraires par professeur (Excel). Pour chacun : Voir (s'ouvre comme dans Docs), télécharger, icône dossier (Docs ›
   Financier › AG). Puis Rapport financier : Rédiger, Voir, Word, PDF. En Engagement (partie double) : clôture de la saison.
@@ -196,7 +196,7 @@ Règles de l'appli
   compte va dans « Dépenses à classer » (659) ou « Recettes à classer » (759) des documents de l'AG.
 - Les virements entre les comptes de l'association n'ont pas de compte du plan (ni recette ni dépense).
 - Une pièce (facture, ticket, note) se rattache à la ligne qui la paie ; elle ne change pas les montants.
-- Trésorerie (recettes-dépenses) : comptabilité de trésorerie, chaque ligne contre son compte ; Synthèse et Rapport financier.
+- Trésorerie (recettes-dépenses) : comptabilité de trésorerie, chaque ligne contre son compte ; Compte de résultat et Rapport financier.
 - Engagement (partie double) : partie double. Achats et honoraires passent par les comptes de tiers (401 fournisseurs, 467x honoraires
   par professeur), lettrés (AAA, AAB…) avec leur paiement ; soldes de départ ; clôture qui verrouille la saison et reporte
   le résultat ; Balance, Grand livre, Bilan actif-passif, Honoraires versés aux professeurs (DAS-2).

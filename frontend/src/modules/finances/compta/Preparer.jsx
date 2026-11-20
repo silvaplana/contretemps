@@ -296,7 +296,7 @@ function Etape4({ season, offBank, level, onChange, onErreur }) {
         <span className="fin-cp-s">
           {level === 'complet'
             ? 'Dues au dernier jour de la saison : en charge au jour de la facture, contre 401 Fournisseurs ou 467 Autres comptes débiteurs ou créditeurs.'
-            : 'En Trésorerie (recettes-dépenses) : elles restent dans « Fournisseurs à payer » de la Synthèse, sans écriture.'}
+            : 'En Trésorerie (recettes-dépenses) : elles restent dans « Fournisseurs à payer » du Compte de résultat, sans écriture.'}
         </span>
         {offBank.unpaid.map((u, i) => (
           <div key={i} className="fin-preparer__ligne fin-preparer__ligne--texte">

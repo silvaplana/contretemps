@@ -92,7 +92,7 @@ export default function DocumentsAG({ reportId, seasonName }) {
           <div className="fin-cp-carte">
             {data.documents.map((d) => (
               <div key={d.id} className="fin-cp-doc">
-                <span className="fin-cp-t">{d.title}</span>
+                <span className="fin-cp-t">{TITRES[d.id] ?? d.title}</span>
                 <span className="fin-cp-a">
                   {d.format !== 'txt' && (
                     <button
@@ -142,6 +142,9 @@ export default function DocumentsAG({ reportId, seasonName }) {
     </div>
   )
 }
+
+// Nom officiel à l'écran ; le fichier garde son nom (Seb, 20/11).
+const TITRES = { synthese: 'Compte de résultat' }
 
 const SOUS_TITRES = {
   synthese: 'charges et produits par poste, trésorerie, fournisseurs à payer',
@@ -344,7 +347,7 @@ function RedigerModal({ reportId, options, onClose, onRedige }) {
           </select>
         </label>
         <p className="muted">
-          Le texte est rédigé d’après la Synthèse de la saison, celle de la saison précédente et l’analyse du bilan. Chaque
+          Le texte est rédigé d’après le Compte de résultat de la saison, celle de la saison précédente et l’analyse du bilan. Chaque
           montant est placé par l’appli ; le Word et le PDF vont dans Docs › Financier › AG.
         </p>
         {erreur && <p className="login-screen__erreur">{erreur}</p>}
