@@ -115,6 +115,9 @@ de la fiche. Le mail reste dans la boîte, l'appli ne le déplace ni ne le marqu
 - Avec une destination : le PDF du détail (« Pièce reconstituée par l'appli à partir du versement
   HelloAsso », date, total, une ligne par paiement) est déposé sous « Versement HelloAsso AAAA-MM-JJ
   (reconstituée par l'appli).pdf » et relié à la vente. Sans destination : pas de fichier.
+- Destination proposée (Seb, 20/11) : avec une saison choisie et pas encore de destination, l'écran
+  prend Docs › Saison … › Financier › VENTES › COTISATIONS, aussi loin que ces dossiers existent
+  (au moins VENTES) ; on peut la changer.
 - Pas encore : la part Licence d'une formule vers 4671 (le compte n'est pas encore proposé dans les
   ventes) et les remboursements (une ligne de vente est toujours positive) ; un écart avec la banque
   se voit au rattachement.
