@@ -329,3 +329,35 @@ def test_auto_lines_validated_in_bulk(accounting, finances, db_session):
         assert not line.auto and line.confirmed_by == TRESORIER.person_id
     # Un compte confirmé n'est plus jamais touché par la catégorisation automatique.
     assert accounting.auto_classify(db_session, 1) == 0
+
+
+def test_accounts_are_proposed_from_recurring_names_then_created_and_undone(accounting, db_session):
+    """Seb, 20/11 (maquette https://claude.ai/artifact/1i4V8WhNst2j8mQup5SvSH) :
+    « Proposer des comptes » : un nom qui revient au moins trois fois dans un
+    compte, sans être tout le compte, fait un sous-compte ; rien n'est créé
+    avant de valider ; « Annuler » remet tout en place."""
+    finances = Finances(accounting=accounting)
+    lines = [(f"0{d}/09/2025", "VIR SEPA MAIRIE LA CIOTAT", -12000, []) for d in (2, 3, 4)] + [("05/09/2025", "CB 0509 DECATHLON", -4000, [])]
+    finances.import_files(db_session, TRESORIER, [("c1.pdf", make_statement(COURANT, ("31/08/2025", 100000), lines, "30/09/2025"))])
+    chart = {a["number"]: a for a in accounting.chart(db_session, TRESORIER)["accounts"]}
+    from finances.models import FinOperation, FinOperationAccount
+
+    ids = [o.id for o in db_session.query(FinOperation).order_by(FinOperation.id)]
+    assert accounting.confirm_many(db_session, TRESORIER, ids, chart["613"]["id"]) == 4
+
+    proposals = accounting.propose_accounts(db_session, TRESORIER)
+    assert [(p["number"], p["label"], p["parent"].split()[0], p["count"], p["sameAmount"]) for p in proposals] == [("6131", "Mairie La Ciotat", "613", 3, 120.0)]
+    assert "6131" not in {a["number"] for a in accounting.chart(db_session, TRESORIER)["accounts"]}  # rien n'est créé
+
+    result = accounting.create_proposed(db_session, TRESORIER, [{"parentId": proposals[0]["parentId"], "key": proposals[0]["key"], "label": "Location de salle"}])
+    assert result["moved"] == 3
+    new = next(a for a in accounting.chart(db_session, TRESORIER)["accounts"] if a["number"] == "6131")
+    assert new["label"] == "Location de salle" and new["keywords"] == ["MAIRIE LA CIOTAT"] and new["nature"] == "depense"
+    assert db_session.query(FinOperationAccount).filter_by(account_id=new["id"]).count() == 3
+    assert accounting.propose_accounts(db_session, TRESORIER) == []  # déjà fait
+
+    accounting.undo_proposed(db_session, TRESORIER, result["created"])
+    assert "6131" not in {a["number"] for a in accounting.chart(db_session, TRESORIER)["accounts"]}
+    assert db_session.query(FinOperationAccount).filter_by(account_id=chart["613"]["id"]).count() == 4
+    with pytest.raises(AccountingError):
+        accounting.create_proposed(db_session, TRESORIER, [{"parentId": 0, "key": "RIEN"}])

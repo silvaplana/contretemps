@@ -154,6 +154,10 @@ export const planComptable = () => appel('/chart')
 export const choisirNiveau = (level) => appel('/chart/level', json('PUT', { level }))
 // Journal des copies du plan (§8.7) : { id, takenAt, comment, accounts }.
 export const memoriserPlan = (comment) => appel('/chart/snapshot', json('POST', { comment }))
+// « Proposer des comptes » (Seb, 20/11) : sous-comptes d'après les transactions, à cocher ; annulable juste après.
+export const comptesProposes = () => appel('/chart/proposals')
+export const creerComptesProposes = (items) => appel('/chart/proposals', json('POST', { items }))
+export const annulerComptesProposes = (items) => appel('/chart/proposals/undo', json('POST', { items }))
 export const creerCompte = (donnees) => appel('/chart', json('POST', donnees))
 export const modifierCompte = (id, donnees) => appel(`/chart/${id}`, json('PUT', donnees))
 export const supprimerCompte = (id) => appel(`/chart/${id}`, { method: 'DELETE' })

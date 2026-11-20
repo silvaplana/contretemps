@@ -1,8 +1,9 @@
 // Comptes ⋯ › « Plan comptable » (spec/modules/financier.md §8.2) : les
 // comptes de l'organisation par nature, ajout, renommage, mots-clés,
 // événement (« gala »), et le niveau Simple / Complet (§8.1).
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Modal from '../../../components/Modal.jsx'
+import ComptesProposes from './ComptesProposes.jsx'
 import * as api from '../api.js'
 import './compta.css'
 
@@ -45,6 +46,31 @@ export default function PlanComptable({ onClose }) {
     }
   }
 
+  // « Proposer des comptes » (Seb, 20/11) : l'écran des propositions, puis « Annuler » pendant 10 s.
+  const [proposer, setProposer] = useState(false)
+  const [crees, setCrees] = useState(null) // { created: [{ id, parentId }], annulable }
+  const minuteur = useRef(null)
+  useEffect(() => () => clearTimeout(minuteur.current), [])
+
+  function comptesCrees(resultat) {
+    setProposer(false)
+    setCrees({ created: resultat.created, annulable: true })
+    charger()
+    clearTimeout(minuteur.current)
+    minuteur.current = setTimeout(() => setCrees((c) => c && { ...c, annulable: false }), 10000)
+  }
+
+  async function annulerCrees() {
+    clearTimeout(minuteur.current)
+    try {
+      await api.annulerComptesProposes(crees.created)
+      setCrees(null)
+      charger()
+    } catch (err) {
+      setErreur(err.message)
+    }
+  }
+
   const [memo, setMemo] = useState(null) // null | le commentaire en cours de saisie
 
   async function memoriser() {
@@ -59,6 +85,8 @@ export default function PlanComptable({ onClose }) {
 
   if (erreur) return <p className="login-screen__erreur">{erreur}</p>
   if (!plan) return <p className="muted">Chargement…</p>
+  if (proposer) return <ComptesProposes onClose={() => setProposer(false)} onCrees={comptesCrees} />
+  const nouveaux = new Set((crees?.created ?? []).map((c) => c.id))
   const natures = plan.level === 'complet' ? plan.natures : plan.natures.filter((n) => n.id === 'depense' || n.id === 'recette')
   // Natures libres (Seb, 10/11), chacune reliée aux classes des comptes qui la portent.
   const libres = [...new Set(plan.accounts.map((c) => c.natureLabel).filter(Boolean))].sort((a, b) => a.localeCompare(b))
@@ -77,6 +105,14 @@ export default function PlanComptable({ onClose }) {
 
   return (
     <section className="fin-cp" aria-label="Plan comptable">
+      {crees?.annulable && (
+        <div className="fin-proposes__bandeau">
+          <span>{crees.created.length > 1 ? `${crees.created.length} comptes créés` : '1 compte créé'}</span>
+          <button type="button" className="btn btn--link" onClick={annulerCrees}>
+            Annuler
+          </button>
+        </div>
+      )}
       <div className="fin-cp-champ">
         <span>Documents comptables</span>
         <div className="fin-cp-niveau" role="group" aria-label="Niveau">
@@ -133,6 +169,7 @@ export default function PlanComptable({ onClose }) {
                     {c.label}
                     {c.event && <span className="badge badge--warning"> {c.event}</span>}
                     {!c.active && <span className="badge"> inactif</span>}
+                    {nouveaux.has(c.id) && <span className="badge badge--success"> Nouveau</span>}
                   </span>
                   <span className="fin-cp-c">{c.used ? `${c.used} ligne${c.used > 1 ? 's' : ''}` : ''}</span>
                 </button>
@@ -142,7 +179,10 @@ export default function PlanComptable({ onClose }) {
         </div>
       ))}
       <div className="fin-cp-boutons">
-        <button type="button" className="btn btn--primary" onClick={() => setEdition('nouveau')}>
+        <button type="button" className="btn btn--primary" onClick={() => setProposer(true)}>
+          Proposer des comptes
+        </button>
+        <button type="button" className="btn btn--secondary" onClick={() => setEdition('nouveau')}>
           Ajouter un compte
         </button>
         <button type="button" className="btn btn--secondary" onClick={onClose}>

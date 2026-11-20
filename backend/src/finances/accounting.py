@@ -17,7 +17,7 @@ from datetime import datetime, timezone
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from .chart import CLASSES, DEFAULT_CHART, Proposal, is_cheque_deposit, label_key, official_natures, propose
+from .chart import CLASSES, DEFAULT_CHART, Proposal, is_cheque_deposit, label_key, normalize, official_natures, propose
 from .models import (
     FULL,
     LEVELS,
@@ -34,6 +34,9 @@ from .models import (
     FinSettings,
 )
 from .ports import Member
+
+# Mots de la banque qui ne nomment personne (« VIR SEPA MAIRIE » → « MAIRIE »).
+BANK_WORDS = {"VIR", "VIREMENT", "SEPA", "INST", "PRLV", "PRELEVEMENT", "CARTE", "CB", "PAIEMENT", "ACHAT", "FACT", "FACTURE", "RECU", "EMIS"}
 
 # Libellés des natures à l'écran (jamais « type », spec §8.2).
 NATURE_LABELS = {"depense": "Dépenses", "recette": "Recettes", "tiers": "Tiers", "attente": "Attente"}
@@ -481,6 +484,96 @@ class Accounting:
         )
         db.commit()
         return self.operation(db, member, op.id)
+
+    # ----- « Proposer des comptes » (§8.2, Seb 20/11) -----
+
+    def _groups(self, db: Session, org_id: int) -> list[dict]:
+        """Dans un compte de dépenses ou de recettes, les transactions des
+        douze derniers mois qui portent le même nom et reviennent au moins
+        trois fois, sans être tout le compte : de quoi faire un sous-compte.
+        Règles fixes, pas de modèle ; l'appli propose, la trésorière décide."""
+        accounts = {a.id: a for a in self.accounts(db, org_id, active_only=True)}
+        taken = {a.number for a in self.accounts(db, org_id)}
+        operations = {o.id: o for o in db.scalars(select(FinOperation).join(FinAccount).where(FinAccount.org_id == org_id))}
+        if not operations:
+            return []
+        since = max(o.date for o in operations.values()) - dt.timedelta(days=365)
+        by_account: dict[int, dict[str, list[FinOperation]]] = {}
+        for operation_id, lines in self._lines(db, org_id).items():
+            op = operations[operation_id]
+            account = accounts.get(lines[0].account_id)
+            if len(lines) != 1 or account is None or account.nature not in ("depense", "recette") or op.date < since:
+                continue
+            name = " ".join(w for w in label_key(op.label).split() if w not in BANK_WORDS)
+            if name and self.closing_of(db, org_id, op.date) is None:
+                by_account.setdefault(account.id, {}).setdefault(name, []).append(op)
+        groups = []
+        for account_id, names in sorted(by_account.items(), key=lambda item: accounts[item[0]].number):
+            parent = accounts[account_id]
+            total = sum(len(ops) for ops in names.values())
+            for name, ops in sorted(names.items(), key=lambda item: -len(item[1])):
+                # Déjà un mot-clé d'un compte : la proposition est faite.
+                if len(ops) < 3 or len(ops) == total or any(name in (normalize(k) for k in a.keywords or []) for a in accounts.values()):
+                    continue
+                number = next((parent.number + str(d) for d in range(1, 10) if parent.number + str(d) not in taken), None)
+                if number is None or len(number) > 10:
+                    continue
+                taken.add(number)
+                groups.append({"parent": parent, "number": number, "name": name, "operations": ops})
+        return groups
+
+    def propose_accounts(self, db: Session, member: Member) -> list[dict]:
+        """Les sous-comptes proposés : rien n'est créé avant « Créer les comptes cochés »."""
+        _check(member)
+        out = []
+        for g in self._groups(db, member.org_id):
+            amounts = {abs(o.amount) for o in g["operations"]}
+            out.append({
+                "number": g["number"],
+                "label": g["name"].title(),
+                "parentId": g["parent"].id,
+                "parent": f"{g['parent'].number} {g['parent'].label}",
+                "parentNumber": g["parent"].number,
+                "key": g["name"],
+                "count": len(g["operations"]),
+                "sameAmount": amounts.pop() / 100 if len(amounts) == 1 else None,
+            })
+        return out
+
+    def create_proposed(self, db: Session, member: Member, items: list[dict]) -> dict:
+        """Crée les comptes cochés (nom au choix), avec leur mot-clé, et y passe
+        leurs transactions. Renvoie de quoi annuler : [{id, parentId}]."""
+        _check(member)
+        groups = {(g["parent"].id, g["name"]): g for g in self._groups(db, member.org_id)}
+        created, moved = [], 0
+        for item in items:
+            g = groups.get((int(item.get("parentId", 0)), str(item.get("key", ""))))
+            if g is None:
+                raise AccountingError("Cette proposition n'est plus d'actualité : rouvrez « Proposer des comptes ».")
+            data = {"number": g["number"], "label": str(item.get("label") or "").strip() or g["name"].title(), "nature": g["parent"].nature, "keywords": [g["name"]]}
+            account = FinChartAccount(org_id=member.org_id, **self._validate(db, member.org_id, data))
+            db.add(account)
+            db.flush()
+            ids = [o.id for o in g["operations"]]
+            for line in db.scalars(select(FinOperationAccount).where(FinOperationAccount.operation_id.in_(ids), FinOperationAccount.account_id == g["parent"].id)):
+                line.account_id = account.id
+                moved += 1
+            created.append({"id": account.id, "parentId": g["parent"].id})
+        db.commit()
+        return {"created": created, "moved": moved}
+
+    def undo_proposed(self, db: Session, member: Member, created: list[dict]) -> None:
+        """« Annuler » juste après : les transactions reviennent au compte d'avant, les comptes créés disparaissent."""
+        _check(member)
+        for item in created:
+            account = self._chart_account(db, member.org_id, int(item["id"]))
+            parent = self._chart_account(db, member.org_id, int(item["parentId"]))
+            for line in db.scalars(select(FinOperationAccount).where(FinOperationAccount.account_id == account.id)):
+                line.account_id = parent.id
+            db.flush()
+            if not self._used(db, account.id):
+                db.delete(account)
+        db.commit()
 
     def confirm_many(self, db: Session, member: Member, operation_ids: list[int], account_id: int) -> int:
         """« Valider le compte » (financier.md §8.10, étape 3) : le même compte
