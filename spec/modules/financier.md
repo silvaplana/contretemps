@@ -917,7 +917,8 @@ trésorière aura donné le sien.
 **Cap (Seb, 30/10)** : un logiciel de comptabilité aux normes françaises des associations (plan
 comptable associatif, règlement ANC 2018-06, partie double, FEC), comme EBP ; pas d'IFRS. Reste à
 faire pour y arriver : validation des écritures (irréversible, numérotation continue), écritures
-saisies à la main (OD), lettrage à la main, bilan actif / passif, amortissements.
+saisies à la main (OD), lettrage à la main, bilan actif / passif, amortissements (codés le 20 novembre
+2026, §8.14).
 
 Les fichiers vont dans Docs › Privé › Saison <saison> › Financier › AG, avec le badge Brouillon / Validé /
 Officiel du bilan ; l'AG (§5) les joint à la convocation.
@@ -1577,6 +1578,51 @@ du club », `core.md` §3). **Codé le 19 novembre 2026** (`notes_frais` : `Stor
   rangée à l'emplacement par défaut dans Docs. Une pièce mise de côté (A TRAITER) reste dans Docs.
 
 **Étape de code**, une PR, sur le « vas-y » de Seb : table, écran et rangement par `_chemin`.
+
+### 8.14 Écritures de fin d'année (Seb, 20 novembre 2026)
+
+Maquette validée : https://claude.ai/artifact/ABJ3SmKcdvpPNFucQ1QcLr. Niveau Engagement (partie double)
+seulement. Bilan › Préparer, **étape 4**, premier bloc « Écritures de fin d'année <saison> » : l'appli
+repère ce qui ne tombe pas sur la bonne saison, la trésorière choisit ligne par ligne, puis valide.
+**Règle** : une dépense ou une recette va dans la saison qu'elle concerne, pas dans celle où l'argent
+est passé.
+
+**Ce que l'appli propose** (règles fixes, pas de modèle ; `finances/year_end.py`), depuis les
+transactions bancaires classées dans un seul compte :
+
+| Nature | Repérée quand | Montant | Écriture au dernier jour |
+|---|---|---|---|
+| Charge payée d'avance | une dépense payée une seule fois dans la saison, et déjà une fois un an plus tôt (330 à 400 jours) : elle est annuelle ; une partie de ses douze mois tombe après la fin de la saison | le prix × mois d'après / 12 | Débit 486 Charges constatées d'avance, Crédit le compte de la charge |
+| Produit reçu d'avance | les recettes des comptes 756 (cotisations) encaissées les deux derniers mois de la saison, une ligne par compte | leur total | Débit le compte 756, Crédit 487 Produits constatés d'avance |
+| Facture pas encore reçue | une dépense payée chaque mois de la saison sauf le dernier | la médiane des paiements | Débit le compte de la charge, Crédit 408 Fournisseurs, factures non parvenues |
+| Amortissement | un achat de 500 € ou plus classé dans un compte 606 | la dotation de la saison | Débit 2154 Matériel, Crédit le compte 606 (le prix, au jour de l'achat) ; Débit 6811 Dotations aux amortissements, Crédit 28154 Amortissements du matériel |
+
+Une charge annuelle payée pour la première fois n'est pas repérée (rien ne dit qu'elle est annuelle) :
+elle se saisit par « Ajouter une écriture », plus bas dans la même étape.
+
+**Les touches nomment la saison** (Seb : « passer l'écriture » n'est pas clair) : d'avance, « Compter en
+<saison suivante> » / « Laisser en <saison> » ; facture pas encore reçue, « Compter en <saison> » /
+« Laisser en <saison suivante> » ; amortissement, « Étaler sur N ans » / « Tout en <saison> », avec la
+durée 3, 5 (par défaut) ou 10 ans. **Le choix conseillé est déjà fait**, avec sa raison en une ligne
+(« Conseillé : Compter en 2026-2027. Concerne sept. 2026 à juin 2027. ») : compter, sauf en dessous de
+100 € (« cela ne change presque rien au résultat ») ; étaler un achat de 500 € ou plus. « Voir
+l'écriture » montre le débit et le crédit. En bas : résultat avant ces écritures, effet des choix,
+résultat de la saison ; un seul bouton, **« Valider mes choix »**, puis « Annuler » tant que la saison
+n'est pas clôturée.
+
+**Amortissement** : linéaire, par mois entiers à partir du mois de l'achat ; la somme des dotations fait
+exactement le prix. Les saisons suivantes reçoivent leur dotation toutes seules jusqu'à la fin de la durée.
+
+**Saison suivante** : les charges et produits d'avance et les factures pas encore reçues sont repris au
+premier jour (écriture inverse), une fois la saison clôturée, donc ses soldes reportés : l'assurance
+payée d'avance devient la charge de la nouvelle saison.
+
+**Données** : table `fin_year_end_entries` (un choix validé par ligne proposée : nature, libellé, texte,
+raison, date, montant, compte, gardé ou non, durée). Comme le reste du grand livre (§8.7), les écritures
+ne sont pas stockées : `books()` les recalcule depuis ces choix (journal OD). Valider crée dans le plan
+les comptes mouvementés qui manquent (486, 487, 408, 2154, 28154, 6811). « Repartir à zéro » efface
+aussi ces choix. Bilan actif-passif : un bloc « Immobilisations » (comptes de classe 2, l'amortissement
+en négatif) quand il y en a. Routes : `GET`, `POST`, `DELETE /finances/seasons/{id}/year-end`.
 
 ## 9. Reste à faire
 

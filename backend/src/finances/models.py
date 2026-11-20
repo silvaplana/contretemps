@@ -458,6 +458,36 @@ class FinManualEntry(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_now)
 
 
+class FinYearEndEntry(Base):
+    """Un choix de fin d'année validé par la trésorière (spec §8.14, Seb 20/11 ;
+    Engagement) : une charge ou un produit d'avance, une facture pas encore
+    reçue, un amortissement, proposés par l'appli (`key` : d'où vient la
+    proposition). `keep` : comptée dans l'autre saison (ou étalée) ; sinon
+    laissée telle quelle. `amount` (centimes) : le montant de l'écriture, ou le
+    prix d'achat pour un amortissement (`date` : l'achat, `years` : la durée).
+    `account_id` : le compte de charge ou de produit. Les écritures ne sont pas
+    stockées : le grand livre les recalcule depuis ces lignes."""
+
+    __tablename__ = "fin_year_end_entries"
+    __table_args__ = (UniqueConstraint("org_id", "season_id", "key", name="uq_fin_year_end_entries_key"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    org_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    season_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    key: Mapped[str] = mapped_column(String(80), nullable=False)
+    kind: Mapped[str] = mapped_column(String(20), nullable=False)
+    label: Mapped[str] = mapped_column(String(120), nullable=False)
+    text: Mapped[str] = mapped_column(String(400), nullable=False, default="")
+    reason: Mapped[str] = mapped_column(String(200), nullable=False, default="")
+    date: Mapped[dt.date] = mapped_column(Date, nullable=False)
+    amount: Mapped[int] = mapped_column(Integer, nullable=False)
+    account_id: Mapped[int] = mapped_column(ForeignKey("fin_chart_accounts.id"), nullable=False)
+    keep: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    years: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_by: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_now)
+
+
 class FinDocumentChoice(Base):
     """Les documents du bilan d'une saison (spec §8.10, étape 6, Seb 10/11) :
     pour chaque fichier du Bilan financier de la saison précédente (node_id,

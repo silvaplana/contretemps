@@ -13,6 +13,7 @@ import FicheOperation from './FicheOperation.jsx'
 import Modal from '../../../components/Modal.jsx'
 import { nomCompte } from './PlanComptable.jsx'
 import { Etape6Documents, Etape7Cloture, useDocumentsSaison } from './DocumentsSaison.jsx'
+import EcrituresFinAnnee from './EcrituresFinAnnee.jsx'
 import * as api from '../api.js'
 import './compta.css'
 
@@ -285,6 +286,7 @@ function Etape4({ season, offBank, level, onChange, onErreur }) {
 
   return (
     <div className="fin-preparer__corps">
+      {level === 'complet' && <EcrituresFinAnnee season={season} onChange={onChange} onErreur={onErreur} />}
       <div className="fin-preparer__bloc">
         <span className="fin-cp-t">Caisse : {euros(offBank.cash)}</span>
         <span className="fin-cp-s">
