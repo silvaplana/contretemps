@@ -55,7 +55,8 @@ class TicketLu:
     `sorte` : « facture » (facture, reçu, ticket, avis d'échéance),
     « virement » (preuve d'un virement fait : ordre, avis d'opération),
     « vente » (une recette : remise de chèques, reçu ou facture émis par
-    l'association) ou « autre ». `commercant` = qui a émis la pièce ; `emetteur_personne` :
+    l'association), « salaire » (un bulletin de salaire : `salarie`, brut, net
+    payé et cotisations de l'employeur) ou « autre ». `commercant` = qui a émis la pièce ; `emetteur_personne` :
     c'est une personne (auto-entrepreneur), pas une société ; `client` : à qui
     elle est adressée. Pour un virement : `beneficiaire`, `iban`, `motif`."""
 
@@ -70,6 +71,10 @@ class TicketLu:
     beneficiaire: str | None = None
     iban: str | None = None
     motif: str | None = None
+    salarie: str | None = None
+    brut_centimes: int | None = None
+    net_centimes: int | None = None
+    employeur_centimes: int | None = None
 
 
 class Annuaire(Protocol):

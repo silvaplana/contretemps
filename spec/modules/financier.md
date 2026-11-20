@@ -1237,8 +1237,13 @@ l'association et les écritures. Rattaché au virement du net, le bulletin **ven
 banque (641 et 645 au débit, 431 au crédit) ; le prélèvement de l'URSSAF se classe dans 431 (proposé
 par le mot-clé URSSAF), qui revient à zéro. Pas de 421 : le net est payé par la banque le jour du
 virement (le bulletin non payé au 31/08 reste dans « Fournisseurs à payer », pas encore en charge au
-Complet). Le lecteur ne reconnaît pas encore les bulletins : une pièce lue (par exemple du kDrive)
-change de nature en « Bulletin de salaire » et les montants se saisissent.
+Complet). **Lecture des bulletins (Seb, 20/11, « fais les 4 et merge »)** : paie allumée, le lecteur
+reconnaît un bulletin (photo, PDF, pièce du kDrive) et la pièce arrive en « Bulletin de salaire » avec le
+salarié, la date, le brut, les cotisations du salarié (= brut − net à payer, impôt prélevé à la source
+compris) et celles de l'employeur pré-remplis, À valider : la trésorière relit et valide. Dans la fiche,
+joindre le bulletin remplit les montants encore vides (« Montants lus sur le bulletin : vérifiez-les. »).
+Montants incohérents (net plus grand que le brut) ou paie éteinte : rien n'est pré-rempli, la pièce suit
+le chemin habituel.
 **Éteint par défaut, rien ne change pour Contretemps** : « L'association a des salariés » (non par
 défaut) sur la ligne Financier de Fonctionnalités ; « Oui » ajoute au plan 641, 645 et 431 (le mot
 URSSAF passe de 645 à 431), et Pièces montre la puce Salaires et la nature Bulletin de salaire ;
