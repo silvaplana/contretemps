@@ -239,7 +239,7 @@ def test_une_boite_mail_en_source(client, db_session, asc, monkeypatch):
     assert client.post(f"/auto-import/{regle['id']}/run", headers=h).json()["created"] == 0
 
 
-def test_versements_helloasso(client, db_session, asc):
+def test_versements_helloasso(client, db_session, asc, monkeypatch):
     """Étape 6 (§4.2) : un versement = les paiements versés le même jour ;
     une vente À valider par versement, une ligne par compte d'après la
     formule ; une adhésion en 3 fois compte dans chaque versement qui a versé
@@ -264,6 +264,16 @@ def test_versements_helloasso(client, db_session, asc):
     inscrit("3", "Cid", "Stage", [paiement(2000, "2026-10-25", "2026-11-10")])
     db_session.commit()
 
+    # Seb, 20 novembre : « Regarder maintenant » finissait en 502 ; chaque PDF
+    # reconstitué partait à la lecture payante (lente). Jamais pour HelloAsso.
+    from notes_frais.service import NotesDeFrais
+
+    monkeypatch.setattr(NotesDeFrais, "lecture_disponible", property(lambda self: True))
+
+    def jamais(*args, **kwargs):
+        raise AssertionError("une pièce reconstituée ne se lit pas")
+
+    monkeypatch.setattr(main.notes_frais_client, "lire_ticket", jamais)
     h = entetes_session(asc["tresorier"])
     client.get("/finances/chart", headers=h)  # le plan comptable de l'école
     infos = client.get("/auto-import-helloasso", headers=h).json()

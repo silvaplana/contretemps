@@ -1084,6 +1084,7 @@ class NotesDeFrais:
         batch_id: str | None = None,
         numero_piece: str | None = None,
         lien: dict | None = None,
+        lire: bool = True,
         lignes: list[tuple[int | None, int]] | None = None,
     ) -> NoteFrais | Preuve:
         """Une pièce établie par un trésorier : une photo (ou un fichier) =
@@ -1096,7 +1097,8 @@ class NotesDeFrais:
         (`Preuve`). `valider` : tout est saisi, validé en même temps.
         `lien` (Importation automatique de pièces) : le fichier reste où il est, dans un
         dossier du club ({"doc_node_id"} ou {"drive_id", "drive_path"}) ;
-        jamais rangé, déplacé ni effacé par l'appli.
+        jamais rangé, déplacé ni effacé par l'appli. `lire=False` : pas de
+        lecture payante (pièce reconstituée par l'appli, tout est déjà connu).
         Vente (financier.md §8.12) : `lignes` = (catégorie, montant) de chaque
         compte de produits, la première porte le fichier ; une pièce lue comme
         une recette (« vente ») est proposée en Vente."""
@@ -1110,7 +1112,7 @@ class NotesDeFrais:
             contenu, nom, type_mime = fichier
             if type_mime not in TYPES_ACCEPTES:
                 raise ValueError("Seules les photos (JPEG, PNG, WebP, HEIC) et les PDF sont acceptés.")
-            if len(contenu) <= 10 * 1024 * 1024 and self.lecture_disponible:
+            if lire and len(contenu) <= 10 * 1024 * 1024 and self.lecture_disponible:
                 try:
                     lu = self.lire_ticket(db, membre, contenu, type_mime, nom)
                 except LectureImpossible:
