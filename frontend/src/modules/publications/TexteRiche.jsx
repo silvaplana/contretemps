@@ -45,22 +45,23 @@ export function EditeurTexte({ valeur, onChange, simple = false }) {
     dernier.current = valeur
   }, [valeur])
 
-  // Les boutons allumés suivent le curseur.
+  // Les boutons allumés suivent le curseur, et chaque bouton touché
+  // (Seb, 19 novembre : sans ça, B restait allumé une fois retouché).
+  const suivre = () => {
+    const s = document.getSelection()
+    if (!s?.rangeCount || !bloc.current?.contains(s.anchorNode)) return
+    selection.current = s.getRangeAt(0).cloneRange()
+    const taille = Number(document.queryCommandValue('fontSize'))
+    setEtat({
+      g: document.queryCommandState('bold'),
+      s: document.queryCommandState('underline'),
+      taille: taille <= 2 && taille > 0 ? 'petit' : taille >= 5 ? 'grand' : 'normal',
+    })
+  }
   useEffect(() => {
-    const suivre = () => {
-      const s = document.getSelection()
-      if (!s?.rangeCount || !bloc.current?.contains(s.anchorNode)) return
-      selection.current = s.getRangeAt(0).cloneRange()
-      const taille = Number(document.queryCommandValue('fontSize'))
-      setEtat({
-        g: document.queryCommandState('bold'),
-        s: document.queryCommandState('underline'),
-        taille: taille <= 2 && taille > 0 ? 'petit' : taille >= 5 ? 'grand' : 'normal',
-      })
-    }
     document.addEventListener('selectionchange', suivre)
     return () => document.removeEventListener('selectionchange', suivre)
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const lire = () => {
     const texte = versBalises(bloc.current)
@@ -79,6 +80,7 @@ export function EditeurTexte({ valeur, onChange, simple = false }) {
     }
     document.execCommand('styleWithCSS', false, false)
     document.execCommand(nom, false, valeur)
+    suivre()
     lire()
   }
   const coller = (e) => {
