@@ -48,6 +48,7 @@ function ChoixDossier({ ecoleId, kind, driveId, valeur, onChoix }) {
   const [erreur, setErreur] = useState(null)
   const [ouvert, setOuvert] = useState(false)
   const courant = pile[pile.length - 1]
+  const racine = kind === 'docs' ? 'Docs' : 'Drive'
 
   useEffect(() => {
     if (!ouvert) return
@@ -64,7 +65,9 @@ function ChoixDossier({ ecoleId, kind, driveId, valeur, onChoix }) {
   if (!ouvert)
     return (
       <span className="ai__ligne">
-        <span className="ai__chemin">{valeur || 'Aucun dossier choisi'}</span>
+        <span className="ai__chemin">
+          {valeur ? [racine, ...valeur.split('/')].join(' › ') : 'Aucun dossier choisi'}
+        </span>
         <button type="button" className="mail__lien" onClick={() => setOuvert(true)}>
           Choisir
         </button>
@@ -72,7 +75,7 @@ function ChoixDossier({ ecoleId, kind, driveId, valeur, onChoix }) {
     )
   return (
     <div className="ai__dossiers">
-      <p className="ai__chemin">{pile.length ? pile.map((p) => p.name).join(' › ') : kind === 'docs' ? 'Docs' : 'Drive'}</p>
+      <p className="ai__chemin">{[racine, ...pile.map((p) => p.name)].join(' › ')}</p>
       {pile.length > 0 && (
         <button type="button" className="mail__lien" onClick={() => setPile(pile.slice(0, -1))}>
           ← Dossier au-dessus
@@ -80,6 +83,11 @@ function ChoixDossier({ ecoleId, kind, driveId, valeur, onChoix }) {
       )}
       {erreur && <p className="login-screen__erreur">{erreur}</p>}
       {enfants === null && !erreur && <p className="mail__discret">Lecture…</p>}
+      {enfants?.length > 0 && (
+        <p className="mail__discret">
+          {courant ? `« Choisir » range directement dans « ${courant.name} » ; ou ouvrez un sous-dossier :` : 'Ouvrez un dossier :'}
+        </p>
+      )}
       {enfants?.map((e) => (
         <button key={e.id ?? e.path} type="button" className="ai__dossier" onClick={() => setPile([...pile, e])}>
           📁 {e.name}
