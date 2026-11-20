@@ -92,7 +92,7 @@ export default function PlanComptable({ onClose }) {
         <p className="muted">
           <b>Trésorerie (recettes-dépenses)</b> : Compte de résultat, trésorerie et Rapport financier, ce que l’assemblée générale vote.{' '}
           <b>Engagement (partie double)</b> : en plus, les factures dues et les comptes de tiers (fournisseurs, adhérents, honoraires par prof, lettrage, clôture), Grand livre,
-          Balance et Honoraires par professeur en plus.
+          Balance et Honoraires versés aux professeurs (DAS-2) en plus.
         </p>
       </div>
       <p className="muted">

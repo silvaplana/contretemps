@@ -830,8 +830,8 @@ l'AG** :
 | Grand livre | PDF, format comptable standard (celui du logiciel de la trésorière, 10 novembre 2026) : bandeau nom de l'association + « Édition du », titre et période, « Comptes … à … », « Devise : EUR » ; un bloc par compte (numéro, libellé) avec Type (cadenas = validée par la clôture), date, journal, pièce (numéro de pièce), libellé, lettre, débit, crédit, solde ; « Total pour le compte n » ; « Total du Grand-Livre » | Complet |
 | Balance | PDF, même en-tête ; colonnes N° Compte, Intitulé, Total Période (débit, crédit), Solde Période (débit, crédit) ; « Total des comptes de Bilan » (classes 1 à 5), « Total des comptes de Résultat » (6 et 7), « Total de la Balance » | Complet |
 | Bilan actif-passif | PDF, au dernier jour de la saison, forme simplifiée des petites associations (PCA 2018) : **actif** = soldes débiteurs des comptes de bilan (créances 4xx, trésorerie 5xx), **passif** = fonds associatifs (comptes 1, report à nouveau, **résultat de la saison** porté ici) et dettes (soldes créditeurs 4xx) ; totaux égaux, sinon l'écart est écrit (ligne sans compte, soldes de départ incomplets). Codé le 10 novembre 2026 | Complet |
-| Honoraires par professeur | Excel : total par prof et par mois, pour la DAS-2 | Complet |
-| FEC | Fichier des écritures comptables (art. A47 A-1 du LPF) : texte, 18 colonnes séparées par une tabulation, dates AAAAMMJJ, montants à virgule, ISO-8859-15. Les écritures du Grand livre (§8.7), regroupées en écritures numérotées par date (même journal, même jour, même opération ; les à-nouveaux en une seule). Pièce vide : le numéro d'écriture. Comptes de tiers dans CompteNum (pas de CompAux pour l'instant) | Simple |
+| Honoraires versés aux professeurs (DAS-2) | Excel : total par prof et par mois, pour la DAS-2 ; à l'étape 6 seulement par « Ajouter un document » | Complet |
+| FEC (à l'étape 6 seulement par « Ajouter un document ») | Fichier des écritures comptables (art. A47 A-1 du LPF) : texte, 18 colonnes séparées par une tabulation, dates AAAAMMJJ, montants à virgule, ISO-8859-15. Les écritures du Grand livre (§8.7), regroupées en écritures numérotées par date (même journal, même jour, même opération ; les à-nouveaux en une seule). Pièce vide : le numéro d'écriture. Comptes de tiers dans CompteNum (pas de CompAux pour l'instant) | Simple |
 
 **Balance | Grand-livre | Compte de résultat** (Seb, 20/11 ; maquette
 https://claude.ai/artifact/RfYkidna3tjwFtmnsJ4E4Q) : Comptes réunit ce qui sert à tout moment de l'année.
@@ -1219,6 +1219,12 @@ n'attend jamais une pièce : une ligne sans pièce reçoit son compte à la main
    l'an dernier (année avancée), ou « Synthèse Dépenses-Recettes <saison>.xlsx » sans modèle. La trésorière coche ce qu'on refait et
    corrige la nature (« reconnu comme », table `fin_document_choices`, `GET/PUT
    /finances/seasons/{id}/documents`) ; « Ajouter un document que l'appli sait faire » complète.
+   **Ordre et liste par défaut (Seb, 20/11)** : du plus simple au plus élaboré, Grand livre, Balance,
+   Compte de résultat, Bilan actif-passif, Rapport financier, Budget prévisionnel, puis les « Autre ».
+   **Honoraires versés aux professeurs (DAS-2)** (ce qui est payé à chaque professeur non salarié,
+   pour la déclaration aux impôts au-delà de 1 200 € par an ; pas un document de l'AG) et **FEC** ne
+   sont jamais cochés d'office, même reconnus l'an dernier : on les prend avec « Ajouter un document »
+   (`season_documents.ON_REQUEST`). Le fichier des honoraires garde son nom « Honoraires par professeur ».
    Chaque document prend **le nom de celui de l'an dernier, les années avancées d'un an**
    (« Balance 2024-2025.pdf » → « Balance 2025-2026.pdf »), au format que l'appli produit ; sans
    fichier l'an dernier : Synthèse, Balance, Rapport financier. Voir et Télécharger

@@ -151,6 +151,8 @@ Bilan
   totaux et résultat prévu calculés ; « Reprendre le réalisé » pré-remplit ; « Produire le document » télécharge l'Excel ; « ← Étapes du bilan » revient), chacun affiché « nom officiel : nom du fichier », nommés comme ceux de l'an dernier (« Compte de résultat : Synthèse bilan 2025-2026.xlsx ») : Voir (un PDF s'ouvre dans un nouvel onglet ; Excel, Word et FEC
   dans l'éditeur, en lecture seule, ← revient), Télécharger ;
   Rapport financier : Rédiger, puis Voir, Word, PDF ; « Autre » = à faire à la main ; « Ajouter un document que l'appli sait faire ».
+  Ordre : Grand livre, Balance, Compte de résultat, Bilan actif-passif, Rapport financier, Budget prévisionnel, puis les « Autre ». « Honoraires versés
+  aux professeurs (DAS-2) » (pour la déclaration aux impôts) et « FEC » ne sont jamais cochés d'office : « Ajouter un document » les prend.
   Rien n'est rangé dans Docs : on télécharge et on dépose soi-même. 7. Clôturer la saison (Engagement (partie double)), quand les étapes 1
   à 6 sont vertes : Clôturer / Rouvrir, avec la trace des clôtures rouvertes ; une fois clôturée, « Déposer les documents
   dans Docs » range les documents de l'étape 6 dans Docs › <saison> › Financier › Bilan financier (c'est la personne qui le touche). Un numéro de compte s'affiche
@@ -190,6 +192,6 @@ Règles de l'appli
 - Trésorerie (recettes-dépenses) : comptabilité de trésorerie, chaque ligne contre son compte ; Synthèse et Rapport financier.
 - Engagement (partie double) : partie double. Achats et honoraires passent par les comptes de tiers (401 fournisseurs, 467x honoraires
   par professeur), lettrés (AAA, AAB…) avec leur paiement ; soldes de départ ; clôture qui verrouille la saison et reporte
-  le résultat ; Balance, Grand livre, Bilan actif-passif, Honoraires par professeur (DAS-2).
+  le résultat ; Balance, Grand livre, Bilan actif-passif, Honoraires versés aux professeurs (DAS-2).
 - Le bilan additionne par compte du plan confirmé, sinon par catégorie de Comptes. Les montants sont calculés par
   l'appli, jamais écrits par l'assistant.

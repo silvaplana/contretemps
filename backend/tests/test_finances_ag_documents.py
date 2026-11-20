@@ -338,10 +338,12 @@ def test_season_documents_follow_last_year_and_are_never_stored_in_docs(world, d
     items = [{"nodeId": m["nodeId"], "name": m["name"], "kind": m["kind"], "selected": True} for m in data["models"]]
     items.append({"nodeId": None, "kind": "synthese", "selected": True})
     data = documents.set_document_choices(db_session, TRESORIER, SEASON, items)
+    # Du plus simple au plus élaboré (Seb, 20/11), les fichiers « autre » à la fin.
     assert [(d["kind"], d["name"]) for d in data["documents"]] == [
-        ("balance", "Balance 2025-2026.pdf"), ("rapport", "Rapport financier AG2026.docx"),
-        ("autre", "notes trésorière.docx"), ("synthese", "Synthèse Dépenses-Recettes 2025-2026.xlsx"),
+        ("balance", "Balance 2025-2026.pdf"), ("synthese", "Synthèse Dépenses-Recettes 2025-2026.xlsx"),
+        ("rapport", "Rapport financier AG2026.docx"),
         ("budget", "Budget prévisionnel 2026-2027.xlsx"),  # toujours là, à remplir (Seb, 20/11)
+        ("autre", "notes trésorière.docx"),
     ]
     # À l'écran, le nom officiel ; le fichier garde son nom (Seb, 20/11).
     assert next(d for d in data["documents"] if d["kind"] == "synthese")["label"] == "Compte de résultat"
@@ -354,7 +356,21 @@ def test_season_documents_follow_last_year_and_are_never_stored_in_docs(world, d
 def test_season_documents_without_last_year_offer_the_base_list(world, db_session):
     _, _, documents = world
     data = documents.season_documents(db_session, TRESORIER, SEASON)
-    assert [d["kind"] for d in data["documents"]] == ["synthese", "balance", "rapport", "budget"]
+    assert [d["kind"] for d in data["documents"]] == ["balance", "synthese", "rapport", "budget"]
+
+
+def test_honoraires_and_fec_of_last_year_are_not_offered_by_default(world, db_session):
+    """Seb, 20/11 : les Honoraires (DAS-2) et le FEC ne servent presque jamais
+    à l'AG ; reconnus l'an dernier, ils restent décochés, et on les prend avec
+    « Ajouter un document »."""
+    _, _, documents = world
+    documents.seasons = lambda db, org: [Season(id=0, name="2024-2025", start_date="2024-09-01", end_date="2025-08-31"), SEASON]
+    documents.ports.previous_documents = lambda db, member, season: [
+        (1, "Grand livre 2024-2025.pdf", None), (2, "Honoraires 2024-2025.xlsx", None), (3, "FEC 2024-2025.txt", None)]
+    data = documents.season_documents(db_session, TRESORIER, SEASON)
+    assert [(m["kind"], m["selected"]) for m in data["models"]] == [("grand-livre", True), ("honoraires", False), ("fec", False)]
+    assert [d["kind"] for d in data["documents"]] == ["grand-livre", "budget"]
+    assert data["labels"]["honoraires"] == "Honoraires versés aux professeurs (DAS-2)"
 
 
 def test_the_treasurer_deposits_the_documents_once_the_season_is_closed(world, db_session, monkeypatch):

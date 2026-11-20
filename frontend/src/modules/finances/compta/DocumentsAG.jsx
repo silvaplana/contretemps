@@ -130,7 +130,7 @@ export default function DocumentsAG({ reportId, seasonName }) {
           <p className="muted">
             Additionnés par l’appli depuis les transactions bancaires (compte du plan confirmé) et la caisse, du{' '}
             {dateFr(data.synthese.start)} au {dateFr(data.synthese.cutoff)}. Les fichiers vont dans Docs › Financier › AG.
-            {data.level === 'simple' && ' Grand livre, Balance et Honoraires par professeur : en Engagement (partie double) (Comptes › ⋯ › Plan comptable).'}
+            {data.level === 'simple' && ' Grand livre, Balance et Honoraires versés aux professeurs : en Engagement (partie double) (Comptes › ⋯ › Plan comptable).'}
           </p>
           {data.synthese.unclassified !== 0 && (
             <p className="fin-cp-proposition fin-cp-proposition--aucune">

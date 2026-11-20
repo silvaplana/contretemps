@@ -45,7 +45,7 @@ from .exports import _CSS, _eur, _fr, html_to_pdf
 from .chart import is_cheque_deposit
 from .models import EXPENSE, FULL, INCOME, THIRD_PARTY, FinAccount, FinBudgetLine, FinCashLine, FinClosing, FinManualEntry, FinOpeningBalance, FinOperation, FinOperationAccount, FinSeasonNote, FinDocumentChoice
 from .ports import Member, Season
-from .season_documents import BASE, LABELS, OTHER, RAPPORT, default_name, next_name, recognize
+from .season_documents import BASE, LABELS, ON_REQUEST, OTHER, RAPPORT, default_name, next_name, recognize
 
 # Numéros des comptes de trésorerie et de report (plan associatif).
 BANK_BASE = "512"
@@ -971,7 +971,7 @@ class AgDocuments:
             guess = recognize(name, path)
             choice = by_node.get(node_id)
             kind = choice.kind if choice else guess
-            models.append({"nodeId": node_id, "name": name, "kind": kind, "guess": guess, "selected": choice.selected if choice else kind != OTHER})
+            models.append({"nodeId": node_id, "name": name, "kind": kind, "guess": guess, "selected": choice.selected if choice else kind not in (OTHER, *ON_REQUEST)})
         documents = [
             {"kind": m["kind"], "name": m["name"] if m["kind"] == OTHER else next_name(m["name"], m["kind"]), "model": m["name"], "nodeId": m["nodeId"]}
             for m in models
@@ -986,6 +986,8 @@ class AgDocuments:
         filled = db.scalar(select(FinBudgetLine.id).where(FinBudgetLine.org_id == member.org_id, FinBudgetLine.season_id == season.id)) is not None
         documents = [d for d in documents if d["kind"] != "budget"]
         documents.append({"kind": "budget", "name": f"Budget prévisionnel {next_season}.xlsx", "model": None, "nodeId": None, "filled": filled})
+        order = list(LABELS)
+        documents.sort(key=lambda d: order.index(d["kind"]) if d["kind"] in order else len(order))
         for d in documents:
             d["label"] = LABELS.get(d["kind"], d["kind"])
             d["available"] = d["kind"] == OTHER or d["kind"] in available

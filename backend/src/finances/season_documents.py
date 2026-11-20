@@ -20,18 +20,22 @@ RAPPORT = "rapport"
 OTHER = "autre"
 LABELS = {
     # Le nom officiel à l'écran (Seb, 20/11) ; le fichier garde son nom.
-    "synthese": "Compte de résultat",
-    "balance": "Balance",
+    # Dans l'ordre de l'étape 6, du plus simple au plus élaboré (Seb, 20/11).
     "grand-livre": "Grand livre",
+    "balance": "Balance",
+    "synthese": "Compte de résultat",
     "bilan": "Bilan actif-passif",
-    "honoraires": "Honoraires par professeur",
-    "fec": "FEC",
-    "budget": "Budget prévisionnel",
     RAPPORT: "Rapport financier",
+    "budget": "Budget prévisionnel",
+    "honoraires": "Honoraires versés aux professeurs (DAS-2)",
+    "fec": "FEC",
     OTHER: "Autre : à faire à la main",
 }
-# Le fichier sans modèle de l'an dernier garde son nom d'avant.
-FILE_LABELS = {"synthese": "Synthèse Dépenses-Recettes"}
+# Pas proposés d'office, même s'ils étaient là l'an dernier : « Ajouter un
+# document » quand on en a besoin (Seb, 20/11).
+ON_REQUEST = ("honoraires", "fec")
+# Le fichier garde son nom d'avant.
+FILE_LABELS = {"synthese": "Synthèse Dépenses-Recettes", "honoraires": "Honoraires par professeur"}
 FORMATS = {"synthese": "xlsx", "balance": "pdf", "grand-livre": "pdf", "bilan": "pdf", "honoraires": "xlsx", "fec": "txt", "budget": "xlsx", RAPPORT: "docx"}
 # La première année, sans rien dans Docs.
 BASE = ["synthese", "balance", RAPPORT]
