@@ -19,7 +19,8 @@ from pathlib import Path
 RAPPORT = "rapport"
 OTHER = "autre"
 LABELS = {
-    "synthese": "Synthèse Dépenses-Recettes",
+    # Le nom officiel à l'écran (Seb, 20/11) ; le fichier garde son nom.
+    "synthese": "Compte de résultat",
     "balance": "Balance",
     "grand-livre": "Grand livre",
     "bilan": "Bilan actif-passif",
@@ -28,6 +29,8 @@ LABELS = {
     RAPPORT: "Rapport financier",
     OTHER: "Autre : à faire à la main",
 }
+# Le fichier sans modèle de l'an dernier garde son nom d'avant.
+FILE_LABELS = {"synthese": "Synthèse Dépenses-Recettes"}
 FORMATS = {"synthese": "xlsx", "balance": "pdf", "grand-livre": "pdf", "bilan": "pdf", "honoraires": "xlsx", "fec": "txt", RAPPORT: "docx"}
 # La première année, sans rien dans Docs.
 BASE = ["synthese", "balance", RAPPORT]
@@ -107,4 +110,4 @@ def next_name(previous: str, kind: str) -> str:
 
 def default_name(kind: str, season_name: str) -> str:
     """Nom d'un document sans modèle de l'an dernier."""
-    return f"{LABELS[kind]} {season_name}.{FORMATS[kind]}"
+    return f"{FILE_LABELS.get(kind, LABELS[kind])} {season_name}.{FORMATS[kind]}"

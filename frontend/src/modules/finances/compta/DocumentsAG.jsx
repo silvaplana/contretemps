@@ -212,7 +212,7 @@ export function Cloture({ reportId, seasonName, closing, history = [], onChange,
 
 // `sansDocs` (Bilan › Préparer, Seb 10/11) : rien n'est rangé dans Docs, on télécharge ;
 // `rediger` : ouvre tout de suite la rédaction ; `onApercu` : « Voir » sans Docs (OnlyOffice, Seb 13/11).
-export function RapportFinancier({ reportId, seasonName, folderId, onErreur, sansDocs = false, rediger: redigerDabord = false, titre = 'Rapport financier', onApercu }) {
+export function RapportFinancier({ reportId, seasonName, folderId, onErreur, sansDocs = false, rediger: redigerDabord = false, titre = 'Rapport financier', nature, onApercu }) {
   const [data, setData] = useState(null)
   const [rediger, setRediger] = useState(redigerDabord)
 
@@ -232,7 +232,7 @@ export function RapportFinancier({ reportId, seasonName, folderId, onErreur, san
     <>
       <div className="fin-cp-carte">
         <div className="fin-cp-doc fin-cp-doc--large">
-          <span className="fin-cp-t">{titre}</span>
+          <span className="fin-cp-t">{nature ? `${nature} : ${titre}` : titre}</span>
           <span className="fin-cp-a">
             <button type="button" className="btn btn--secondary" onClick={() => setRediger(true)} disabled={!data}>
               <Icon name="edit" size={16} /> {rapport ? 'Rédiger à nouveau' : 'Rédiger'}
