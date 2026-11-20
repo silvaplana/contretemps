@@ -276,6 +276,8 @@ class Finances:
                 report["skipped"].append({"file": name, "detail": f"{period} déjà importé" + (f" ; {filed}" if filed else "")})
         if report["imported"]:
             self._link_transfers(db, member.org_id)
+            if self.accounting is not None:
+                self.accounting.auto_classify(db, member.org_id)
         db.commit()
         return report
 

@@ -64,17 +64,21 @@ def test_default_chart_and_keyword_proposal(accounting, finances, db_session):
 
     ledger = finances.get_ledger(db_session, TRESORIER)
     by_label = {row["label"]: row for row in ledger["rows"]}
+    # Un mot-clé du compte est sûr : le compte est posé à l'import, marqué auto (Seb, 20/11).
     amazon = by_label["CB 0309 AMAZON 0010 CB*9481"]
-    assert amazon["account"] is None
-    assert amazon["proposal"]["number"] == "606"
-    assert "Amazon" in amazon["proposal"]["reason"]
+    assert amazon["account"]["number"] == "606" and amazon["account"]["auto"] is True
     # Une recette ne va jamais dans un compte de dépense.
-    assert by_label["VIR HELLOASSO"]["proposal"]["number"] == "706"
-    assert by_label["PRLV MYSTERE"]["proposal"] is None
-    # La pièce vient du port (l'opération 2 = Pesenti).
-    assert by_label["VIR FACT PESENTI"]["piece"]["title"] == "Pesenti"
-    # Rien n'a de compte : tout est « À catégoriser », rien n'est encore « Justificatif manquant ».
-    assert ledger["counts"] == {"withoutAccount": 5, "withoutPiece": 0}
+    assert by_label["VIR HELLOASSO"]["account"]["number"] == "706"
+    assert by_label["PRLV MYSTERE"]["account"] is None and by_label["PRLV MYSTERE"]["proposal"] is None
+    # La pièce vient du port (l'opération 2 = Pesenti) : c'est elle qui donnera le compte, rien n'est posé.
+    pesenti = by_label["VIR FACT PESENTI"]
+    assert pesenti["piece"]["title"] == "Pesenti" and pesenti["account"] is None
+    assert ledger["counts"] == {"withoutAccount": 2, "withoutPiece": 3}
+    # Retiré, le compte auto redevient une proposition avec sa raison.
+    accounting.set_lines(db_session, TRESORIER, amazon["id"], [])
+    amazon = next(r for r in finances.get_ledger(db_session, TRESORIER)["rows"] if r["id"] == amazon["id"])
+    assert amazon["account"] is None and amazon["proposal"]["number"] == "606"
+    assert "Amazon" in amazon["proposal"]["reason"]
 
 
 def test_three_states_to_classify_receipt_missing_justified(finances, db_session):
@@ -110,6 +114,9 @@ def test_confirm_then_history_proposes_same_account(accounting, finances, db_ses
     ledger = finances.get_ledger(db_session, TRESORIER)
     by_label = {row["label"]: row for row in ledger["rows"]}
     assert by_label["CB 0309 AMAZON 0010 CB*9481"]["account"]["number"] == "607"
+    # L'autre ligne Amazon avait reçu 606 automatiquement : on le retire pour voir la proposition.
+    accounting.set_lines(db_session, TRESORIER, by_label["CB 0310 AMAZON 0011 CB*9481"]["id"], [])
+    by_label = {row["label"]: row for row in finances.get_ledger(db_session, TRESORIER)["rows"]}
     # L'autre ligne Amazon (numéros différents) suit l'historique, pas le mot-clé.
     other = by_label["CB 0310 AMAZON 0011 CB*9481"]["proposal"]
     assert other["number"] == "607" and "1 fois" in other["reason"]
@@ -272,3 +279,53 @@ def test_official_natures_are_offered_with_their_calculation(accounting, db_sess
     assert official["87"]["nature"] == "attente"
     classes = {c["id"]: c["label"] for c in accounting.chart(db_session, TRESORIER)["classes"]}
     assert classes["2"] == "Immobilisations" and classes["6"] == "Charges" and len(classes) == 8
+
+
+def _amazon_ids(finances, db_session):
+    return [r["id"] for r in finances.get_ledger(db_session, TRESORIER)["rows"] if "AMAZON" in r["label"]]
+
+
+def test_auto_classify_habit_needs_two_and_no_disagreement(accounting, finances, db_session):
+    """Seb, 20/11 : une habitude est sûre à partir de 2 fois le même compte,
+    jamais un autre ; ce que l'appli a posé elle-même ne compte pas."""
+    from finances.models import FinOperation, FinOperationAccount
+    from sqlalchemy import select
+
+    accounts = {a["number"]: a["id"] for a in accounting.chart(db_session, TRESORIER)["accounts"]}
+    # Mystère, sans mot-clé, confirmé deux fois en 627 (deux transactions au même libellé).
+    mystere = db_session.scalar(select(FinOperation).where(FinOperation.label == "PRLV MYSTERE"))
+    clones = [
+        FinOperation(account_id=mystere.account_id, source=mystere.source, position=90 + i, date=mystere.date,
+                     value_date=mystere.value_date, label="PRLV MYSTERE", details="", amount=-1200)
+        for i in range(3)
+    ]
+    db_session.add_all(clones)
+    db_session.commit()
+    accounting.set_lines(db_session, TRESORIER, mystere.id, [{"accountId": accounts["627"]}])
+    assert accounting.auto_classify(db_session, 1) == 0  # une seule fois : pas sûr
+    accounting.set_lines(db_session, TRESORIER, clones[0].id, [{"accountId": accounts["627"]}])
+    assert accounting.auto_classify(db_session, 1) == 2
+    lines = {l.operation_id: l for l in db_session.scalars(select(FinOperationAccount))}
+    assert lines[clones[1].id].auto and lines[clones[1].id].account_id == accounts["627"]
+    assert lines[clones[1].id].confirmed_by is None
+    # Les lignes auto ne font pas d'habitude.
+    assert accounting._history(db_session, 1)["PRLV MYSTERE"] == {accounts["627"]: 2}
+
+    # Un désaccord (une fois ailleurs) : plus rien n'est posé.
+    accounting.set_lines(db_session, TRESORIER, clones[1].id, [{"accountId": accounts["606"]}])
+    accounting.set_lines(db_session, TRESORIER, clones[2].id, [])
+    assert accounting.auto_classify(db_session, 1) == 0
+
+
+def test_auto_lines_validated_in_bulk(accounting, finances, db_session):
+    from finances.models import FinOperationAccount
+    from sqlalchemy import select
+
+    ids = _amazon_ids(finances, db_session)
+    accounts = {a["number"]: a["id"] for a in accounting.chart(db_session, TRESORIER)["accounts"]}
+    # Valider en lot (Bilan › Préparer) : la marque auto disparaît, le trésorier signe.
+    assert accounting.confirm_many(db_session, TRESORIER, ids, accounts["606"]) == 2
+    for line in db_session.scalars(select(FinOperationAccount).where(FinOperationAccount.operation_id.in_(ids))):
+        assert not line.auto and line.confirmed_by == TRESORIER.person_id
+    # Un compte confirmé n'est plus jamais touché par la catégorisation automatique.
+    assert accounting.auto_classify(db_session, 1) == 0

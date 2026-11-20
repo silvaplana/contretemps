@@ -750,6 +750,13 @@ class AgDocuments:
                                   "accountId": keep.id if keep else None, "accountLabel": keep.label if keep else ""},
                         "account": {k: r["account"][k] for k in ("number", "label", "split")},
                     })
+                elif r["account"].get("auto"):
+                    # Posé par la catégorisation automatique (Seb, 20/11) : à valider en lot avec les sûres.
+                    group = by_account.setdefault(r["account"]["id"], {"account": {k: r["account"][k] for k in ("id", "number", "label")}, "operations": []})
+                    group["operations"].append({
+                        "id": r["id"], "date": r["date"], "label": r["label"], "amount": r["amount"], "piece": r.get("piece"),
+                        "chequeDeposit": False, "reason": "Posé automatiquement", "auto": True,
+                    })
                 continue
             cheque = is_cheque_deposit(r["label"], r.get("details", ""))
             line = {"id": r["id"], "date": r["date"], "label": r["label"], "amount": r["amount"], "piece": r.get("piece"), "chequeDeposit": cheque}

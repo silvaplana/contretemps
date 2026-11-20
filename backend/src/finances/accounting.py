@@ -339,12 +339,13 @@ class Accounting:
         return by_operation
 
     def _history(self, db: Session, org_id: int) -> dict[str, Counter]:
-        """{clé de libellé: Counter(account_id)} des opérations confirmées
-        sur un seul compte (une ventilation ne fait pas une habitude)."""
+        """{clé de libellé: Counter(account_id)} des opérations confirmées par
+        le trésorier sur un seul compte (une ventilation ne fait pas une
+        habitude, la catégorisation automatique non plus)."""
         history: dict[str, Counter] = {}
         operations = {o.id: o for o in db.scalars(select(FinOperation).join(FinAccount).where(FinAccount.org_id == org_id))}
         for operation_id, lines in self._lines(db, org_id).items():
-            if len(lines) != 1:
+            if len(lines) != 1 or lines[0].auto:
                 continue
             key = label_key(operations[operation_id].label)
             if key:
@@ -382,7 +383,10 @@ class Accounting:
             confirmed = lines.get(row["id"])
             if confirmed:
                 first = by_id[confirmed[0].account_id]
-                row["account"] = {"id": first.id, "number": first.number, "label": first.label, "split": len(confirmed) > 1}
+                row["account"] = {
+                    "id": first.id, "number": first.number, "label": first.label, "split": len(confirmed) > 1,
+                    "auto": all(l.auto for l in confirmed),
+                }
             else:
                 proposal = _from_piece(accounts, pieces.get(row["id"]), row["amount"]) or propose(
                     accounts, row["label"], row.get("details", ""), round(row["amount"] * 100), history
@@ -488,10 +492,40 @@ class Accounting:
         lines = self._lines(db, member.org_id)
         for operation_id in operation_ids:
             op = self._operation(db, member.org_id, operation_id)
-            if op.transfer_id is not None or lines.get(op.id):
+            if op.transfer_id is not None or (lines.get(op.id) and not all(l.auto for l in lines[op.id])):
                 continue
             self.set_lines(db, member, op.id, [{"accountId": account_id}])
             done += 1
+        return done
+
+    def auto_classify(self, db: Session, org_id: int) -> int:
+        """Catégorisation automatique (Seb, 20/11, comme les logiciels du
+        métier) : à l'arrivée des transactions, une transaction sans compte,
+        sans pièce, hors remise de chèques et hors saison clôturée, reçoit le
+        compte proposé quand la proposition est sûre (une habitude du
+        trésorier, au moins deux fois, ou un mot-clé du compte), marqué
+        `auto`. Rend le nombre de transactions catégorisées."""
+        accounts = self.accounts(db, org_id, active_only=True)
+        if not accounts:
+            return 0
+        lines = self._lines(db, org_id)
+        history = self._history(db, org_id)
+        pieces = self.pieces(db, org_id) if self.pieces is not None else {}
+        done = 0
+        for op in db.scalars(select(FinOperation).join(FinAccount).where(FinAccount.org_id == org_id)):
+            if op.transfer_id is not None or op.id in lines or op.id in pieces or not op.amount:
+                continue
+            if is_cheque_deposit(op.label, op.details or "") or self.closing_of(db, org_id, op.date) is not None:
+                continue
+            proposal = propose(accounts, op.label, op.details or "", op.amount, history)
+            if proposal is None:
+                continue
+            # Habitude sûre : au moins deux fois ce compte, jamais un autre.
+            if proposal.history and (proposal.history < 2 or len(history.get(label_key(op.label), ())) > 1):
+                continue
+            db.add(FinOperationAccount(operation_id=op.id, account_id=proposal.account_id, amount=op.amount, confirmed_by=None, auto=True))
+            done += 1
+        db.flush()
         return done
 
     def counts(self, db: Session, org_id: int, rows: list[dict]) -> dict:

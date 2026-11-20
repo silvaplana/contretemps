@@ -1049,6 +1049,10 @@ export default function Comptes({ onChange }) {
                                 : row.proposal
                                   ? `${nomCompte(row.proposal)} ?`
                                   : null}
+                              {/* Posé par la catégorisation automatique : modifiable, validé dans Bilan › Préparer. */}
+                              {row.account?.auto && (
+                                <span className="badge">auto</span>
+                              )}
                               {etat(row) === "account" ? (
                                 <span className="badge badge--warning">
                                   À catégoriser
