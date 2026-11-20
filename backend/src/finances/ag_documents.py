@@ -492,6 +492,18 @@ class AgDocuments:
             lines.append((CARRY_FORWARD, "Report à nouveau", "report", carried - gap))
         return lines
 
+    def opening_missing(self, db: Session, member: Member, season: Season) -> bool:
+        """Au niveau Complet, les soldes de départ de la saison ne sont ni
+        repris (saisis) ni reportés par la clôture d'avant : la Balance et le
+        Grand-livre n'ont que la banque des relevés, sans tiers ni fonds
+        (Seb, 20/11 : le dire en haut de ces écrans)."""
+        if self.accounting.level(db, member.org_id) != FULL:
+            return False
+        saisis = db.scalar(
+            select(FinOpeningBalance.id).where(FinOpeningBalance.org_id == member.org_id, FinOpeningBalance.season_id == season.id)
+        )
+        return not saisis and self._opening_lines(db, member.org_id, season) is None
+
     def opening(self, db: Session, member: Member, season: Season) -> dict:
         """Les soldes de départ à l'écran : d'où ils viennent, un solde par
         compte du bilan (en euros), et la vérification des 512x contre les
@@ -1175,6 +1187,7 @@ class AgDocuments:
             "end": end,
             "knownUntil": cutoff,
             "closed": self.closing(db, member.org_id, season.id) is not None,
+            "openingMissing": self.opening_missing(db, member, season),
             "accounts": [
                 {
                     "number": a.number,

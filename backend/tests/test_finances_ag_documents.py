@@ -393,3 +393,14 @@ def test_income_statement_compares_to_the_same_dates_of_the_season_before(world,
     # Une saison finie se montre entière ; sans saison d'avant, pas de comparaison.
     whole = documents.income_statement(db_session, TRESORIER, before)
     assert whole["previous"] is None and whole["full"] is True
+
+
+def test_balance_says_when_opening_balances_are_missing(world, db_session):
+    """Seb, 20/11 : au niveau Complet, tant que les soldes de départ ne sont
+    ni repris ni reportés, la Balance le dit."""
+    _, accounting, documents = world
+    assert documents.balance(db_session, TRESORIER, SEASON)["openingMissing"] is False  # Simple : la banque des relevés suffit
+    accounting.set_level(db_session, TRESORIER, "complet")
+    assert documents.balance(db_session, TRESORIER, SEASON)["openingMissing"] is True
+    documents.set_opening(db_session, TRESORIER, SEASON, [{"number": "5121", "label": "Courant", "balance": 950}])
+    assert documents.balance(db_session, TRESORIER, SEASON)["openingMissing"] is False

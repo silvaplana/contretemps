@@ -30,6 +30,8 @@ Comptes
   Compte de résultat : charges puis produits par classe et par compte, le résultat (Excédent ou Déficit), à côté de la saison d'avant.
   Saison pas finie : jusqu'au dernier jour connu des comptes en banque, comparée à la saison d'avant sur les mêmes dates un an plus tôt (c'est écrit sous le titre) ;
   saison finie : saison entière contre saison d'avant entière. Toucher un compte ouvre son Grand-livre. Seul le Compte de résultat se compare à l'an dernier.
+  Niveau Complet, soldes de départ de la saison ni repris ni reportés par une clôture : en haut de la Balance et du Grand-livre, la ligne orange
+  « Soldes de départ pas encore repris : banque, tiers et fonds incomplets. » et le lien « Reprendre les soldes de départ (Bilan › Préparer, étape 2) », qui ouvre cette étape sur la saison choisie.
 - ⋯ › Soldes de départ : soldes au premier jour de la saison (niveau Complet). Bouton « Reprendre les soldes de la Balance
   2024-2025 (Docs › Financier) » (la saison précédente est nommée) : l'appli lit la Balance de la saison précédente déposée dans Docs › Financier (saison précédente ou en cours, n'importe quel sous-dossier, « Balance » dans le nom),
   remplit les cases, montre en haut l'écart éventuel avec les relevés ; sous chaque solde qui n'est pas à zéro, une phrase dit ce que c'est (factures non payées, fonds, compte d'attente à vider…) et propose la facture ou la transaction bancaire du même montant ; « Utiliser ces soldes » enregistre. Sans Balance dans Docs,

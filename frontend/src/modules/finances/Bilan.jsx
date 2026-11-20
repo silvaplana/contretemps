@@ -9,6 +9,7 @@ import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
 import DocumentsAG from './compta/DocumentsAG.jsx'
 import Preparer from './compta/Preparer.jsx'
+import { prendreSaisonDemandee } from './navigation.js'
 import * as sessionApi from '../../api/session.js'
 import { enEuros } from '../../utils/euros.js'
 import { telechargerFichier } from '../../utils/telechargement.js'
@@ -112,7 +113,9 @@ export default function Bilan() {
       .saisons()
       .then((data) => {
         setSeasons(data.seasons)
-        setSeasonId(readSeason(data.seasons))
+        const demandee = prendreSaisonDemandee()
+        if (demandee) setOnglet('preparer')
+        setSeasonId(demandee && data.seasons.some((s) => s.id === demandee) ? demandee : readSeason(data.seasons))
       })
       .catch((err) => setError(err.message))
   }, [])

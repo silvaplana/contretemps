@@ -6,7 +6,7 @@ import { useCallback, useEffect, useState } from 'react'
 import Icon from '../../../components/Icon.jsx'
 import * as sessionApi from '../../../api/session.js'
 import * as nfApi from '../../../api/notesFrais.js'
-import { requestSousOnglet } from '../navigation.js'
+import { prendreEtapeDemandee, requestSousOnglet } from '../navigation.js'
 import RelevesGrille from '../RelevesGrille.jsx'
 import SoldesDepart from './SoldesDepart.jsx'
 import FicheOperation from './FicheOperation.jsx'
@@ -22,7 +22,7 @@ export default function Preparer({ season }) {
   const [etat, setEtat] = useState(null)
   const [rapprocher, setRapprocher] = useState(null) // compteurs de Pièces › Rapprocher sur la saison
   const [erreur, setErreur] = useState('')
-  const [ouverte, setOuverte] = useState(null) // étape dépliée : 1 à 7
+  const [ouverte, setOuverte] = useState(() => prendreEtapeDemandee()) // étape dépliée : 1 à 7
   const [ficheOp, setFicheOp] = useState(null)
   const [enCours, setEnCours] = useState(null)
   const docs = useDocumentsSaison(season.id)

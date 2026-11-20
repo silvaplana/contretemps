@@ -836,7 +836,10 @@ nom de la Synthèse Dépenses-Recettes) : classes 6 puis 7, par classe et par co
 **comparé à la saison d'avant comme le font les logiciels du métier (N et N-1)** ; saison en cours : jusqu'au
 dernier jour connu des banques, comparée aux **mêmes dates un an plus tôt**, et l'écran l'écrit en clair ;
 saison finie : entière contre entière (`AgDocuments.income_statement`, `GET /finances/income-statement`).
-La Balance et le Grand-livre ne se comparent pas (Seb, 20/11). Toucher un compte du Compte de résultat
+La Balance et le Grand-livre ne se comparent pas (Seb, 20/11). **Sans soldes de départ** (niveau Complet, ni
+repris ni reportés par une clôture, `AgDocuments.opening_missing`), la Balance et le Grand-livre ne sont pas
+exacts : une ligne orange le dit en haut de ces deux écrans (pas du Compte de résultat, qui ne dépend que des
+charges et produits), avec un lien vers Bilan › Préparer, étape 2, sur la saison choisie (Seb, 20/11). Toucher un compte du Compte de résultat
 ouvre son Grand-livre.
 
 **Écran Balance** (Seb et la trésorière, 10 novembre 2026 ; maquette
