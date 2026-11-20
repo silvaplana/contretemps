@@ -148,7 +148,8 @@ Bilan
   Remplir ouvre une ligne par compte de charges et de produits, le réalisé de la saison en face, la case Prévu à taper, gardée tout de suite ;
   totaux et résultat prévu calculés ; « Reprendre le réalisé » pré-remplit ; « Produire le document » télécharge l'Excel ; « ← Étapes du bilan » revient), chacun affiché « nom officiel : nom du fichier », nommés comme ceux de l'an dernier (« Compte de résultat : Synthèse bilan 2025-2026.xlsx ») : Voir (un PDF s'ouvre dans un nouvel onglet ; Excel, Word et FEC
   dans l'éditeur, en lecture seule, ← revient), Télécharger ;
-  Rapport financier : Rédiger, puis Voir, Word, PDF ; « Autre » = à faire à la main ; « Ajouter un document que l'appli sait faire ».
+  Rapport financier : Rédiger, puis Voir, Word, PDF ; Voir ouvre le texte du rapport dans l'appli, avec dessous la case « Ce qu'il faut changer »
+  et le bouton « Corriger » (le reste du texte ne bouge pas, le passage changé est surligné), puis « Annuler la dernière correction » ; « Autre » = à faire à la main ; « Ajouter un document que l'appli sait faire ».
   Ordre : Grand livre, Balance, Compte de résultat, Bilan actif-passif, Rapport financier, Budget prévisionnel, puis les « Autre ». « Honoraires versés
   aux professeurs (DAS-2) » (pour la déclaration aux impôts) et « FEC » ne sont jamais cochés d'office : « Ajouter un document » les prend.
   Chaque document a sa ligne sous son nom officiel avec trois touches : « Comme l'an dernier » (même nom, année avancée ; grisée sans fichier

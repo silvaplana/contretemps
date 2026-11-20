@@ -9,6 +9,7 @@ import { telechargerFichier } from '../../../utils/telechargement.js'
 import { RapportFinancier } from './DocumentsAG.jsx'
 import Apercu from './Apercu.jsx'
 import BudgetPrevisionnel from './BudgetPrevisionnel.jsx'
+import RapportCorrection from './RapportCorrection.jsx'
 import * as api from '../api.js'
 import './compta.css'
 
@@ -51,6 +52,7 @@ export function useDocumentsSaison(seasonId) {
 export function Etape6Documents({ season, docs }) {
   const { data, setData, erreur, setErreur, charger } = docs
   const [budget, setBudget] = useState(false)
+  const [rapportOuvert, setRapportOuvert] = useState(null) // le nom du fichier : le rapport à lire et corriger
   const [rapportId, setRapportId] = useState(null)
   const [ajout, setAjout] = useState('')
   const [produits, setProduits] = useState([]) // noms des documents produits depuis l'ouverture de l'écran
@@ -71,6 +73,7 @@ export function Etape6Documents({ season, docs }) {
     )
 
   const reportId = rapportId ?? data.reportId
+  if (rapportOuvert) return <RapportCorrection reportId={reportId} titre={rapportOuvert} onClose={() => setRapportOuvert(null)} />
 
   // Les choix tels qu'à l'écran, envoyés en entier à chaque changement : un
   // fichier de l'an dernier coché = « Comme l'an dernier », un document ajouté
@@ -193,7 +196,7 @@ export function Etape6Documents({ season, docs }) {
                       sansDocs
                       rediger={rapportId != null}
                       onErreur={setErreur}
-                      onApercu={() => setApercu({ titre: r.name, charger: () => api.apercuRapportFinancier(reportId, r.name.replace(/\.docx$/, '')) })}
+                      onApercu={() => setRapportOuvert(r.name)}
                     />
                   ) : (
                     <span className="fin-cp-a">

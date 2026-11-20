@@ -36,6 +36,7 @@ from .adapter import (
     FINANCES_ACCESS,
     adresse_ecole,
     honoraires_payes,
+    lectures_du_rapport,
     repartir_a_zero,
     membre_appelant,
     nom_ecole,
@@ -141,6 +142,7 @@ def mount(app, core) -> None:
         note_cost=note_cost("rapport_financier"),
         org_name=nom_ecole,
         store=ranger_dans_docs(core.documents_client),
+        readings=lectures_du_rapport(),
     )
     finances_bank = Bank(
         client=_client_bancaire(), finances=finances_client, encrypt=chiffrer, decrypt=dechiffrer,

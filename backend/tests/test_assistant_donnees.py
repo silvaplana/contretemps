@@ -135,3 +135,24 @@ def _ancienne_saison(db_session, ecole_id):
     db_session.add(ancienne)
     db_session.commit()
     return ancienne
+
+
+def test_le_rapport_financier_lit_les_effectifs_d_une_autre_saison(db_session, ecole):
+    """Seb, 20/11 : pour corriger le Rapport financier (« comparatif des élèves
+    sur plusieurs saisons »), des lectures d'ensemble seulement, même pour un
+    trésorier qui n'est pas administrateur."""
+    from finances.ports import Member
+    from finances_contretemps.adapter import lectures_du_rapport
+
+    ancienne = _ancienne_saison(db_session, ecole["id"])
+    with portee.dans_saison(ancienne.id):
+        Eleves(comptes=Comptes()).create(db_session, ecole_id=ecole["id"], nom="Vieux", prenom="Paul")
+        db_session.commit()
+    outils, lire = lectures_du_rapport()
+    tresorier = Member(person_id=0, org_id=ecole["id"], name="Trésorière", is_treasurer=True)
+
+    assert [o["name"] for o in outils] == ["resume_ecole", "lister_cours", "lister_saisons"]
+    assert lire(db_session, tresorier, "resume_ecole", {"saison": None}).startswith("2 élèves")
+    assert lire(db_session, tresorier, "resume_ecole", {"saison": "2010-2011"}).startswith("Saison 2010-2011\n1 élèves")
+    assert lire(db_session, tresorier, "resume_ecole", {"saison": "1990"}).startswith("Saison inconnue")
+    assert lire(db_session, tresorier, "fiche_eleve", {"eleve_id": 1}) == "Lecture inconnue."

@@ -613,3 +613,35 @@ def argent_helloasso(core):
         return lecteur(db, ecole_id, saison_id, depart)
 
     return lire
+
+
+# Ce que le modèle peut lire de l'école pour corriger le Rapport financier
+# (Seb, 20/11) : des comptes d'ensemble, jamais une fiche ni un contact.
+_LECTURES_RAPPORT = ("resume_ecole", "lister_cours", "lister_saisons")
+
+
+def lectures_du_rapport():
+    """(outils, lire) pour `WrittenReports.readings` : les lectures de
+    l'assistant (assistant/donnees.py), sur toute l'école, saison au choix."""
+    from assistant.donnees import OUTILS_DONNEES, DonneesEcole, Perimetre
+    from saisons.portee import dans_saison
+
+    outils = [o for o in OUTILS_DONNEES if o["name"] in _LECTURES_RAPPORT]
+    donnees = DonneesEcole()
+
+    def lire(db: Session, member: Member, nom: str, args: dict) -> str:
+        if nom not in _LECTURES_RAPPORT:
+            return "Lecture inconnue."
+        p = Perimetre(member.org_id, True, None, None, False)
+        lecture = getattr(donnees, f"_{nom}")
+        if not args.get("saison"):
+            return lecture(db, p)
+        with toutes_saisons(db):
+            saisons = list(db.scalars(select(Saison).where(Saison.ecole_id == member.org_id).order_by(Saison.date_debut)))
+        saison = next((x for x in saisons if x.nom.strip().casefold() == str(args["saison"]).strip().casefold()), None)
+        if saison is None:
+            return f"Saison inconnue. Saisons de l'école : {', '.join(x.nom for x in saisons) or 'aucune'}."
+        with dans_saison(saison.id):
+            return f"Saison {saison.nom}\n" + lecture(db, p)
+
+    return outils, lire

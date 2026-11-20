@@ -136,6 +136,12 @@ class WriteRequest(BaseModel):
     model: str | None = None
 
 
+class CorrectionRequest(BaseModel):
+    """Corps de POST /finances/reports/{id}/rapport/correction : ce qu'il faut changer."""
+
+    instruction: str
+
+
 class ResetSeasonRequest(BaseModel):
     confirm: str  # le nom de la saison, retapé
     snapshotId: int | None = None  # la copie du plan à remettre (sinon la dernière)
@@ -823,6 +829,29 @@ class FinancesReceiver:
                     )
                 except AnalysisError as exc:
                     raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+            @app.post("/finances/reports/{report_id}/rapport/correction")
+            async def correct_report(report_id: int, data: CorrectionRequest, db: Session = db_dep, member: Member = member_dep) -> dict:
+                """« Ce qu'il faut changer » (Seb, 20/11) : le modèle applique la consigne,
+                le reste du texte ne bouge pas, les chiffres restent ceux de l'appli."""
+                season = season_of(db, member, report_id)
+                try:
+                    return await run_in_threadpool(written.correct, db, member, report_id, season, data.instruction)
+                except AnalysisError as exc:
+                    raise HTTPException(status_code=502, detail=str(exc)) from exc
+                except LookupError as exc:
+                    raise HTTPException(status_code=404, detail=str(exc)) from exc
+                except ValueError as exc:
+                    raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+            @app.delete("/finances/reports/{report_id}/rapport/correction")
+            def undo_correction(report_id: int, db: Session = db_dep, member: Member = member_dep) -> dict:
+                """« Annuler la dernière correction »."""
+                season_of(db, member, report_id)
+                try:
+                    return {"rapport": written.undo(db, report_id)}
+                except LookupError as exc:
+                    raise HTTPException(status_code=404, detail=str(exc)) from exc
 
             @app.post("/finances/reports/{report_id}/rapport/docs")
             def written_in_docs(report_id: int, format: str = "docx", db: Session = db_dep, member: Member = member_dep) -> dict:
