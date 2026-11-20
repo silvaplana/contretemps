@@ -269,6 +269,8 @@ class PublicationsReceiver:
             count = self.client.request_mail(db, blog, post, data.test_address)
         except mailing.InvalidMail as erreur:
             raise HTTPException(status_code=400, detail=str(erreur)) from erreur
+        except RuntimeError as erreur:  # l'envoi refusé (SMTP), dit tel quel
+            raise HTTPException(status_code=502, detail=str(erreur)) from erreur
         return MailOut(recipients=count, test=data.test_address is not None)
 
     def cancel_mail(self, ecole_id: int, blog_id: int, post_id: int, db: Session = Depends(get_db),

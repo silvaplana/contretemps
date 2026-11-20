@@ -585,9 +585,8 @@ class Publications:
                 "Ajoutez l’adresse mail du club dans Admin › École › Coordonnées : les réponses y arriveront"
             )
         if test_address is not None:
-            addresses = mailing.clean_addresses(test_address)
-            self._mail(db, blog, post, addresses)
-            return len(addresses)
+            # Raises RuntimeError when nothing left: the screen says so.
+            return len(self._mail(db, blog, post, mailing.clean_addresses(test_address)))
         if post.mail_requested_at is not None:
             raise mailing.InvalidMail("Déjà envoyée par mail")
         post.mail_requested_at = _now()
@@ -612,7 +611,13 @@ class Publications:
         post.mail_sent_at = _now()
         db.commit()
         blog = db.get(Blog, post.blog_id)
-        sent = self._mail(db, blog, post, mailing.recipients(db, blog, can_read))
+        try:
+            sent = self._mail(db, blog, post, mailing.recipients(db, blog, can_read))
+        except RuntimeError:
+            # Nothing left: the card says « Envoyée par mail à 0 adresse ».
+            post.mailed_to = 0
+            db.commit()
+            raise
         post.mailed_to = len(sent)
         db.commit()
         return len(sent)

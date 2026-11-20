@@ -56,7 +56,8 @@ def envoyer_a_chacun(
     désinscription). Les réponses vont à `repondre_a`, sinon à l'email de
     contact de l'école, jamais à l'expéditeur de l'enseigne (Brevo, qui ne
     reçoit rien). Une adresse refusée n'arrête pas les autres. Rend les
-    adresses servies ; lève une exception si l'envoi n'est pas configuré."""
+    adresses servies ; lève une exception si l'envoi n'est pas configuré, ou
+    si aucune adresse n'est servie (avec la raison du dernier refus)."""
     from personnalisation import brands
 
     ecole = db.get(Ecole, ecole_id)
@@ -67,7 +68,7 @@ def envoyer_a_chacun(
             return list(adresses)
         raise RuntimeError("L’envoi de mails n’est pas configuré sur ce serveur")
     expediteur = (ecole.nom, brands.of_nature(ecole.nature).sender_email)
-    servies = []
+    servies, refus = [], None
     for adresse in adresses:
         sujet, texte, html = contenu(adresse)
         try:
@@ -75,6 +76,9 @@ def envoyer_a_chacun(
                 adresse, sujet, texte, [], html, expediteur=expediteur, images=images, repondre_a=reponse
             )
             servies.append(adresse)
-        except Exception:  # noqa: BLE001 - une adresse refusée n'arrête pas les autres
+        except Exception as erreur:  # noqa: BLE001 - une adresse refusée n'arrête pas les autres
             logger.exception("Mail non envoyé à une adresse de l'école %s", ecole_id)
+            refus = erreur
+    if adresses and not servies:
+        raise RuntimeError(f"Le mail n’est pas parti : {refus}") from refus
     return servies

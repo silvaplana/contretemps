@@ -184,3 +184,17 @@ def test_texte_mis_en_forme_dans_le_mail(client, db_session, club, envois):
     assert sujet == "Actus · Stage de Noël"
     assert "Stage de Noël\nSamedi 20 décembre" in texte and "[g]" not in texte
     assert "Samedi <strong>20 décembre</strong>" in html
+
+
+def test_essai_qui_ne_part_pas_le_dit(client, db_session, club, monkeypatch):
+    """Seb, 20 novembre : pas de « Essai envoyé » si le mail n'est pas parti."""
+    _avec_contact(db_session, club)
+
+    def en_panne(*args, **kwargs):
+        raise RuntimeError("Le mail n’est pas parti : expéditeur refusé")
+
+    monkeypatch.setattr(core.publications_client, "send_mails", en_panne)
+    actu = _actu(client, club, publish=False)
+    refus = client.post(f"{club['blog']}/posts/{actu['id']}/mail", json={"test_address": "moi@exemple.fr"})
+    assert refus.status_code == 502
+    assert "expéditeur refusé" in refus.json()["detail"]
