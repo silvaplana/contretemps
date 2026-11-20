@@ -28,6 +28,15 @@ Onglet **Financier**, trésoriers et Super User seulement (`core.md` §4). Sous-
 4. **Assemblée générale** (§5) — fait.
 5. **Prévisionnel** (§6) — fait.
 
+**Aide en ligne comptabilité** (Seb, 20 novembre 2026 ; maquette validée
+https://claude.ai/artifact/CZxrkQGxWLxEwepgf8jkSW) : dernière entrée du menu ⋯ des cinq sous-onglets ; une page
+fixe (`finances/AideComptabilite.jsx`), ← revient au sous-onglet d'où l'on vient. Courte, pour un public qui connaît
+la compta : une phrase qui relie transactions, pièces, comptes et Balance ; définitions (pièce et ses natures avec un
+exemple, transaction, compte, classe) ; processus (rattacher, rapprocher, le compte de la pièce est imposé à la
+transaction) ; documents du bilan (minimum, en appui, ce qui se voit à tout moment) ; point de départ (soldes de
+l'an dernier) ; états d'une transaction puis d'une pièce, chacun avec son schéma. Texte de référence :
+https://claude.ai/artifact/4Vy3QiZP37sbd8eC5WfBS3. Elle suit l'écran : un nom qui change à l'écran change ici.
+
 Chaque sous-module expose ses actions à l'Assistant IA (`assistant-ia.md` §3, `actions.py`) : cible
 de Seb, « fais-moi le PPT de l'AG de cette année à partir de celui de l'année dernière et du bilan
 financier de cette année ». Fait, cette version (§7).

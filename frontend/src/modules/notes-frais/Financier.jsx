@@ -19,6 +19,7 @@ import Exterieurs from './Exterieurs.jsx'
 import Emplacements from './Emplacements.jsx'
 import ImportAuto from '../auto-import/ImportAuto.jsx'
 import * as autoImportApi from '../auto-import/api.js'
+import AideComptabilite from '../finances/AideComptabilite.jsx'
 import Pieces, { AnnulerImportModal, ChoixPersonneModal, NoteModal } from './Pieces.jsx'
 import './notes-frais.css'
 
@@ -117,6 +118,8 @@ export default function Financier({ docs = null }) {
   const [exterieurs, setExterieurs] = useState(false)
   const [importAuto, setImportAuto] = useState(false)
   const [emplacements, setEmplacements] = useState(false)
+  // ⋯ › Aide en ligne comptabilité, en bas du menu de chaque sous-onglet (Seb, 20/11).
+  const [aide, setAide] = useState(false)
   // L’entrée « Importation automatique de pièces » du menu ⋯ : seulement si le sous-module est allumé.
   const [importAutoDispo, setImportAutoDispo] = useState(false)
   useEffect(() => {
@@ -151,6 +154,14 @@ export default function Financier({ docs = null }) {
   useEffect(rechargerAFaire, [rechargerAFaire])
   const totalAFaire = Object.values(aFaire).reduce((a, b) => a + b, 0)
 
+  if (aide) {
+    return (
+      <div className="screen nf-screen">
+        <AideComptabilite onClose={() => setAide(false)} />
+      </div>
+    )
+  }
+
   if (pour) {
     return (
       <MesNotesDeFrais
@@ -177,8 +188,8 @@ export default function Financier({ docs = null }) {
     <div className={`screen nf-screen${volet ? ' nf-screen--a-cote' : ''}`}>
       <MenuEntete
         label="Actions du Financier"
-        actions={
-          sousOnglet === 'comptes'
+        actions={[
+          ...(sousOnglet === 'comptes'
             ? [
                 { label: 'Se connecter aux comptes en banque', icon: 'calculator', onClick: requestBank },
                 { label: 'Importer des relevés', icon: 'paperclip', onClick: requestStatementImport },
@@ -204,8 +215,9 @@ export default function Financier({ docs = null }) {
                 // Sous-module Importation automatique de pièces, allumé seulement là où il sert (ASC).
                 ...(importAutoDispo ? [{ label: 'Importation automatique de pièces', icon: 'paperclip', onClick: () => setImportAuto(true) }] : []),
                 { label: 'Emplacement des pièces manuelles', icon: 'folder', onClick: () => setEmplacements(true) },
-              ]
-        }
+              ]),
+          { label: 'Aide en ligne comptabilité', icon: 'info', onClick: () => setAide(true) },
+        ]}
       />
       {exterieurs && <Exterieurs onClose={() => setExterieurs(false)} />}
       {emplacements && <Emplacements onClose={() => setEmplacements(false)} />}
