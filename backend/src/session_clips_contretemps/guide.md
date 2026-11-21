@@ -72,10 +72,11 @@ Timer (coachs, Fights › Timer) : un minuteur de rounds avec la cloche.
 Paramètres du Timer (coachs, Fights › ⋮ ; ← revient à Fights) : les cases « Filmer le combat »,
 « Nommer les combattants », « Déclarer le vainqueur » et, dessous, « Annoncer le vainqueur » (un
 speaker annonce le vainqueur ou le match nul, en anglais). Rien de coché : le Timer simple. Une case
-cochée : le Timer étendu, téléphone en paysage. Avec « Filmer le combat », la partie « Dans la vidéo
+cochée : le Timer étendu, téléphone en paysage ou debout (il suit le téléphone, puis garde le sens
+pris au premier coup de cloche jusqu'à Archiver ou Jeter). Avec « Filmer le combat », la partie « Dans la vidéo
 archivée » : « Les noms au début », « Le vainqueur à la fin », « Le chrono », « Une musique ».
 
-Timer étendu (coachs, Fights › Timer, téléphone en paysage) :
+Timer étendu (coachs, Fights › Timer ; debout, les poings sont sous les noms et la cloche en bas) :
 - En haut, les deux noms (« … » : on touche, un écran de choix s'ouvre, sans clavier : tout l'alphabet sur
   deux lignes (une lettre sans personne est grisée), ★ pour les habitués de ce jour-là, puis les combattants en cartes qu'on fait défiler ; on
   touche la carte) et, entre eux, le résultat : un poing levé pour celui de gauche, « = » pour le match nul,

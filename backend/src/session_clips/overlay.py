@@ -424,7 +424,10 @@ class Frames:
 
     def __init__(self, overlay: dict, plan: dict, width: int, height: int):
         self.o, self.plan, self.w, self.h = overlay, plan, width, height
-        u = self.u = width / 100
+        # Filmé debout (Seb, 21/11) : tout un peu plus grand, et les noms l'un
+        # au-dessus de l'autre, faute de place côte à côte.
+        self.portrait = height > width
+        u = self.u = width / (62 if self.portrait else 100)
         names = overlay.get("labels") or ["", ""]
         self.names = [n or "Inconnu" for n in names]
         self.show_names = bool(overlay.get("names"))
@@ -432,6 +435,8 @@ class Frames:
             self.plates = [plate(self.names[i], i, u) for i in (0, 1)]
             self.vs = vs_badge(u)
             self.burst = burst(u)
+            # Un nom trop long pour l'écran est réduit.
+            self.fit = min(1.0, 0.94 * width / max(p.width for p in self.plates)) if self.portrait else 1.0
         result = overlay.get("result")
         if plan["banner"] is not None:
             self.banner = banner(result, self.names, u)
@@ -464,10 +469,14 @@ class Frames:
             pic = self.chronos.get(clock)
             if pic is None:
                 pic = self.chronos[clock] = chrono(*clock, u)
-            img.alpha_composite(pic, (round(self.w - pic.width - 1.4 * u), round(1.4 * u)))
+            top = 1.4 * u
+            if self.portrait and self.show_names:
+                # Debout : sous les noms, à droite (maquette du Timer en portrait).
+                top = self.h * 0.11 + self.plates[0].height * 0.55 * self.fit + 1.5 * u
+            img.alpha_composite(pic, (round(self.w - pic.width - 1.4 * u), round(top)))
         if band is not None:
             v = _ease_in_out(_clamp(band / (0.5 * FPS)))
-            s = 0.8 + 0.2 * v
+            s = (0.8 + 0.2 * v) * min(1.0, 0.96 * self.w / self.banner.width)
             pic = self.banner.resize((max(1, round(self.banner.width * s)), max(1, round(self.banner.height * s))), Image.LANCZOS)
             y = self.h - 6 * u - pic.height + (1 - v) * 30 * u + self.banner.height * (1 - s) / 2
             img.alpha_composite(pic, (round((self.w - pic.width) / 2), round(y)))
@@ -480,8 +489,8 @@ class Frames:
         if ARRIVAL < t < SHAKE_END:
             shake = math.sin((t - ARRIVAL) * 70) * 1.4 * (1 - (t - ARRIVAL) / (SHAKE_END - ARRIVAL))
         m = _ease_in_out(_clamp((t - MOVE_START) / (MOVE_END - MOVE_START)))
-        y = h * (0.5 - 0.41 * m)
-        s = 1 - 0.45 * m
+        y = h * (0.5 - (0.39 if self.portrait else 0.41) * m)
+        s = (1 - 0.45 * m) * self.fit
         gap = 4.6 * _ease_in_out(_clamp((t - 0.6) / 0.3))
         if ARRIVAL <= t < ARRIVAL + 0.45:
             c = _clamp((t - ARRIVAL) / 0.45)
@@ -495,6 +504,12 @@ class Frames:
             extra = (p.width - base.width) / 2  # la lueur du vainqueur déborde
             pw, ph = max(1, round(p.width * s)), max(1, round(p.height * s))
             pic = p.resize((pw, ph), Image.LANCZOS) if s != 1 else p
+            if self.portrait:
+                # Debout : chacun arrive de son côté jusqu'au milieu, rouge au-dessus, bleu dessous.
+                x = w / 2 + sens * (1 - a) * 75 * u + shake * u - pw / 2
+                py = y + sens * (base.height * s / 2 + gap * 0.35 * s * u)
+                img.alpha_composite(pic, (round(x), round(py - ph / 2)))
+                continue
             dx = sens * ((1 - a) * 75 + gap * s) * u + shake * u
             inner = w / 2 + dx  # le bord côté milieu
             x = inner - pw + extra * s if sens < 0 else inner - extra * s

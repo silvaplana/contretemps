@@ -880,9 +880,14 @@ combattants », « Déclarer le vainqueur ». Rien de coché : le Timer simple c
 qu'une case est cochée : le **Timer étendu**, qui n'existe qu'en plein écran (la croix rend le Timer
 simple, avec ses modes et ses réglages ; toucher le temps y revient).
 
-- **Tout en paysage.** L'appli Android tourne l'écran elle-même, même rotation automatique coupée
-  (`TournagePlugin.landscape`) ; dans le navigateur on demande le plein écran et le paysage
-  (`screen.orientation.lock`). Si l'écran reste en portrait : « Tournez le téléphone en paysage. »
+- **Paysage ou portrait, au choix du vidéaste** (Seb, 21/11 ; maquette
+  https://claude.ai/artifact/V2svDuF74XVHNbYNuk3ui6). Pas de réglage : l'écran suit le téléphone.
+  Debout : les noms en haut, les poings et « = » dessous, l'image du film au milieu, le temps, puis la
+  cloche et le chronomètre ; Archiver, Partager et Jeter empilés. Le sens est figé du premier coup de
+  cloche jusqu'à Archiver ou Jeter, pour que le film ne bascule pas (`TournagePlugin.landscape` avec
+  `mode` « landscape » / « portrait » dans l'appli Android, `screen.orientation.lock` en plein écran
+  dans le navigateur). Vidéo filmée debout : les noms incrustés l'un au-dessus de l'autre, rouge puis
+  bleu, le chrono sous les noms à droite (`overlay.py`, `Frames.portrait`).
   (pas de film de travers).
 - **En haut**, les deux noms et, entre eux, le résultat : un **poing levé** pour celui de gauche,
   **« = »** pour le match nul, un poing levé pour celui de droite. Gris au départ ; on en touche un, il
@@ -958,8 +963,10 @@ simple, avec ses modes et ses réglages ; toucher le temps y revient).
   environ une demi-minute après « Archiver » (estimation, à mesurer). En cas d'échec : la
   compression ordinaire, sans incrustation. L'envoi depuis le téléphone ne change pas ; « Partager »
   envoie la vidéo telle que filmée. La vignette est tirée de la vidéo incrustée, une fois les noms
-  posés. Après « Archiver », une pastille en bas à gauche du Timer étendu suit l'envoi (paysage) :
-  « Envoi X % », « En préparation… », puis « Prêt dans Combats » (si on est l'un des combattants),
+  posés. Après « Archiver », une pastille en bas à gauche du Timer étendu suit l'envoi :
+  « Attente du serveur… » (serveur injoignable, par exemple pendant une mise en ligne : réessayé
+  ~3 min, puis le combat revient à l'écran, « touchez Archiver pour réessayer » ; trois films perdus
+  ainsi le 21/11), « Envoi X % », « En préparation… », puis « Prêt dans Combats » (si on est l'un des combattants),
   « Prêt : à vérifier dans Tournage » ou « Prêt dans Tournage, séance du jour » ; elle s'efface 15 s
   après. Combats ne montre que les combats où l'on est nommé (Seb, 21/11) ; on y
   est dès « Archiver », et pendant l'envoi depuis ce téléphone la vignette montre la première image
