@@ -51,14 +51,14 @@ Pièces
   « Pas encore encaissée », « Encaissée en espèces » (lignes dans la Caisse) ; une fois encaissée : les écritures
   (journal VE) et « Détacher ». Dans Rapprocher, les ventes à encaisser et, si l'école saisit des ventes, la partie
   « Crédits sans vente ».
-  Puce Salaires (seulement si « L'association a des salariés » est sur oui, Admin › École › Personnalisation ›
-  Fonctionnalités, ligne Financier) : « + » › Saisir à la main › Bulletin de salaire, ou une pièce dont on change la
-  nature en « Bulletin de salaire ». Fiche : Salarié, Date du bulletin, Salaire brut, Cotisations du salarié,
+  Puce Paie (seulement si « L'association a des salariés » est sur oui, Admin › École › Personnalisation ›
+  Fonctionnalités, ligne Financier) : « + » › Saisir à la main › Paie, ou une pièce dont on change la
+  nature en « Paie ». Fiche : Salarié, Date du bulletin, Salaire brut, Cotisations du salarié,
   Cotisations de l'employeur ; l'appli montre le net payé, le coût pour l'association et les écritures (641, 645,
   431, 512) ; « Valider : À payer ». Bloc « Paiement du net » : « Rattacher à cette transaction bancaire » (le
   virement du net prend les comptes du bulletin), « Autre transaction… », « Détacher ». Le prélèvement de l'URSSAF
   se classe dans 431 URSSAF à payer (proposé par l'appli). Rangé dans Docs › Financier › SALAIRES › mois.
-  Une photo ou un PDF de bulletin est reconnu : la pièce arrive en « Bulletin de salaire » avec les montants
+  Une photo ou un PDF de bulletin est reconnu : la pièce arrive en « Paie » avec les montants
   pré-remplis, à relire ; dans la fiche, « Prendre une photo » ou « Joindre un fichier » remplit les montants vides.
   Les transactions bancaires sans compte se classent dans Comptes (filtre « À catégoriser »), badge
   bleu sur le sous-onglet Comptes.
@@ -123,7 +123,7 @@ Pièces
 - « Pour qui ? » : les membres, puis les extérieurs (payés sans être membres) ; « + Quelqu'un d'extérieur » (nom, mail et téléphone facultatifs, RIB). ⋯ › Extérieurs : corriger, « Demander le RIB par mail », retirer de la liste.
 - Réglage « Qui paie » : Admin › École › Personnalisation › Fonctionnalités, ligne Financier.
 - Réglage « L'association a des salariés » (non par défaut) : même ligne ; « Oui » ajoute au plan 641 Salaires,
-  645 Charges sociales et 431 URSSAF à payer, et fait apparaître la puce Salaires.
+  645 Charges sociales et 431 URSSAF à payer, et fait apparaître la puce Paie.
 
 Bilan
 - En haut, le choix de la saison, puis les étapes du bilan (Préparer). Plus d'onglets Documents ni Clôture.

@@ -29,7 +29,7 @@ const PUCES = [
   { value: 'honoraires', label: 'Honoraires' },
   { value: 'achat', label: 'Achats' },
   { value: 'vente', label: 'Ventes' },
-  { value: 'salaire', label: 'Salaires' }, // seulement si l'association a des salariés (financier.md §8.11)
+  { value: 'salaire', label: 'Paie' }, // seulement si l'association a des salariés (financier.md §8.11)
   { value: 'a_trancher', label: 'À trancher' }, // « plus tard » et refusées (Seb, 6/11)
 ]
 

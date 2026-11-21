@@ -102,7 +102,7 @@ export default function AideComptabilite({ onClose }) {
         <li>Honoraires : ex. note d'un professeur</li>
         <li>Note de frais : ex. ticket avancé par un membre</li>
         <li>Vente : ex. remise de chèques des cotisations</li>
-        <li>Bulletin de salaire : ex. paie d'un salarié</li>
+        <li>Paie : ex. bulletin de salaire d'un salarié</li>
       </ul>
       <p>
         <b>Transaction</b> : ligne du relevé bancaire ; elle fait foi pour le montant.

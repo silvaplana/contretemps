@@ -243,7 +243,7 @@ Tables préfixées `autoimport_`, liées par `organization_id` (écoles étanche
 ## 10. Reste à décider
 
 - D'autres statuts de pièce créée que « À valider ».
-- Bulletins de salaire : décidé le 19/11, une nature de plus (« Bulletin de salaire », `financier.md`
+- Bulletins de salaire : décidé le 19/11, une nature de plus (« Paie », d'abord nommée « Bulletin de salaire », `financier.md`
   §8.11) ; une fiche d'import ne la propose pas encore (le lecteur ne lit pas les bulletins) : la pièce
   arrive en Achat et la trésorière change sa nature.
 - Rendre réglables les dossiers imposés du Financier, si un club les refuse (chantier à part).

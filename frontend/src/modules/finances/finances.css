@@ -444,6 +444,35 @@
   stroke-width: 2;
 }
 
+/* Les valeurs sous le doigt, au-dessus du graphe (place gardée même vide). */
+.fin-comptes .seasons-readout {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.15rem 0.9rem;
+  min-height: 3.2rem;
+  font-size: 17px;
+  font-variant-numeric: tabular-nums;
+}
+
+.fin-comptes .seasons-readout b {
+  color: var(--text-h);
+  font-weight: 600;
+}
+
+.fin-comptes .seasons-readout span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+
+.fin-comptes .seasons-readout i {
+  width: 12px;
+  height: 3px;
+  border-radius: 2px;
+}
+
 .fin-comptes .seasons-tooltip-date {
   margin-bottom: 0.15rem;
 }

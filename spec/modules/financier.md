@@ -97,7 +97,9 @@ Repris de Sambo Admin :
   recettes, dépenses, net, détail par catégorie.
 - **Graphique** : courbe du solde (ou du cumul des opérations retenues), périodes 3M / 6M / 1A / Max
   / **Saisons** (une courbe par saison de l'organisation, superposées du début à la fin de saison,
-  chaque saison masquable d'un appui dans la légende), infobulle des opérations du jour.
+  chaque saison masquable d'un appui dans la légende), infobulle des opérations du jour. En **Saisons**,
+  pas de cadre posé sur les courbes (Seb, 21 novembre 2026) : la date et le solde de chaque saison
+  s'affichent dans une ligne au-dessus du graphe tant que le doigt est posé, et s'effacent quand il se lève.
 - **Tableau** : date, libellé (catégorie, compte, détail), montant, solde de chaque compte, total ;
   50 lignes puis la suite en descendant. Un **virement entre deux comptes de l'organisation** n'occupe
   qu'une ligne (⇄, catégorie « Virement interne », total inchangé) ; sur un compte seul, c'est une
@@ -1413,7 +1415,7 @@ seulement si la campagne en a) ; **« Ajouter ces comptes »** en un geste, Annu
 ajouté sans ce toucher ; Contretemps, sans source allumée, ne voit jamais la question.
 
 **Paie : décision et code (Seb, 19/11, « code ce que tu peux » ; étape 3 ci-dessous)**. Un bulletin
-de salaire est une pièce de nature **Bulletin de salaire** (`salaire`, journal SA, dossier Docs ›
+de salaire est une pièce de nature **Paie** (Seb, 21 novembre 2026 : « Paie », plus court que « Bulletin de salaire », à l'écran partout ; `salaire`, journal SA, dossier Docs ›
 Financier › SALAIRES › MM.AAAA), à plusieurs lignes comme une vente (§8.12) : 641 Salaires = le brut,
 645 Charges sociales = la part de l'employeur, 431 URSSAF à payer = **en moins** les cotisations du
 salarié et de l'employeur ; la somme des lignes est le net payé. La fiche demande seulement Salarié,
@@ -1423,7 +1425,7 @@ banque (641 et 645 au débit, 431 au crédit) ; le prélèvement de l'URSSAF se 
 par le mot-clé URSSAF), qui revient à zéro. Pas de 421 : le net est payé par la banque le jour du
 virement (le bulletin non payé au 31/08 reste dans « Fournisseurs à payer », pas encore en charge au
 Complet). **Lecture des bulletins (Seb, 20/11, « fais les 4 et merge »)** : paie allumée, le lecteur
-reconnaît un bulletin (photo, PDF, pièce du kDrive) et la pièce arrive en « Bulletin de salaire » avec le
+reconnaît un bulletin (photo, PDF, pièce du kDrive) et la pièce arrive en « Paie » avec le
 salarié, la date, le brut, les cotisations du salarié (= brut − net à payer, impôt prélevé à la source
 compris) et celles de l'employeur pré-remplis, À valider : la trésorière relit et valide. Dans la fiche,
 joindre le bulletin remplit les montants encore vides (« Montants lus sur le bulletin : vérifiez-les. »).
@@ -1431,7 +1433,7 @@ Montants incohérents (net plus grand que le brut) ou paie éteinte : rien n'est
 le chemin habituel.
 **Éteint par défaut, rien ne change pour Contretemps** : « L'association a des salariés » (non par
 défaut) sur la ligne Financier de Fonctionnalités ; « Oui » ajoute au plan 641, 645 et 431 (le mot
-URSSAF passe de 645 à 431), et Pièces montre la puce Salaires et la nature Bulletin de salaire ;
+URSSAF passe de 645 à 431), et Pièces montre la puce Paie et la nature Paie ;
 « Non » rend 431 inactif. L'état est simplement « 431 actif dans le plan » : pas de réglage stocké.
 Routes : `GET|PUT /notes-frais/paie` ({active}), `GET|POST /notes-frais/paie/comptes`, `paie`
 ({brut, salarie, employeur} en centimes) sur `POST /notes-frais/etablir` et `PATCH /notes-frais/notes/{id}`.

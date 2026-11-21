@@ -124,7 +124,7 @@ export function Compte({ n, banque = false }) {
   )
 }
 
-export const NATURES = { frais: 'Note de frais', honoraires: 'Honoraires', achat: 'Achat', vente: 'Vente', salaire: 'Bulletin de salaire' }
+export const NATURES = { frais: 'Note de frais', honoraires: 'Honoraires', achat: 'Achat', vente: 'Vente', salaire: 'Paie' }
 // Les natures à proposer : le bulletin de salaire seulement si l'association a des salariés (financier.md §8.11).
 export const naturesProposees = (salaries) => Object.entries(NATURES).filter(([value]) => value !== 'salaire' || salaries)
 // « L'association a des salariés » (Fonctionnalités › Financier), lu une fois : éteint tant qu'on ne sait pas.
