@@ -180,11 +180,12 @@ export default function Timer() {
           onClick={pause}
         >
           <span dangerouslySetInnerHTML={{ __html: CHRONO }} />
-          {run?.pause != null ? 'Reprendre' : 'Pause'}
+          {/* Rien d'écrit sous le chronomètre tant que rien ne tourne (Seb, 21/11). */}
+          <span className="sc-timer__mot">{!run ? '' : run.pause != null ? 'Reprendre' : 'Pause'}</span>
         </button>
         <button
           type="button"
-          className={`sc-timer__dessin${sonne ? ' sc-timer__dessin--sonne' : ''}`}
+          className={`sc-timer__dessin sc-timer__dessin--cloche${sonne ? ' sc-timer__dessin--sonne' : ''}`}
           style={sonne ? { '--coups': sonne.n } : undefined}
           onClick={() => {
             if (!run) return setRun(phase('round', 1))
@@ -193,7 +194,7 @@ export default function Timer() {
           }}
         >
           <span key={sonne?.id ?? 0} dangerouslySetInnerHTML={{ __html: CLOCHE }} />
-          {run ? 'Arrêter' : 'Démarrer'}
+          <span className="sc-timer__mot">{run ? 'Arrêter' : 'Démarrer'}</span>
         </button>
       </div>
 
