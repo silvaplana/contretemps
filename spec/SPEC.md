@@ -89,7 +89,11 @@ Constat : parfois « 0 élève », ou l'appli semble ne plus joindre le serveur,
 Cause : chaque liste n'était demandée qu'une fois à l'ouverture, sans nouvel essai, et une
 ouverture sans réseau (téléphone qui se réveille, mise en ligne en cours) effaçait la session.
 - Une lecture qui échoue (élèves, profs, cours, groupes, admins, reprise de session) est refaite
-  toute seule après 2 s, 5 s puis 10 s (`utils/reessayer.js`). Aucun écran ne change.
+  toute seule, de plus en plus espacée, pendant un peu plus de 3 minutes (`utils/reessayer.js`) : une
+  mise en ligne coupe le serveur plus longtemps que les 17 s du début (« Élèves (0) » le 21/11 à
+  1 h 10, pendant la mise en ligne de la #436). Aucun écran ne change.
+- Les adhérents HelloAsso (saison imposée, ils font le nombre « Élèves (n) ») sont relus de la même
+  façon ; un serveur injoignable n'est plus confondu avec « module éteint ».
 - Retour dans l'appli après plus de 30 s, ou réseau revenu : tout est relu, comme à l'ouverture.
 - La session mémorisée n'est effacée que sur un refus du serveur (401, 403, 404), jamais sur une
   panne ou une absence de réponse.

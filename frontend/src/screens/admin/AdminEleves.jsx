@@ -20,6 +20,7 @@ import FicheEleve from './FicheEleve.jsx'
 import { BoutonInviter, InviterTous, MessageAcces, StatutAcces, useAcces } from './AccesInvitation.jsx'
 import IntegrerFichierElevesModal from './IntegrerFichierElevesModal.jsx'
 import { mots } from '../../api/mots.js'
+import { reessayer } from '../../utils/reessayer.js'
 
 const PAIEMENT_TONE = { en_cours: 'warning', paye: 'success' }
 
@@ -127,14 +128,16 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId, onCompt
   const saisonId = useSaisonConsultee()?.id ?? null
   const relireColonnes = useCallback(async () => {
     try {
-      const [colonnes, champs, reponses, choix, imposee, modules] = await Promise.all([
-        champsApi.colonnes(ecoleId),
-        champsApi.lister(ecoleId),
-        champsApi.toutesReponses(ecoleId),
-        champsApi.groupes(ecoleId),
-        listeImposee(ecoleId),
-        colonnesModules(ecoleId),
-      ])
+      const [colonnes, champs, reponses, choix, imposee, modules] = await reessayer(() =>
+        Promise.all([
+          champsApi.colonnes(ecoleId),
+          champsApi.lister(ecoleId),
+          champsApi.toutesReponses(ecoleId),
+          champsApi.groupes(ecoleId),
+          listeImposee(ecoleId),
+          colonnesModules(ecoleId),
+        ]),
+      )
       const sousGroupes = Object.fromEntries(choix.parents.map((g) => [g.id, g.children]))
       setReglage({ colonnes, champs, reponses, sousGroupes, imposee, modules })
     } catch {
@@ -173,6 +176,8 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId, onCompt
     async function relire() {
       if (document.visibilityState !== 'visible' || Date.now() - dernier < 2000) return
       dernier = Date.now()
+      // Les adhérents HelloAsso aussi : ils font le nombre d'élèves.
+      relireColonnes()
       try {
         setEleves(await elevesApi.lister(ecoleId))
       } catch {
@@ -185,7 +190,7 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId, onCompt
       document.removeEventListener('visibilitychange', relire)
       window.removeEventListener('focus', relire)
     }
-  }, [ecoleId, setEleves])
+  }, [ecoleId, setEleves, relireColonnes])
   // Élève ajouté, supprimé, ou email changé : les statuts sont relus (un
   // email modifié rattache la fiche à une autre adresse, à inviter).
   const emails = eleves.map((el) => `${el.id}:${el.email ?? ''}`).join('|')

@@ -178,8 +178,11 @@ async function charger(ecoleId) {
     // « Résilier » demande l'Accès au Financier (spec §7.7) : sur chaque ligne.
     for (const ligne of Object.values(lu.members)) ligne.can_cancel = lu.can_cancel
     return lu
-  } catch {
-    return null // module éteint (404) ou hors ligne
+  } catch (erreur) {
+    // Module éteint (404) ou pas le droit : rien ne change. Serveur
+    // injoignable : l'appelant réessaie (sinon « Élèves (0) », Seb 21/11).
+    if (erreur.status >= 400 && erreur.status < 500) return null
+    throw erreur
   }
 }
 
