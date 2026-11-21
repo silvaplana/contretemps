@@ -1,0 +1,296 @@
+/* Essai du style « Franche » (Seb, 21 novembre ; spec/core.md §7 bis).
+   Ne s'applique que sous :root[data-style='franche'], posé par
+   api/styleEssai.js sur un fond sombre quand l'essai est allumé sur
+   l'appareil. Quatre règles : le jaune est rare (bouton principal, onglet
+   ouvert, votre choix) ; un seul niveau de cadre, fin ; le texte guide
+   plutôt que les boîtes ; les mêmes formes partout.
+   Les couleurs de la charte sont posées en style sur la racine
+   (api/apparence.js) : il faut !important pour les reprendre ici. */
+:root[data-style='franche'] {
+  --card-bg: color-mix(in srgb, var(--bg) 95%, var(--text)) !important;
+  --surface: color-mix(in srgb, var(--bg) 97%, var(--text)) !important;
+  --surface-2: color-mix(in srgb, var(--bg) 90%, var(--text)) !important;
+  --border: color-mix(in srgb, var(--text) 10%, var(--bg)) !important;
+  --text-muted: color-mix(in srgb, var(--text) 60%, var(--bg)) !important;
+  --input-bg: var(--surface-2) !important;
+
+  /* --- En-tête : plus léger, sans trait --- */
+  .app-header {
+    border-bottom-color: transparent;
+    padding: 10px 12px 8px 16px;
+  }
+  .app-header__title {
+    font-size: 23px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+  }
+  .app-header .avatar {
+    background: var(--surface-2);
+    color: var(--accent);
+    box-shadow: inset 0 0 0 2px var(--accent);
+  }
+  .app-header__assistant {
+    color: var(--text);
+  }
+
+  /* --- Initiales : sombres, lettres en couleur --- */
+  .avatar {
+    background: var(--surface-2);
+    color: var(--accent);
+  }
+  .avatar--groupe {
+    color: var(--text);
+  }
+  .avatar--staff {
+    background: var(--surface-2);
+    color: var(--success-text);
+  }
+
+  /* --- Barre du bas : seule l'icône de l'onglet ouvert est sur fond jaune --- */
+  .bottom-nav {
+    border-top-color: var(--border);
+    padding-top: 6px;
+  }
+  .bottom-nav__item {
+    color: var(--text-muted);
+    gap: 3px;
+  }
+  .bottom-nav__item.is-active {
+    background: none;
+    color: var(--text);
+  }
+  .bottom-nav__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 52px;
+    height: 30px;
+    border-radius: 15px;
+  }
+  .bottom-nav__item.is-active .bottom-nav__icon {
+    background: var(--accent);
+    color: var(--accent-contrast);
+  }
+  .bottom-nav__badge {
+    right: 4px;
+    top: -4px;
+  }
+
+  /* --- Sous-onglets : soulignés --- */
+  .segmented {
+    background: none;
+    border-radius: 0;
+    padding: 0;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .segmented__option {
+    border-radius: 0;
+    min-height: 46px;
+    font-size: 15px;
+    color: var(--text-muted);
+    border-bottom: 3px solid transparent;
+    margin-bottom: -1px;
+  }
+  .segmented__option.is-active {
+    background: none;
+    color: var(--text);
+    border-bottom-color: var(--accent);
+  }
+
+  /* --- Champs de recherche : pleins, sans contour --- */
+  .search-bar {
+    border-color: transparent;
+    border-radius: 14px;
+    background: var(--surface-2);
+    min-height: 48px;
+  }
+
+  /* --- Tableaux : sans cadre, lignes fines --- */
+  .table-scroll {
+    border: 0;
+    border-radius: 0;
+  }
+  .data-table {
+    background: none;
+  }
+  .data-table th {
+    background: var(--bg);
+    color: var(--text-muted);
+    font-weight: 600;
+    border-bottom: 1px solid var(--border);
+  }
+  .data-table td {
+    border-top: 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .data-table--eleves td:first-child,
+  .data-table--eleves th:first-child {
+    background: var(--bg);
+    box-shadow: none;
+  }
+  .badge {
+    background: var(--surface-2);
+  }
+
+  /* --- Boutons flottants --- */
+  .fab {
+    border-radius: 18px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+  }
+  .fab--secondary {
+    border-radius: 16px;
+    border-color: transparent;
+    background: var(--surface-2);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  }
+
+  /* --- Titres de section : en minuscules, sans lettres espacées --- */
+  .section-label,
+  .actus__periode,
+  .atelier__section,
+  .dx-grp,
+  .dx-sec,
+  .sg-grp,
+  .sc-groupe,
+  .fiche-eleve__titre,
+  .usage-ressources__rubrique,
+  .champs__entete,
+  .creer-saison__groupe,
+  .fin-cp h3,
+  .fin-comptes th,
+  .choregraphie-detail h3 {
+    font-size: 15px;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  /* --- Actus --- */
+  .actu--normale {
+    border: 1px solid var(--border);
+    box-shadow: none;
+  }
+  .actus {
+    --actus-rouge: var(--danger-text);
+    --actus-rouge-fond: color-mix(in srgb, var(--danger-text) 13%, var(--card-bg));
+  }
+  .actu__crayon {
+    background: none;
+    color: var(--text-muted);
+  }
+  .actus__brouillons {
+    padding: 0;
+    border: 0;
+  }
+  .actus__brouillons .actu--normale {
+    background: none;
+    border: 1px dashed color-mix(in srgb, var(--text) 22%, var(--bg));
+  }
+  /* « + Ajouter » du fil : flottant à droite (pas la barre de l'éditeur). */
+  .actus__barre:not(:has(.actus__brouillon)) {
+    justify-content: flex-end;
+    border-top: 0;
+    background: none;
+    pointer-events: none;
+    padding-bottom: 14px;
+  }
+  .actus__barre:not(:has(.actus__brouillon)) .btn {
+    pointer-events: auto;
+    flex: none;
+    padding-inline: 22px;
+    border-radius: 18px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+  }
+
+  /* --- Sondage : la réponse se remplit à sa part des votes --- */
+  .sondage__question {
+    font-size: 19px;
+  }
+  .sondage__option {
+    position: relative;
+    overflow: hidden;
+    justify-content: center;
+    min-height: 52px;
+    padding: 0 14px;
+    border: 0;
+    background: var(--surface-2);
+  }
+  .sondage__option--moi {
+    border: 0;
+  }
+  .sondage__option--moi .sondage__libelle {
+    font-weight: 700;
+  }
+  .sondage__ligne {
+    position: relative;
+    z-index: 1;
+  }
+  .sondage__case {
+    position: relative;
+  }
+  .sondage__option--moi .sondage__case::after {
+    content: '';
+    position: absolute;
+    left: 5px;
+    top: 1px;
+    width: 5px;
+    height: 10px;
+    border: solid var(--accent-contrast);
+    border-width: 0 2.5px 2.5px 0;
+    transform: rotate(45deg);
+  }
+  .sondage__barre {
+    position: absolute;
+    inset: 0;
+    height: auto;
+    border-radius: 0;
+    background: none;
+  }
+  .sondage__barre span {
+    border-radius: 0;
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
+  }
+  .sondage__option--moi .sondage__barre span {
+    background: color-mix(in srgb, var(--accent) 30%, transparent);
+  }
+
+  /* --- Financier › Comptes : le total seul en haut, sans cadre --- */
+  .fin-comptes {
+    border: 0;
+    padding: 4px 0 0;
+    background: none;
+  }
+  .fin-comptes .account-card-header {
+    flex-direction: column;
+    gap: 2px;
+  }
+  .fin-comptes .account-card-header h3 {
+    font-size: 15px;
+    font-weight: 400;
+    color: var(--text-muted);
+  }
+  .fin-comptes .account-balance {
+    font-size: 34px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+  .filter-chip-active,
+  .fin-comptes .filter-chip-active,
+  .fin-comptes .filter-chip-active:hover,
+  .nf-pieces .filter-chip-active {
+    border-color: transparent;
+    font-weight: 700;
+  }
+  .fin-comptes .history-filters select {
+    border-color: transparent;
+    border-radius: 14px;
+    background: var(--surface-2);
+  }
+
+  /* --- Docs : même bouton flottant que le reste --- */
+  .dx-fab,
+  .nf-barre__plus {
+    border-radius: 18px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+  }
+}

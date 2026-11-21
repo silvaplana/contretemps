@@ -692,6 +692,16 @@ Identité de la personne connectée, autres profils de la famille (bascule, §6.
   boutons « Retour » de l'appli. Une fenêtre plus haute que l'écran garde son bas visible (bouton
   principal) et, tant qu'il reste quelque chose plus bas, une bande « ↓ Suite plus bas » qui y descend
   (Seb, 10 novembre 2026 ; `Modal.jsx`). Mobile d'abord ; les mêmes fonctions sur ordinateur.
+- **Essai du style « Franche »** (Seb, 21 novembre 2026 ; maquette
+  https://claude.ai/artifact/FUDLjMo9exswx8DkiKbhKm) : un nouveau style à l'essai, pour les écoles à
+  fond sombre seulement (Assofight) ; rien ne change pour Contretemps ni Le Beausset. Quatre règles :
+  le jaune est rare (bouton principal, onglet ouvert, votre choix) ; un seul niveau de cadre, fin ; le
+  texte guide plutôt que les boîtes (titres de section en minuscules) ; les mêmes formes partout.
+  Éteint par défaut. Le Super User l'allume dans le menu de son badge, « Essayer le nouveau style »
+  (puis « Revenir au style actuel ») ; le réglage reste sur l'appareil (`localStorage`), personne
+  d'autre ne le voit. Tout le style est dans `frontend/src/style-franche.css`, sous
+  `:root[data-style='franche']` (`api/styleEssai.js`) : aucun écran ni bouton ne bouge. S'il plaît, il
+  deviendra le style des écoles à fond sombre et l'interrupteur partira ; sinon on retire ces fichiers.
 
 ---
 
