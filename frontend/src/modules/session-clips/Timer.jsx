@@ -5,7 +5,7 @@ import { CAMERA, CHRONO, CLOCHE, POING } from './timerDessins.js'
 import { ecrire, estEtendu, lire } from './timerReglages.js'
 import { useFilm } from './timerFilm.js'
 import { DANS_L_APPLI, Natif } from './natif.js'
-import { demarrerTeleversement, finaliserTeleversement } from '../../utils/videoUploads.js'
+import { demarrerTeleversement, finaliserTeleversement, sansCopieLocale } from '../../utils/videoUploads.js'
 import * as api from './api.js'
 import clocheDebut from './sons/cloche-debut-de-round.mp3'
 import clocheFin from './sons/cloche-fin-de-round.mp3'
@@ -377,7 +377,9 @@ export default function Timer({ ecoleId, rafraichir }) {
     URL.revokeObjectURL(url)
     try {
       const uploadId = await demarrerTeleversement(ecoleId, fichier)
-      await finaliserTeleversement(uploadId, async (id) => (await api.filmerCombat({ upload_id: id, ...corps })).video)
+      const video = await finaliserTeleversement(uploadId, async (id) => (await api.filmerCombat({ upload_id: id, ...corps })).video)
+      // Incrusté au serveur : passer à sa version dès qu'elle est prête.
+      if (Object.values(overlay).some((v) => v === true) || overlay.music) sansCopieLocale(video.id)
       dire(`${nom} : archivé dans Combats`)
       rafraichir?.()
     } catch (e) {

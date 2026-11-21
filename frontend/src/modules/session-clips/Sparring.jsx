@@ -318,9 +318,17 @@ function adversaires(c, me) {
 
 function MesCombats({ me, version, caches, choisis, basculer, onOpen }) {
   const [clips, setClips] = useState(null)
+  const [relire, setRelire] = useState(0)
   useEffect(() => {
     api.mesCombats().then(setClips, () => setClips([]))
-  }, [version])
+  }, [version, relire])
+  // Un combat en préparation (incrustation, Seb 21/11) : relu toutes les 15 s jusqu'à ce qu'il soit prêt.
+  const prepare = clips?.some((c) => c.preparing)
+  useEffect(() => {
+    if (!prepare) return undefined
+    const id = setTimeout(() => setRelire((n) => n + 1), 15000)
+    return () => clearTimeout(id)
+  }, [prepare, clips])
   if (!clips) return null
   const visibles = clips.filter((c) => !caches.has(c.id))
   if (!visibles.length) return <p className="sc-vide">Vos combats filmés apparaîtront ici le lendemain de la séance.</p>
@@ -340,6 +348,7 @@ function MesCombats({ me, version, caches, choisis, basculer, onOpen }) {
             Combat {c.position}
             {duree(c.video) && ` · ${duree(c.video)}`}
             {c.new && <span className="sc-chip sc-chip--info">Nouveau</span>}
+            {c.preparing && <span className="sc-chip sc-chip--info">En préparation</span>}
           </span>
         </LigneClip>
       </div>
@@ -354,6 +363,7 @@ function LigneCoach({ c, choisis, basculer, onOpen }) {
       <span className="sc-meta">
         Combat {c.position}
         {c.to_check && <span className="sc-chip sc-chip--warn">À vérifier</span>}
+        {c.preparing && <span className="sc-chip sc-chip--info">En préparation</span>}
       </span>
     </LigneClip>
   )
@@ -1387,9 +1397,15 @@ function Lecture({ clipId, me, version, caches, montrer, supprimer, rafraichir, 
   const [autres, setAutres] = useState([])
   const [menu, setMenu] = useState(false)
   const [choix, setChoix] = useState(null) // 'quel' | 0 | 1…
+  const [relire, setRelire] = useState(0)
   useEffect(() => {
     api.obtenirClip(clipId).then(setC, (e) => montrer(e.message))
-  }, [clipId, version, montrer])
+  }, [clipId, version, montrer, relire])
+  useEffect(() => {
+    if (!c?.preparing) return undefined
+    const id = setTimeout(() => setRelire((n) => n + 1), 15000)
+    return () => clearTimeout(id)
+  }, [c])
   useEffect(() => {
     if (!c) return
     const charger = me.is_coach
@@ -1448,6 +1464,7 @@ function Lecture({ clipId, me, version, caches, montrer, supprimer, rafraichir, 
           <span className="sc-meta">
             {api.jour(c.held_on)}
             {c.session_title ? ` · ${c.session_title}` : ''} · combat {c.position}
+            {c.preparing && ' · en préparation : la vidéo avec les effets arrive dans quelques minutes'}
           </span>
         </div>
         {autres.filter((x) => !caches.has(x.id)).length > 0 && (

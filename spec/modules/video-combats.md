@@ -952,7 +952,10 @@ simple, avec ses modes et ses réglages ; toucher le temps y revient).
   sons mélangés). Demande gardée sur le combat (`sc_clips.overlay`, JSON vidé une fois fait). Prête
   environ une demi-minute après « Archiver » (estimation, à mesurer). En cas d'échec : la
   compression ordinaire, sans incrustation. L'envoi depuis le téléphone ne change pas ; « Partager »
-  envoie la vidéo telle que filmée.
+  envoie la vidéo telle que filmée. Tant que le serveur y travaille, le combat porte « En préparation »
+  dans Combats (et « en préparation : la vidéo avec les effets arrive dans quelques minutes » à la
+  lecture), relu toutes les 15 s (Seb, 21/11 : « qu'on le sache ») ; le téléphone qui a filmé lâche
+  alors sa propre copie pour la version du serveur.
 
 ### 6.6 Plus tard
 

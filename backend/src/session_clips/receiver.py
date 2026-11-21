@@ -640,6 +640,7 @@ class SessionClipsReceiver:
                     title=clip_title(shown, rank.get(c.id, 1)),
                     to_check=c.to_check,
                     draw=c.draw,
+                    preparing=c.overlay is not None,
                     favorite=c.id in favorites,
                     new=not c.to_check and m.person_id in ps and c.id not in viewed,
                     check_reason=c.check_reason,

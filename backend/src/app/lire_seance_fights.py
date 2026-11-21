@@ -64,6 +64,19 @@ def lister(db, out=print) -> None:
             f"   {len(pieces)} morceaux, {filmed:.1f} s lues · {len(clips)} combats · signes : "
             + (", ".join(f"{s['kind']} {s['start']}" for s in signs) or "aucun")
         )
+    # Les derniers combats, dont ceux du Timer : l'incrustation (Seb, 21/11)
+    # attend-elle encore (« à incruster »), et quel fichier est servi ?
+    for c in db.scalars(select(Clip).order_by(Clip.id.desc()).limit(8)):
+        video = db.get(Video, c.video_id)
+        path = DOSSIER_VIDEOS_LIVE / video.lien_fichier if video and video.lien_fichier else None
+        size = path.stat().st_size if path and path.exists() else "absent"
+        demande = ", ".join(k for k in ("names", "winner", "chrono", "music") if (c.overlay or {}).get(k))
+        out(
+            f"combat {c.id} · séance {c.session_id} · vidéo {video.statut if video else 'aucune'}"
+            f" · compressée={video.compresse if video else '-'} · {video.duree_secondes if video else '-'} s"
+            f" · fichier {video.lien_fichier if video else '-'} ({size} octets)"
+            f" · à incruster : {demande or 'non'}"
+        )
     # Entraîner l'écoute (Seb, 14/11) : ce qui est gardé, école par école.
     for school in sorted(DOSSIER_VIDEOS_LIVE.glob("*")):
         voice, tests = school / "voice", school / "voice-tests"

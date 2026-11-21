@@ -122,6 +122,8 @@ class ClipOut(BaseModel):
     title: str
     to_check: bool
     draw: bool = False  # match nul déclaré au Timer étendu
+    # Le serveur incruste encore la vidéo (Seb, 21/11 : « qu'on le sache »).
+    preparing: bool = False
     # Dans les « ★ Favoris » de l'appelant.
     favorite: bool = False
     check_reason: str | None = None
