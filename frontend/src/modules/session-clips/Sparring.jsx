@@ -15,6 +15,7 @@ import * as api from './api.js'
 import { Deroulant, EssaiLabo, Graphe, Labo, ParametresTournage, useSuppressionEssai } from './Labo.jsx'
 import Tournage from './Tournage.jsx'
 import Timer from './Timer.jsx'
+import ParametresTimer from './ParametresTimer.jsx'
 import Ecoute from './Ecoute.jsx'
 import NoterCris from './NoterCris.jsx'
 import NoterSignes, { notable, useNotes } from './NoterSignes.jsx'
@@ -138,6 +139,8 @@ export default function Sparring({ ecoleId, cours, appli }) {
         }}
       />
     )
+  } else if (ouvert?.timer) {
+    ecran = <ParametresTimer onBack={() => setOuvert(null)} />
   } else if (ouvert?.parametres) {
     ecran = <ParametresTournage montrer={montrer} onBack={() => setOuvert(null)} />
   } else if (ouvert?.ecoute) {
@@ -210,6 +213,7 @@ export default function Sparring({ ecoleId, cours, appli }) {
             label="Actions de Fights"
             actions={[
               { label: 'Paramètres de tournage', icon: 'camera', onClick: () => setOuvert({ parametres: true }) },
+              { label: 'Paramètres du Timer', icon: 'clock', onClick: () => setOuvert({ timer: true }) },
               { label: 'Tests de découpage vidéo', icon: 'video', onClick: () => setOuvert({ labo: true }) },
               { label: 'Entraîner l’écoute', icon: 'micro', onClick: () => setOuvert({ ecoute: true }) },
             ]}
@@ -231,7 +235,7 @@ export default function Sparring({ ecoleId, cours, appli }) {
               </Deroulant>
             </>
           )}
-          {onglet === 'timer' && <Timer />}
+          {onglet === 'timer' && <Timer ecoleId={ecoleId} rafraichir={rafraichir} />}
           {onglet === 'mes' && <MesCombats {...contexte} onOpen={(id) => setOuvert({ clipId: id, retour: null })} />}
         </div>
       </div>
@@ -1323,9 +1327,12 @@ function Noms({ c }) {
   return (
     <div className="sc-noms">
       {c.participants.map((p, i) => (
-        <span key={i}>{p.name ?? '?'}
+        <span key={i}>
+          {p.name ?? '?'}
+          {p.winner && <small className="sc-noms__resultat"> vainqueur</small>}
         </span>
       ))}
+      {c.draw && <small className="sc-noms__resultat">match nul</small>}
     </div>
   )
 }

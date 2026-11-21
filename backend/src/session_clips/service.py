@@ -90,6 +90,17 @@ class SessionClips:
         )
         return {(c, s) for c, s in rows}
 
+    def winners(self, db: Session, clip_ids: list[int]) -> set[tuple[int, int]]:
+        """Les places (clip, place) déclarées vainqueur."""
+        if not clip_ids:
+            return set()
+        rows = db.execute(
+            select(ClipParticipant.clip_id, ClipParticipant.slot).where(
+                ClipParticipant.clip_id.in_(clip_ids), ClipParticipant.winner.is_(True)
+            )
+        )
+        return {(c, s) for c, s in rows}
+
     def attendees(self, db: Session, session_id: int) -> list[int]:
         return list(db.scalars(select(SessionAttendee.person_id).where(SessionAttendee.session_id == session_id)))
 
@@ -250,16 +261,25 @@ class SessionClips:
             db.refresh(session)
         return session
 
-    def add_fight(self, db: Session, member: Member, upload_id: str, people: list[int]) -> Clip:
+    def add_fight(
+        self, db: Session, member: Member, upload_id: str, people: list[int | None], winner: int | None = None,
+        draw: bool = False,
+    ) -> Clip:
         """« Filmer un combat » (bouton +) : un combat filmé à la main, gardé,
         puis nommé. Il rejoint la séance du jour, sans vidéo entière ni
         découpe, et part tout de suite dans « Mes combats » des combattants.
-        La vidéo est compressée par le worker du module Vidéos."""
+        La vidéo est compressée par le worker du module Vidéos.
+
+        Timer étendu (Seb, 21/11) : un nom peut manquer (le combat attend
+        alors un coach), `winner` est la place du vainqueur déclaré et `draw`
+        un match nul."""
         self._require_coach(member)
-        if len(people) != 2 or people[0] == people[1]:
+        if len(people) != 2 or (people[0] is not None and people[0] == people[1]):
             raise ValueError("Choisissez deux combattants différents")
+        if winner not in (None, 0, 1) or (draw and winner is not None):
+            raise ValueError("Vainqueur inconnu")
         known = {p.id for p in self.directory.people(db, member.org_id)}
-        if any(p not in known for p in people):
+        if any(p is not None and p not in known for p in people):
             raise ValueError("Ce membre n'est pas de l'organisation")
         upload = self.videos.obtenir_televersement(db, upload_id)
         if upload is None or upload.ecole_id != member.org_id:
@@ -286,7 +306,12 @@ class SessionClips:
             db, upload_id, nom=video_name(today, "", f"combat {position}"), uploaded_by=member.person_id
         )
         clip = self.add_clip(db, session.id, video.id, people)
-        self._announce(db, member.org_id, clip)
+        if winner is not None:
+            db.get(ClipParticipant, (clip.id, winner)).winner = True
+        clip.draw = draw
+        db.commit()
+        if not clip.to_check:
+            self._announce(db, member.org_id, clip)
         return clip
 
     def add_clip(
