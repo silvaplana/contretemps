@@ -1335,6 +1335,55 @@
 .sc-te__sous-case {
   padding-left: 34px;
 }
+/* « Quelle musique ? » à « Archiver » (Seb, 21/11) : quatre tuiles, un geste. */
+.sc-te__musiques {
+  grid-row: 2 / -1;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2vw;
+  padding-bottom: 1vw;
+}
+.sc-te__musique {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.2vw;
+  padding: 2vw 1vw;
+  border: 2px solid hsl(var(--t, 0) 60% 45% / 0.7);
+  border-radius: 2.4vw;
+  background: linear-gradient(160deg, hsl(var(--t, 0) 55% 28%), #1b1d23 70%);
+  color: #f2f2f2;
+  font-size: max(17px, 2.8vw);
+  font-weight: 800;
+  text-align: center;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.sc-te__musique--sans {
+  filter: saturate(0.15);
+}
+.sc-te__musique-icone {
+  font-size: max(36px, 7vw);
+  line-height: 1;
+}
+.sc-te__ecoute {
+  position: absolute;
+  top: 1vw;
+  right: 1vw;
+  width: 48px;
+  height: 48px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.45);
+  color: #f2f2f2;
+  font-size: 18px;
+}
+.sc-te__titre-incr {
+  margin: 12px 0 0;
+  font-weight: 700;
+}
 .sc-te__sous-case:has(input:disabled) {
   opacity: 0.5;
 }

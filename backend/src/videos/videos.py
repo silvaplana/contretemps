@@ -364,6 +364,14 @@ class Videos:
         if not compresser_fichier(chemin_source, chemin_dest):
             chemin_dest.unlink(missing_ok=True)
             return False
+        self.remplacer_fichier(db, video, chemin_dest)
+        return True
+
+    def remplacer_fichier(self, db: Session, video: Video, chemin_dest: Path) -> None:
+        """Remplace le fichier d'une vidéo par sa version compressée
+        `chemin_dest`, rangée à côté (aussi l'incrustation de Fights,
+        session_clips/overlay.py, qui compresse elle-même)."""
+        chemin_source = DOSSIER_VIDEOS_LIVE / video.lien_fichier
         # La version compressée garde son NOUVEAU nom : l'original n'est
         # jamais remplacé sous quelqu'un qui le lit (une lecture se fait par
         # morceaux ; mélanger des morceaux des deux fichiers bloquait la
@@ -381,7 +389,6 @@ class Videos:
             chemin_dest.unlink(missing_ok=True)
             raise
         chemin_source.with_name(chemin_source.name + SUFFIXE_A_EFFACER).touch()
-        return True
 
     def effacer_orphelins(self, db: Session, maintenant: dt.datetime | None = None) -> list[Path]:
         """Efface les fichiers du dossier vidéos qui ne servent plus à rien

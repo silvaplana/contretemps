@@ -11,6 +11,8 @@ from app.modules import MODULES
 from comptes import Comptes
 from ecoles import Ecoles
 from registry.activation import set_enabled
+from session_clips.models import Clip
+from videos.models import Video
 
 pytestmark = pytest.mark.rbac_reel
 
@@ -222,6 +224,61 @@ def test_combat_du_timer_etendu(client, db_session, e):
     nul = filmer(people=[seb, karim], draw=True).json()
     assert nul["draw"] and not any(p["winner"] for p in nul["participants"])
     assert filmer(people=[seb, karim], winner=0, draw=True).status_code == 400
+
+
+def test_incrustation_demandee(client, db_session, e):
+    """Incrustation (Seb, 21/11) : la demande est gardée sur le combat avec
+    les noms et le résultat ; la vidéo attend l'incrustation au lieu de la
+    compression ordinaire (une seule compression)."""
+    h = e["h"]["coach"]
+
+    def filmer(**corps):
+        upload = client.post(
+            f"/ecoles/{e['ecole'].id}/videos/televersements",
+            json={"extension": ".webm", "octets_total": 100},
+            headers=h,
+        ).json()["id"]
+        return client.post("/session-clips/fights", json={"upload_id": upload, **corps}, headers=h).json()
+
+    seb, karim = e["seb"].id, e["karim"].id
+    demande = {"names": True, "winner": True, "music": "rock", "announce": True, "rounds": 3,
+               "phases": [{"t": 0, "n": 1, "total": 180}]}
+    r = filmer(people=[seb, None], winner=0, overlay=demande)
+    clip = db_session.get(Clip, r["id"])
+    assert clip.overlay["music"] == "rock" and clip.overlay["result"] == 0 and clip.overlay["people"] == [seb, None]
+    assert clip.overlay["labels"][0] and clip.overlay["labels"][1] is None and clip.overlay["voices"][0]
+    assert db_session.get(Video, clip.video_id).compresse is True
+    assert filmer(people=[seb, karim], draw=True, overlay=demande)["id"]
+    assert db_session.get(Clip, r["id"] + 1).overlay["result"] == "draw"
+    # Rien de coché : la compression ordinaire.
+    r = filmer(people=[seb, karim], overlay={"names": False})
+    clip = db_session.get(Clip, r["id"])
+    assert clip.overlay is None and db_session.get(Video, clip.video_id).compresse is False
+
+
+def test_incrustation_ratee(client, db_session, e, monkeypatch):
+    """Une incrustation qui échoue rend la vidéo à la compression ordinaire :
+    elle reste visible, sans incrustation."""
+    from session_clips import overlay
+
+    upload = client.post(
+        f"/ecoles/{e['ecole'].id}/videos/televersements", json={"extension": ".webm", "octets_total": 100}, headers=e["h"]["coach"]
+    ).json()["id"]
+    r = client.post(
+        "/session-clips/fights",
+        json={"upload_id": upload, "people": [e["seb"].id, e["karim"].id], "winner": 1, "overlay": {"winner": True}},
+        headers=e["h"]["coach"],
+    ).json()
+    clip = db_session.get(Clip, r["id"])
+    video = db_session.get(Video, clip.video_id)
+    monkeypatch.setattr(overlay, "render", lambda *a: False)
+    assert overlay.render_pending(db_session, videos_client) == 0 and clip.overlay is not None  # pas encore arrivée
+    video.statut, video.lien_fichier = "complete", f"{e['ecole'].id}/combat.webm"
+    db_session.commit()
+    assert overlay.render_pending(db_session, videos_client) == 0
+    db_session.refresh(clip)
+    db_session.refresh(video)
+    assert clip.overlay is None and video.compresse is False
 
 
 def test_favoris(client, db_session, e):
