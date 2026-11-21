@@ -13,6 +13,7 @@ import bips from './sons/bips-fin-du-repos.mp3'
 
 const SONS = { debut: clocheDebut, fin: clocheFin, clac: clacClac, bips }
 const REGLAGES = 'sc-timer'
+const COUP_MS = 200 // l'écart des trois coups dans cloche-fin-de-round.mp3 (aussi dans sparring.css)
 const DEPART = { mode: 'un', round: 180, repos: 60, nombre: 3, prevenir: true }
 
 function lire() {
@@ -57,8 +58,10 @@ export default function Timer() {
   const [r, setR] = useState(lire)
   const [run, setRun] = useState(null) // { phase: 'round'|'repos', n, fin (ms), total, pause (ms restants) }
   const [, setTic] = useState(0)
-  // Arrêter : le Timer s'arrête tout de suite, la cloche reste le temps de ses trois coups.
-  const [sonne, setSonne] = useState(false)
+  // La cloche bouge comme elle sonne (Seb, 21/11) : un coup au début du round,
+  // trois à la fin ou quand on arrête. { n: coups, id } relance l'animation.
+  const [sonne, setSonne] = useState(null)
+  const finSonne = useRef(null)
   const sons = useRef({})
   const dit = useRef(new Set()) // sons déjà joués dans cette phase
   const veille = useRef(null)
@@ -81,10 +84,17 @@ export default function Timer() {
     a.play().catch(() => {})
   }
 
+  function sonner(n) {
+    jouer(n === 1 ? 'debut' : 'fin')
+    clearTimeout(finSonne.current)
+    setSonne((avant) => ({ n, id: (avant?.id ?? 0) + 1 }))
+    finSonne.current = setTimeout(() => setSonne(null), n * COUP_MS + 900)
+  }
+
   function phase(nom, n) {
     dit.current = new Set()
     const total = nom === 'round' ? r.round : r.repos
-    if (nom === 'round') jouer('debut')
+    if (nom === 'round') sonner(1)
     return { phase: nom, n, total, fin: Date.now() + total * 1000, pause: null }
   }
 
@@ -104,7 +114,7 @@ export default function Timer() {
       }
       if (left <= 0) {
         if (run.phase === 'round') {
-          jouer('fin')
+          sonner(3)
           setRun(r.mode === 'rounds' && run.n < r.nombre ? phase('repos', run.n) : null)
         } else setRun(phase('round', run.n + 1))
       }
@@ -174,14 +184,14 @@ export default function Timer() {
         <button
           type="button"
           className={`sc-timer__dessin${sonne ? ' sc-timer__dessin--sonne' : ''}`}
+          style={sonne ? { '--coups': sonne.n } : undefined}
           disabled={!run}
           onClick={() => {
             setRun(null)
-            setSonne(true)
-            setTimeout(() => setSonne(false), 1500)
+            sonner(3)
           }}
         >
-          <span dangerouslySetInnerHTML={{ __html: CLOCHE }} />
+          <span key={sonne?.id ?? 0} dangerouslySetInnerHTML={{ __html: CLOCHE }} />
           Arrêter
         </button>
       </div>
