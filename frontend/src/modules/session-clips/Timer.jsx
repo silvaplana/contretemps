@@ -5,7 +5,7 @@ import { CAMERA, CHRONO, CLOCHE, POING } from './timerDessins.js'
 import { ecrire, estEtendu, lire } from './timerReglages.js'
 import { useFilm } from './timerFilm.js'
 import { DANS_L_APPLI, Natif } from './natif.js'
-import { demarrerTeleversement, finaliserTeleversement, sansCopieLocale } from '../../utils/videoUploads.js'
+import { demarrerTeleversement, finaliserTeleversement, sansCopieLocale, useProgressionTeleversement } from '../../utils/videoUploads.js'
 import * as api from './api.js'
 import clocheDebut from './sons/cloche-debut-de-round.mp3'
 import clocheFin from './sons/cloche-fin-de-round.mp3'
@@ -77,6 +77,47 @@ const MUSIQUES = [
   ['rock', 'Rock de victoire', '🎸', 0, musiqueRock],
   [null, 'Sans musique', '🔇', 220],
 ]
+
+// Où en est un combat archivé (Seb, 21/11) : l'envoi, puis le travail du
+// serveur, puis où le retrouver. Relu toutes les 10 s tant qu'il n'est pas prêt.
+function Envoi({ envoi, me, onFini }) {
+  const progression = useProgressionTeleversement(envoi.uploadId)
+  const [relu, setClip] = useState(null)
+  const clip = relu ?? envoi.clip
+  const envoye = !progression || progression.complet
+  const pret = clip && envoye && !clip.preparing && clip.video?.statut !== 'en_cours'
+  useEffect(() => {
+    if (!clip || pret) return undefined
+    const id = setTimeout(() => api.obtenirClip(clip.id).then(setClip, () => {}), 10000)
+    return () => clearTimeout(id)
+  }, [clip, pret])
+  useEffect(() => {
+    if (!pret) return undefined
+    const id = setTimeout(onFini, 15000)
+    return () => clearTimeout(id)
+  }, [pret]) // eslint-disable-line react-hooks/exhaustive-deps
+  const moi = clip?.participants.some((p) => p.person_id === me?.person_id)
+  const pourcent = progression?.octetsTotal ? Math.round((100 * progression.octetsEnvoyes) / progression.octetsTotal) : 100
+  const texte = !envoye
+    ? `Envoi ${pourcent} %`
+    : !pret
+      ? 'En préparation…'
+      : clip.to_check
+        ? 'Prêt : à vérifier dans Tournage'
+        : moi
+          ? 'Prêt dans Combats'
+          : 'Prêt dans Tournage, séance du jour'
+  return (
+    <div className="sc-te__envoi" role="status">
+      <span>
+        <b>{envoi.nom}</b> · {texte}
+      </span>
+      <i className={pret ? 'sc-te__envoi-barre sc-te__envoi-barre--pret' : envoye ? 'sc-te__envoi-barre sc-te__envoi-barre--prep' : 'sc-te__envoi-barre'}>
+        <i style={{ width: `${envoye ? 100 : pourcent}%` }} />
+      </i>
+    </div>
+  )
+}
 
 // « Archiver » avec « Une musique » cochée (Seb, 21/11) : un seul geste,
 // toucher une musique archive la vidéo avec elle ; ▶ l'écoute avant.
@@ -190,7 +231,7 @@ function ChoixCombattant({ titre, membres, autre, actuel, onChoisir, onFermer })
   )
 }
 
-export default function Timer({ ecoleId, rafraichir }) {
+export default function Timer({ ecoleId, rafraichir, me }) {
   const [r, setR] = useState(lire)
   // Timer étendu (Seb, 21/11) : en paysage, il filme le combat, nomme les deux
   // combattants et déclare le résultat, selon les cases de Paramètres du Timer.
@@ -206,6 +247,7 @@ export default function Timer({ ecoleId, rafraichir }) {
   const [choix, setChoix] = useState(null) // la place (0 ou 1) dont on choisit le combattant
   const [choixMusique, setChoixMusique] = useState(false)
   const phases = useRef([]) // rounds et repos dans la vidéo, pour le chrono incrusté
+  const [envois, setEnvois] = useState([]) // { uploadId, nom, clip } : les combats archivés qui partent
   const annonces = useRef({}) // id du membre -> adresse du son de son nom (George)
   const joue = useRef([])
   const annonceTour = useRef(0)
@@ -385,10 +427,15 @@ export default function Timer({ ecoleId, rafraichir }) {
     URL.revokeObjectURL(url)
     try {
       const uploadId = await demarrerTeleversement(ecoleId, fichier)
-      const video = await finaliserTeleversement(uploadId, async (id) => (await api.filmerCombat({ upload_id: id, ...corps })).video)
+      setEnvois((l) => [...l, { uploadId, nom, clip: null }])
+      let clip = null
+      const video = await finaliserTeleversement(uploadId, async (id) => {
+        clip = await api.filmerCombat({ upload_id: id, ...corps })
+        return clip.video
+      })
+      setEnvois((l) => l.map((e) => (e.uploadId === uploadId ? { ...e, clip } : e)))
       // Incrusté au serveur : passer à sa version dès qu'elle est prête.
       if (Object.values(overlay).some((v) => v === true) || overlay.music) sansCopieLocale(video.id)
-      dire(`${nom} : archivé dans Combats`)
       rafraichir?.()
     } catch (e) {
       dire(e.message)
@@ -653,6 +700,13 @@ export default function Timer({ ecoleId, rafraichir }) {
           />
         )}
         {choixMusique && fin && <ChoixMusique onChoisir={archiver} onFermer={() => setChoixMusique(false)} />}
+        {envois.length > 0 && (
+          <div className="sc-te__envois">
+            {envois.map((e) => (
+              <Envoi key={e.uploadId} envoi={e} me={me} onFini={() => setEnvois((l) => l.filter((x) => x !== e))} />
+            ))}
+          </div>
+        )}
         {message && (
           <div className="sc-te__message" role="status">
             {message.texte}

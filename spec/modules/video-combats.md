@@ -952,7 +952,11 @@ simple, avec ses modes et ses réglages ; toucher le temps y revient).
   sons mélangés). Demande gardée sur le combat (`sc_clips.overlay`, JSON vidé une fois fait). Prête
   environ une demi-minute après « Archiver » (estimation, à mesurer). En cas d'échec : la
   compression ordinaire, sans incrustation. L'envoi depuis le téléphone ne change pas ; « Partager »
-  envoie la vidéo telle que filmée. Tant que le serveur y travaille, le combat porte « En préparation »
+  envoie la vidéo telle que filmée. La vignette est tirée de la vidéo incrustée, une fois les noms
+  posés. Après « Archiver », une pastille en bas à gauche du Timer étendu suit l'envoi (paysage) :
+  « Envoi X % », « En préparation… », puis « Prêt dans Combats » (si on est l'un des combattants),
+  « Prêt : à vérifier dans Tournage » ou « Prêt dans Tournage, séance du jour » ; elle s'efface 15 s
+  après. Combats ne montre que les combats où l'on est nommé (Seb, 21/11). Tant que le serveur y travaille, le combat porte « En préparation »
   dans Combats (et « en préparation : la vidéo avec les effets arrive dans quelques minutes » à la
   lecture), relu toutes les 15 s (Seb, 21/11 : « qu'on le sache ») ; le téléphone qui a filmé lâche
   alors sa propre copie pour la version du serveur.

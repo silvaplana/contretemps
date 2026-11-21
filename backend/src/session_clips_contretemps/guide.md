@@ -87,7 +87,9 @@ Timer étendu (coachs, Fights › Timer, téléphone en paysage) :
   « Archiver » ouvre « Quelle musique ? » : quatre tuiles (Entraînement, Entrée du combattant, Rock de
   victoire, Sans musique) ; toucher une tuile archive avec elle, ▶ dans le coin l'écoute avant. La
   vidéo incrustée est prête environ une demi-minute plus tard ; en attendant, le combat porte « En
-  préparation » dans Combats.
+  préparation » dans Combats. Pendant ce temps, une pastille en bas à gauche du Timer suit l'envoi
+  (« Envoi X % », « En préparation… », puis où trouver le combat : Combats si on y est nommé, sinon
+  Tournage).
 - La croix en haut à droite rend le Timer simple, où se règlent la durée du round et les repos.
 
 Entraîner l’écoute (coachs, Fights › ⋮ ; ← revient à Fights) : choisir le mot (Combattez, Time, avec le

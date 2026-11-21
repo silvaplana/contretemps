@@ -237,7 +237,7 @@ export default function Sparring({ ecoleId, cours, appli }) {
               </Deroulant>
             </>
           )}
-          {onglet === 'timer' && <Timer ecoleId={ecoleId} rafraichir={rafraichir} />}
+          {onglet === 'timer' && <Timer ecoleId={ecoleId} rafraichir={rafraichir} me={me} />}
           {onglet === 'mes' && <MesCombats {...contexte} onOpen={(id) => setOuvert({ clipId: id, retour: null })} />}
         </div>
       </div>
