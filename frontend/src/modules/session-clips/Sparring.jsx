@@ -333,7 +333,13 @@ function MesCombats({ me, version, caches, choisis, basculer, onOpen }) {
   const [clips, setClips] = useState(null)
   const [relire, setRelire] = useState(0)
   useEffect(() => {
-    api.mesCombats().then(setClips, () => setClips([]))
+    // Serveur injoignable (une mise en ligne le redémarre) : on réessaie
+    // dans 5 s au lieu d'afficher une liste vide (Seb, 21/11).
+    let minuteur
+    api.mesCombats().then(setClips, () => {
+      minuteur = setTimeout(() => setRelire((n) => n + 1), 5000)
+    })
+    return () => clearTimeout(minuteur)
   }, [version, relire])
   // Un combat en préparation (incrustation, Seb 21/11) : relu toutes les 15 s jusqu'à ce qu'il soit prêt.
   const prepare = clips?.some((c) => c.preparing || c.video?.statut === 'en_cours')
