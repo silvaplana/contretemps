@@ -58,12 +58,19 @@ Un tableau, une ligne par import :
 Flèche ← en haut à gauche, retour au tableau. Enregistré au fil de la saisie.
 
 - **Nom** (30 caractères).
-- **Nature des pièces créées** : Facture d'achat, Vente, Note de frais, Honoraires (les natures de
-  Pièces).
+- **Nature des pièces créées** : Facture d'achat, Vente, Note de frais, Honoraires, Paie (les natures de
+  Pièces ; Paie = bulletin de salaire, lu comme dans Pièces, financier.md §8.11).
 - **Source** : Docs, un des drives (« Drive « Club » (kDrive) »), HelloAsso ou une des boîtes
   mail, puis le **dossier** (pour Docs et un drive). **HelloAsso** : les versements de la
   campagne de la saison (Seb, 19 novembre).
-- **Destination** : Aucune, Docs ou un des drives, puis le dossier. **N'importe quel dossier**
+- **Source dossier (Docs ou drive) : pas de destination, renommage sur place** (Seb, 21 novembre :
+  pas de copie ni de doublon). Le fichier déposé à la main reste dans son dossier et prend le nom
+  que Pièces lui donnerait (« 2026-01-31 Bulletin de salaire Nom.pdf », « 2026-11-02 Facture Wix
+  19,90.pdf », « nom (2) » si le nom est pris) : **un fichier renommé est un fichier traité**, un
+  nom d'origine ne l'est pas encore. Corrigée dans Pièces (date, fournisseur, montant), la pièce
+  renomme encore son fichier, toujours sur place (port `renommer` de Pièces). La fiche ne montre
+  pas de Destination pour une source dossier (cachée, pas grisée) ; le serveur l'efface.
+- **Destination** (sources HelloAsso et boîte mail seulement) : Docs ou un des drives, puis le dossier. **N'importe quel dossier**
   (Seb, 19 novembre) : les dossiers imposés du Financier ne servent qu'au rangement des pièces
   saisies avec « + », à « Reprendre les soldes » et au dépôt du bilan ; la compta ne dépend pas
   d'eux (la base garde où est le fichier). « Aucune » : la pièce garde le lien vers son fichier dans

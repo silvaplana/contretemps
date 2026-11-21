@@ -143,6 +143,29 @@ class KDrive:
         )
         return join(folder, name)
 
+    def rename(self, path: str, name: str) -> str:
+        """Renames the file at `path` in its folder (« nom (2) » if the name is
+        taken); returns its new path."""
+        folder, _, base = path.strip("/").rpartition("/")
+        siblings = self._children(self._id(folder))
+        current = next((i for i in siblings if i.get("name") == base), None)
+        if current is None:
+            raise DriveNotFound("Introuvable sur le kDrive.")
+        name = free_name(name, {i.get("name") for i in siblings if i.get("id") != current["id"]})
+        if name != current["name"]:
+            self._send("POST", f"/2/drive/{self.drive}/files/{current['id']}/rename", json={"name": name})
+        return join(folder, name)
+
+
+def free_name(name: str, taken: set) -> str:
+    """`name`, or « name (2) », « name (3) »… if it is taken."""
+    stem, dot, ext = name.rpartition(".") if "." in name else (name, "", "")
+    candidate, n = name, 1
+    while candidate in taken:
+        n += 1
+        candidate = f"{stem} ({n}){dot}{ext}"
+    return candidate
+
 
 # --- Google Drive (compte de service) ----------------------------------------
 
@@ -319,6 +342,33 @@ class GoogleDrive:
             raise DriveError("Google Drive ne répond pas. Réessayez dans un moment.") from erreur
         if reponse.status_code in (401, 403):
             raise DriveRefused("Google Drive refuse d'écrire : partagez le dossier en « Éditeur ».")
+        if reponse.status_code >= 400:
+            raise DriveError(f"Google Drive a répondu {reponse.status_code}.")
+        return join(folder, name)
+
+    def rename(self, path: str, name: str) -> str:
+        """Renames the file at `path` in its folder (« nom (2) » if the name is
+        taken); returns its new path."""
+        folder, _, base = path.strip("/").rpartition("/")
+        parent = self._id(folder)
+        if parent is None:
+            raise DriveNotFound("Introuvable sur Google Drive.")
+        siblings = self._files(f"'{parent}' in parents and trashed = false")
+        current = next((f for f in siblings if f["name"] == base), None)
+        if current is None:
+            raise DriveNotFound("Introuvable sur Google Drive.")
+        name = free_name(name, {f["name"] for f in siblings if f["id"] != current["id"]})
+        if name == current["name"]:
+            return join(folder, name)
+        try:
+            reponse = self.http.patch(
+                f"{API}/files/{current['id']}", params={"supportsAllDrives": "true"}, json={"name": name},
+                headers={"Authorization": f"Bearer {self._access_token()}"},
+            )
+        except httpx.HTTPError as erreur:
+            raise DriveError("Google Drive ne répond pas. Réessayez dans un moment.") from erreur
+        if reponse.status_code in (401, 403):
+            raise DriveRefused("Google Drive refuse de renommer : partagez le dossier en « Éditeur ».")
         if reponse.status_code >= 400:
             raise DriveError(f"Google Drive a répondu {reponse.status_code}.")
         return join(folder, name)

@@ -166,6 +166,8 @@ def mount(app, core) -> None:
         notes=core.notes_frais_client, documents=core.documents_client, drives=getattr(core, "drives", None),
         sources=sources,
     )
+    # Pièces renomme sur place, après une correction, le fichier d'une pièce reliée (§4).
+    core.notes_frais_client.ports.renommer = core.auto_import.rename
     AutoImportReceiver(client=core.auto_import, app=app, membre_courant=membre_appelant, places=_places(core),
                        formulas=_helloasso_formulas, licence_account=_licence_account)
 

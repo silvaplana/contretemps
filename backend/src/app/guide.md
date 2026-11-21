@@ -6,8 +6,8 @@ L'ordre des onglets se règle pour toute l'école dans Admin › École › Pers
 En-tête
 - Bulle à gauche du badge : ouvre ou ferme l'assistant (absente si le module Assistant est éteint).
 - Badge aux initiales : la personne connectée. Son menu liste les autres profils de la même adresse
-  (passer à un profil plus élevé redemande le mot de passe) et « Se déconnecter ». Pour le Super User,
-  dans une école à fond sombre : « Essayer le nouveau style » / « Revenir au style actuel » (un essai
+  (passer à un profil plus élevé redemande le mot de passe) et « Se déconnecter ». Pour l'Administrateur principal
+  et le Super User, dans une école à fond sombre : « Essayer le nouveau style » / « Revenir au style actuel » (un essai
   d'apparence, sur cet appareil seulement).
 - Menu ⋮ à droite du badge : les actions de l'écran ouvert (Admin › École, Admin › Élèves…).
 - Bandeau « Activer » : autoriser les notifications sur cet appareil.

@@ -697,7 +697,7 @@ Identité de la personne connectée, autres profils de la famille (bascule, §6.
   fond sombre seulement (Assofight) ; rien ne change pour Contretemps ni Le Beausset. Quatre règles :
   le jaune est rare (bouton principal, onglet ouvert, votre choix) ; un seul niveau de cadre, fin ; le
   texte guide plutôt que les boîtes (titres de section en minuscules) ; les mêmes formes partout.
-  Éteint par défaut. Le Super User l'allume dans le menu de son badge, « Essayer le nouveau style »
+  Éteint par défaut. L'Administrateur principal (ou le Super User) l'allume dans le menu de son badge, « Essayer le nouveau style »
   (puis « Revenir au style actuel ») ; le réglage reste sur l'appareil (`localStorage`), personne
   d'autre ne le voit. Tout le style est dans `frontend/src/style-franche.css`, sous
   `:root[data-style='franche']` (`api/styleEssai.js`) : aucun écran ni bouton ne bouge. S'il plaît, il
