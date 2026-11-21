@@ -10,6 +10,15 @@
   min-height: 0;
   font-size: 17px;
 }
+/* Fond sombre (Assofight) : le rose clair rendait une actu Important
+   illisible, texte clair sur fond clair (Seb, 21 novembre). Fond clair :
+   les mêmes valeurs qu'au-dessus. */
+@supports (color: light-dark(#000, #fff)) {
+  .actus {
+    --actus-rouge: light-dark(#b3261e, var(--danger-text));
+    --actus-rouge-fond: light-dark(#fbe3dc, color-mix(in srgb, var(--danger-text) 13%, var(--card-bg)));
+  }
+}
 
 .actus__onglets {
   display: flex;

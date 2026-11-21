@@ -170,10 +170,6 @@
     border: 1px solid var(--border);
     box-shadow: none;
   }
-  .actus {
-    --actus-rouge: var(--danger-text);
-    --actus-rouge-fond: color-mix(in srgb, var(--danger-text) 13%, var(--card-bg));
-  }
   .actu__crayon {
     background: none;
     color: var(--text-muted);
