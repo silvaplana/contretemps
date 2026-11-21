@@ -72,3 +72,6 @@ export const POING = `<svg viewBox="0 10 100 120" aria-hidden="true">
   <path d="M55 56.5c5 .5 8 3 8 6.5s-3 6-7 6.5" fill="#fbe6d0" stroke="#6b3d22" stroke-width="1" opacity=".8"/>
   <path d="M22 60c6-2 14-2.5 22-3" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".45"/>
 </svg>`
+
+// Le retardateur du Timer étendu : un petit appareil photo.
+export const CAMERA = `<svg viewBox="0 0 64 48" aria-hidden="true"><defs><linearGradient id="cam-c" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7b818e"/><stop offset=".5" stop-color="#3d414b"/><stop offset="1" stop-color="#1e2026"/></linearGradient><radialGradient id="cam-o" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#9fd0ff"/><stop offset=".45" stop-color="#22508f"/><stop offset="1" stop-color="#060b18"/></radialGradient></defs><path d="M22 6h20l4 6h10a5 5 0 0 1 5 5v22a5 5 0 0 1-5 5H8a5 5 0 0 1-5-5V17a5 5 0 0 1 5-5h10z" fill="url(#cam-c)" stroke="#0c0d10" stroke-width="1.5"/><path d="M6 17a3 3 0 0 1 3-3h46a3 3 0 0 1 3 3" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="1.2"/><circle cx="32" cy="27" r="13" fill="#15171c" stroke="#9aa0ad" stroke-width="1.5"/><circle cx="32" cy="27" r="9.5" fill="url(#cam-o)"/><ellipse cx="28.5" cy="23" rx="3" ry="2" fill="#fff" opacity=".7"/><circle cx="52" cy="19" r="2.2" fill="#ff2d20"/></svg>`

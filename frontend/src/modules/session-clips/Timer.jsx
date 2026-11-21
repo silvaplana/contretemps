@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Deroulant } from './Labo.jsx'
-import { CHRONO, CLOCHE, POING } from './timerDessins.js'
+import { CAMERA, CHRONO, CLOCHE, POING } from './timerDessins.js'
 import { ecrire, estEtendu, lire } from './timerReglages.js'
 import { useFilm } from './timerFilm.js'
 import { DANS_L_APPLI, Natif } from './natif.js'
-import { annulerTeleversement, demarrerTeleversement, finaliserTeleversement } from '../../utils/videoUploads.js'
+import { demarrerTeleversement, finaliserTeleversement } from '../../utils/videoUploads.js'
 import * as api from './api.js'
 import clocheDebut from './sons/cloche-debut-de-round.mp3'
 import clocheFin from './sons/cloche-fin-de-round.mp3'
@@ -20,6 +20,7 @@ import bips from './sons/bips-fin-du-repos.mp3'
 const SONS = { debut: clocheDebut, fin: clocheFin, clac: clacClac, bips }
 const COUP_MS = 200 // l'écart des trois coups dans cloche-fin-de-round.mp3 (aussi dans sparring.css)
 const ANNULER_MS = 10000
+const RETARD_S = 5 // le retardateur : la cloche sonne 5 s après (Seb, 21/11)
 const plat = (t) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
 
 const mmss = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
@@ -103,7 +104,9 @@ export default function Timer({ ecoleId, rafraichir }) {
   const [noms, setNoms] = useState([null, null]) // { id, name } des deux combattants
   const [resultat, setResultat] = useState(null) // 0 ou 1 (la place du vainqueur), 'nul', ou rien
   const [termine, setTermine] = useState(false) // le combat vient de finir : on attend le résultat
-  const [fin, setFin] = useState(null) // le fichier du combat filmé, à archiver, partager ou jeter
+  const [fin, setFin] = useState(null) // { fichier, url } : le combat filmé, à archiver, partager ou jeter
+  const [retard, setRetard] = useState(0) // secondes avant la cloche (retardateur)
+  const bip = useRef(null)
   const [message, setMessage] = useState(null) // { texte, annuler }
   const [membres, setMembres] = useState([])
   const finMessage = useRef(null)
@@ -149,6 +152,35 @@ export default function Timer({ ecoleId, rafraichir }) {
     }
   }, [etendu, plein])
 
+  // Le « tin » du retardateur, à chaque seconde.
+  function tin() {
+    try {
+      bip.current ??= new AudioContext()
+      const ctx = bip.current
+      const o = ctx.createOscillator()
+      const g = ctx.createGain()
+      o.frequency.value = 880
+      g.gain.setValueAtTime(0.3, ctx.currentTime)
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15)
+      o.connect(g).connect(ctx.destination)
+      o.start()
+      o.stop(ctx.currentTime + 0.15)
+    } catch {
+      // pas de son : le compte à rebours se voit
+    }
+  }
+  useEffect(() => {
+    if (!retard) return undefined
+    const id = setTimeout(() => {
+      if (retard > 1) {
+        tin()
+        setRetard(retard - 1)
+      } else debuter()
+    }, 1000)
+    return () => clearTimeout(id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [retard])
+
   function dire(texte, annuler) {
     clearTimeout(finMessage.current)
     setMessage({ texte, annuler })
@@ -157,6 +189,7 @@ export default function Timer({ ecoleId, rafraichir }) {
 
   function debuter() {
     setPlein(true)
+    setRetard(0)
     if (etendu) {
       setResultat(null)
       setTermine(false)
@@ -172,7 +205,7 @@ export default function Timer({ ecoleId, rafraichir }) {
     sonner(3)
     if (!etendu) return
     setTermine(true)
-    if (r.film) film.arreter().then((fichier) => fichier && setFin(fichier))
+    if (r.film) film.arreter().then((fichier) => fichier && setFin({ fichier, url: URL.createObjectURL(fichier) }))
   }
 
   function suivant() {
@@ -187,9 +220,10 @@ export default function Timer({ ecoleId, rafraichir }) {
   // « Archiver » : le combat part dans Combats, l'envoi continue derrière.
   async function archiver() {
     const corps = { people: noms.map((n) => n?.id ?? null), winner: typeof resultat === 'number' ? resultat : null, draw: resultat === 'nul' }
-    const fichier = fin
+    const { fichier, url } = fin
     const nom = titre()
     suivant()
+    URL.revokeObjectURL(url)
     try {
       const uploadId = await demarrerTeleversement(ecoleId, fichier)
       await finaliserTeleversement(uploadId, async (id) => (await api.filmerCombat({ upload_id: id, ...corps })).video)
@@ -203,13 +237,12 @@ export default function Timer({ ecoleId, rafraichir }) {
   // « Partager » : le menu du téléphone (WhatsApp…) ; sinon la vidéo est téléchargée.
   async function partager() {
     try {
-      if (navigator.canShare?.({ files: [fin] })) await navigator.share({ files: [fin], title: titre() })
+      if (navigator.canShare?.({ files: [fin.fichier] })) await navigator.share({ files: [fin.fichier], title: titre() })
       else {
         const lien = document.createElement('a')
-        lien.href = URL.createObjectURL(fin)
-        lien.download = fin.name
+        lien.href = fin.url
+        lien.download = fin.fichier.name
         lien.click()
-        setTimeout(() => URL.revokeObjectURL(lien.href), 60000)
         dire('Vidéo téléchargée')
       }
     } catch (e) {
@@ -319,7 +352,7 @@ export default function Timer({ ecoleId, rafraichir }) {
       type="button"
       className={`sc-timer__dessin sc-timer__dessin--cloche${sonne ? ' sc-timer__dessin--sonne' : ''}`}
       style={sonne ? { '--coups': sonne.n } : undefined}
-      disabled={!!fin}
+      disabled={!!fin || retard > 0}
       onClick={run ? terminer : debuter}
     >
       <span key={sonne?.id ?? 0} dangerouslySetInnerHTML={{ __html: CLOCHE }} />
@@ -328,93 +361,133 @@ export default function Timer({ ecoleId, rafraichir }) {
   )
 
   if (etendu && plein) {
+    const appel = termine && resultat === null ? ' sc-te__poing--appel' : ''
     const poing = (i) => (
       <button
         type="button"
-        className={`sc-te__poing${i ? ' sc-te__poing--droite' : ''}${termine && resultat === null ? ' sc-te__poing--appel' : ''}`}
+        className={`sc-te__poing${i ? ' sc-te__poing--droite' : ''}${appel}`}
         aria-pressed={resultat === i}
         aria-label={`Vainqueur : ${noms[i]?.name ?? (i ? 'à droite' : 'à gauche')}`}
         onClick={() => setResultat(resultat === i ? null : i)}
         dangerouslySetInnerHTML={{ __html: POING }}
       />
     )
+    const champ = (i) =>
+      r.noms ? (
+        <ChampNom
+          nom={noms[i]}
+          autre={noms[1 - i]}
+          membres={membres}
+          libelle={i ? 'Combattant de droite' : 'Combattant de gauche'}
+          onChoisir={(m) => setNoms(i ? [noms[0], m] : [m, noms[1]])}
+        />
+      ) : (
+        <span />
+      )
     return createPortal(
       <div className="sc-timer sc-te">
         <button type="button" className="sc-timer__fermer" aria-label="Quitter le plein écran" onClick={() => setPlein(false)}>
           ✕
         </button>
         <p className="sc-te__tourner">Tournez le téléphone en paysage.</p>
-        <div className="sc-te__noms">
-          {r.noms ? (
-            <ChampNom nom={noms[0]} autre={noms[1]} membres={membres} libelle="Combattant de gauche" onChoisir={(m) => setNoms([m, noms[1]])} />
-          ) : (
-            <span />
-          )}
-          {r.vainqueur ? (
-            <div className="sc-te__resultat">
-              {poing(0)}
-              <button
-                type="button"
-                className={`sc-te__nul${termine && resultat === null ? ' sc-te__poing--appel' : ''}`}
-                aria-pressed={resultat === 'nul'}
-                aria-label="Match nul"
-                onClick={() => setResultat(resultat === 'nul' ? null : 'nul')}
-              >
-                =
-              </button>
-              {poing(1)}
-            </div>
-          ) : (
-            <span className="sc-te__contre">{r.noms ? 'contre' : ''}</span>
-          )}
-          {r.noms ? (
-            <ChampNom nom={noms[1]} autre={noms[0]} membres={membres} libelle="Combattant de droite" onChoisir={(m) => setNoms([noms[0], m])} />
-          ) : (
-            <span />
-          )}
-        </div>
-        <div className={`sc-te__milieu${r.film ? '' : ' sc-te__milieu--sans-film'}`}>
-          {r.film && (
-            <div className={`sc-te__mini${run ? ' sc-te__mini--filme' : ''}`}>
-              <video ref={film.brancher} muted playsInline autoPlay />
-              <b>{film.etat === 'refus' ? 'Caméra indisponible' : run ? 'Ça filme' : film.etat === 'pret' ? 'Prêt à filmer' : 'Caméra…'}</b>
-            </div>
-          )}
-          <div className="sc-te__horloge">
-            <Afficheur className={`sc-timer__temps${run && !repos && reste <= 10 ? ' sc-timer__temps--fin' : ''}`} texte={mmss(reste)} />
-            <div className="sc-te__round">
-              {repos ? 'Repos' : ''}
-              {r.mode === 'rounds' && run ? `${repos ? ' · ' : ''}Round ${run.n} sur ${r.nombre}` : ''}
-            </div>
+        <div className="sc-te__gauche">
+          {/* Entre les deux noms : un poing levé de chaque côté, « = » pour le match nul. */}
+          <div className="sc-te__noms">
+            {champ(0)}
+            {r.vainqueur ? (
+              <div className="sc-te__resultat">
+                {poing(0)}
+                <button
+                  type="button"
+                  className={`sc-te__nul${appel}`}
+                  aria-pressed={resultat === 'nul'}
+                  aria-label="Match nul"
+                  onClick={() => setResultat(resultat === 'nul' ? null : 'nul')}
+                >
+                  =
+                </button>
+                {poing(1)}
+              </div>
+            ) : (
+              <span className="sc-te__contre">{r.noms ? 'contre' : ''}</span>
+            )}
+            {champ(1)}
           </div>
-        </div>
-        <div className="sc-te__dessins">
-          {cloche}
-          {chrono}
+          {fin ? (
+            // La cloche de fin a sonné : on revoit le combat, puis Archiver, Partager ou Jeter.
+            <div className="sc-te__milieu">
+              <div className="sc-te__mini">
+                <video key="revoir" src={fin.url} controls playsInline />
+              </div>
+              <p className="sc-te__question">
+                {r.vainqueur && resultat === null ? 'Qui a gagné ? Touchez un poing, ou « = ».' : 'Que faire de ce combat ?'}
+              </p>
+            </div>
+          ) : (
+            <div className={`sc-te__milieu${r.film ? '' : ' sc-te__milieu--sans-film'}`}>
+              {r.film && (
+                <div className={`sc-te__mini${run ? ' sc-te__mini--filme' : ''}`}>
+                  <video key="direct" ref={film.brancher} muted playsInline autoPlay />
+                  <b>{film.etat === 'refus' ? 'Caméra indisponible' : run ? 'Ça filme' : film.etat === 'pret' ? 'Prêt à filmer' : 'Caméra…'}</b>
+                  {retard > 0 ? (
+                    <strong className="sc-te__compte">{retard}</strong>
+                  ) : (
+                    !run && (
+                      // Se filmer soi-même : on pose le téléphone, la cloche sonne 5 s après.
+                      <button
+                        type="button"
+                        className="sc-te__retardateur"
+                        aria-label="Retardateur : la cloche sonne dans 5 secondes"
+                        onClick={() => {
+                          tin()
+                          setRetard(RETARD_S)
+                        }}
+                      >
+                        <span dangerouslySetInnerHTML={{ __html: CAMERA }} />5 s
+                      </button>
+                    )
+                  )}
+                </div>
+              )}
+              <div>
+                <Afficheur className={`sc-timer__temps${run && !repos && reste <= 10 ? ' sc-timer__temps--fin' : ''}`} texte={mmss(reste)} />
+                <div className="sc-te__round">
+                  {repos ? 'Repos' : ''}
+                  {r.mode === 'rounds' && run ? `${repos ? ' · ' : ''}Round ${run.n} sur ${r.nombre}` : ''}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
         {fin ? (
-          <div className="sc-te__fin">
-            <button type="button" className="sc-te__fin-principal" onClick={archiver}>
-              Archiver
+          <div className="sc-te__choix">
+            <button type="button" className="sc-te__choix-principal" onClick={archiver}>
+              <b>Archiver</b>
+              <small>Il va dans Combats</small>
             </button>
             <button type="button" onClick={partager}>
-              Partager
+              <b>Partager</b>
+              <small>WhatsApp, messages…</small>
             </button>
-            <button type="button" onClick={jeter}>
+            <button type="button" className="sc-te__jeter" onClick={jeter}>
               Jeter
             </button>
           </div>
         ) : (
-          message && (
-            <div className="sc-te__message" role="status">
-              {message.texte}
-              {message.annuler && (
-                <button type="button" onClick={message.annuler}>
-                  Annuler
-                </button>
-              )}
-            </div>
-          )
+          <div className="sc-te__dessins">
+            {cloche}
+            {chrono}
+          </div>
+        )}
+        {message && (
+          <div className="sc-te__message" role="status">
+            {message.texte}
+            {message.annuler && (
+              <button type="button" onClick={message.annuler}>
+                Annuler
+              </button>
+            )}
+          </div>
         )}
       </div>,
       document.body,
