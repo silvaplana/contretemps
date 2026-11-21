@@ -80,7 +80,8 @@ def render_pending(db: Session, videos) -> int:
             continue
         org_id = db.get(ClipSession, clip.session_id).org_id
         source = DOSSIER_VIDEOS_LIVE / video.lien_fichier
-        target = source.with_name(f"{source.stem}-c.mp4")
+        # « -i » : incrustée (le diagnostic du serveur le montre).
+        target = source.with_name(f"{source.stem}-i.mp4")
         ok = False
         try:
             ok = render(source, target, clip.overlay, org_id)
