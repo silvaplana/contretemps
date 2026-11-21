@@ -847,7 +847,8 @@ navigateur (`Timer.jsx`, aucune donnée au serveur) :
 - pas de bouton jaune : deux dessins toujours à l'écran, côte à côte, avec leur mot dessous (Seb, 21/11,
   maquette https://claude.ai/artifact/3L9dnVxxWC1UKoNioRpX9V), comme au bord du ring. La cloche vue de
   face démarre et arrête le round (« Démarrer », puis « Arrêter ») ; le chronomètre de l'arbitre ne sert
-  qu'à ⏸ « Pause » et ▶ « Reprendre », en retrait tant que rien ne tourne. La cloche bouge comme elle
+  qu'à ⏸ « Pause » et ▶ « Reprendre », en retrait et sans mot tant que rien ne tourne. La cloche est
+  le bouton principal : nettement plus grosse (176 px contre 104). La cloche bouge comme elle
   sonne : le marteau tape un coup au début de chaque round, trois coups à la fin du round et quand on
   arrête (avec le son des trois coups), au rythme du son (0,2 s par coup) ;
 - sous les dessins, le volet **Réglages**, fermé, qui montre son résumé (« 3 × 3:00 · repos 1:00 ») :

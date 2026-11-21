@@ -975,7 +975,8 @@
 .sc-timer__dessins {
   display: flex;
   justify-content: center;
-  gap: 36px;
+  align-items: flex-end;
+  gap: 28px;
 }
 .sc-timer__dessin {
   display: flex;
@@ -994,10 +995,22 @@
 .sc-timer__dessin:disabled {
   opacity: 0.4;
 }
+.sc-timer__mot {
+  min-height: 1.3em;
+}
+/* La cloche est le bouton principal : nettement plus grosse que le chronomètre (Seb, 21/11). */
+.sc-timer__dessin--cloche {
+  font-size: 22px;
+  font-weight: 700;
+}
+.sc-timer__dessin.sc-timer__dessin--cloche svg {
+  width: min(176px, 46vw);
+  height: min(176px, 46vw);
+}
 .sc-timer__dessin svg {
   display: block;
-  width: 132px;
-  height: 132px;
+  width: 104px;
+  height: 104px;
   overflow: visible;
   transition: transform 0.08s;
 }
