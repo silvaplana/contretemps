@@ -15,7 +15,10 @@ const NATURES = [
   { value: 'vente', label: 'Vente' },
   { value: 'frais', label: 'Note de frais' },
   { value: 'honoraires', label: 'Honoraires' },
+  { value: 'salaire', label: 'Paie' },
 ]
+// Source dossier (Seb, 21/11) : pas de destination, le fichier est renommé sur place.
+const DOSSIER = ['docs', 'drive']
 const FREQUENCES = [
   { value: 'hourly', label: 'Chaque heure' },
   { value: 'daily', label: 'Chaque jour' },
@@ -131,6 +134,7 @@ function Lieu({ etat, cote, regle, onChange }) {
             const suite = { [`${cote}_kind`]: k, [`${cote}_ref`]: r, [`${cote}_path`]: '' }
             if (cote === 'source' && k === 'mail' && regle.target_kind === 'none') suite.target_kind = 'docs'
             if (cote === 'source' && k === 'helloasso') suite.nature = 'vente'
+            if (cote === 'source' && DOSSIER.includes(k)) Object.assign(suite, { target_kind: 'none', target_ref: null, target_path: '' })
             onChange(suite)
           }}
         >
@@ -360,8 +364,16 @@ function Fiche({ etat, regle, onChange, onRetour }) {
         <Lieu etat={etat} cote="source" regle={regle} onChange={onChange} />
         {regle.source_kind === 'mail' && <Criteres regle={regle} onChange={onChange} />}
         {regle.source_kind === 'helloasso' && <Formules regle={regle} onChange={onChange} />}
-        <h3 className="ai__titre">Destination</h3>
-        <Lieu etat={etat} cote="target" regle={regle} onChange={onChange} />
+        {DOSSIER.includes(regle.source_kind) ? (
+          <p className="mail__discret">
+            Chaque fichier reste dans ce dossier, renommé au nom de la pièce : un fichier renommé est traité.
+          </p>
+        ) : (
+          <>
+            <h3 className="ai__titre">Destination</h3>
+            <Lieu etat={etat} cote="target" regle={regle} onChange={onChange} />
+          </>
+        )}
         <h3 className="ai__titre">Regarder s’il y a de nouvelles pièces</h3>
         <span className="ai__ligne">
           <select value={regle.frequency} onChange={(e) => onChange({ frequency: e.target.value })}>
@@ -400,7 +412,7 @@ function Voir({ regle, onRetour }) {
     api.pieces(regle.id).then((r) => setNotes(r.notes), (e) => setErreur(e.message))
   }, [regle.id])
   const ou =
-    regle.target_kind !== 'none'
+    regle.target_kind !== 'none' && !DOSSIER.includes(regle.source_kind)
       ? `Dans la destination : ${regle.target_path || regle.target_kind}`
       : `Dans la source : ${regle.source_path || regle.source_kind}`
   return (

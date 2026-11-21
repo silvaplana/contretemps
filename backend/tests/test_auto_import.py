@@ -58,11 +58,23 @@ def test_un_import_depuis_docs(client, db_session, asc):
     note = db_session.query(NoteFrais).one()
     piece = db_session.query(PieceJustificative).one()
     assert note.statut == ENVOYEE and note.nature == "achat"
-    # Relié au fichier du dossier, pas de copie, pas de rangement.
-    assert piece.linked and piece.doc_node_id is not None and piece.nom == "Facture Wix.pdf"
+    # Relié au fichier du dossier, pas de copie ; renommé sur place au nom de Pièces : le
+    # nouveau nom montre que le fichier est traité (Seb, 21/11).
+    from datetime import date
+
     from documents.models import DocNode
 
-    assert db_session.get(DocNode, piece.doc_node_id).parent_id == asc["dossier"]
+    noeud = db_session.get(DocNode, piece.doc_node_id)
+    assert piece.linked and noeud.parent_id == asc["dossier"]
+    assert noeud.name == piece.nom == f"{date.today().isoformat()} Facture Achat 0,00.pdf"
+    assert db_session.query(DocNode).filter_by(parent_id=asc["dossier"]).count() == 2  # + notes.txt, pas de copie
+
+    # Corrigée dans Pièces : le fichier suit, toujours sur place.
+    assert client.patch(f"/notes-frais/notes/{note.id}", headers=h, json={"fournisseur": "Wix", "montant_centimes": 1990,
+                                                                         "date": "2026-11-02"}).status_code == 200
+    db_session.expire_all()
+    noeud = db_session.get(DocNode, piece.doc_node_id)
+    assert (noeud.name, noeud.parent_id) == ("2026-11-02 Facture Wix 19,90.pdf", asc["dossier"])
 
     # Un second passage ne recrée rien.
     assert client.post(f"/auto-import/{regle['id']}/run", headers=h).json()["created"] == 0
@@ -76,7 +88,9 @@ def test_un_import_depuis_docs(client, db_session, asc):
     assert db_session.query(NoteFrais).count() == 1
 
 
-def test_destination_docs_et_boite_mail_sans_destination(client, db_session, asc):
+def test_source_dossier_sans_destination_et_boite_mail_avec(client, db_session, asc):
+    """Seb, 21/11 : une source dossier n'a plus de destination (pas de copie,
+    pas de doublon) ; seules HelloAsso et la boîte mail en ont une."""
     from notes_frais.models import PieceJustificative
 
     h = entetes_session(asc["tresorier"])
@@ -85,11 +99,13 @@ def test_destination_docs_et_boite_mail_sans_destination(client, db_session, asc
         "name": "Copie", "source_kind": "docs", "source_ref": asc["dossier"], "target_kind": "docs",
         "target_ref": archive["id"],
     }).json()
+    assert (regle["target_kind"], regle["target_ref"]) == ("none", None)
     assert client.post(f"/auto-import/{regle['id']}/run", headers=h).json()["created"] == 1
     from documents.models import DocNode
 
     piece = db_session.query(PieceJustificative).one()
-    assert db_session.get(DocNode, piece.doc_node_id).parent_id == archive["id"]
+    assert db_session.get(DocNode, piece.doc_node_id).parent_id == asc["dossier"]
+    assert db_session.query(DocNode).filter_by(parent_id=archive["id"]).count() == 0
     refus = client.put(f"/auto-import/{regle['id']}", headers=h, json={"source_kind": "mail", "target_kind": "none"})
     assert refus.status_code == 422
 
@@ -154,10 +170,17 @@ class FauxKDrive:
         self.fichiers[f"{folder}/{name}"] = content
         return f"{folder}/{name}"
 
+    def rename(self, path, name):
+        nouveau = f"{path.rsplit('/', 1)[0]}/{name}"
+        self.fichiers[nouveau] = self.fichiers.pop(path)
+        return nouveau
 
-def test_un_drive_en_source_et_en_destination(client, db_session, asc, monkeypatch):
-    """Étape 3 : un dossier de kDrive en source, relié sans copie ; puis un
-    dossier de kDrive en destination d'une source Docs."""
+
+def test_un_drive_en_source(client, db_session, asc, monkeypatch):
+    """Étape 3 : un dossier de kDrive en source, relié sans copie, renommé sur
+    place (Seb, 21/11) ; le passage suivant ne le reprend pas sous son nouveau nom."""
+    from datetime import date
+
     from drives import DriveAccount
     from notes_frais.models import PieceJustificative
 
@@ -170,16 +193,12 @@ def test_un_drive_en_source_et_en_destination(client, db_session, asc, monkeypat
         "name": "kDrive", "source_kind": "drive", "source_ref": drive.id, "source_path": "FACTURES"}).json()
     assert client.post(f"/auto-import/{lu['id']}/run", headers=h).json()["created"] == 1
     piece = db_session.query(PieceJustificative).one()
-    assert (piece.linked, piece.drive_id, piece.drive_path, piece.doc_node_id) == (True, drive.id, "FACTURES/Orange.pdf", None)
-    assert list(FauxKDrive.fichiers) == ["FACTURES/Orange.pdf", "FACTURES/lisez.txt"]  # rien de déplacé
+    nom = f"FACTURES/{date.today().isoformat()} Facture Achat 0,00.pdf"
+    assert (piece.linked, piece.drive_id, piece.drive_path, piece.doc_node_id) == (True, drive.id, nom, None)
+    assert sorted(FauxKDrive.fichiers) == sorted([nom, "FACTURES/lisez.txt"])  # renommé sur place, pas de copie
     contenu = client.get(f"/notes-frais/pieces/{piece.id}", headers=h)
     assert contenu.status_code == 200 and contenu.content == b"%PDF-1.4 orange"
-
-    copie = client.post("/auto-import", headers=h, json={
-        "name": "Vers le kDrive", "source_kind": "docs", "source_ref": asc["dossier"], "target_kind": "drive",
-        "target_ref": drive.id, "target_path": "ARCHIVES"}).json()
-    assert client.post(f"/auto-import/{copie['id']}/run", headers=h).json()["created"] == 1
-    assert FauxKDrive.fichiers["ARCHIVES/Facture Wix.pdf"] == b"%PDF-1.4 wix"
+    assert client.post(f"/auto-import/{lu['id']}/run", headers=h).json()["created"] == 0
 
     # Un drive déconnecté : l'import attend avec un message.
     db_session.delete(db_session.get(DriveAccount, drive.id))

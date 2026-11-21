@@ -23,7 +23,7 @@ class RuleIn(BaseModel):
     name: str = Field("Nouvel import", min_length=1, max_length=30)
     active: bool = True
     season_id: int | None = None
-    nature: Literal["achat", "vente", "frais", "honoraires"] = "achat"
+    nature: Literal["achat", "vente", "frais", "honoraires", "salaire"] = "achat"
     source_kind: Literal["docs", "drive", "mail", "helloasso"] = "docs"
     source_ref: int | None = None
     source_path: str = Field("", max_length=1000)
@@ -94,7 +94,10 @@ class AutoImportReceiver:
         @app.post(base, response_model=RuleOut)
         def create(data: RuleIn | None = None, db: Session = db_dep, m=membre):
             rule = AutoImportRule(organization_id=m.org_id, created_by=m.agissant_id or m.person_id)
-            for k, v in (data or RuleIn()).model_dump().items():
+            data = data or RuleIn()
+            if data.source_kind in ("docs", "drive"):
+                data.target_kind, data.target_ref, data.target_path = "none", None, ""
+            for k, v in data.model_dump().items():
                 setattr(rule, k, v)
             db.add(rule)
             db.commit()
@@ -105,6 +108,9 @@ class AutoImportReceiver:
             if data.source_kind == "mail" and data.target_kind == "none":
                 raise HTTPException(status_code=422, detail="Une boîte mail demande une destination")
             rule = self._rule(db, m, rule_id)
+            if data.source_kind in ("docs", "drive"):
+                # Une source dossier n'a pas de destination : le fichier y est renommé sur place (Seb, 21/11).
+                data.target_kind, data.target_ref, data.target_path = "none", None, ""
             for k, v in data.model_dump().items():
                 setattr(rule, k, v)
             db.commit()

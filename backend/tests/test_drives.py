@@ -197,3 +197,45 @@ def test_kdrive_cree_les_dossiers_manquants():
     drive = KDrive("club@ik.me", "jeton", "812345", http=httpx.Client(transport=httpx.MockTransport(repondre)))
     assert drive.folder("COMPTA/2025-2026") == "COMPTA/2025-2026"
     assert crees == [("/3/drive/812345/files/20/directory", b'{"name":"2025-2026"}')]
+
+
+def test_renommer_sur_place_kdrive_et_google():
+    """Importation automatique de pièces (Seb, 21/11) : le fichier traité est
+    renommé dans son dossier ; un nom pris donne « nom (2) »."""
+    import json
+
+    import httpx
+
+    from drives.providers import GoogleDrive, KDrive
+
+    renommes = []
+
+    def kdrive(requete):
+        if requete.method == "POST":
+            renommes.append((requete.url.path, json.loads(requete.content)))
+            return httpx.Response(200, json={"result": "success", "data": True})
+        dossier = int(requete.url.path.split("/")[5])
+        enfants = {1: [{"id": 7, "name": "PAIE", "type": "dir"}],
+                   7: [{"id": 11, "name": "scan.pdf", "type": "file"}, {"id": 12, "name": "2026-01-31 Bulletin.pdf", "type": "file"}]}
+        return httpx.Response(200, json={"result": "success", "data": enfants.get(dossier, []), "has_more": False})
+
+    drive = KDrive("club@ik.me", "jeton", "812345", http=httpx.Client(transport=httpx.MockTransport(kdrive)))
+    assert drive.rename("PAIE/scan.pdf", "2026-01-31 Bulletin.pdf") == "PAIE/2026-01-31 Bulletin (2).pdf"
+    assert renommes == [("/2/drive/812345/files/11/rename", {"name": "2026-01-31 Bulletin (2).pdf"})]
+
+    def google(requete):
+        if requete.url.path.endswith("/token"):
+            return httpx.Response(200, json={"access_token": "t", "expires_in": 3600})
+        if requete.method == "PATCH":
+            renommes.append((requete.url.path, json.loads(requete.content)))
+            return httpx.Response(200, json={"id": "f1"})
+        q = requete.url.params.get("q", "")
+        if "in parents" in q:
+            return httpx.Response(200, json={"files": [{"id": "f1", "name": "scan.pdf", "mimeType": "application/pdf"}]})
+        return httpx.Response(200, json={"files": [{"id": "d1", "name": "PAIE", "mimeType": "application/vnd.google-apps.folder"}]})
+
+    cle = {"client_email": "app@x.iam.gserviceaccount.com", "private_key": "", "token_uri": "https://oauth2.googleapis.com/token"}
+    g = GoogleDrive(cle, http=httpx.Client(transport=httpx.MockTransport(google)))
+    g._token = ("t", 10**12)
+    assert g.rename("PAIE/scan.pdf", "2026-01-31 Bulletin.pdf") == "PAIE/2026-01-31 Bulletin.pdf"
+    assert renommes[-1] == ("/drive/v3/files/f1", {"name": "2026-01-31 Bulletin.pdf"})

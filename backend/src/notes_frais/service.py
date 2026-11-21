@@ -1624,6 +1624,7 @@ class NotesDeFrais:
         """Après une correction (date, personne, fournisseur, montant) : les
         justificatifs déjà rangés vont dans le dossier et sous le nom qu'ils
         auraient eus, saison comprise. Un échec n'annule pas la correction."""
+        self.renommer_sur_place(db, note)
         chemin = self._chemin_docs(db, note)
         rangees = [(d, p) for d in note.depenses for p in d.pieces if p.doc_node_id and not p.linked]
         if self.ports.classeur is None or chemin is None or not rangees:
@@ -2028,6 +2029,35 @@ class NotesDeFrais:
         if piece.is_proof:
             base += " - Virement"
         return nom_propre(base, 100) + extension
+
+    def renommer_sur_place(self, db: Session, note: NoteFrais) -> None:
+        """Un justificatif relié (Importation automatique de pièces, §4) reste
+        dans son dossier, renommé au nom de Pièces : le nouveau nom montre que
+        le fichier est traité (Seb, 21/11). Refait après une correction. Un
+        échec n'empêche rien : le fichier garde son nom."""
+        if self.ports.renommer is None:
+            return
+        personne = None
+        for depense in note.depenses:
+            for piece in depense.pieces:
+                if not piece.linked:
+                    continue
+                personne = self._nom_personne(db, note) if personne is None else personne
+                nom = self._nom_dans_docs(note, depense, piece, personne)
+                if nom == piece.nom:
+                    continue
+                lien = {"doc_node_id": piece.doc_node_id, "drive_id": piece.drive_id, "drive_path": piece.drive_path}
+                try:
+                    nouveau = self.ports.renommer(db, note.org_id, lien, nom)
+                except Exception:
+                    db.rollback()
+                    logger.exception("Pièce %s : fichier relié non renommé", note.id)
+                    continue
+                if nouveau is None:
+                    continue
+                piece.drive_path = nouveau.get("drive_path") or piece.drive_path
+                piece.nom = (nouveau.get("name") or nom)[:200]
+                db.commit()
 
     def _nom_personne(self, db: Session, note: NoteFrais) -> str:
         """Le nom de la personne de la note (prof, membre), pour le nom des fichiers."""
