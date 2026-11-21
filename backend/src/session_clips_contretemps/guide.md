@@ -84,8 +84,8 @@ Timer étendu (coachs, Fights › Timer, téléphone en paysage) :
 - La cloche lance et arrête le film. À la fin du combat : la vidéo à revoir et trois touches,
   « Archiver » (le combat va dans Combats, dans la séance du jour), « Partager » (WhatsApp,
   messages…) et « Jeter » (« Annuler » pendant 10 secondes). Avec « Une musique » cochée,
-  « Archiver » ouvre « Quelle musique ? » : quatre tuiles (Entraînement, Entrée du combattant, Rock de
-  victoire, Sans musique) ; toucher une tuile archive avec elle, ▶ dans le coin l'écoute avant. La
+  « Archiver » ouvre « Quelle musique ? » : neuf tuiles (Entraînement, Entrée du combattant, Rock de
+  victoire, Tambours de guerre, Dernier round, Électro, Boom bap, Funk, Sans musique) ; toucher une tuile archive avec elle, ▶ dans le coin l'écoute avant. La
   vidéo incrustée est prête environ une demi-minute plus tard ; en attendant, le combat porte « En
   préparation » dans Combats. Pendant ce temps, une pastille en bas à gauche du Timer suit l'envoi
   (« Envoi X % », « En préparation… », puis où trouver le combat : Combats si on y est nommé, sinon

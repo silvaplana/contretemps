@@ -21,6 +21,11 @@ import foule from './sons/foule.mp3'
 import musiqueMontage from './sons/musique-montage.mp3'
 import musiqueEntree from './sons/musique-entree.mp3'
 import musiqueRock from './sons/musique-rock.mp3'
+import musiqueTambours from './sons/musique-tambours.mp3'
+import musiqueDernierRound from './sons/musique-dernier-round.mp3'
+import musiqueElectro from './sons/musique-electro.mp3'
+import musiqueBoomBap from './sons/musique-boom-bap.mp3'
+import musiqueFunk from './sons/musique-funk.mp3'
 
 // Fights › Timer (coachs ; Seb, 13/11, maquette https://claude.ai/artifact/2U8ASb7oeDcgbib9vwkyza) :
 // un round seul, ou des rounds avec repos. Cloche d'un coup au début, clac clac
@@ -75,6 +80,11 @@ const MUSIQUES = [
   ['montage', 'Entraînement', '🎺', 45, musiqueMontage],
   ['entree', 'Entrée du combattant', '🥁', 265, musiqueEntree],
   ['rock', 'Rock de victoire', '🎸', 0, musiqueRock],
+  ['tambours', 'Tambours de guerre', '🪘', 20, musiqueTambours],
+  ['dernier-round', 'Dernier round', '🎻', 300, musiqueDernierRound],
+  ['electro', 'Électro', '🎛️', 190, musiqueElectro],
+  ['boom-bap', 'Boom bap', '🎤', 160, musiqueBoomBap],
+  ['funk', 'Funk', '🎷', 30, musiqueFunk],
   [null, 'Sans musique', '🔇', 220],
 ]
 
