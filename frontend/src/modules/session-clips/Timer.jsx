@@ -166,40 +166,33 @@ export default function Timer() {
         </div>
       </div>
 
-      {!run && !sonne && (
-        <button type="button" className="btn btn--primary sc-timer__go" onClick={demarrer}>
-          Démarrer
+      {/* Le chronomètre et la cloche restent toujours là (Seb, 21/11) : le
+          chronomètre démarre, met en pause et reprend ; la cloche arrête. */}
+      <div className="sc-timer__dessins">
+        <button
+          type="button"
+          className={`sc-timer__dessin${!run || run.pause != null ? ' sc-timer__dessin--reprendre' : ''}`}
+          onClick={demarrer}
+        >
+          <span dangerouslySetInnerHTML={{ __html: CHRONO }} />
+          {!run ? 'Démarrer' : run.pause != null ? 'Reprendre' : 'Pause'}
         </button>
-      )}
-      {(run || sonne) && (
-        <div className="sc-timer__dessins">
-          {run && (
-            <button
-              type="button"
-              className={`sc-timer__dessin${run.pause != null ? ' sc-timer__dessin--reprendre' : ''}`}
-              onClick={demarrer}
-            >
-              <span dangerouslySetInnerHTML={{ __html: CHRONO }} />
-              {run.pause != null ? 'Reprendre' : 'Pause'}
-            </button>
-          )}
-          <button
-            type="button"
-            className={`sc-timer__dessin${sonne ? ' sc-timer__dessin--sonne' : ''}`}
-            disabled={!run}
-            onClick={() => {
-              setRun(null)
-              setSonne(true)
-              setTimeout(() => setSonne(false), 1500)
-            }}
-          >
-            <span dangerouslySetInnerHTML={{ __html: CLOCHE }} />
-            Arrêter
-          </button>
-        </div>
-      )}
+        <button
+          type="button"
+          className={`sc-timer__dessin${sonne ? ' sc-timer__dessin--sonne' : ''}`}
+          disabled={!run}
+          onClick={() => {
+            setRun(null)
+            setSonne(true)
+            setTimeout(() => setSonne(false), 1500)
+          }}
+        >
+          <span dangerouslySetInnerHTML={{ __html: CLOCHE }} />
+          Arrêter
+        </button>
+      </div>
 
-      {!run && !sonne && (
+      {!run && (
         <Deroulant
           titre={
             <>

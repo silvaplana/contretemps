@@ -350,7 +350,9 @@ d'un bloc, de nuit, en connaissant toute la vidéo à l'avance.
    suite comme « Time ! » ; à cocher, quelle que soit l'écoute choisie. Pas de modèle
    (`timer_bells.py`) : le Timer joue toujours les mêmes fichiers, copiés dans
    `session_clips/timer_sounds/` (un test vérifie qu'ils sont identiques à ceux du Timer). On suit
-   la force des quatre notes de la cloche (594, 1180, 1396, 2360 Hz) toutes les 20 ms et on compare
+   la force des quatre notes de la cloche (980, 1166, 1960, 2950 Hz depuis la cloche « Salle de club » du
+   21/11 ; avant : 594, 1180, 1396, 2360 Hz, et une séance filmée avec l'ancienne cloche n'est plus
+   reconnue si on relance sa découpe) toutes les 20 ms et on compare
    1,5 s de la séance au même motif dans chaque fichier (corrélation) : au-dessus de 0,38, c'est
    le son du Timer le plus ressemblant ; la cloche sonne 4 s, un autre son du Timer moins de 4,5 s
    après n'est pas compté. Essais du 14/11 (bruit et voix fortes) : juste à volume normal ;
@@ -842,15 +844,17 @@ navigateur (`Timer.jsx`, aucune donnée au serveur) :
 - le chrono en gros, en chiffres rouges à sept segments comme une horloge de salle (Seb, 21/11 ; ils
   clignotent les 10 dernières secondes du round), « Combat » ou « Repos » en bleu au-dessus, « Round 2
   sur 3 », une barre ;
-- un seul bouton principal, **Démarrer** ; pendant le décompte, deux dessins côte à côte avec leur mot
-  dessous (Seb, 21/11, maquette https://claude.ai/artifact/3L9dnVxxWC1UKoNioRpX9V) : le chronomètre de
-  l'arbitre pour **Pause** (il montre ▶ et « Reprendre » en pause) et la cloche du ring vue de face pour
-  **Arrêter** (le Timer s'arrête tout de suite, le marteau tape trois coups pendant 1,5 s, sans son) ;
-- sous le bouton, le volet **Réglages**, fermé, qui montre son résumé (« 3 × 3:00 · repos 1:00 ») :
+- pas de bouton jaune : deux dessins toujours à l'écran, côte à côte, avec leur mot dessous (Seb, 21/11,
+  maquette https://claude.ai/artifact/3L9dnVxxWC1UKoNioRpX9V). Le chronomètre de l'arbitre : ▶
+  « Démarrer », puis ⏸ « Pause », puis ▶ « Reprendre ». La cloche du ring vue de face : **Arrêter**
+  (en retrait tant que rien ne tourne ; le Timer s'arrête tout de suite, le marteau tape trois coups
+  pendant 1,5 s, sans son) ;
+- sous les dessins, le volet **Réglages**, fermé, qui montre son résumé (« 3 × 3:00 · repos 1:00 ») :
   durée du round (par 30 s), repos (par 15 s) et nombre de rounds en mode Rounds et repos, case
   « Prévenir 10 s avant la fin (clac clac) », cochée au départ. Caché pendant le décompte ; gardé sur le
   téléphone ;
-- sons (fabriqués le 13/11, `sons/`) : cloche d'un coup au début du round, clac clac 10 s avant la fin si
+- sons (fabriqués le 13/11, `sons/` ; la cloche est depuis le 21/11 la « Salle de club » choisie par Seb,
+  aiguë et sèche, https://claude.ai/artifact/QiGYrm9qpAd4Brew8j6m1a) : cloche d'un coup au début du round, clac clac 10 s avant la fin si
   coché, trois coups de cloche à la fin, bips les 3 dernières secondes du repos. Pas de réglage de volume
   (Seb, 13/11 : les sons sont au maximum, les boutons du téléphone baissent) ;
 - le décompte suit l'horloge (juste même si le navigateur ralentit), et l'écran reste allumé pendant le

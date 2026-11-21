@@ -5,7 +5,8 @@ coups du Timer », signe de fin).
 
 Pas de modèle : le Timer joue toujours les mêmes fichiers (copiés dans
 timer_sounds/ depuis frontend/src/modules/session-clips/sons/). Leurs notes
-sont fixes (environ 594, 1180, 1396 et 2360 Hz). On suit la force de ces
+sont fixes (980, 1166, 1960 et 2950 Hz depuis la cloche « Salle de club »
+du 21/11 ; une séance filmée avec l'ancienne cloche n'y est plus reconnue). On suit la force de ces
 quatre notes toutes les 20 ms, et on compare 1,5 s de la séance à la même
 chose dans chaque fichier (corrélation de 0 à 1). Le motif d'un coup et
 celui de trois coups ne se ressemblent pas, même sous des voix."""
@@ -22,7 +23,7 @@ from .hearing import _peak, loudness
 RATE = 16000
 HOP = 320  # 20 ms
 WINDOW = 1024
-PARTIALS = (594.0, 1180.0, 1396.0, 2360.0)
+PARTIALS = (980.0, 1166.0, 1960.0, 2950.0)
 LENGTH = 75  # 1,5 s comparées
 RINGING = 4.5  # secondes : la cloche sonne encore, ce n'est pas un nouveau son
 MIN_SCORE = 0.38  # essais du 14/11 : vraies cloches ≥ 0,41 sous des voix, rien d'autre au-dessus de 0,30

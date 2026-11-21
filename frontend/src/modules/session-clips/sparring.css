@@ -987,10 +987,6 @@
 .sc-timer__barre i.sc-timer__barre--repos {
   background: var(--sc-bleu);
 }
-.sc-timer__go {
-  min-height: 64px;
-  font-size: 22px;
-}
 /* Pause et Arrêter en dessins (Seb, 21/11) : le chronomètre et la cloche. */
 .sc-timer__dessins {
   display: flex;
@@ -1010,8 +1006,9 @@
   font-size: 18px;
   font-weight: 600;
 }
-.sc-timer__dessin:disabled {
-  color: var(--text);
+/* Rien à arrêter : la cloche est là, en retrait (sauf pendant ses trois coups). */
+.sc-timer__dessin:disabled:not(.sc-timer__dessin--sonne) {
+  opacity: 0.4;
 }
 .sc-timer__dessin svg {
   display: block;
