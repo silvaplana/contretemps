@@ -1023,33 +1023,43 @@
 .sc-timer__onde {
   opacity: 0;
 }
+/* Un coup de marteau dure 0,2 s, l'écart des coups dans le son ; --coups en
+   joue un (début du round) ou trois (fin), puis la cloche résonne. */
 .sc-timer__dessin--sonne .sc-timer__marteau {
-  animation: sc-frappe 1.5s cubic-bezier(0.3, 0, 0.4, 1) both;
+  animation: sc-frappe 0.2s ease-in-out both;
+  animation-iteration-count: var(--coups, 3);
 }
 .sc-timer__dessin--sonne .sc-timer__dome {
-  animation: sc-vibre 1.5s linear both;
+  animation: sc-vibre 0.2s linear both, sc-resonne 0.8s ease-out calc(var(--coups, 3) * 0.2s) both;
+  animation-iteration-count: var(--coups, 3), 1;
 }
 .sc-timer__dessin--sonne .sc-timer__onde {
-  animation: sc-onde 1.5s ease-out both;
+  animation: sc-onde calc(var(--coups, 3) * 0.2s + 0.8s) ease-out both;
 }
 .sc-timer__dessin--sonne .sc-timer__onde--2 {
   animation-delay: 0.07s;
 }
 @keyframes sc-frappe {
-  0%, 33%, 66%, 100% { transform: rotate(15deg); }
-  9%, 42%, 75% { transform: rotate(-1deg); }
-  20%, 53%, 88% { transform: rotate(13deg); }
+  0%, 100% { transform: rotate(15deg); }
+  30% { transform: rotate(-1deg); }
 }
 @keyframes sc-vibre {
-  0%, 8%, 24%, 33%, 41%, 57%, 66%, 74%, 90%, 100% { transform: translateX(0); }
-  10%, 43%, 76% { transform: translateX(-2.2px); }
-  13%, 46%, 79% { transform: translateX(1.6px); }
-  16%, 49%, 82% { transform: translateX(-1px); }
-  19%, 52%, 85% { transform: translateX(0.5px); }
+  0%, 25%, 100% { transform: translateX(0); }
+  35% { transform: translateX(-2.4px); }
+  55% { transform: translateX(1.8px); }
+  75% { transform: translateX(-1.2px); }
+}
+@keyframes sc-resonne {
+  0%, 100% { transform: translateX(0); }
+  10% { transform: translateX(1.4px); }
+  25% { transform: translateX(-1.1px); }
+  40% { transform: translateX(0.8px); }
+  55% { transform: translateX(-0.5px); }
+  75% { transform: translateX(0.3px); }
 }
 @keyframes sc-onde {
-  0%, 8%, 30%, 33%, 41%, 63%, 66%, 74%, 100% { opacity: 0; }
-  11%, 44%, 77% { opacity: 0.9; }
+  0%, 100% { opacity: 0; }
+  8%, 55% { opacity: 0.9; }
 }
 @media (prefers-reduced-motion: reduce) {
   .sc-timer__dessin--sonne .sc-timer__marteau,
