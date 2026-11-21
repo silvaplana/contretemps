@@ -137,8 +137,7 @@ export default function Timer() {
     }
   }, [run == null]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  function demarrer() {
-    if (!run) return setRun(phase('round', 1))
+  function pause() {
     if (run.pause != null) setRun({ ...run, fin: Date.now() + run.pause, pause: null })
     else setRun({ ...run, pause: run.fin - Date.now() })
   }
@@ -170,29 +169,31 @@ export default function Timer() {
         </div>
       </div>
 
-      {/* Le chronomètre et la cloche restent toujours là (Seb, 21/11) : le
-          chronomètre démarre, met en pause et reprend ; la cloche arrête. */}
+      {/* Comme au bord du ring (Seb, 21/11) : la cloche démarre et arrête le
+          round, le chronomètre ne sert qu'à Pause et Reprendre. Les deux
+          restent toujours là ; le chronomètre est en retrait tant que rien ne tourne. */}
       <div className="sc-timer__dessins">
         <button
           type="button"
-          className={`sc-timer__dessin${!run || run.pause != null ? ' sc-timer__dessin--reprendre' : ''}`}
-          onClick={demarrer}
+          className={`sc-timer__dessin${run?.pause != null ? ' sc-timer__dessin--reprendre' : ''}`}
+          disabled={!run}
+          onClick={pause}
         >
           <span dangerouslySetInnerHTML={{ __html: CHRONO }} />
-          {!run ? 'Démarrer' : run.pause != null ? 'Reprendre' : 'Pause'}
+          {run?.pause != null ? 'Reprendre' : 'Pause'}
         </button>
         <button
           type="button"
           className={`sc-timer__dessin${sonne ? ' sc-timer__dessin--sonne' : ''}`}
           style={sonne ? { '--coups': sonne.n } : undefined}
-          disabled={!run}
           onClick={() => {
+            if (!run) return setRun(phase('round', 1))
             setRun(null)
             sonner(3)
           }}
         >
           <span key={sonne?.id ?? 0} dangerouslySetInnerHTML={{ __html: CLOCHE }} />
-          Arrêter
+          {run ? 'Arrêter' : 'Démarrer'}
         </button>
       </div>
 
