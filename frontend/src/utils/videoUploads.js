@@ -28,10 +28,23 @@ const abonnesTermines = new Set() // (video au format écran) => void
 // l'envoi, pas d'attente du téléchargement, et pas de mélange avec le
 // fichier que le serveur compresse juste après.
 const copiesLocales = new Map()
+// Vidéos refaites par le serveur (incrustation de Fights, Seb 21/11) : la
+// copie du téléphone ne sert que pendant l'envoi, ensuite c'est celle du serveur.
+const sansCopie = new Set()
 
 function garderCopieLocale(video, previewUrl) {
-  if (video?.id && previewUrl) copiesLocales.set(video.id, { url: previewUrl, publieeLe: video.publieeLe })
+  if (video?.id && previewUrl && !sansCopie.has(video.id)) copiesLocales.set(video.id, { url: previewUrl, publieeLe: video.publieeLe })
   else if (previewUrl) URL.revokeObjectURL(previewUrl)
+}
+
+export function sansCopieLocale(videoId) {
+  sansCopie.add(videoId)
+  const copie = copiesLocales.get(videoId)
+  if (copie) {
+    copiesLocales.delete(videoId)
+    URL.revokeObjectURL(copie.url)
+    notifierProgression()
+  }
 }
 
 function notifierProgression() {

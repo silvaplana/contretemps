@@ -248,6 +248,7 @@ def test_incrustation_demandee(client, db_session, e):
     assert clip.overlay["music"] == "rock" and clip.overlay["result"] == 0 and clip.overlay["people"] == [seb, None]
     assert clip.overlay["labels"][0] and clip.overlay["labels"][1] is None and clip.overlay["voices"][0]
     assert db_session.get(Video, clip.video_id).compresse is True
+    assert client.get(f"/session-clips/clips/{clip.id}", headers=h).json()["preparing"] is True
     assert filmer(people=[seb, karim], draw=True, overlay=demande)["id"]
     assert db_session.get(Clip, r["id"] + 1).overlay["result"] == "draw"
     # Rien de coché : la compression ordinaire.
