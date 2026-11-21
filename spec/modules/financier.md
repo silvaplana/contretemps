@@ -97,7 +97,9 @@ Repris de Sambo Admin :
   recettes, dépenses, net, détail par catégorie.
 - **Graphique** : courbe du solde (ou du cumul des opérations retenues), périodes 3M / 6M / 1A / Max
   / **Saisons** (une courbe par saison de l'organisation, superposées du début à la fin de saison,
-  chaque saison masquable d'un appui dans la légende), infobulle des opérations du jour.
+  chaque saison masquable d'un appui dans la légende), infobulle des opérations du jour. En **Saisons**,
+  pas de cadre posé sur les courbes (Seb, 21 novembre 2026) : la date et le solde de chaque saison
+  s'affichent dans une ligne au-dessus du graphe tant que le doigt est posé, et s'effacent quand il se lève.
 - **Tableau** : date, libellé (catégorie, compte, détail), montant, solde de chaque compte, total ;
   50 lignes puis la suite en descendant. Un **virement entre deux comptes de l'organisation** n'occupe
   qu'une ligne (⇄, catégorie « Virement interne », total inchangé) ; sur un compte seul, c'est une

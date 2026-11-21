@@ -244,6 +244,21 @@ export function CurveChart({ data, selected, mode, hiddenKey = HIDDEN_KEY }) {
 
   return (
     <div ref={ref} className="seasons-chart">
+      {/* Les valeurs sous le doigt, dans une ligne au-dessus du graphe : rien ne couvre les courbes
+          (Seb, 21/11). La place est toujours gardée, pour que le graphe ne bouge pas sous le doigt. */}
+      <div className="seasons-readout" aria-live="polite">
+        {readout.length > 0 && (
+          <>
+            <b>{readoutDate}</b>
+            {readout.map(({ line, v }) => (
+              <span key={line.key}>
+                {mode === 'overlay' && <i style={{ background: line.color }} />}
+                {euros(v)}
+              </span>
+            ))}
+          </>
+        )}
+      </div>
       <svg
         width={width}
         height={CHART_HEIGHT}
@@ -251,8 +266,10 @@ export function CurveChart({ data, selected, mode, hiddenKey = HIDDEN_KEY }) {
         aria-label="Évolution du solde total par saison"
         onPointerDown={track}
         onPointerMove={track}
-        // Au doigt, la lecture reste affichee apres le toucher.
-        onPointerLeave={(e) => e.pointerType === 'mouse' && setPointerX(null)}
+        // La lecture ne dure que le temps du doigt (ou de la souris) sur le graphe (Seb, 21/11).
+        onPointerLeave={() => setPointerX(null)}
+        onPointerUp={(e) => e.pointerType !== 'mouse' && setPointerX(null)}
+        onPointerCancel={() => setPointerX(null)}
       >
         {bands.map((b) => {
           const left = xOf(b, b.from)
@@ -311,29 +328,6 @@ export function CurveChart({ data, selected, mode, hiddenKey = HIDDEN_KEY }) {
           <circle key={line.key} cx={cursorX} cy={y(v)} r="4.5" fill={line.color} className="seasons-chart-dot" />
         ))}
       </svg>
-      {readout.length > 0 && (
-        <div
-          className="balance-chart-tooltip seasons-tooltip"
-          style={
-            cursorX > width / 2
-              ? { top: margin.top, right: width - cursorX + 12 }
-              : { top: margin.top, left: cursorX + 12 }
-          }
-        >
-          <div className="seasons-tooltip-date">{readoutDate}</div>
-          {readout.map(({ line, v }) => (
-            <div key={line.key} className="seasons-tooltip-row">
-              <b>{euros(v)}</b>
-              {mode === 'overlay' && (
-                <span>
-                  <i style={{ background: line.color }} />
-                  {line.label}
-                </span>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
       {legendButtons}
     </div>
   )
