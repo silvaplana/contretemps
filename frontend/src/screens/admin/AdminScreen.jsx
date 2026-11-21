@@ -9,6 +9,7 @@ import AdminCours from './AdminCours.jsx'
 import AdminEleves from './AdminEleves.jsx'
 import AdminParametres from './AdminParametres.jsx'
 import AdminProfesseurs from './AdminProfesseurs.jsx'
+import { reessayer } from '../../utils/reessayer.js'
 
 const SUB_TABS = [
   { value: 'ecole', label: 'École' },
@@ -66,7 +67,7 @@ export default function AdminScreen({
   useEffect(() => {
     if (!ecole?.id) return
     setCompteImpose(null)
-    listeImposee(ecole.id)
+    reessayer(() => listeImposee(ecole.id))
       .then(setImposee)
       .catch(() => setImposee(null))
   }, [ecole?.id, saisonId])

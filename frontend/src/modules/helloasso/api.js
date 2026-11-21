@@ -12,7 +12,9 @@ async function requete(chemin, options = {}) {
   if (!reponse.ok) {
     const corps = await reponse.json().catch(() => null)
     const detail = typeof corps?.detail === 'string' ? corps.detail : null
-    throw new Error(detail ?? `Requête échouée (${reponse.status})`)
+    const erreur = new Error(detail ?? `Requête échouée (${reponse.status})`)
+    erreur.status = reponse.status
+    throw erreur
   }
   return reponse.status === 204 ? null : reponse.json()
 }
