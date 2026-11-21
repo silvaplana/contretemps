@@ -102,6 +102,12 @@
   .admin-screen__tabs.segmented {
     background: var(--bg);
   }
+  /* Six onglets à ASC (Essais, À encaisser) : à 15 px le dernier passait à la
+     ligne et le titre glissait dessous (Seb, 21/11, Admin › Élèves). */
+  .admin-screen__tabs .segmented__option {
+    font-size: 13px;
+    min-height: 44px;
+  }
 
   /* --- Champs de recherche : pleins, sans contour --- */
   .search-bar {
@@ -133,6 +139,11 @@
   .data-table--eleves th:first-child {
     background: var(--bg);
     box-shadow: none;
+  }
+  /* Liste venue d'un module (HelloAsso) : pas de bouton flottant à dégager, et
+     sans cadre ce vide en fin de liste faisait croire à une liste vide. */
+  .table-scroll--eleves:not(:has(~ .fab)) .data-table--eleves {
+    margin-bottom: 0;
   }
   .badge {
     background: var(--surface-2);
