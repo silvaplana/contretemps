@@ -9,7 +9,7 @@ import './Sondage.css'
 // nombres se voient tout de suite, « Voir les votes » montre qui a voté quoi.
 
 export const MAX_REPONSES = 10
-export const sondageVide = () => ({ question: '', plusieurs: false, reponses: ['', ''] })
+export const sondageVide = () => ({ question: '', plusieurs: true, reponses: ['', ''] })
 
 // Ce qui manque pour publier, ou ''.
 export function manqueSondage(s) {

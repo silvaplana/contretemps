@@ -55,7 +55,7 @@ Menu d'un message (appui long, clic droit, ou ⋯ sur la bulle)
 
 Sondage (trombone › Sondage)
 - Fenêtre « Sondage » : Question, Réponses (2 à 10, « + Ajouter une réponse », ✕ pour retirer),
-  case « Plusieurs réponses possibles », bouton « Envoyer ».
+  case « Plusieurs réponses possibles » (cochée au départ), bouton « Envoyer ».
 - Dans la bulle : toucher une réponse pour voter, la retoucher pour retirer son vote, en toucher une
   autre pour changer d'avis. « Voir les votes » : qui a voté quoi.
 - Un sondage ne se modifie pas et ne se transfère pas ; il peut être supprimé.
