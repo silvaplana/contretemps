@@ -28,6 +28,7 @@ import { appliquerEtatConnexion, initialiserPresence } from './utils/presenceEnL
 import { chargerTauxChange } from './utils/euros.js'
 import { useTeleversementsTermines } from './utils/videoUploads.js'
 import BandeauInstallation from './components/BandeauInstallation.jsx'
+import BandeauMiseAJour from './components/BandeauMiseAJour.jsx'
 import BandeauNotifications from './components/BandeauNotifications.jsx'
 import BottomNav from './components/BottomNav.jsx'
 import Header from './components/Header.jsx'
@@ -1128,6 +1129,7 @@ function App() {
   if (restaurationEnCours) {
     return (
       <div className="login-screen">
+        <BandeauMiseAJour />
         <div className="login-screen__brand">
           <Logo size={110} />
           <h1>{apparenceApi.ENSEIGNES[apparenceApi.apparenceActuelle().enseigne]?.nom ?? 'Contretemps'}</h1>
@@ -1238,6 +1240,7 @@ function App() {
 
   return (
     <div className={lectureSeule ? 'app app--lecture-seule' : 'app'}>
+      <BandeauMiseAJour />
       <Header
         mode={headerMode}
         title={headerTitle}

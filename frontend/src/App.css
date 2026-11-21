@@ -6031,3 +6031,20 @@ tr.is-resiliee td.data-table__name button {
   font-size: 13px;
   font-weight: 700;
 }
+
+/* Mise en ligne en cours (BandeauMiseAJour.jsx, Seb 21/11/2026) : en haut,
+   par-dessus tout, jusqu'au retour du serveur. */
+.bandeau-mise-a-jour {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 2000;
+  padding: 12px 16px;
+  padding-top: max(12px, env(safe-area-inset-top));
+  background: var(--accent, #d97330);
+  color: var(--accent-contrast, #fff);
+  font-size: 17px;
+  font-weight: 600;
+  text-align: center;
+}

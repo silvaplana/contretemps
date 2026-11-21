@@ -15,6 +15,7 @@
 import { ENTETE_SAISON, lireSaisonConsultee, signalerSaison } from './saison.js'
 import { compteEnCours, jetonEnCours, lireEcoleChoisie, remplacerJeton } from './session.js'
 import * as journal from '../utils/journalAppli.js'
+import { verifierServeur } from '../utils/miseAJour.js'
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 export const ENTETE_COMPTE = 'X-Compte-Id'
@@ -60,6 +61,7 @@ export function installerIdentiteAppelant() {
         const renouvele = reponse.headers.get(ENTETE_JETON_RENOUVELE)
         if (renouvele && jetonEnCours() === jeton) remplacerJeton(renouvele)
         if ([401, 403, 409].includes(reponse.status)) analyserRefus(reponse)
+        if (reponse.status >= 500) verifierServeur(fetchNatif)
         if (aNoter && (reponse.status >= 500 || reponse.status === 401)) {
           journal.noter(methode, chemin, `réponse ${reponse.status}`)
         } else if (aNoter && reponse.ok) journal.envoyer()
@@ -67,6 +69,7 @@ export function installerIdentiteAppelant() {
       },
       (erreur) => {
         // Abandon voulu par l'écran (AbortController) : pas un problème.
+        if (erreur?.name !== 'AbortError') verifierServeur(fetchNatif)
         if (aNoter && erreur?.name !== 'AbortError') journal.noter(methode, chemin, `pas de réponse (${erreur?.message ?? erreur})`)
         throw erreur
       },
