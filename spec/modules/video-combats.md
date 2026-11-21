@@ -842,19 +842,21 @@ navigateur (`Timer.jsx`, aucune donnée au serveur) :
 - deux modes en haut : **Un round** (il démarre, puis s'arrête à la fin) et **Rounds et repos** (les
   rounds s'enchaînent avec un repos entre eux) ;
 - le chrono en gros, en chiffres rouges à sept segments comme une horloge de salle (Seb, 21/11 ; ils
-  clignotent les 10 dernières secondes du round), « Combat » ou « Repos » en bleu au-dessus, « Round 2
+  clignotent les 10 dernières secondes du round), « Prêt » ou « Repos » en bleu au-dessus (rien pendant le round, Seb 21/11), « Round 2
   sur 3 » ; pas de barre de progression, les chiffres suffisent (Seb, 21/11) ;
 - pas de bouton jaune : deux dessins toujours à l'écran, côte à côte, avec leur mot dessous (Seb, 21/11,
   maquette https://claude.ai/artifact/3L9dnVxxWC1UKoNioRpX9V), comme au bord du ring. La cloche vue de
   face démarre et arrête le round (« Démarrer », puis « Arrêter ») ; le chronomètre de l'arbitre ne sert
   qu'à ⏸ « Pause » et ▶ « Reprendre », en retrait et sans mot tant que rien ne tourne. La cloche est
-  le bouton principal : nettement plus grosse (176 px contre 104). La cloche bouge comme elle
+  le bouton principal : au milieu et nettement plus grosse (160 px), le petit chronomètre (80 px) à sa
+  droite. La cloche bouge comme elle
   sonne : le marteau tape un coup au début de chaque round, trois coups à la fin du round et quand on
   arrête (avec le son des trois coups), au rythme du son (0,2 s par coup) ;
-- **plein écran** (Seb, 21/11) : dès que la cloche démarre le round, le Timer prend tout l'écran, sans
-  le reste de l'appli (temps plus gros, cloche, chronomètre) ; une croix discrète en haut à droite en
-  sort sans arrêter le décompte, toucher le temps y revient ; à l'arrêt ou à la fin, l'écran normal
-  revient seul ;
+- **plein écran** (Seb, 21/11) : dès qu'on ouvre l'onglet Timer, il prend tout l'écran, sans le reste de
+  l'appli (ni en-tête, ni onglets, ni barre du bas) ; pendant le décompte il ne reste que le temps en
+  gros, la cloche et le chronomètre. Une croix discrète en haut à droite en sort sans arrêter le
+  décompte (on retrouve l'appli, onglets et barre du bas) ; toucher le temps, ou démarrer un round, y
+  revient ;
 - sous les dessins, le volet **Réglages**, fermé, qui montre son résumé (« 3 × 3:00 · repos 1:00 ») :
   durée du round (par 30 s), repos (par 15 s) et nombre de rounds en mode Rounds et repos, case
   « Prévenir 10 s avant la fin (clac clac) », cochée au départ. Caché pendant le décompte ; gardé sur le

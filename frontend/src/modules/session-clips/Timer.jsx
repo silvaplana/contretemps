@@ -62,9 +62,10 @@ export default function Timer() {
   // La cloche bouge comme elle sonne (Seb, 21/11) : un coup au début du round,
   // trois à la fin ou quand on arrête. { n: coups, id } relance l'animation.
   const [sonne, setSonne] = useState(null)
-  // Pendant le décompte, le Timer prend tout l'écran, sans le reste de l'appli ;
-  // une croix discrète en haut à droite en sort (Seb, 21/11).
-  const [plein, setPlein] = useState(false)
+  // Dès qu'on ouvre le Timer, il prend tout l'écran, sans le reste de l'appli
+  // (ni en-tête ni barre du bas) ; une croix discrète en haut à droite en sort
+  // (Seb, 21/11).
+  const [plein, setPlein] = useState(true)
   const finSonne = useRef(null)
   const sons = useRef({})
   const dit = useRef(new Set()) // sons déjà joués dans cette phase
@@ -150,10 +151,9 @@ export default function Timer() {
   const repos = run?.phase === 'repos'
   const resume = r.mode === 'rounds' ? `${r.nombre} × ${mmss(r.round)} · repos ${mmss(r.repos)}` : mmss(r.round)
 
-  const enPlein = plein && !!run
   const ecran = (
-    <div className={`sc-timer${enPlein ? ' sc-timer--plein' : ''}`}>
-      {enPlein && (
+    <div className={`sc-timer${plein ? ' sc-timer--plein' : ''}${run ? ' sc-timer--marche' : ''}`}>
+      {plein && (
         <button type="button" className="sc-timer__fermer" aria-label="Quitter le plein écran" onClick={() => setPlein(false)}>
           ✕
         </button>
@@ -169,10 +169,11 @@ export default function Timer() {
         ))}
       </div>
 
-      {/* Sorti du plein écran pendant le décompte : toucher le temps y revient. */}
-      <div className="sc-timer__horloge" onClick={() => run && setPlein(true)}>
+      {/* Sorti du plein écran : toucher le temps y revient. */}
+      <div className="sc-timer__horloge" onClick={() => setPlein(true)}>
         <div className={`sc-timer__phase${repos ? ' sc-timer__phase--repos' : run ? '' : ' sc-timer__phase--pret'}`}>
-          {run ? (repos ? 'Repos' : 'Combat') : 'Prêt'}
+          {/* Pas de « Combat » pendant le round : on le sait (Seb, 21/11). */}
+          {run ? (repos ? 'Repos' : '') : 'Prêt'}
         </div>
         <Afficheur className={`sc-timer__temps${run && !repos && reste <= 10 ? ' sc-timer__temps--fin' : ''}`} texte={mmss(reste)} />
         <div className="sc-timer__round">
@@ -235,7 +236,7 @@ export default function Timer() {
       )}
     </div>
   )
-  return enPlein ? createPortal(ecran, document.body) : ecran
+  return plein ? createPortal(ecran, document.body) : ecran
 }
 
 function Ligne({ libelle, valeur, moins, plus, min }) {

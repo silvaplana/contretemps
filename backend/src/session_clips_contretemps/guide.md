@@ -62,8 +62,8 @@ Timer (coachs, Fights › Timer) : un minuteur de rounds avec la cloche.
 - En haut, deux modes : « Un round » ou « Rounds et repos ».
 - Le chrono en gros, puis deux dessins toujours à l'écran : la cloche (« Démarrer »,
   puis « Arrêter ») et le chronomètre (« Pause » / « Reprendre » pendant le décompte).
-- Pendant le décompte, le Timer est en plein écran ; la croix en haut à droite en sort (toucher le temps
-  y revient).
+- Le Timer s'ouvre en plein écran, sans le reste de l'appli ; la croix en haut à droite en sort et
+  rend les onglets et la barre du bas (toucher le temps y revient).
 - Sous les dessins, le volet « Réglages » (fermé, son résumé à droite) : durée du round, repos et nombre
   de rounds, case « Prévenir 10 s avant la fin (clac clac) ». Pour le volume : les boutons du téléphone.
 
