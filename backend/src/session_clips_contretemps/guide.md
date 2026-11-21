@@ -8,6 +8,8 @@ sur le dernier de ces onglets utilisé, sauf le Timer : il rouvre alors sur l'on
 Mes combats
 - En tête, la ligne « ★ Favoris ». Puis ses combats validés, par séance (date · cours) : « vs
   Karim B. », « Combat 3 · 2 min 20 ». Toucher une ligne ouvre le combat.
+- Dans un combat ouvert, la touche en haut à droite de la vidéo la met en plein écran (✕ pour en
+  sortir).
 - Un combat pas encore ouvert porte « Nouveau » ; leur nombre est en pastille sur l'icône Fights de la
   barre du bas (et sur l'onglet Combats d'un coach). Quand un combat est validé, chaque combattant
   reçoit une notification « Nouveau combat » sur son téléphone.

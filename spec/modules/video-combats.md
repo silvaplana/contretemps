@@ -777,7 +777,10 @@ couleurs ne servent qu'à deux.
 ### 6.5 Lecture d'un clip *(tous)*
 
 - Plein écran, flèche ← et le nom du clip en titre, ⋯ à droite.
-- La vidéo, lue par le lecteur du module `videos` (`VideoThumb`, plein écran compris).
+- La vidéo, lue par le lecteur du module `videos` (`VideoThumb`). Son plein écran est fait maison
+  (`pleinEcran`, Seb 21/11) : la touche en haut à droite fait remplir l'écran de l'appli par la
+  vidéo, ✕ en sort ; le plein écran de Chrome est retiré, car il couvre le bas d'un bandeau « faites
+  glisser depuis le haut » qu'aucun site ne peut enlever. La barre d'état d'Android reste visible.
 - Dessous : les deux noms, puis « Mar. 21 oct. · Adultes · 19 h ·
   combat 1 ».
 - Puis « Autres combats de la séance » (coach) ou « Vos autres combats ce jour-là » (membre).

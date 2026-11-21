@@ -22,8 +22,23 @@ import Icon from './Icon.jsx'
 // fois : la vignette est immédiate, et une fois monté avec `autoPlay`, le
 // navigateur a tout de suite les infos nécessaires pour afficher les
 // contrôles complets, plein écran inclus.
-export default function VideoThumb({ video: recue }) {
+// `pleinEcran` (Fights, Seb 21/11) : notre propre plein écran, la vidéo
+// remplit l'écran de l'appli sans demander le plein écran au navigateur,
+// dont Chrome couvre le bas d'un bandeau « faites glisser depuis le haut ».
+export default function VideoThumb({ video: recue, pleinEcran = false }) {
   const [lecture, setLecture] = useState(false)
+  const [grand, setGrand] = useState(false)
+  const cadre = `video-card__thumb${grand ? ' video-card__thumb--grand' : ''}`
+  const bascule = pleinEcran && (
+    <button
+      type="button"
+      className="video-card__grand"
+      aria-label={grand ? 'Quitter le plein écran' : 'Plein écran'}
+      onClick={() => setGrand((g) => !g)}
+    >
+      <Icon name={grand ? 'x' : 'maximize'} size={22} />
+    </button>
+  )
   // Liens signés à durée limitée (voir api/videos.js) : appli restée
   // ouverte longtemps, le lien a pu expirer. Au premier échec, on redemande
   // la vidéo au serveur, qui remet des liens neufs (une seule fois).
@@ -70,8 +85,15 @@ export default function VideoThumb({ video: recue }) {
       ? Math.round((progression.octetsEnvoyes / progression.octetsTotal) * 100)
       : 0
     return (
-      <div className="video-card__thumb">
-        <video className="video-card__player" src={copieLocale} controls playsInline />
+      <div className={cadre}>
+        <video
+          className="video-card__player"
+          src={copieLocale}
+          controls
+          playsInline
+          controlsList={pleinEcran ? 'nofullscreen' : undefined}
+        />
+        {bascule}
         {enCours && progression && (
           <div className="video-card__upload-progress">
             <div className="video-card__upload-progress-bar" style={{ width: `${pourcentage}%` }} />
@@ -83,10 +105,11 @@ export default function VideoThumb({ video: recue }) {
 
   if (video.url && lecture) {
     return (
-      <div className="video-card__thumb">
+      <div className={cadre}>
         <video
           className="video-card__player"
           src={video.url}
+          controlsList={pleinEcran ? 'nofullscreen' : undefined}
           poster={video.poster || undefined}
           controls
           autoPlay
@@ -101,6 +124,7 @@ export default function VideoThumb({ video: recue }) {
           disablePictureInPicture
           onError={rafraichir}
         />
+        {bascule}
       </div>
     )
   }
