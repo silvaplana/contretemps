@@ -645,3 +645,24 @@ def lectures_du_rapport():
             return f"Saison {saison.nom}\n" + lecture(db, p)
 
     return outils, lire
+
+
+def powerpoint_de_docs(documents):
+    """Un PowerPoint rangé dans Docs, lu avec les droits Docs de la personne
+    (Lecture), pour servir de modèle à une AG (Seb, 20/11) : (db, compte,
+    org_id, id du fichier) -> (nom, contenu). Refus : LookupError."""
+    from dataclasses import replace
+
+    from documents.service import DocError
+    from documents_contretemps.adapter import membre_appelant
+
+    def lire(db: Session, compte: Compte, org_id: int, node_id: int) -> tuple[str, bytes]:
+        try:
+            chemin, nom, _ = documents.content(db, replace(membre_appelant(db, compte), org_id=org_id), node_id)
+        except DocError as erreur:
+            raise LookupError(f"fichier {node_id} : {erreur.message}") from erreur
+        if not nom.lower().endswith(".pptx"):
+            raise LookupError(f"« {nom} » n'est pas un PowerPoint (.pptx)")
+        return nom, chemin.read_bytes()
+
+    return lire

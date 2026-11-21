@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import Icon from '../../components/Icon.jsx'
 import MenuEntete from '../../components/MenuEntete.jsx'
 import * as api from './api.js'
+import { useLieu } from '../../app/lieu.js'
 import { brouillon } from './brouillon.js'
 import { adresse, dateComplete, initiales, nom, taille } from './format.js'
 
@@ -13,6 +14,7 @@ import { adresse, dateComplete, initiales, nom, taille } from './format.js'
 export default function UnMail({ ecoleId, boite, dossier, uid, adresseBoite, onRetour, onRanger, onNonLu, onSuivi, onErreur, onEcrire }) {
   const [mail, setMail] = useState(null)
   const [erreur, setErreur] = useState(null)
+  useLieu([], { nature: 'mail', id: uid, nom: mail && `${mail.subject || '(sans objet)'} · de ${mail.from.map(nom).join(', ')}` })
 
   useEffect(() => {
     let actif = true

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import Icon from '../../components/Icon.jsx'
 import MenuEntete from '../../components/MenuEntete.jsx'
 import * as api from './api.js'
+import { useLieu } from '../../app/lieu.js'
 import { NOUVEAU } from './brouillon.js'
 import Ecrire from './Ecrire.jsx'
 import { dateListe, initiales, nom } from './format.js'
@@ -209,6 +210,9 @@ export default function Boite({ ecoleId, boite, boites, menuBoite, onCoupee }) {
       </div>,
       document.body,
     )
+
+  // Pour l'assistant (app/lieu.js) ; le mail ouvert, UnMail.jsx le dit.
+  useLieu(['Mail', boite.name, dossiers.find((d) => d.key === dossier)?.label, ecrire && 'Écrire'])
 
   const ecran = ecrire && (
     <Ecrire

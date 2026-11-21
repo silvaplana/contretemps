@@ -11,6 +11,7 @@ import ConversationEditModal from './ConversationEditModal.jsx'
 import PlanningHebdoView from './PlanningHebdoView.jsx'
 import { useConversationEditor } from './useConversationEditor.js'
 import { mots } from '../../api/mots.js'
+import { useLieu } from '../../app/lieu.js'
 
 const MAX_BADGES = 2
 
@@ -73,6 +74,8 @@ export default function AdminCours({ cours, setCours, professeurs, eleves, ecole
 
   const filtered = cours.filter((c) => correspond(c.nom, search))
   const enEdition = cours.find((c) => c.id === editId)
+  const coursOuvert = enEdition ?? cours.find((c) => c.id === elevesVusId)
+  useLieu([], coursOuvert && { nature: 'cours', id: coursOuvert.id, nom: coursOuvert.nom })
 
   if (vue === 'planning') {
     return (

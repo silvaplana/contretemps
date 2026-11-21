@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Modal from '../../../components/Modal.jsx'
 import * as api from '../api.js'
+import { useLieu } from '../../../app/lieu.js'
 import PlanComptable, { nomCompte } from './PlanComptable.jsx'
 import Icon from '../../../components/Icon.jsx'
 import './compta.css'
@@ -31,6 +32,8 @@ export default function FicheOperation({ operationId, onClose, onChange }) {
       })
       .catch((err) => setErreur(err.message))
   }, [operationId])
+  // La transaction ouverte, pour l'assistant (« cette transaction »).
+  useLieu([], { nature: 'transaction bancaire', id: operationId, nom: fiche && `${fiche.label} · ${dateFr(fiche.date)} · ${euros(fiche.amount)}` })
 
   async function enregistrer() {
     const retenues = lignes.filter((l) => l.accountId && (lignes.length === 1 || Number(l.amount) !== 0))

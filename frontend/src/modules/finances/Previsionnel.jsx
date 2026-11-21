@@ -12,6 +12,7 @@ import Icon from '../../components/Icon.jsx'
 import { enEuros } from '../../utils/euros.js'
 import { telechargerFichier } from '../../utils/telechargement.js'
 import * as api from './api.js'
+import { useLieu } from '../../app/lieu.js'
 import { niceTicks } from './BalanceChart.jsx'
 import './finances.css'
 import { mots } from '../../api/mots.js'
@@ -298,6 +299,7 @@ function ForecastPanel({ forecastId, season, seasonsData, ledger, options, onClo
   const [params, setParams] = useState({})
   const [replaying, setReplaying] = useState(false)
   const timer = useRef(null)
+  useLieu([], forecastId == null ? { nature: 'prévisionnel', nom: 'Nouveau prévisionnel' } : { nature: 'prévisionnel', id: forecastId, nom: forecast?.name })
 
   const load = useCallback(async () => {
     const data = await api.previsionnel(forecastId)

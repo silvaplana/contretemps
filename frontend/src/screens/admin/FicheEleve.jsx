@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import * as champsApi from '../../api/champs.js'
 import * as elevesApi from '../../api/eleves.js'
+import { useLieu } from '../../app/lieu.js'
 import Icon from '../../components/Icon.jsx'
 import ListeEmails from '../../components/ListeEmails.jsx'
 import Modal from '../../components/Modal.jsx'
@@ -40,6 +41,7 @@ function brouillonDe(eleve, reponses) {
 
 export default function FicheEleve({ ecoleId, eleve, cours, onClose, onEnregistre, onFusionnee, bloc }) {
   const [fusionOuverte, setFusionOuverte] = useState(false)
+  useLieu([], { nature: 'élève', id: eleve.id, nom: `${eleve.prenom ?? ''} ${eleve.nom ?? ''}` })
   const [brouillon, setBrouillon] = useState(null) // null = lecture
   const [enCours, setEnCours] = useState(false)
   const [erreur, setErreur] = useState('')

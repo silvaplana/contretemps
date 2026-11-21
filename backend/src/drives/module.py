@@ -4,6 +4,7 @@ autres modules l'utilisent par `core.drives`."""
 
 from registry import Module, guide_file
 
+from .actions import actions
 from .receiver import DrivesReceiver
 from .service import Drives
 
@@ -16,4 +17,5 @@ def mount(app, core) -> None:
 MODULE = Module(
     key="drives", label="Drives du club", mount=mount,
     guide=guide_file(__file__), enabled_by_default=False,
+    actions=lambda core: actions(core.drives),
 )

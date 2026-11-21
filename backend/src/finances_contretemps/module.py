@@ -29,6 +29,7 @@ from securite.chiffrement import chiffrer, dechiffrer
 
 from .actions import actions
 from .lectures import financier
+from .preparer import preparer
 from .adapter import (
     argent_helloasso,
     balance_dans_docs,
@@ -44,6 +45,7 @@ from .adapter import (
     operations_justifiees,
     pieces_des_operations,
     pieces_a_payer,
+    powerpoint_de_docs,
     dossier_ag,
     ranger_dans_docs,
     preparer_dossiers_financier,
@@ -193,11 +195,15 @@ MODULE = Module(
     actions=lambda core: [
         *actions(
             core.finances_reports, core.finances_assemblies, core.finances_forecasts,
-            core.finances_client, saisons_de_l_ecole,
+            core.finances_client, saisons_de_l_ecole, powerpoint_de_docs(core.documents_client),
         ),
         *financier(
             core.finances_client, core.finances_accounting, core.finances_reports, core.finances_assemblies,
             core.finances_forecasts, core.finances_ag_documents, core.finances_written, saisons_de_l_ecole,
+        ),
+        *preparer(
+            core.finances_client, core.finances_accounting, core.finances_reports, core.finances_ag_documents,
+            core.finances_written, saisons_de_l_ecole,
         ),
     ],
 )

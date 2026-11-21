@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import * as profsApi from '../../api/profs.js'
+import { useLieu } from '../../app/lieu.js'
 import Badge from '../../components/Badge.jsx'
 import Icon from '../../components/Icon.jsx'
 import ListeEmails from '../../components/ListeEmails.jsx'
@@ -58,6 +59,8 @@ export default function AdminProfesseurs({ professeurs, setProfesseurs, cours, e
 
   const coursEnEdition = professeurs.find((p) => p.id === coursEditId)
   const enEdition = professeurs.find((p) => p.id === editId)
+  const profOuvert = enEdition ?? coursEnEdition
+  useLieu([], profOuvert && { nature: 'professeur', id: profOuvert.id, nom: `${profOuvert.prenom} ${profOuvert.nom}` })
 
   return (
     <div className="admin-panel">

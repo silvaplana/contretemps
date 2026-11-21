@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
 import * as api from '../../api/notesFrais.js'
 import * as sessionApi from '../../api/session.js'
+import { useLieu } from '../../app/lieu.js'
 import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
 import PlanComptable from '../finances/compta/PlanComptable.jsx'
@@ -56,6 +57,7 @@ export default function Pieces({ aFaire, onCompteurs, onChange, onPour }) {
   const glisser = SUR_ORDINATEUR
   const salaries = useSalaries()
   const puces = PUCES.filter((p) => p.value !== 'salaire' || salaries)
+  useLieu(['Pièces', PUCES.find((p) => p.value === puce)?.label, revue && 'Revue de l’import'])
 
   function finDeRevue() {
     setRevue(null)
@@ -332,6 +334,9 @@ const ETAPE_AVANT = { viree: 'À payer', preparee: 'À payer', validee: 'À vali
 
 // Une vente a sa propre fiche (financier.md §8.12) ; toute pièce ouverte passe par ici.
 export function NoteModal(props) {
+  // La pièce ouverte, pour l'assistant (« cette pièce »).
+  const n = props.note
+  useLieu([], n && { nature: 'pièce', id: n.id, nom: [n.numero_piece && `n° ${n.numero_piece}`, qui(n)].filter(Boolean).join(' · ') })
   if ((props.note?.nature ?? props.nature) === 'vente') return <VenteModal note={props.note} onClose={props.onClose} onFait={props.onFait} />
   if ((props.note?.nature ?? props.nature) === 'salaire') return <SalaireModal note={props.note} onClose={props.onClose} onFait={props.onFait} />
   return <NoteModalDepense {...props} />

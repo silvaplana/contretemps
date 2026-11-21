@@ -4,6 +4,7 @@ Fonctionnalités."""
 
 from registry import Module, Right, guide_file
 
+from .actions import actions
 from .connection import Connection
 from .receiver import RIGHT, MailReceiver
 
@@ -17,4 +18,5 @@ MODULE = Module(
     key="mail", label="Mail", mount=mount, requires=("messaging",),
     rights=(Right(RIGHT, "Boîte mail du club"),),
     guide=guide_file(__file__), enabled_by_default=False,
+    actions=lambda core: actions(core.mail_receiver),
 )
