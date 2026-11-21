@@ -1254,15 +1254,13 @@
   font-size: 22px;
 }
 .sc-te__lettres {
-  display: flex;
-  gap: 0.8vw;
-  overflow-x: auto;
-  scrollbar-width: none;
+  display: grid;
+  grid-template-columns: repeat(14, 1fr);
+  gap: 0.6vw;
 }
 .sc-te__lettres button {
-  flex: none;
-  min-width: max(48px, 7vw);
-  height: max(48px, 7vw);
+  min-width: 0;
+  height: 48px;
   border: 1px solid #2c3038;
   border-radius: 1.4vw;
   background: #1f2228;
@@ -1270,6 +1268,9 @@
   font: inherit;
   font-size: max(20px, 3.2vw);
   font-weight: 900;
+}
+.sc-te__lettres button:disabled {
+  opacity: 0.3;
 }
 .sc-te__lettres button[aria-pressed='true'] {
   border-color: #f5e94a;

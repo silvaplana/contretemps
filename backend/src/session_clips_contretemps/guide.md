@@ -74,8 +74,8 @@ cochée : le Timer étendu, téléphone en paysage. Avec « Filmer le combat »,
 archivée » : « Les noms au début », « Le vainqueur à la fin », « Le chrono », « Une musique ».
 
 Timer étendu (coachs, Fights › Timer, téléphone en paysage) :
-- En haut, les deux noms (« … » : on touche, un écran de choix s'ouvre, sans clavier : une barre de
-  lettres, ★ pour les habitués de ce jour-là, puis les combattants en cartes qu'on fait défiler ; on
+- En haut, les deux noms (« … » : on touche, un écran de choix s'ouvre, sans clavier : tout l'alphabet sur
+  deux lignes (une lettre sans personne est grisée), ★ pour les habitués de ce jour-là, puis les combattants en cartes qu'on fait défiler ; on
   touche la carte) et, entre eux, le résultat : un poing levé pour celui de gauche, « = » pour le match nul,
   un poing levé pour celui de droite ; on en touche un, il s'allume.
 - À gauche, l'image de ce que le téléphone filme, avec la petite caméra « 5 s » : le retardateur
