@@ -76,6 +76,7 @@ def lister(db, out=print) -> None:
             f" · compressée={video.compresse if video else '-'} · {video.duree_secondes if video else '-'} s"
             f" · fichier {video.lien_fichier if video else '-'} ({size} octets)"
             f" · à incruster : {demande or 'non'}"
+            + (" · incrustée" if video and video.lien_fichier.endswith("-i.mp4") else "")
         )
     # Entraîner l'écoute (Seb, 14/11) : ce qui est gardé, école par école.
     for school in sorted(DOSSIER_VIDEOS_LIVE.glob("*")):
