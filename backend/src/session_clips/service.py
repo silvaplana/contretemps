@@ -111,22 +111,7 @@ class SessionClips:
         puis les autres par ordre alphabétique."""
         people = sorted(self.directory.people(db, session.org_id), key=lambda p: p.name.lower())
         known = {p.id for p in people}
-        since = date.fromordinal(session.held_on.toordinal() - 56)
-        before = db.execute(
-            select(ClipSession.id, ClipSession.held_on).where(
-                ClipSession.org_id == session.org_id,
-                ClipSession.held_on >= since,
-                ClipSession.held_on < session.held_on,
-            )
-        )
-        same_day = [i for i, d in before if d.weekday() == session.held_on.weekday()]
-        counts: dict[int, int] = {}
-        for person_id in db.scalars(
-            select(ClipParticipant.person_id)
-            .join(Clip, Clip.id == ClipParticipant.clip_id)
-            .where(Clip.session_id.in_(same_day), ClipParticipant.person_id.is_not(None))
-        ):
-            counts[person_id] = counts.get(person_id, 0) + 1
+        counts = self._same_day_counts(db, session.org_id, session.held_on)
         here = set(self.attendees(db, session.id)) | set(
             db.scalars(
                 select(ClipParticipant.person_id)
@@ -139,6 +124,39 @@ class SessionClips:
         regulars = sorted(set(counts) & known - here, key=lambda i: (-counts[i], rank[i]))
         rest = [p.id for p in people if p.id not in here and p.id not in counts]
         return first + regulars + rest
+
+    def _same_day_counts(self, db: Session, org_id: int, day: date) -> dict[int, int]:
+        """Combien de fois chacun a combattu le même jour de la semaine, les 8 semaines avant `day`."""
+        since = date.fromordinal(day.toordinal() - 56)
+        before = db.execute(
+            select(ClipSession.id, ClipSession.held_on).where(
+                ClipSession.org_id == org_id,
+                ClipSession.held_on >= since,
+                ClipSession.held_on < day,
+            )
+        )
+        same_day = [i for i, d in before if d.weekday() == day.weekday()]
+        counts: dict[int, int] = {}
+        for person_id in db.scalars(
+            select(ClipParticipant.person_id)
+            .join(Clip, Clip.id == ClipParticipant.clip_id)
+            .where(Clip.session_id.in_(same_day), ClipParticipant.person_id.is_not(None))
+        ):
+            counts[person_id] = counts.get(person_id, 0) + 1
+        return counts
+
+    def regulars(self, db: Session, org_id: int, day: date) -> list[int]:
+        """Timer étendu (★) : les habitués de ce jour de la semaine, les plus fréquents d'abord."""
+        people = sorted(self.directory.people(db, org_id), key=lambda p: p.name.lower())
+        rank = {p.id: n for n, p in enumerate(people)}
+        counts = self._same_day_counts(db, org_id, day)
+        return sorted(set(counts) & set(rank), key=lambda i: (-counts[i], rank[i]))
+
+    def timer_order(self, db: Session, org_id: int, day: date) -> list[int]:
+        """Les habitués d'abord, puis les autres par ordre alphabétique."""
+        first = self.regulars(db, org_id, day)
+        people = sorted(self.directory.people(db, org_id), key=lambda p: p.name.lower())
+        return first + [p.id for p in people if p.id not in set(first)]
 
     def video_map(self, db: Session, video_ids: list[int]) -> dict[int, Video]:
         # Une séance d'une saison passée garde ses vidéos lisibles.

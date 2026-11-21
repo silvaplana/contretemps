@@ -67,13 +67,15 @@ Timer (coachs, Fights › Timer) : un minuteur de rounds avec la cloche.
 - Sous les dessins, le volet « Réglages » (fermé, son résumé à droite) : durée du round, repos et nombre
   de rounds, case « Prévenir 10 s avant la fin (clac clac) ». Pour le volume : les boutons du téléphone.
 
-Paramètres du Timer (coachs, Fights › ⋮ ; ← revient à Fights) : trois cases, « Filmer le combat »,
-« Nommer les combattants », « Déclarer le vainqueur ». Rien de coché : le Timer simple. Une case
+Paramètres du Timer (coachs, Fights › ⋮ ; ← revient à Fights) : les cases « Filmer le combat »,
+« Nommer les combattants », « Déclarer le vainqueur » et, dessous, « Annoncer le vainqueur » (un
+speaker annonce le vainqueur ou le match nul, en anglais). Rien de coché : le Timer simple. Une case
 cochée : le Timer étendu, téléphone en paysage.
 
 Timer étendu (coachs, Fights › Timer, téléphone en paysage) :
-- En haut, les deux noms (« … » : on touche, on tape les premières lettres, on choisit le membre
-  proposé) et, entre eux, le résultat : un poing levé pour celui de gauche, « = » pour le match nul,
+- En haut, les deux noms (« … » : on touche, un écran de choix s'ouvre, sans clavier : une barre de
+  lettres, ★ pour les habitués de ce jour-là, puis les combattants en cartes qu'on fait défiler ; on
+  touche la carte) et, entre eux, le résultat : un poing levé pour celui de gauche, « = » pour le match nul,
   un poing levé pour celui de droite ; on en touche un, il s'allume.
 - À gauche, l'image de ce que le téléphone filme, avec la petite caméra « 5 s » : le retardateur
   (compte à rebours de 5 secondes, puis la cloche sonne et le combat démarre). Au milieu le temps, à

@@ -618,7 +618,7 @@ tous les anciens combats.
 
 - Les clips où la personne apparaît, du plus récent au plus ancien, regroupés par séance (« JEU. 23 OCT.
   · ADULTES »).
-- Chaque ligne : vignette avec la durée, « vs Karim B. », « Combat 3 · 2 min 20 ».
+- Chaque ligne : vignette avec la durée, « Seb R. vs Karim B. » (soi-même d'abord, puis l'adversaire ; Seb, 21/11), « Combat 3 · 2 min 20 ».
 - Un clip « à vérifier » n'y apparaît qu'une fois validé par un coach : jamais un mauvais nom sous les
   yeux d'un membre.
 - Vide : « Vos combats filmés apparaîtront ici le lendemain de la séance. »
@@ -905,7 +905,31 @@ simple, avec ses modes et ses réglages ; toucher le temps y revient).
 - **Données** : `sc_participants.winner` (le vainqueur est une des deux personnes, sans ordre ni
   coin) et `sc_clips.draw` (le match nul n'est à personne). Migration `c5d8e2f4a6b1`.
 - Sans « Filmer le combat », les noms et le résultat ne sont qu'à l'écran : rien n'est gardé.
-- **Plus tard** (Seb, 21/11) : incruster le temps et les noms dans la vidéo archivée.
+- **Choix du combattant, sans clavier** (Seb, 21/11 : en paysage le clavier prenait tout l'écran ;
+  « pratique, un peu game ») : toucher « … » ouvre, par-dessus le Timer, un écran de sélection comme
+  dans un jeu de combat : « Combattant de gauche » en jaune, une barre de lettres (les initiales des
+  membres ; ★ en tête = les habitués de ce jour de la semaine, ceux qui ont combattu le même jour les
+  8 semaines d'avant, ouvert au départ), puis les combattants en grandes cartes qu'on fait défiler
+  (initiales en pastille de couleur, prénom, nom), « Inconnu (pas du club) » en dernier. Toucher une
+  carte l'allume et referme l'écran. Route `GET /session-clips/timer/names` (`regular` pour ★).
+- **Annoncer le vainqueur** (Seb, 21/11 ; quatrième case, sous « Déclarer le vainqueur » et grisée
+  sans elle) : au poing levé, un speaker annonce « And the winner, by unanimous decision, is… », le
+  nom en entier, puis la foule crie ; au « = », « It's a draw! » et la foule. Voix « George » choisie
+  par Seb parmi six (https://claude.ai/artifact/RKoPjfcyjWcGs1eNTnQcgu) : Kokoro `bm_george`,
+  hors ligne, un demi-ton plus grave, écho de grande salle. Les phrases fixes et la foule sont des
+  fichiers du Timer (`sons/annonce-*.mp3`, `sons/foule.mp3`, fabriqués par
+  `/mnt/project-files/appbase/timer-mma/voix/fabriquer-les-voix.py`). Le nom est dit par le serveur
+  (`session_clips/announcer.py`, `GET /session-clips/timer/announce/{person_id}`, prénom et nom de la
+  fiche, gardé dans `<VIDEOS_DIR>/<école>/announce/`), demandé dès que le combattant est choisi.
+  Modèle (≈ 350 Mo) téléchargé de GitHub à la première annonce dans `KOKORO_DIR` (défaut
+  `./data/kokoro`, volume persistant). Sans nom, ou voix indisponible : « The fighter in the left
+  (right) corner! ». Un nouvel appui coupe l'annonce en cours.
+- **Plus tard** (Seb, 21/11) : trois cases d'incrustation dans la vidéo archivée, chacune au choix :
+  les noms des combattants au début (l'un arrive de gauche, l'autre de droite, ils se cognent au
+  milieu puis restent), le vainqueur à la fin, le chrono. Faites par le serveur pendant la
+  recompression, l'envoi depuis le téléphone ne change pas.
+  Et peut-être une quatrième, « Musique » (Seb, 21/11) : pas de musique protégée (Rocky…) dans
+  l'appli ; proposé : des musiques épiques libres de droits (question posée à Seb).
 
 ### 6.6 Plus tard
 

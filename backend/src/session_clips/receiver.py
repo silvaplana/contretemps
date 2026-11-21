@@ -5,6 +5,7 @@ renvoie un `Member`) ; les droits sont vérifiés par le service."""
 from __future__ import annotations
 
 import json
+from datetime import date
 from collections.abc import Callable
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
@@ -16,7 +17,7 @@ from db import get_db
 from videos.schemas import VideoSortie
 from videos.videos import DecalageInvalide
 
-from . import camera, gesture_notes, lab, voice
+from . import announcer, camera, gesture_notes, lab, voice
 from . import people as who_is
 from .models import Clip, ClipSession, LabTest, Piece
 from .ports import Member
@@ -247,6 +248,26 @@ class SessionClipsReceiver:
         @app.delete(f"{PREFIX}/clips/{{clip_id}}", status_code=204)
         def delete_clip(clip_id: int, m: Member = member, s: Session = db):
             guard(lambda: client.delete_clip(s, m, clip_id))
+
+        # Timer étendu (Seb, 21/11) : le choix du combattant, ★ les habitués de ce jour de la semaine.
+        @app.get(f"{PREFIX}/timer/names", response_model=list[PersonOut])
+        def timer_names(m: Member = member, s: Session = db):
+            coach(m)
+            names = {p.id: p.name for p in client.directory.people(s, m.org_id)}
+            regulars = set(client.regulars(s, m.org_id, date.today()))
+            return [PersonOut(id=i, name=names[i], regular=i in regulars) for i in client.timer_order(s, m.org_id, date.today())]
+
+        # L'annonce du vainqueur : son nom dit par George.
+        @app.get(f"{PREFIX}/timer/announce/{{person_id}}")
+        def announce(person_id: int, m: Member = member, s: Session = db):
+            coach(m)
+            full_name = client.directory.full_name(s, m.org_id, person_id)
+            if not full_name:
+                raise HTTPException(status_code=404, detail="Membre introuvable")
+            try:
+                return FileResponse(announcer.name_file(m.org_id, person_id, full_name), media_type="audio/mpeg")
+            except announcer.VoiceUnavailable as e:
+                raise HTTPException(status_code=503, detail=str(e)) from e
 
         @app.get(f"{PREFIX}/people", response_model=list[PersonOut])
         def people(m: Member = member, s: Session = db):

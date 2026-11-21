@@ -54,3 +54,8 @@ class AnnuaireSparring:
             return {}
         with toutes_saisons(db):
             return {c.id: nom_court(c) for c in db.scalars(select(Compte).where(Compte.id.in_(person_ids)))}
+
+    def full_name(self, db: Session, org_id: int, person_id: int) -> str | None:
+        with toutes_saisons(db):
+            compte = db.scalar(select(Compte).where(Compte.id == person_id, Compte.ecole_id == org_id))
+        return f"{compte.prenom} {compte.nom}".strip() if compte else None

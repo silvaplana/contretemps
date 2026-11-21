@@ -11,13 +11,19 @@ import clocheDebut from './sons/cloche-debut-de-round.mp3'
 import clocheFin from './sons/cloche-fin-de-round.mp3'
 import clacClac from './sons/clac-clac-10-secondes.mp3'
 import bips from './sons/bips-fin-du-repos.mp3'
+// L'annonce du vainqueur, voix « George » (Seb, 21/11) ; le nom vient du serveur.
+import annonceVainqueur from './sons/annonce-vainqueur.mp3'
+import annonceNul from './sons/annonce-nul.mp3'
+import annonceGauche from './sons/annonce-gauche.mp3'
+import annonceDroite from './sons/annonce-droite.mp3'
+import foule from './sons/foule.mp3'
 
 // Fights › Timer (coachs ; Seb, 13/11, maquette https://claude.ai/artifact/2U8ASb7oeDcgbib9vwkyza) :
 // un round seul, ou des rounds avec repos. Cloche d'un coup au début, clac clac
 // 10 s avant la fin (case à cocher), trois coups à la fin, bips à la fin du repos.
 // Le décompte suit l'horloge (pas les tics du navigateur, ralentis écran éteint).
 
-const SONS = { debut: clocheDebut, fin: clocheFin, clac: clacClac, bips }
+const SONS = { debut: clocheDebut, fin: clocheFin, clac: clacClac, bips, vainqueur: annonceVainqueur, nul: annonceNul, gauche: annonceGauche, droite: annonceDroite, foule }
 const COUP_MS = 200 // l'écart des trois coups dans cloche-fin-de-round.mp3 (aussi dans sparring.css)
 const ANNULER_MS = 10000
 const RETARD_S = 5 // le retardateur : la cloche sonne 5 s après (Seb, 21/11)
@@ -53,45 +59,61 @@ function Afficheur({ texte, className }) {
   )
 }
 
-// Timer étendu : un nom à taper. On touche « … », les premières lettres
-// proposent les membres, Entrée ou un appui valide (Seb, 21/11).
-function ChampNom({ nom, autre, membres, libelle, onChoisir }) {
-  const [texte, setTexte] = useState(null) // null : pas en train de taper
-  const debut = plat((texte ?? '').trim())
-  const propositions =
-    texte === null
-      ? []
-      : membres
-          .filter((m) => m.id !== autre?.id && plat(m.name).split(/\s+/).some((mot) => mot.startsWith(debut)))
-          .slice(0, 3)
-  const choisir = (m) => {
-    onChoisir(m)
-    setTexte(null)
-    document.activeElement?.blur()
+// Timer étendu : le choix du combattant, comme l'écran de sélection d'un jeu de
+// combat (Seb, 21/11) : pas de clavier, une barre de lettres (★ : les habitués
+// de ce jour de la semaine), puis des cartes qu'on fait défiler.
+const TEINTES = [0, 28, 200, 265, 150, 330, 45, 180]
+const teinte = (n) => TEINTES[[...n].reduce((a, c) => a + c.charCodeAt(0), 0) % TEINTES.length]
+const initiale = (n) => plat(n)[0]?.toUpperCase() ?? '?'
+const INCONNU = { id: null, name: 'Inconnu' }
+
+function ChoixCombattant({ titre, membres, autre, actuel, onChoisir, onFermer }) {
+  const habitues = membres.some((m) => m.regular)
+  const [lettre, setLettre] = useState(habitues ? '★' : null)
+  const [flash, setFlash] = useState(null)
+  const lettres = [...new Set(membres.map((m) => initiale(m.name)))].sort()
+  const liste = membres.filter(
+    (m) => m.id !== autre?.id && (lettre === '★' ? m.regular : lettre === null || initiale(m.name) === lettre),
+  )
+  function choisir(m) {
+    setFlash(m)
+    setTimeout(() => onChoisir(m), 350)
+  }
+  const carte = (m) => {
+    const [prenom, ...reste] = m.name.split(' ')
+    return (
+      <button
+        key={m.id ?? 'inconnu'}
+        type="button"
+        className={`sc-te__carte${flash === m ? ' sc-te__carte--flash' : ''}${actuel?.id === m.id && m.id ? ' sc-te__carte--prise' : ''}${m.id ? '' : ' sc-te__carte--inconnu'}`}
+        style={{ '--t': teinte(m.name) }}
+        onClick={() => choisir(m)}
+      >
+        <span className="sc-te__avatar">{m.id ? m.name.split(' ').map((x) => x[0]).join('') : '?'}</span>
+        <b>{prenom}</b>
+        <small>{m.id ? reste.join(' ') : 'pas du club'}</small>
+      </button>
+    )
   }
   return (
-    <div className="sc-te__champ">
-      <input
-        value={texte ?? nom?.name ?? ''}
-        placeholder="…"
-        aria-label={libelle}
-        autoComplete="off"
-        enterKeyHint="done"
-        onFocus={() => setTexte('')}
-        onChange={(ev) => setTexte(ev.target.value)}
-        onKeyDown={(ev) => ev.key === 'Enter' && (propositions[0] ? choisir(propositions[0]) : ev.target.blur())}
-        onBlur={() => setTexte(null)}
-      />
-      {propositions.length > 0 && (
-        <div className="sc-te__propositions">
-          {propositions.map((m) => (
-            // Sans prendre la main au champ : l'appui choisit avant que la liste se ferme.
-            <button key={m.id} type="button" onPointerDown={(ev) => ev.preventDefault()} onClick={() => choisir(m)}>
-              {m.name}
-            </button>
-          ))}
-        </div>
-      )}
+    <div className="sc-te__select" role="dialog" aria-label={titre}>
+      <div className="sc-te__select-tete">
+        <b>{titre}</b>
+        <button type="button" className="sc-te__select-fermer" aria-label="Fermer" onClick={onFermer}>
+          ✕
+        </button>
+      </div>
+      <div className="sc-te__lettres">
+        {(habitues ? ['★', ...lettres] : lettres).map((l) => (
+          <button key={l} type="button" aria-pressed={lettre === l} onClick={() => setLettre(lettre === l ? null : l)}>
+            {l}
+          </button>
+        ))}
+      </div>
+      <div className="sc-te__cartes">
+        {liste.map(carte)}
+        {carte(INCONNU)}
+      </div>
     </div>
   )
 }
@@ -109,6 +131,10 @@ export default function Timer({ ecoleId, rafraichir }) {
   const bip = useRef(null)
   const [message, setMessage] = useState(null) // { texte, annuler }
   const [membres, setMembres] = useState([])
+  const [choix, setChoix] = useState(null) // la place (0 ou 1) dont on choisit le combattant
+  const annonces = useRef({}) // id du membre -> adresse du son de son nom (George)
+  const joue = useRef([])
+  const annonceTour = useRef(0)
   const finMessage = useRef(null)
   const [run, setRun] = useState(null) // { phase: 'round'|'repos', n, fin (ms), total, pause (ms restants) }
   const [, setTic] = useState(0)
@@ -130,7 +156,7 @@ export default function Timer({ ecoleId, rafraichir }) {
   useEffect(() => ecrire(r), [r])
   const film = useFilm(etendu && r.film && plein)
   useEffect(() => {
-    if (r.noms) api.membres().then(setMembres, () => {})
+    if (r.noms) api.nomsTimer().then(setMembres, () => {})
   }, [r.noms])
   // Tout se passe en paysage : l'appli Tournage tourne l'écran elle-même,
   // le navigateur le fait s'il le permet. Sinon, on demande de tourner le téléphone.
@@ -180,6 +206,46 @@ export default function Timer({ ecoleId, rafraichir }) {
     return () => clearTimeout(id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [retard])
+
+  // Le nom du vainqueur dit par George : préparé dès que le combattant est choisi.
+  function nommer(i, m) {
+    const suite = i ? [noms[0], m] : [m, noms[1]]
+    setNoms(suite)
+    setChoix(null)
+    if (r.annonce && m.id && !annonces.current[m.id]) {
+      annonces.current[m.id] = api.annonceNom(m.id).catch(() => null)
+    }
+  }
+
+  // « And the winner, by unanimous decision, is… », le nom, la foule ; ou « It's a draw! ».
+  // Un nouvel appui coupe l'annonce en cours.
+  async function annoncer(quoi) {
+    const tour = ++annonceTour.current
+    joue.current.forEach((a) => a.pause())
+    joue.current = []
+    const encore = () => tour === annonceTour.current
+    const lire = (src, avant) =>
+      new Promise((ok) => {
+        if (!encore()) return ok()
+        const a = new Audio(src)
+        joue.current.push(a)
+        if (avant) a.onloadedmetadata = () => setTimeout(() => encore() && lire(SONS.foule), (a.duration || 1.5) * 550)
+        a.onended = a.onerror = ok
+        a.play().catch(ok)
+      })
+    if (quoi === 'nul') return lire(SONS.nul)
+    const nom = noms[quoi]?.id ? await annonces.current[noms[quoi].id] : null
+    await lire(SONS.vainqueur)
+    await new Promise((ok) => setTimeout(ok, 700))
+    // Sans nom (ou voix indisponible) : « the fighter in the left corner! ».
+    await lire(nom ?? (quoi ? SONS.droite : SONS.gauche), true)
+  }
+
+  function declarer(quoi) {
+    const suite = resultat === quoi ? null : quoi
+    setResultat(suite)
+    if (suite !== null && r.annonce) annoncer(suite)
+  }
 
   function dire(texte, annuler) {
     clearTimeout(finMessage.current)
@@ -368,19 +434,20 @@ export default function Timer({ ecoleId, rafraichir }) {
         className={`sc-te__poing${i ? ' sc-te__poing--droite' : ''}${appel}`}
         aria-pressed={resultat === i}
         aria-label={`Vainqueur : ${noms[i]?.name ?? (i ? 'à droite' : 'à gauche')}`}
-        onClick={() => setResultat(resultat === i ? null : i)}
+        onClick={() => declarer(i)}
         dangerouslySetInnerHTML={{ __html: POING }}
       />
     )
     const champ = (i) =>
       r.noms ? (
-        <ChampNom
-          nom={noms[i]}
-          autre={noms[1 - i]}
-          membres={membres}
-          libelle={i ? 'Combattant de droite' : 'Combattant de gauche'}
-          onChoisir={(m) => setNoms(i ? [noms[0], m] : [m, noms[1]])}
-        />
+        <button
+          type="button"
+          className={`sc-te__champ${noms[i] ? '' : ' sc-te__champ--vide'}`}
+          aria-label={i ? 'Combattant de droite' : 'Combattant de gauche'}
+          onClick={() => setChoix(i)}
+        >
+          {noms[i]?.name ?? '…'}
+        </button>
       ) : (
         <span />
       )
@@ -402,7 +469,7 @@ export default function Timer({ ecoleId, rafraichir }) {
                   className={`sc-te__nul${appel}`}
                   aria-pressed={resultat === 'nul'}
                   aria-label="Match nul"
-                  onClick={() => setResultat(resultat === 'nul' ? null : 'nul')}
+                  onClick={() => declarer('nul')}
                 >
                   =
                 </button>
@@ -478,6 +545,16 @@ export default function Timer({ ecoleId, rafraichir }) {
             {cloche}
             {chrono}
           </div>
+        )}
+        {choix !== null && (
+          <ChoixCombattant
+            titre={choix ? 'Combattant de droite' : 'Combattant de gauche'}
+            membres={membres}
+            autre={noms[1 - choix]}
+            actuel={noms[choix]}
+            onChoisir={(m) => nommer(choix, m)}
+            onFermer={() => setChoix(null)}
+          />
         )}
         {message && (
           <div className="sc-te__message" role="status">

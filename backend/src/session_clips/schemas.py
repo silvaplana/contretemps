@@ -82,6 +82,7 @@ class MeOut(BaseModel):
 class PersonOut(BaseModel):
     id: int
     name: str
+    regular: bool = False  # Timer étendu : habitué de ce jour de la semaine
 
 
 class ParticipantOut(BaseModel):
