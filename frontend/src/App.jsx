@@ -8,6 +8,8 @@ import * as comptesApi from './api/comptes.js'
 import * as conversationsApi from './api/conversations.js'
 import * as coursApi from './api/cours.js'
 import * as elevesApi from './api/eleves.js'
+import * as journalAppli from './utils/journalAppli.js'
+import { reessayer } from './utils/reessayer.js'
 import * as installationApi from './api/installation.js'
 import * as messagesApi from './api/messages.js'
 import * as notificationsApi from './api/notifications.js'
@@ -254,8 +256,10 @@ function App() {
         sessionApi.sauvegarderCompte(idCourant)
       }
 
-      authApi
-        .restaurerSession(idCourant)
+      // Serveur injoignable au réveil du téléphone ou pendant une mise en
+      // ligne : on réessaie, et la session n'est effacée que sur un vrai
+      // refus du serveur (Seb, 20/11/2026).
+      reessayer(() => authApi.restaurerSession(idCourant))
         .then(({ compte, ecole: ecoleRestauree }) => {
           if (idCourant !== compteId) notificationsApi.transfererAbonnement(compte.id)
           setCompteReel(compte)
@@ -287,7 +291,9 @@ function App() {
             setInstallationAMontrer(proposerInstallation)
           }
         })
-        .catch(() => sessionApi.effacerCompteSauvegarde())
+        .catch((erreur) => {
+          if (erreur?.definitive) sessionApi.effacerCompteSauvegarde()
+        })
         .finally(() => {
           if (compteIdHandoff != null) installationApi.oublierHandoff()
           setRestaurationEnCours(false)
@@ -615,10 +621,19 @@ function App() {
   // élève/professeur, chez N'IMPORTE QUEL compte de l'école (voir
   // backend/src/cours/receiver.py: _publier_cours_maj — diffusé à tout le
   // monde, filtré ici par rôle comme d'habitude, voir coursDuProfil).
+  // Chaque lecture est refaite toute seule si elle échoue (voir
+  // utils/reessayer.js) : sinon la liste restait vide (« 0 élève ») jusqu'à
+  // la relance de l'appli (Seb, 20/11/2026).
   function resynchroniserCours() {
-    elevesApi.lister(ecole.id).then(setEleves)
-    profsApi.lister(ecole.id).then(setProfesseurs)
-    coursApi.lister(ecole.id).then(setCours)
+    const ecoleId = ecole.id
+    reessayer(() => elevesApi.lister(ecoleId))
+      .then((liste) => {
+        if (!liste.length) journalAppli.noter('GET', `/eleves?ecole_id=${ecoleId}`, '0 élève reçu')
+        setEleves(liste)
+      })
+      .catch(() => {})
+    reessayer(() => profsApi.lister(ecoleId)).then(setProfesseurs).catch(() => {})
+    reessayer(() => coursApi.lister(ecoleId)).then(setCours).catch(() => {})
   }
 
   // Données modifiées par l'assistant (carte « Tout faire ») : on recharge.
@@ -632,10 +647,30 @@ function App() {
     // Pas d'école choisie (Superuser, §2.5) : rien à charger encore.
     if (!loggedIn || !ecole.id) return
     resynchroniserCours()
-    conversationsApi.listerEcole(ecole.id).then(setGroupes)
-    comptesApi.listerAdmins(ecole.id).then(setAdmins)
+    reessayer(() => conversationsApi.listerEcole(ecole.id)).then(setGroupes).catch(() => {})
+    reessayer(() => comptesApi.listerAdmins(ecole.id)).then(setAdmins).catch(() => {})
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loggedIn, ecole.id, saisonConsultee?.id, versionDonnees])
+
+  // Retour dans l'appli après plus de 30 s, ou réseau revenu : tout est
+  // relu (élèves, profs, cours, groupes, Chat), comme à l'ouverture. Avant,
+  // seul l'écran Élèves se relisait (Seb, 20/11/2026).
+  useEffect(() => {
+    if (!loggedIn) return
+    let cacheeDepuis = null
+    const relire = () => setVersionDonnees((v) => v + 1)
+    function surVisibilite() {
+      if (document.visibilityState === 'hidden') cacheeDepuis = Date.now()
+      else if (cacheeDepuis !== null && Date.now() - cacheeDepuis > 30000) relire()
+      if (document.visibilityState === 'visible') cacheeDepuis = null
+    }
+    document.addEventListener('visibilitychange', surVisibilite)
+    window.addEventListener('online', relire)
+    return () => {
+      document.removeEventListener('visibilitychange', surVisibilite)
+      window.removeEventListener('online', relire)
+    }
+  }, [loggedIn])
 
   // Recharge tout depuis le serveur (liste + messages + présence, voir
   // utils/presenceEnLigne.js) — au premier chargement ET à chaque

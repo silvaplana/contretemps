@@ -83,6 +83,21 @@ Choix confirmés par l'utilisateur le 2026-10-01 : mot de passe **par email**, i
 bouton**, coupure des codes **en une fois**, mot de passe **redemandé** en cas de montée en
 privilège, session de **30 jours** prolongée à chaque usage.
 
+#### Serveur injoignable (Seb, 20/11/2026)
+
+Constat : parfois « 0 élève », ou l'appli semble ne plus joindre le serveur, et il faut la relancer.
+Cause : chaque liste n'était demandée qu'une fois à l'ouverture, sans nouvel essai, et une
+ouverture sans réseau (téléphone qui se réveille, mise en ligne en cours) effaçait la session.
+- Une lecture qui échoue (élèves, profs, cours, groupes, admins, reprise de session) est refaite
+  toute seule après 2 s, 5 s puis 10 s (`utils/reessayer.js`). Aucun écran ne change.
+- Retour dans l'appli après plus de 30 s, ou réseau revenu : tout est relu, comme à l'ouverture.
+- La session mémorisée n'est effacée que sur un refus du serveur (401, 403, 404), jamais sur une
+  panne ou une absence de réponse.
+- **Journal de l'appli** : chaque demande sans réponse, en erreur serveur (5xx) ou refusée (401),
+  et une liste de 0 élève reçue, sont notées sur le téléphone (50 au plus), puis envoyées au serveur
+  dès qu'une demande repasse (`POST /journal/appli`, fichier `journal-appli.log` à côté de la
+  base). Lecture : action « Maintenance du VPS » › « Lire le journal de l'appli » (DEPLOY.md §6).
+
 #### Écran de connexion
 
 Même écran qu'avant, une seule page pour **toutes les écoles** :

@@ -94,8 +94,14 @@ if [ -n "${SSH_ORIGINAL_COMMAND:-}" ]; then
         exit 2
       fi
       ;;
+    journal-appli)
+      # Demandes au serveur échouées sur les téléphones (Seb, 20/11/2026),
+      # envoyées par l'appli dès que la connexion revient.
+      echo "==> Journal de l'appli (rien n'est écrit)"
+      docker compose exec -T backend python -m app.journal_appli
+      ;;
     *)
-      echo "Tâche inconnue : « $tache ». Tâches possibles : notes-frais-lister, notes-frais-vider, plan-comptable-contretemps, labo-lire, seance-lire." >&2
+      echo "Tâche inconnue : « $tache ». Tâches possibles : notes-frais-lister, notes-frais-vider, plan-comptable-contretemps, labo-lire, seance-lire, journal-appli." >&2
       exit 2
       ;;
   esac
