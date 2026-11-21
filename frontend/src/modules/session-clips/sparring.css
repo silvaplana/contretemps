@@ -1159,26 +1159,6 @@
   right: max(1vw, env(safe-area-inset-right, 0px));
   z-index: 2;
 }
-.sc-te__tourner {
-  display: none;
-}
-@media (orientation: portrait) {
-  .sc-te {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 24px;
-    font-size: 22px;
-    font-weight: 700;
-    text-align: center;
-  }
-  .sc-te > :not(.sc-te__tourner):not(.sc-timer__fermer) {
-    display: none;
-  }
-  .sc-te__tourner {
-    display: block;
-  }
-}
 .sc-te__gauche {
   display: grid;
   grid-template-rows: auto 1fr;
@@ -1995,4 +1975,185 @@
   height: 4px;
   background: var(--color-primary, #f5c518);
   transition: width 0.3s;
+}
+
+/* Timer étendu, téléphone debout (Seb, 21/11 ; maquette
+   https://claude.ai/artifact/V2svDuF74XVHNbYNuk3ui6) : les noms en haut avec
+   les poings dessous, l'image du film au milieu, le temps, puis la cloche. */
+@media (orientation: portrait) {
+  .sc-te {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1fr) auto;
+    gap: 14px;
+    padding: 60px max(16px, env(safe-area-inset-right, 0px)) 16px max(16px, env(safe-area-inset-left, 0px));
+    font-size: 17px;
+  }
+  .sc-te__gauche {
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 14px;
+  }
+  .sc-te__noms {
+    row-gap: 10px;
+    column-gap: 8px;
+    min-height: 0;
+  }
+  .sc-te__noms > :last-child {
+    grid-column: 3;
+    grid-row: 1;
+  }
+  .sc-te__resultat {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-content: space-around;
+  }
+  .sc-te__champ {
+    height: 56px;
+    border-radius: 12px;
+    font-size: 17px;
+  }
+  .sc-te__poing {
+    width: 48px;
+    height: 56px;
+  }
+  .sc-te__nul {
+    width: 52px;
+    height: 52px;
+    font-size: 26px;
+  }
+  .sc-te__milieu {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1fr) auto;
+    justify-items: center;
+    gap: 10px;
+  }
+  .sc-te__milieu--sans-film {
+    grid-template-rows: 1fr;
+  }
+  .sc-te__mini {
+    width: 100%;
+    height: 100%;
+    aspect-ratio: auto;
+    border-radius: 12px;
+  }
+  .sc-te__mini b {
+    top: 8px;
+    left: 8px;
+    gap: 6px;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 17px;
+  }
+  .sc-te__mini b::before {
+    width: 8px;
+    height: 8px;
+  }
+  .sc-te__retardateur {
+    right: 8px;
+    bottom: 8px;
+    gap: 6px;
+    padding: 4px 14px 4px 8px;
+    border-radius: 999px;
+    font-size: 17px;
+  }
+  .sc-te__retardateur svg {
+    width: 28px;
+    height: 21px;
+  }
+  .sc-te__compte {
+    font-size: 40vw;
+  }
+  .sc-te .sc-timer__temps svg {
+    height: 64px;
+  }
+  .sc-te__milieu--sans-film .sc-timer__temps svg {
+    height: 30vw;
+  }
+  .sc-te__question {
+    font-size: 17px;
+    text-align: center;
+  }
+  .sc-te__dessins {
+    column-gap: 32px;
+    padding-bottom: 0;
+  }
+  .sc-te__dessins .sc-timer__dessin {
+    font-size: 17px;
+  }
+  .sc-te__dessins .sc-timer__dessin svg {
+    width: 72px;
+    height: 72px;
+  }
+  .sc-te__dessins .sc-timer__dessin.sc-timer__dessin--cloche {
+    font-size: 19px;
+  }
+  .sc-te__dessins .sc-timer__dessin.sc-timer__dessin--cloche svg {
+    width: 112px;
+    height: 112px;
+  }
+  .sc-te__choix {
+    gap: 10px;
+    padding-top: 0;
+  }
+  .sc-te__choix button {
+    min-height: 60px;
+    border-radius: 14px;
+  }
+  .sc-te__choix b {
+    font-size: 19px;
+  }
+  .sc-te__select {
+    gap: 12px;
+    padding: 16px max(16px, env(safe-area-inset-right, 0px)) 16px max(16px, env(safe-area-inset-left, 0px));
+    align-content: start;
+  }
+  .sc-te__select-tete b {
+    font-size: 19px;
+  }
+  .sc-te__lettres {
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+  }
+  .sc-te__lettres button {
+    border-radius: 10px;
+    font-size: 20px;
+  }
+  .sc-te__cartes {
+    gap: 10px;
+    margin: -6px;
+    padding: 6px;
+  }
+  .sc-te__carte {
+    width: 108px;
+    min-height: 150px;
+    gap: 6px;
+    border-radius: 14px;
+  }
+  .sc-te__carte b {
+    font-size: 17px;
+  }
+  .sc-te__carte small {
+    font-size: 14px;
+  }
+  .sc-te__avatar {
+    width: 56px;
+    height: 56px;
+    font-size: 22px;
+  }
+  .sc-te__musiques {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+  .sc-te__musique {
+    gap: 6px;
+    padding: 12px 6px;
+    border-radius: 14px;
+    font-size: 17px;
+  }
+  .sc-te__musique-icone {
+    font-size: 34px;
+  }
+  .sc-te__envois {
+    left: max(16px, env(safe-area-inset-left, 0px));
+    bottom: 16px;
+  }
 }

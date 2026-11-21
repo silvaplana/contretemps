@@ -119,15 +119,20 @@ class TournagePlugin : Plugin() {
     }
 
     /**
-     * Timer étendu de Fights (Seb, 21/11) : l'écran en paysage tant qu'il est
-     * ouvert, même rotation automatique coupée, pour que le film soit droit.
+     * Timer étendu de Fights (Seb, 21/11) : le sens de l'écran figé pendant un
+     * combat, paysage ou portrait selon le téléphone au premier coup de cloche,
+     * pour que le film reste droit. `mode` : "landscape", "portrait" ou rien
+     * (libre) ; `on` reste compris des pages d'avant.
      */
     @PluginMethod
     fun landscape(call: PluginCall) {
-        val on = call.getBoolean("on", false) == true
+        val mode = call.getString("mode") ?: if (call.getBoolean("on", false) == true) "landscape" else ""
         activity.runOnUiThread {
-            activity.requestedOrientation =
-                if (on) ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE else ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            activity.requestedOrientation = when (mode) {
+                "landscape" -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                "portrait" -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+                else -> ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            }
         }
         call.resolve()
     }

@@ -5,6 +5,7 @@ import { CAMERA, CHRONO, CLOCHE, POING } from './timerDessins.js'
 import { ecrire, estEtendu, lire } from './timerReglages.js'
 import { useFilm } from './timerFilm.js'
 import { DANS_L_APPLI, Natif } from './natif.js'
+import { reessayer } from '../../utils/reessayer.js'
 import { demarrerTeleversement, finaliserTeleversement, sansCopieLocale, useProgressionTeleversement } from '../../utils/videoUploads.js'
 import * as api from './api.js'
 import clocheDebut from './sons/cloche-debut-de-round.mp3'
@@ -108,8 +109,10 @@ function Envoi({ envoi, me, onFini }) {
   }, [pret]) // eslint-disable-line react-hooks/exhaustive-deps
   const moi = clip?.participants.some((p) => p.person_id === me?.person_id)
   const pourcent = progression?.octetsTotal ? Math.round((100 * progression.octetsEnvoyes) / progression.octetsTotal) : 100
-  const texte = !envoye
-    ? `Envoi ${pourcent} %`
+  const texte = !envoi.uploadId
+    ? 'Attente du serveur…'
+    : !envoye
+      ? `Envoi ${pourcent} %`
     : !pret
       ? 'En préparation…'
       : clip.to_check
@@ -241,6 +244,20 @@ function ChoixCombattant({ titre, membres, autre, actuel, onChoisir, onFermer })
   )
 }
 
+// Fige le sens de l'écran sur celui du téléphone (oui), ou le libère.
+function figerSens(oui) {
+  const portrait = window.matchMedia('(orientation: portrait)').matches
+  if (DANS_L_APPLI) Natif.landscape({ mode: oui ? (portrait ? 'portrait' : 'landscape') : '' }).catch(() => {})
+  else if (oui) Promise.resolve(screen.orientation?.lock?.(portrait ? 'portrait' : 'landscape')).catch(() => {})
+  else {
+    try {
+      screen.orientation?.unlock?.()
+    } catch {
+      // Pas de plein écran : rien n'était figé.
+    }
+  }
+}
+
 export default function Timer({ ecoleId, rafraichir, me }) {
   const [r, setR] = useState(lire)
   // Timer étendu (Seb, 21/11) : en paysage, il filme le combat, nomme les deux
@@ -284,23 +301,15 @@ export default function Timer({ ecoleId, rafraichir, me }) {
   useEffect(() => {
     if (r.noms) api.nomsTimer().then(setMembres, () => {})
   }, [r.noms])
-  // Tout se passe en paysage : l'appli Tournage tourne l'écran elle-même,
-  // le navigateur le fait s'il le permet. Sinon, on demande de tourner le téléphone.
+  // Paysage ou portrait, au choix du vidéaste (Seb, 21/11) : l'écran suit le
+  // téléphone, puis le sens est figé du premier coup de cloche jusqu'à
+  // Archiver ou Jeter, pour que le film ne bascule pas en plein combat.
   useEffect(() => {
     if (!etendu || !plein) return undefined
-    if (DANS_L_APPLI) Natif.landscape({ on: true }).catch(() => {})
-    else {
-      Promise.resolve(document.documentElement.requestFullscreen?.())
-        .catch(() => {})
-        .then(() => screen.orientation?.lock?.('landscape'))
-        .catch(() => {})
-    }
+    if (!DANS_L_APPLI) Promise.resolve(document.documentElement.requestFullscreen?.()).catch(() => {})
     return () => {
-      if (DANS_L_APPLI) Natif.landscape({ on: false }).catch(() => {})
-      else {
-        screen.orientation?.unlock?.()
-        if (document.fullscreenElement) document.exitFullscreen().catch(() => {})
-      }
+      figerSens(false)
+      if (!DANS_L_APPLI && document.fullscreenElement) document.exitFullscreen().catch(() => {})
     }
   }, [etendu, plein])
 
@@ -383,6 +392,7 @@ export default function Timer({ ecoleId, rafraichir, me }) {
     setPlein(true)
     setRetard(0)
     if (etendu) {
+      figerSens(true)
       setResultat(null)
       setTermine(false)
       setMessage(null)
@@ -403,6 +413,7 @@ export default function Timer({ ecoleId, rafraichir, me }) {
   }
 
   function suivant() {
+    figerSens(false)
     setFin(null)
     setNoms([null, null])
     setResultat(null)
@@ -431,24 +442,34 @@ export default function Timer({ ecoleId, rafraichir, me }) {
       draw: resultat === 'nul',
       overlay,
     }
-    const { fichier, url } = fin
+    const garde = { fin, noms, resultat }
     const nom = titre()
+    const cle = Date.now()
     suivant()
-    URL.revokeObjectURL(url)
+    // Serveur injoignable (une mise en ligne le redémarre) : on réessaie
+    // pendant ~3 min, puis le combat revient à l'écran pour réessayer,
+    // au lieu d'être perdu (Seb, 21/11 : trois films disparus).
+    setEnvois((l) => [...l, { cle, uploadId: null, nom, clip: null }])
     try {
-      const uploadId = await demarrerTeleversement(ecoleId, fichier)
-      setEnvois((l) => [...l, { uploadId, nom, clip: null }])
+      const uploadId = await reessayer(() => demarrerTeleversement(ecoleId, fin.fichier))
+      setEnvois((l) => l.map((e) => (e.cle === cle ? { ...e, uploadId } : e)))
       let clip = null
       const video = await finaliserTeleversement(uploadId, async (id) => {
-        clip = await api.filmerCombat({ upload_id: id, ...corps })
+        clip = await reessayer(() => api.filmerCombat({ upload_id: id, ...corps }))
         return clip.video
       })
-      setEnvois((l) => l.map((e) => (e.uploadId === uploadId ? { ...e, clip } : e)))
+      URL.revokeObjectURL(fin.url)
+      setEnvois((l) => l.map((e) => (e.cle === cle ? { ...e, clip } : e)))
       // Incrusté au serveur : passer à sa version dès qu'elle est prête.
       if (Object.values(overlay).some((v) => v === true) || overlay.music) sansCopieLocale(video.id)
       rafraichir?.()
-    } catch (e) {
-      dire(e.message)
+    } catch {
+      setEnvois((l) => l.filter((e) => e.cle !== cle))
+      setFin(garde.fin)
+      setNoms(garde.noms)
+      setResultat(garde.resultat)
+      setTermine(true)
+      dire('Le serveur ne répond pas : le combat est gardé, touchez Archiver pour réessayer.')
     }
   }
 
@@ -609,7 +630,6 @@ export default function Timer({ ecoleId, rafraichir, me }) {
         <button type="button" className="sc-timer__fermer" aria-label="Quitter le plein écran" onClick={() => setPlein(false)}>
           ✕
         </button>
-        <p className="sc-te__tourner">Tournez le téléphone en paysage.</p>
         <div className="sc-te__gauche">
           {/* Entre les deux noms : un poing levé de chaque côté, « = » pour le match nul. */}
           <div className="sc-te__noms">
@@ -713,7 +733,7 @@ export default function Timer({ ecoleId, rafraichir, me }) {
         {envois.length > 0 && (
           <div className="sc-te__envois">
             {envois.map((e) => (
-              <Envoi key={e.uploadId} envoi={e} me={me} onFini={() => setEnvois((l) => l.filter((x) => x !== e))} />
+              <Envoi key={e.cle} envoi={e} me={me} onFini={() => setEnvois((l) => l.filter((x) => x !== e))} />
             ))}
           </div>
         )}
