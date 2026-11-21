@@ -245,6 +245,8 @@ function ChoixCombattant({ titre, membres, autre, actuel, onChoisir, onFermer })
 }
 
 // Fige le sens de l'écran sur celui du téléphone (oui), ou le libère.
+const INSTALLEE = window.matchMedia('(display-mode: standalone)').matches
+
 function figerSens(oui) {
   const portrait = window.matchMedia('(orientation: portrait)').matches
   if (DANS_L_APPLI) Natif.landscape({ mode: oui ? (portrait ? 'portrait' : 'landscape') : '' }).catch(() => {})
@@ -306,7 +308,9 @@ export default function Timer({ ecoleId, rafraichir, me }) {
   // Archiver ou Jeter, pour que le film ne bascule pas en plein combat.
   useEffect(() => {
     if (!etendu || !plein) return undefined
-    if (!DANS_L_APPLI) Promise.resolve(document.documentElement.requestFullscreen?.()).catch(() => {})
+    // Appli installée sur l'écran d'accueil : déjà sans barre d'adresse, et le
+    // plein écran de Chrome ajoute un bandeau blanc qui cache Démarrer (Seb, 21/11).
+    if (!DANS_L_APPLI && !INSTALLEE) Promise.resolve(document.documentElement.requestFullscreen?.()).catch(() => {})
     return () => {
       figerSens(false)
       if (!DANS_L_APPLI && document.fullscreenElement) document.exitFullscreen().catch(() => {})

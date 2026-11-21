@@ -887,8 +887,10 @@ simple, avec ses modes et ses réglages ; toucher le temps y revient).
   Debout : les noms en haut, les poings et « = » dessous, l'image du film au milieu, le temps, puis la
   cloche et le chronomètre ; Archiver, Partager et Jeter empilés. Le sens est figé du premier coup de
   cloche jusqu'à Archiver ou Jeter, pour que le film ne bascule pas (`TournagePlugin.landscape` avec
-  `mode` « landscape » / « portrait » dans l'appli Android, `screen.orientation.lock` en plein écran
-  dans le navigateur). Vidéo filmée debout : les noms incrustés l'un au-dessus de l'autre, rouge puis
+  `mode` « landscape » / « portrait » dans l'appli Android, `screen.orientation.lock` dans le navigateur).
+  Le plein écran de Chrome n'est demandé que dans un onglet ordinaire : dans l'appli installée sur
+  l'écran d'accueil, il n'y a déjà pas de barre d'adresse et son bandeau blanc « Pour quitter le plein
+  écran… » cachait Démarrer (Seb, 21/11). Vidéo filmée debout : les noms incrustés l'un au-dessus de l'autre, rouge puis
   bleu, le chrono sous les noms à droite (`overlay.py`, `Frames.portrait`).
   (pas de film de travers).
 - **En haut**, les deux noms et, entre eux, le résultat : un **poing levé** pour celui de gauche,
