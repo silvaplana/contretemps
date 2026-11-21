@@ -21,6 +21,7 @@ on:
           - Lire un essai du Labo de Fights
           - Lire une séance de Fights
           - Lire le journal de l'appli
+          - Mesurer la place sur le disque
       ecole:
         description: Numéro de l'école (pour effacer ou installer ; donné par « Lister »)
         required: false
@@ -91,6 +92,8 @@ jobs:
               echo "commande=seance-lire $ESSAI" >> "$GITHUB_OUTPUT" ;;
             "Lire le journal de l'appli")
               echo "commande=journal-appli" >> "$GITHUB_OUTPUT" ;;
+            "Mesurer la place sur le disque")
+              echo "commande=place-mesurer" >> "$GITHUB_OUTPUT" ;;
             *)
               echo "::error::Tâche inconnue."
               exit 1 ;;
