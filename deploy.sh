@@ -153,6 +153,10 @@ docker compose exec -T backend alembic upgrade head
 
 echo "==> Ménage des anciennes images"
 docker image prune -f >/dev/null
+# Le cache de construction grossit à chaque mise en ligne (54 Go le
+# 21/11/2026) : on garde les 10 Go les plus récents, pour que les
+# constructions restent rapides.
+docker builder prune -f --keep-storage 10GB >/dev/null || true
 
 echo "==> Déploiement terminé"
 docker compose ps
