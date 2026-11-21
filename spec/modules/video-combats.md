@@ -851,6 +851,10 @@ navigateur (`Timer.jsx`, aucune donnée au serveur) :
   le bouton principal : nettement plus grosse (176 px contre 104). La cloche bouge comme elle
   sonne : le marteau tape un coup au début de chaque round, trois coups à la fin du round et quand on
   arrête (avec le son des trois coups), au rythme du son (0,2 s par coup) ;
+- **plein écran** (Seb, 21/11) : dès que la cloche démarre le round, le Timer prend tout l'écran, sans
+  le reste de l'appli (temps plus gros, cloche, chronomètre) ; une croix discrète en haut à droite en
+  sort sans arrêter le décompte, toucher le temps y revient ; à l'arrêt ou à la fin, l'écran normal
+  revient seul ;
 - sous les dessins, le volet **Réglages**, fermé, qui montre son résumé (« 3 × 3:00 · repos 1:00 ») :
   durée du round (par 30 s), repos (par 15 s) et nombre de rounds en mode Rounds et repos, case
   « Prévenir 10 s avant la fin (clac clac) », cochée au départ. Caché pendant le décompte ; gardé sur le

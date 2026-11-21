@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Deroulant } from './Labo.jsx'
 import { CHRONO, CLOCHE } from './timerDessins.js'
 import clocheDebut from './sons/cloche-debut-de-round.mp3'
@@ -61,6 +62,9 @@ export default function Timer() {
   // La cloche bouge comme elle sonne (Seb, 21/11) : un coup au début du round,
   // trois à la fin ou quand on arrête. { n: coups, id } relance l'animation.
   const [sonne, setSonne] = useState(null)
+  // Pendant le décompte, le Timer prend tout l'écran, sans le reste de l'appli ;
+  // une croix discrète en haut à droite en sort (Seb, 21/11).
+  const [plein, setPlein] = useState(false)
   const finSonne = useRef(null)
   const sons = useRef({})
   const dit = useRef(new Set()) // sons déjà joués dans cette phase
@@ -146,8 +150,14 @@ export default function Timer() {
   const repos = run?.phase === 'repos'
   const resume = r.mode === 'rounds' ? `${r.nombre} × ${mmss(r.round)} · repos ${mmss(r.repos)}` : mmss(r.round)
 
-  return (
-    <div className="sc-timer">
+  const enPlein = plein && !!run
+  const ecran = (
+    <div className={`sc-timer${enPlein ? ' sc-timer--plein' : ''}`}>
+      {enPlein && (
+        <button type="button" className="sc-timer__fermer" aria-label="Quitter le plein écran" onClick={() => setPlein(false)}>
+          ✕
+        </button>
+      )}
       <div className="sc-timer__modes" role="group" aria-label="Mode">
         {[
           ['un', 'Un round'],
@@ -159,7 +169,8 @@ export default function Timer() {
         ))}
       </div>
 
-      <div className="sc-timer__horloge">
+      {/* Sorti du plein écran pendant le décompte : toucher le temps y revient. */}
+      <div className="sc-timer__horloge" onClick={() => run && setPlein(true)}>
         <div className={`sc-timer__phase${repos ? ' sc-timer__phase--repos' : run ? '' : ' sc-timer__phase--pret'}`}>
           {run ? (repos ? 'Repos' : 'Combat') : 'Prêt'}
         </div>
@@ -188,7 +199,10 @@ export default function Timer() {
           className={`sc-timer__dessin sc-timer__dessin--cloche${sonne ? ' sc-timer__dessin--sonne' : ''}`}
           style={sonne ? { '--coups': sonne.n } : undefined}
           onClick={() => {
-            if (!run) return setRun(phase('round', 1))
+            if (!run) {
+              setPlein(true)
+              return setRun(phase('round', 1))
+            }
             setRun(null)
             sonner(3)
           }}
@@ -221,6 +235,7 @@ export default function Timer() {
       )}
     </div>
   )
+  return enPlein ? createPortal(ecran, document.body) : ecran
 }
 
 function Ligne({ libelle, valeur, moins, plus, min }) {
