@@ -70,6 +70,7 @@ const TEINTES = [0, 28, 200, 265, 150, 330, 45, 180]
 const teinte = (n) => TEINTES[[...n].reduce((a, c) => a + c.charCodeAt(0), 0) % TEINTES.length]
 const initiale = (n) => plat(n)[0]?.toUpperCase() ?? '?'
 const INCONNU = { id: null, name: 'Inconnu' }
+const ALPHABET = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ']
 const MUSIQUES = [
   ['montage', 'Entraînement', '🎺', 45, musiqueMontage],
   ['entree', 'Entrée du combattant', '🥁', 265, musiqueEntree],
@@ -135,7 +136,8 @@ function ChoixCombattant({ titre, membres, autre, actuel, onChoisir, onFermer })
   const habitues = membres.some((m) => m.regular)
   const [lettre, setLettre] = useState(habitues ? '★' : null)
   const [flash, setFlash] = useState(null)
-  const lettres = [...new Set(membres.map((m) => initiale(m.name)))].sort()
+  // Tout l'alphabet sur deux lignes, sans défiler (Seb, 21/11) ; une lettre sans personne est éteinte.
+  const presentes = new Set(membres.map((m) => initiale(m.name)))
   const liste = membres.filter(
     (m) => m.id !== autre?.id && (lettre === '★' ? m.regular : lettre === null || initiale(m.name) === lettre),
   )
@@ -153,7 +155,7 @@ function ChoixCombattant({ titre, membres, autre, actuel, onChoisir, onFermer })
         style={{ '--t': teinte(m.name) }}
         onClick={() => choisir(m)}
       >
-        <span className="sc-te__avatar">{m.id ? m.name.split(' ').map((x) => x[0]).join('') : '?'}</span>
+        <span className="sc-te__avatar">{m.id ? m.name.split(' ').map((x) => x[0]).join('').toUpperCase() : '?'}</span>
         <b>{prenom}</b>
         <small>{m.id ? reste.join(' ') : 'pas du club'}</small>
       </button>
@@ -168,8 +170,14 @@ function ChoixCombattant({ titre, membres, autre, actuel, onChoisir, onFermer })
         </button>
       </div>
       <div className="sc-te__lettres">
-        {(habitues ? ['★', ...lettres] : lettres).map((l) => (
-          <button key={l} type="button" aria-pressed={lettre === l} onClick={() => setLettre(lettre === l ? null : l)}>
+        {(habitues ? ['★', ...ALPHABET] : ALPHABET).map((l) => (
+          <button
+            key={l}
+            type="button"
+            aria-pressed={lettre === l}
+            disabled={l !== '★' && !presentes.has(l)}
+            onClick={() => setLettre(lettre === l ? null : l)}
+          >
             {l}
           </button>
         ))}

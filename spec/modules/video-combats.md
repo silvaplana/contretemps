@@ -908,8 +908,8 @@ simple, avec ses modes et ses réglages ; toucher le temps y revient).
 - Sans « Filmer le combat », les noms et le résultat ne sont qu'à l'écran : rien n'est gardé.
 - **Choix du combattant, sans clavier** (Seb, 21/11 : en paysage le clavier prenait tout l'écran ;
   « pratique, un peu game ») : toucher « … » ouvre, par-dessus le Timer, un écran de sélection comme
-  dans un jeu de combat : « Combattant de gauche » en jaune, une barre de lettres (les initiales des
-  membres ; ★ en tête = les habitués de ce jour de la semaine, ceux qui ont combattu le même jour les
+  dans un jeu de combat : « Combattant de gauche » en jaune, tout l'alphabet sur deux lignes, sans
+  défiler (Seb, 21/11 ; une lettre sans membre est grisée ; ★ en tête = les habitués de ce jour de la semaine, ceux qui ont combattu le même jour les
   8 semaines d'avant, ouvert au départ), puis les combattants en grandes cartes qu'on fait défiler
   (initiales en pastille de couleur, prénom, nom), « Inconnu (pas du club) » en dernier. Toucher une
   carte l'allume et referme l'écran. Route `GET /session-clips/timer/names` (`regular` pour ★).
