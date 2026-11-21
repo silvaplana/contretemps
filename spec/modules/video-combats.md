@@ -940,10 +940,12 @@ simple, avec ses modes et ses réglages ; toucher le temps y revient).
   - « Le chrono » : en haut à droite, les chiffres rouges du Timer, sans fond ; « R1, R2… » (et
     « REPOS ») seulement s'il y a plusieurs rounds. Le téléphone note où commence chaque round et
     repos dans la vidéo (pauses ôtées) ; le serveur refait le décompte.
-  - « Une musique » : choisie en un geste à « Archiver » (« Quelle musique ? », quatre tuiles :
-    Entraînement, Entrée du combattant, Rock de victoire, Sans musique ; ▶ dans le coin pour écouter
-    avant). Trois musiques composées pour Fights, libres de droits (pas de musique protégée, Rocky…) :
-    `/mnt/project-files/appbase/timer-mma/voix/composer-les-musiques.py`. Jouée en boucle sous le son
+  - « Une musique » : choisie en un geste à « Archiver » (« Quelle musique ? », neuf tuiles sur
+    deux lignes : Entraînement, Entrée du combattant, Rock de victoire, Tambours de guerre, Dernier
+    round, Électro, Boom bap, Funk, Sans musique ; ▶ dans le coin pour écouter avant). Huit musiques
+    composées pour Fights, libres de droits (pas de musique protégée, Rocky… : Seb, 21/11) :
+    `/mnt/project-files/appbase/timer-mma/voix/composer-les-musiques.py` et
+    `/mnt/project-files/appbase/timer-mma/musiques-2/composer-2.py`. Jouée en boucle sous le son
     du combat, baissée pendant l'annonce, fondue à la fin.
   Fait par le serveur, une seule compression (jamais deux, Seb 15/10) : la vidéo arrive telle que
   filmée, marquée « déjà compressée » pour que la compression ordinaire la laisse ; le worker de

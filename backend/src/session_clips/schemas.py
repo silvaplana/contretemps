@@ -36,7 +36,7 @@ class OverlayRequest(BaseModel):
     names: bool = False
     winner: bool = False
     chrono: bool = False
-    music: Literal["montage", "entree", "rock"] | None = None
+    music: Literal["montage", "entree", "rock", "tambours", "dernier-round", "electro", "boom-bap", "funk"] | None = None
     announce: bool = False  # George annonce le vainqueur, après le gong
     rounds: int = 1
     phases: list[OverlayPhase] = []

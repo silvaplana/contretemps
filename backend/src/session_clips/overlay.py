@@ -39,7 +39,7 @@ from .models import Clip, ClipSession
 
 ASSETS = Path(__file__).parent / "overlay_assets"
 SOUNDS = Path(__file__).parent / "timer_sounds"
-MUSICS = ("montage", "entree", "rock")
+MUSICS = ("montage", "entree", "rock", "tambours", "dernier-round", "electro", "boom-bap", "funk")
 FPS = 25
 MAX_HEIGHT = 1080  # comme la compression du module Vidéos
 CRF = 28

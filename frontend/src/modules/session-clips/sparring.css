@@ -1336,11 +1336,12 @@
 .sc-te__sous-case {
   padding-left: 34px;
 }
-/* « Quelle musique ? » à « Archiver » (Seb, 21/11) : quatre tuiles, un geste. */
+/* « Quelle musique ? » à « Archiver » (Seb, 21/11) : neuf tuiles sur deux lignes, un geste. */
 .sc-te__musiques {
   grid-row: 2 / -1;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
+  grid-auto-rows: 1fr;
   gap: 2vw;
   padding-bottom: 1vw;
 }
@@ -1366,7 +1367,7 @@
   filter: saturate(0.15);
 }
 .sc-te__musique-icone {
-  font-size: max(36px, 7vw);
+  font-size: max(30px, 4.6vw);
   line-height: 1;
 }
 .sc-te__ecoute {

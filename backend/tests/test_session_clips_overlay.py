@@ -58,3 +58,9 @@ def test_video_incrustee(tmp_path):
     assert ov.seconds(target) == pytest.approx(ov.timeline(DEMANDE, 6.0, None)["total"], abs=0.3)
     # La vignette, prise une fois les noms en place.
     assert ov.thumbnail(target, tmp_path / "vignette.jpg", ov.MOVE_END + 0.4)
+
+
+def test_chaque_musique_a_son_fichier():
+    # Huit musiques au choix (Seb, 21/11) : chacune a son fichier côté serveur.
+    assert len(ov.MUSICS) == 8
+    assert all((ov.SOUNDS / f"musique-{m}.mp3").exists() for m in ov.MUSICS)
