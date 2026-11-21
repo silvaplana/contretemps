@@ -87,9 +87,15 @@ def render_pending(db: Session, videos) -> int:
             ok = render(source, target, clip.overlay, org_id)
         except Exception:  # noqa: BLE001 — jamais bloquer le worker
             ok = False
+        names = bool((clip.overlay or {}).get("names"))
         clip.overlay = None
         if ok:
             video.duree_secondes = round(seconds(target))  # le vainqueur ajoute quelques secondes
+            # La vignette aussi, prise une fois les noms en place (Seb, 21/11 :
+            # la première image n'a encore rien d'incrusté).
+            poster = target.with_suffix(".jpg")
+            if thumbnail(target, poster, MOVE_END + 0.4 if names else 0.5):
+                video.poster = str(Path(video.lien_fichier).with_name(poster.name))
             videos.remplacer_fichier(db, video, target)
             done += 1
         else:
@@ -113,6 +119,17 @@ def seconds(path: Path) -> float:
     if m:
         return int(m[1]) * 3600 + int(m[2]) * 60 + float(m[3])
     return imageio_ffmpeg.count_frames_and_secs(str(path))[1]
+
+
+def thumbnail(video: Path, target: Path, at: float) -> bool:
+    """La vignette de la vidéo incrustée, à l'instant `at`, à la taille de
+    celles du module Vidéos (videos/poster.py)."""
+    out = subprocess.run(
+        [imageio_ffmpeg.get_ffmpeg_exe(), "-y", "-loglevel", "error", "-ss", f"{at:.2f}", "-i", str(video),
+         "-vf", "scale=464:-1", "-frames:v", "1", str(target)],
+        capture_output=True, timeout=30,
+    )
+    return out.returncode == 0 and target.exists()
 
 
 def has_audio(path: Path) -> bool:
@@ -155,9 +172,10 @@ def timeline(overlay: dict, duration: float, name_voice: Path | None) -> dict:
     return plan
 
 
-def chrono_at(overlay: dict, t: float) -> tuple[str, str] | None:
+def chrono_at(overlay: dict, t: float, end: float | None = None) -> tuple[str, str] | None:
     """(étiquette, temps) du chrono à l'instant t de la vidéo, comme le Timer
-    l'affichait : « R2 », « Repos » ou rien en un seul round."""
+    l'affichait : « R2 », « Repos » ou rien en un seul round. Au gong (`end`),
+    il finit à 0:00 (Seb, 21/11 : il s'arrêtait à 0:01)."""
     phases = sorted(overlay.get("phases") or [], key=lambda p: p["t"])
     if not phases:
         return None
@@ -166,6 +184,8 @@ def chrono_at(overlay: dict, t: float) -> tuple[str, str] | None:
         if p["t"] <= t:
             current = p
     left = max(0, math.ceil(current["total"] - max(0.0, t - current["t"]) - 1e-6))
+    if end is not None and t >= end:
+        left = 0
     label = "" if (overlay.get("rounds") or 1) <= 1 else ("REPOS" if current["n"] == 0 else f"R{current['n']}")
     return label, f"{left // 60}:{left % 60:02d}"
 
@@ -427,7 +447,7 @@ class Frames:
             names = round(t * FPS) if t < MOVE_END else "top"
             if self.plan["banner"] is not None and t >= self.plan["banner"] and names == "top":
                 names = "final"
-        clock = chrono_at(self.o, min(t, self.plan["end"] - 1e-3)) if self.o.get("chrono") else None
+        clock = chrono_at(self.o, min(t, self.plan["end"] - 1e-3), self.plan["end"] - 1e-3) if self.o.get("chrono") else None
         band = None
         if self.plan["banner"] is not None and t >= self.plan["banner"]:
             band = min(round((t - self.plan["banner"]) * FPS), round(0.5 * FPS))

@@ -8,6 +8,7 @@ import {
   annulerTeleversement,
   demarrerTeleversement,
   finaliserTeleversement,
+  useCopieLocale,
   useProgressionVideo,
   useTeleversementsTermines,
 } from '../../utils/videoUploads.js'
@@ -237,7 +238,7 @@ export default function Sparring({ ecoleId, cours, appli }) {
               </Deroulant>
             </>
           )}
-          {onglet === 'timer' && <Timer ecoleId={ecoleId} rafraichir={rafraichir} />}
+          {onglet === 'timer' && <Timer ecoleId={ecoleId} rafraichir={rafraichir} me={me} />}
           {onglet === 'mes' && <MesCombats {...contexte} onOpen={(id) => setOuvert({ clipId: id, retour: null })} />}
         </div>
       </div>
@@ -301,7 +302,19 @@ function duree(video) {
   return s ? `${Math.floor(s / 60)} min ${String(s % 60).padStart(2, '0')}` : ''
 }
 
+// Pendant l'envoi depuis ce téléphone : la première image et la progression (Seb, 21/11).
 function Vignette({ video }) {
+  const progression = useProgressionVideo(video?.statut === 'en_cours' ? video.id : null)
+  const copie = useCopieLocale(video ?? {})
+  if (progression && copie) {
+    const pourcentage = progression.octetsTotal ? Math.round((progression.octetsEnvoyes / progression.octetsTotal) * 100) : 0
+    return (
+      <span className="sc-vignette">
+        <video src={copie} muted playsInline preload="metadata" />
+        <i className="sc-vignette__envoi" style={{ width: `${pourcentage}%` }} />
+      </span>
+    )
+  }
   return (
     <span className="sc-vignette">
       {video?.poster ? <img src={video.poster} alt="" /> : <Icon name="video" size={22} />}
@@ -323,7 +336,7 @@ function MesCombats({ me, version, caches, choisis, basculer, onOpen }) {
     api.mesCombats().then(setClips, () => setClips([]))
   }, [version, relire])
   // Un combat en préparation (incrustation, Seb 21/11) : relu toutes les 15 s jusqu'à ce qu'il soit prêt.
-  const prepare = clips?.some((c) => c.preparing)
+  const prepare = clips?.some((c) => c.preparing || c.video?.statut === 'en_cours')
   useEffect(() => {
     if (!prepare) return undefined
     const id = setTimeout(() => setRelire((n) => n + 1), 15000)

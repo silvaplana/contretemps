@@ -280,6 +280,24 @@ def test_incrustation_ratee(client, db_session, e, monkeypatch):
     db_session.refresh(clip)
     db_session.refresh(video)
     assert clip.overlay is None and video.compresse is False
+    # Réussie : la vidéo et sa vignette sont celles incrustées (« -i »).
+    import imageio_ffmpeg
+    import subprocess
+
+    clip.overlay = {"names": True}
+    db_session.commit()
+    source = overlay.DOSSIER_VIDEOS_LIVE / video.lien_fichier
+    source.parent.mkdir(parents=True, exist_ok=True)
+
+    def fabriquer(src, target, *a):
+        subprocess.run([imageio_ffmpeg.get_ffmpeg_exe(), "-y", "-loglevel", "error", "-f", "lavfi", "-i",
+                        "testsrc2=s=320x180:r=25:d=4", str(target)], check=True)
+        return True
+
+    monkeypatch.setattr(overlay, "render", fabriquer)
+    assert overlay.render_pending(db_session, videos_client) == 1
+    db_session.refresh(video)
+    assert video.lien_fichier.endswith("-i.mp4") and video.poster.endswith("-i.jpg") and video.duree_secondes == 4
     # Le diagnostic du serveur montre où en est le combat.
     from app.lire_seance_fights import lister
 
