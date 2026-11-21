@@ -158,12 +158,6 @@ export default function Timer() {
         <div className="sc-timer__round">
           {r.mode === 'rounds' && (run ? `Round ${run.n} sur ${r.nombre}` : `${r.nombre} rounds`)}
         </div>
-        <div className="sc-timer__barre">
-          <i
-            className={repos ? 'sc-timer__barre--repos' : ''}
-            style={{ width: run ? `${100 * (1 - reste / run.total)}%` : 0 }}
-          />
-        </div>
       </div>
 
       {/* Le chronomètre et la cloche restent toujours là (Seb, 21/11) : le

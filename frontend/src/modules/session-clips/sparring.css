@@ -971,22 +971,6 @@
   font-size: 18px;
   color: var(--text-muted);
 }
-.sc-timer__barre {
-  height: 8px;
-  margin: 14px 4px 0;
-  border-radius: 4px;
-  background: var(--border);
-  overflow: hidden;
-}
-.sc-timer__barre i {
-  display: block;
-  height: 100%;
-  background: var(--accent);
-  transition: width 0.25s linear;
-}
-.sc-timer__barre i.sc-timer__barre--repos {
-  background: var(--sc-bleu);
-}
 /* Pause et Arrêter en dessins (Seb, 21/11) : le chronomètre et la cloche. */
 .sc-timer__dessins {
   display: flex;
