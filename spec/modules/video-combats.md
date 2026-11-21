@@ -839,9 +839,13 @@ https://claude.ai/artifact/2U8ASb7oeDcgbib9vwkyza). Un minuteur de salle façon 
 navigateur (`Timer.jsx`, aucune donnée au serveur) :
 - deux modes en haut : **Un round** (il démarre, puis s'arrête à la fin) et **Rounds et repos** (les
   rounds s'enchaînent avec un repos entre eux) ;
-- le chrono en gros (« Combat », « Repos » en bleu, rouge les 10 dernières secondes), « Round 2 sur 3 »,
-  une barre ;
-- un seul bouton principal, **Démarrer**, puis Pause / Reprendre, et « Arrêter » en dessous ;
+- le chrono en gros, en chiffres rouges à sept segments comme une horloge de salle (Seb, 21/11 ; ils
+  clignotent les 10 dernières secondes du round), « Combat » ou « Repos » en bleu au-dessus, « Round 2
+  sur 3 », une barre ;
+- un seul bouton principal, **Démarrer** ; pendant le décompte, deux dessins côte à côte avec leur mot
+  dessous (Seb, 21/11, maquette https://claude.ai/artifact/3L9dnVxxWC1UKoNioRpX9V) : le chronomètre de
+  l'arbitre pour **Pause** (il montre ▶ et « Reprendre » en pause) et la cloche du ring vue de face pour
+  **Arrêter** (le Timer s'arrête tout de suite, le marteau tape trois coups pendant 1,5 s, sans son) ;
 - sous le bouton, le volet **Réglages**, fermé, qui montre son résumé (« 3 × 3:00 · repos 1:00 ») :
   durée du round (par 30 s), repos (par 15 s) et nombre de rounds en mode Rounds et repos, case
   « Prévenir 10 s avant la fin (clac clac) », cochée au départ. Caché pendant le décompte ; gardé sur le

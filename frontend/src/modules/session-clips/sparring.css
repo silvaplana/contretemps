@@ -939,14 +939,31 @@
   color: var(--text-muted);
 }
 .sc-timer__temps {
-  margin-top: 6px;
-  font-size: clamp(72px, 26vw, 120px);
-  font-weight: 700;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
+  display: flex;
+  justify-content: center;
+  gap: clamp(6px, 2vw, 10px);
+  margin-top: 10px;
+  transform: skewX(-5deg);
+  fill: var(--sc-rouge-digits, #ff2d20);
+  filter: drop-shadow(0 0 8px rgba(255, 45, 32, 0.55));
 }
+.sc-timer__temps svg {
+  height: clamp(84px, 30vw, 132px);
+}
+.sc-timer__temps .sc-timer__eteint {
+  opacity: 0.09;
+}
+/* Les 10 dernières secondes du round : les chiffres clignotent. */
 .sc-timer__temps--fin {
-  color: var(--sc-rouge);
+  animation: sc-clignote 1s steps(1) infinite;
+}
+@keyframes sc-clignote {
+  50% { opacity: 0.45; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sc-timer__temps--fin {
+    animation: none;
+  }
 }
 .sc-timer__round {
   min-height: 24px;
@@ -974,14 +991,91 @@
   min-height: 64px;
   font-size: 22px;
 }
-.sc-timer__stop {
-  min-height: 48px;
+/* Pause et Arrêter en dessins (Seb, 21/11) : le chronomètre et la cloche. */
+.sc-timer__dessins {
+  display: flex;
+  justify-content: center;
+  gap: 36px;
+}
+.sc-timer__dessin {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
   border: 0;
   background: none;
-  color: var(--text-muted);
+  color: var(--text);
   font: inherit;
-  font-size: 17px;
-  text-decoration: underline;
+  font-size: 18px;
+  font-weight: 600;
+}
+.sc-timer__dessin:disabled {
+  color: var(--text);
+}
+.sc-timer__dessin svg {
+  display: block;
+  width: 132px;
+  height: 132px;
+  overflow: visible;
+  transition: transform 0.08s;
+}
+.sc-timer__dessin:active svg {
+  transform: translateY(3px) scale(0.97);
+}
+.sc-timer__lecture-signe,
+.sc-timer__dessin--reprendre .sc-timer__pause-signe {
+  display: none;
+}
+.sc-timer__dessin--reprendre .sc-timer__lecture-signe {
+  display: inline;
+}
+.sc-timer__marteau {
+  transform-box: view-box;
+  transform-origin: 178px 186px;
+  transform: rotate(15deg);
+}
+.sc-timer__dome {
+  transform-box: view-box;
+  transform-origin: 100px 100px;
+}
+.sc-timer__onde {
+  opacity: 0;
+}
+.sc-timer__dessin--sonne .sc-timer__marteau {
+  animation: sc-frappe 1.5s cubic-bezier(0.3, 0, 0.4, 1) both;
+}
+.sc-timer__dessin--sonne .sc-timer__dome {
+  animation: sc-vibre 1.5s linear both;
+}
+.sc-timer__dessin--sonne .sc-timer__onde {
+  animation: sc-onde 1.5s ease-out both;
+}
+.sc-timer__dessin--sonne .sc-timer__onde--2 {
+  animation-delay: 0.07s;
+}
+@keyframes sc-frappe {
+  0%, 33%, 66%, 100% { transform: rotate(15deg); }
+  9%, 42%, 75% { transform: rotate(-1deg); }
+  20%, 53%, 88% { transform: rotate(13deg); }
+}
+@keyframes sc-vibre {
+  0%, 8%, 24%, 33%, 41%, 57%, 66%, 74%, 90%, 100% { transform: translateX(0); }
+  10%, 43%, 76% { transform: translateX(-2.2px); }
+  13%, 46%, 79% { transform: translateX(1.6px); }
+  16%, 49%, 82% { transform: translateX(-1px); }
+  19%, 52%, 85% { transform: translateX(0.5px); }
+}
+@keyframes sc-onde {
+  0%, 8%, 30%, 33%, 41%, 63%, 66%, 74%, 100% { opacity: 0; }
+  11%, 44%, 77% { opacity: 0.9; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sc-timer__dessin--sonne .sc-timer__marteau,
+  .sc-timer__dessin--sonne .sc-timer__dome,
+  .sc-timer__dessin--sonne .sc-timer__onde {
+    animation: none;
+  }
 }
 .sc-timer__resume {
   margin-left: auto;
