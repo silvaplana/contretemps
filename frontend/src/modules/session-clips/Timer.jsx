@@ -115,10 +115,10 @@ function Envoi({ envoi, me, onFini }) {
       ? `Envoi ${pourcent} %`
     : !pret
       ? 'En préparation…'
-      : clip.to_check
-        ? 'Prêt : à vérifier dans Tournage'
-        : moi
-          ? 'Prêt dans Combats'
+      : moi
+        ? 'Prêt dans Combats'
+        : clip.to_check
+          ? 'Prêt : à vérifier dans Tournage'
           : 'Prêt dans Tournage, séance du jour'
   return (
     <div className="sc-te__envoi" role="status">

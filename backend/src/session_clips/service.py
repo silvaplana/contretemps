@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.orm import Session
 
 from saisons.portee import toutes_saisons
@@ -31,6 +31,12 @@ class ForbiddenError(Exception):
 
 OUTSIDER = "outsider"  # quelqu'un qui n'est pas du club (Seb, 17/11)
 OUTSIDER_NAME = "Inconnu"
+
+
+def _shown_to_fighters(clip: Clip) -> bool:
+    """Un combattant nommé voit le combat même si l'autre nom attend un coach
+    (Seb, 21/11) ; pas un clip découpé douteux (`check_reason`)."""
+    return not clip.to_check or clip.check_reason is None
 
 class SessionClips:
     def __init__(self, videos: Videos, directory: Directory, notifier: Notifier | None = None) -> None:
@@ -171,14 +177,14 @@ class SessionClips:
         if clip is None or db.get(ClipSession, clip.session_id).org_id != member.org_id:
             raise NotFoundError("Clip introuvable")
         if not member.is_coach and (
-            clip.to_check or member.person_id not in self.participants(db, [clip.id])[clip.id]
+            not _shown_to_fighters(clip) or member.person_id not in self.participants(db, [clip.id])[clip.id]
         ):
             raise NotFoundError("Clip introuvable")
         return clip
 
     def my_clips(self, db: Session, member: Member) -> list[Clip]:
-        """« Mes combats » : les clips validés où la personne apparaît, du
-        plus récent au plus ancien."""
+        """« Mes combats » : les clips où la personne apparaît, du plus récent
+        au plus ancien ; aussi ceux où seul l'autre nom manque (Seb, 21/11)."""
         return list(
             db.scalars(
                 select(Clip)
@@ -187,7 +193,7 @@ class SessionClips:
                 .where(
                     ClipSession.org_id == member.org_id,
                     ClipParticipant.person_id == member.person_id,
-                    Clip.to_check.is_(False),
+                    or_(Clip.to_check.is_(False), Clip.check_reason.is_(None)),
                 )
                 .order_by(ClipSession.held_on.desc(), ClipSession.id.desc(), Clip.position)
             )
@@ -205,7 +211,7 @@ class SessionClips:
 
     def mark_viewed(self, db: Session, member: Member, clip: Clip) -> None:
         """La personne ouvre un de ses combats validés : il n'est plus nouveau."""
-        if clip.to_check or member.person_id not in self.participants(db, [clip.id])[clip.id]:
+        if not _shown_to_fighters(clip) or member.person_id not in self.participants(db, [clip.id])[clip.id]:
             return
         if db.get(Viewed, (member.person_id, clip.id)) is None:
             db.add(Viewed(person_id=member.person_id, clip_id=clip.id))
