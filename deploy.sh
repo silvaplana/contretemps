@@ -100,8 +100,20 @@ if [ -n "${SSH_ORIGINAL_COMMAND:-}" ]; then
       echo "==> Journal de l'appli (rien n'est écrit)"
       docker compose exec -T backend python -m app.journal_appli
       ;;
+    place-mesurer)
+      # Ce qui prend la place sur le disque (Seb, 21/11/2026). N'efface rien.
+      echo "==> Disque"
+      df -h /
+      echo "==> Docker (images, conteneurs, volumes, cache de construction)"
+      docker system df
+      echo "==> Dossiers de $HOME"
+      du -sh "$HOME"/* "$HOME"/.[!.]* 2>/dev/null | sort -h | tail -15 || true
+      echo "==> Journaux du système"
+      du -sh /var/log 2>/dev/null || true
+      journalctl --disk-usage 2>/dev/null || true
+      ;;
     *)
-      echo "Tâche inconnue : « $tache ». Tâches possibles : notes-frais-lister, notes-frais-vider, plan-comptable-contretemps, labo-lire, seance-lire, journal-appli." >&2
+      echo "Tâche inconnue : « $tache ». Tâches possibles : notes-frais-lister, notes-frais-vider, plan-comptable-contretemps, labo-lire, seance-lire, journal-appli, place-mesurer." >&2
       exit 2
       ;;
   esac
