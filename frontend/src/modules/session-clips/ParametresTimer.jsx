@@ -9,6 +9,8 @@ const CASES = [
   ['noms', 'Nommer les combattants', 'Deux noms à taper, avant ou pendant le combat.'],
   ['vainqueur', 'Déclarer le vainqueur', 'On touche le poing levé de celui qui a gagné, ou « = » pour un match nul.'],
 ]
+// Sous « Déclarer le vainqueur », qu'elle suppose (Seb, 21/11).
+const ANNONCE = ['annonce', 'Annoncer le vainqueur', 'Au poing levé, un speaker annonce : « And the winner, by unanimous decision, is… » et le nom ; au « = » : « It’s a draw! ».']
 
 export default function ParametresTimer({ onBack }) {
   const [r, setR] = useState(lire)
@@ -27,9 +29,14 @@ export default function ParametresTimer({ onBack }) {
       </div>
       <div className="sc__corps">
         <p className="sc-te__aide">Sans rien cocher, le Timer reste simple : le temps, la cloche et le chronomètre.</p>
-        {CASES.map(([cle, libelle, aide]) => (
-          <label key={cle} className="sc-coche">
-            <input type="checkbox" checked={r[cle]} onChange={(ev) => cocher(cle, ev.target.checked)} />
+        {[...CASES, ANNONCE].map(([cle, libelle, aide]) => (
+          <label key={cle} className={`sc-coche${cle === 'annonce' ? ' sc-te__sous-case' : ''}`}>
+            <input
+              type="checkbox"
+              checked={r[cle] && (cle !== 'annonce' || r.vainqueur)}
+              disabled={cle === 'annonce' && !r.vainqueur}
+              onChange={(ev) => cocher(cle, ev.target.checked)}
+            />
             <span>
               {libelle}
               <small>{aide}</small>

@@ -38,3 +38,7 @@ class Directory(Protocol):
 
     def names(self, db: Session, org_id: int, person_ids: set[int]) -> dict[int, str]:
         """Le nom de chaque personne, même partie depuis."""
+
+    def full_name(self, db: Session, org_id: int, person_id: int) -> str | None:
+        """Prénom et nom en entier, pour l'annonce du vainqueur ; rien si la
+        personne n'est pas de l'organisation."""

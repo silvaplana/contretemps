@@ -1202,13 +1202,10 @@
   gap: 1vw;
 }
 .sc-te__champ {
-  position: relative;
   min-width: 0;
-}
-.sc-te__champ input {
-  width: 100%;
   height: max(48px, 7.4vw);
   padding: 0 1vw;
+  overflow: hidden;
   border: 1px solid var(--border);
   border-radius: 1.6vw;
   background: var(--surface);
@@ -1216,41 +1213,130 @@
   font: inherit;
   font-size: max(17px, 2.8vw);
   font-weight: 700;
-  text-align: center;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
-.sc-te__champ input::placeholder {
+.sc-te__champ--vide {
   color: var(--text-muted);
   font-weight: 900;
   letter-spacing: 0.3em;
 }
-.sc-te__propositions {
+/* Le choix du combattant, comme l'écran de sélection d'un jeu de combat. */
+.sc-te__select {
   position: absolute;
-  z-index: 3;
-  top: calc(max(48px, 7.4vw) + 0.6vw);
-  left: 0;
-  right: 0;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  gap: 1.6vw;
+  padding: 1.6vw max(2.5vw, env(safe-area-inset-right, 0px)) 2vw max(2.5vw, env(safe-area-inset-left, 0px));
+  background: radial-gradient(ellipse at 50% 120%, #3a2a08 0%, #16181d 60%);
+  color: #f2f2f2;
+}
+.sc-te__select-tete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.sc-te__select-tete b {
+  color: #f5e94a;
+  font-size: max(19px, 3vw);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-shadow: 0 0 1.5vw rgba(245, 233, 74, 0.5);
+}
+.sc-te__select-fermer {
+  width: 48px;
+  height: 48px;
+  border: 0;
+  background: none;
+  color: #9a9ea8;
+  font-size: 22px;
+}
+.sc-te__lettres {
+  display: flex;
+  gap: 0.8vw;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.sc-te__lettres button {
+  flex: none;
+  min-width: max(48px, 7vw);
+  height: max(48px, 7vw);
+  border: 1px solid #2c3038;
+  border-radius: 1.4vw;
+  background: #1f2228;
+  color: #f2f2f2;
+  font: inherit;
+  font-size: max(20px, 3.2vw);
+  font-weight: 900;
+}
+.sc-te__lettres button[aria-pressed='true'] {
+  border-color: #f5e94a;
+  background: #f5e94a;
+  color: #15161a;
+}
+.sc-te__cartes {
+  display: flex;
+  align-items: stretch;
+  gap: 1.6vw;
+  margin: -1.2vw;
+  padding: 1.2vw;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+}
+.sc-te__carte {
+  flex: none;
   display: flex;
   flex-direction: column;
+  align-items: center;
+  justify-content: center;
   gap: 0.6vw;
-  padding: 0.8vw;
-  border: 1px solid var(--border);
-  border-radius: 1.6vw;
-  background: var(--surface);
-  box-shadow: 0 1vw 3vw rgba(0, 0, 0, 0.6);
-}
-.sc-te__propositions button {
-  min-height: max(48px, 6.6vw);
-  border: 0;
-  border-radius: 1.2vw;
-  background: var(--bg);
-  color: var(--text);
+  width: max(96px, 17vw);
+  scroll-snap-align: start;
+  border: 2px solid hsl(var(--t, 0) 60% 45% / 0.6);
+  border-radius: 2vw;
+  background: linear-gradient(160deg, hsl(var(--t, 0) 55% 30%), #1b1d23 70%);
+  color: #f2f2f2;
   font: inherit;
-  font-size: max(17px, 2.6vw);
-  font-weight: 700;
+  transition: transform 0.15s, box-shadow 0.15s;
 }
-/* La première proposition est celle que la touche Entrée valide. */
-.sc-te__propositions button:first-child {
-  outline: 2px solid var(--accent);
+.sc-te__carte b {
+  font-size: max(17px, 3vw);
+}
+.sc-te__carte small {
+  min-height: 1.2em;
+  color: #9a9ea8;
+  font-size: max(14px, 2.2vw);
+}
+.sc-te__avatar {
+  display: grid;
+  place-items: center;
+  width: max(52px, 10vw);
+  height: max(52px, 10vw);
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, hsl(var(--t, 0) 70% 70%), hsl(var(--t, 0) 60% 35%));
+  box-shadow: 0 0.6vw 1.6vw rgba(0, 0, 0, 0.5), inset 0 -0.4vw 0.8vw rgba(0, 0, 0, 0.3);
+  font-size: max(20px, 3.6vw);
+  font-weight: 900;
+}
+.sc-te__carte--prise {
+  border-color: #f5e94a;
+}
+.sc-te__carte--flash {
+  border-color: #f5e94a;
+  box-shadow: 0 0 3vw rgba(245, 233, 74, 0.8);
+  transform: scale(1.08);
+}
+.sc-te__carte--inconnu {
+  --t: 220;
+  filter: saturate(0.2);
+}
+.sc-te__sous-case {
+  padding-left: 34px;
+}
+.sc-te__sous-case:has(input:disabled) {
+  opacity: 0.5;
 }
 /* Poings levés et « = » : gris tant que rien n'est déclaré. */
 .sc-te__poing,
@@ -1510,7 +1596,8 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .sc-te__poing--appel,
-  .sc-te__mini--filme b::before {
+  .sc-te__mini--filme b::before,
+  .sc-te__carte {
     animation: none;
   }
 }

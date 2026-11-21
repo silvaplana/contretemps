@@ -59,6 +59,14 @@ export const nommer = async (id, people) => clip(await appel(`/clips/${id}/parti
 export const valider = async (id) => clip(await appel(`/clips/${id}/validate`, { method: 'POST' }))
 export const supprimer = (id) => appel(`/clips/${id}`, { method: 'DELETE' })
 export const membres = () => appel('/people')
+// Timer étendu (Seb, 21/11) : les membres, ★ habitués de ce jour de la semaine d'abord.
+export const nomsTimer = () => appel('/timer/names')
+// Le nom d'un membre dit par George, pour annoncer le vainqueur : l'adresse du son.
+export async function annonceNom(id) {
+  const reponse = await fetch(`${BASE}/timer/announce/${id}`)
+  if (!reponse.ok) throw new Error('Voix indisponible')
+  return URL.createObjectURL(await reponse.blob())
+}
 // Choisir un nom : tous les membres, les habitués du jour en tête (Seb, 17/11).
 export const nomsSeance = (id) => appel(`/sessions/${id}/names`)
 // La caméra de la salle (étape 3).

@@ -48,6 +48,10 @@ dependencies = [
     # médicaux, et QR codes du mail de confirmation.
     "pillow-heif",
     "segno",
+    # Fights, Timer étendu : le nom du vainqueur dit par une voix d'annonceur
+    # (session_clips/announcer.py), hors ligne ; modèle téléchargé à la
+    # première annonce dans KOKORO_DIR.
+    "kokoro-onnx",
     "cairosvg",
     "rembg[cpu]",
     # Les 2 PDF d'inscription (dossier + facture, voir

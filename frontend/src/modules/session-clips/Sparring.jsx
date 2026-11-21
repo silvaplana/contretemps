@@ -307,9 +307,11 @@ function Vignette({ video }) {
   )
 }
 
+// « Seb R. vs Karim B. » : soi-même d'abord, puis l'adversaire (Seb, 21/11).
 function adversaires(c, me) {
-  const autres = c.participants.filter((p) => p.person_id !== me.person_id).map((p) => p.name ?? '?')
-  return autres.length ? `vs ${autres.join(', ')}` : c.title
+  const moi = c.participants.find((p) => p.person_id === me.person_id)
+  const autres = c.participants.filter((p) => p !== moi).map((p) => p.name ?? '?')
+  return moi && autres.length ? `${moi.name} vs ${autres.join(', ')}` : c.title
 }
 
 function MesCombats({ me, version, caches, choisis, basculer, onOpen }) {

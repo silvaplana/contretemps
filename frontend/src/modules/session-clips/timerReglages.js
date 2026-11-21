@@ -1,7 +1,7 @@
 // Les réglages du Timer, gardés sur l'appareil. Timer étendu (Seb, 21/11) :
 // dès qu'une des trois cases de Fights › ⋮ › Paramètres du Timer est cochée.
 const REGLAGES = 'sc-timer'
-const DEPART = { mode: 'un', round: 180, repos: 60, nombre: 3, prevenir: true, film: false, noms: false, vainqueur: false }
+const DEPART = { mode: 'un', round: 180, repos: 60, nombre: 3, prevenir: true, film: false, noms: false, vainqueur: false, annonce: false }
 
 export function lire() {
   try {
