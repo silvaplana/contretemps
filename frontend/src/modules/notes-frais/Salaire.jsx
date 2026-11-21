@@ -100,7 +100,7 @@ export default function SalaireModal({ note, onClose, onFait }) {
   )
 
   return (
-    <Modal title={note ? 'Bulletin de salaire' : 'Nouveau bulletin de salaire'} onClose={onClose} footer={footer}>
+    <Modal title={note ? 'Paie' : 'Nouvelle paie'} onClose={onClose} footer={footer}>
       {note && (
         <div className="nf-entete-note">
           <span>{note.fournisseur || 'Salarié ?'}</span>
@@ -165,7 +165,7 @@ export default function SalaireModal({ note, onClose, onFait }) {
       )}
       {debits && (
         <ChoixTransactionModal
-          piece={{ qui: qui || 'Salaire', nature: 'Bulletin de salaire', nature_code: 'salaire', date: jour, montant_centimes: net }}
+          piece={{ qui: qui || 'Salaire', nature: 'Paie', nature_code: 'salaire', date: jour, montant_centimes: net }}
           transactions={debits}
           onClose={() => setDebits(null)}
           onChoisie={(t) => {
