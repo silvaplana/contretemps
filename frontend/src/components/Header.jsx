@@ -1,6 +1,8 @@
 import { useRef, useState } from 'react'
+import { fondSombre, useApparence } from '../api/apparence.js'
 import * as installation from '../api/installation.js'
-import { ROLE_LABEL, estMonteeEnPrivilege, trierParRole } from '../data/roles.js'
+import { basculerEssai, essaiAllume } from '../api/styleEssai.js'
+import { ROLE_LABEL, estMonteeEnPrivilege, isSuperuser, trierParRole } from '../data/roles.js'
 import { useFermerAuClicExterieur } from '../hooks/useFermerAuClicExterieur.js'
 import { ID_ACTIONS_ENTETE, ID_TITRE_ENTETE } from './ActionsEntete.jsx'
 import CodeConfirmModal from './CodeConfirmModal.jsx'
@@ -58,6 +60,9 @@ export default function Header({
   // iPhone, Safari Mac, Firefox... : pas d'installation en un appui, la
   // ligne du menu ouvre l'explication du geste.
   const [instructionsInstallation, setInstructionsInstallation] = useState(false)
+  // Essai du nouveau style (api/styleEssai.js) : Super User, fond sombre.
+  const sombre = fondSombre(useApparence())
+  const [essai, setEssai] = useState(essaiAllume)
 
   // Referme le menu ouvert dès qu'on touche ailleurs sur l'écran — sinon
   // il restait ouvert indéfiniment (vécu sur Présence et Messagerie).
@@ -178,6 +183,18 @@ export default function Header({
                   <button type="button" className="is-active" disabled>
                     <span className="avatar avatar--sm">{user.initiales}</span>
                     {user.prenom} {user.nom}
+                  </button>
+                )}
+                {isSuperuser(user) && sombre && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      basculerEssai(sombre)
+                      setEssai(essaiAllume())
+                      setFamilleOpen(false)
+                    }}
+                  >
+                    <Icon name="star" size={18} /> {essai ? 'Revenir au style actuel' : 'Essayer le nouveau style'}
                   </button>
                 )}
                 <button

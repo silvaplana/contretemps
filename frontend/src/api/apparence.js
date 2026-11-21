@@ -5,6 +5,7 @@
 // et lue par Logo.jsx et LoginScreen.jsx.
 
 import { useSyncExternalStore } from 'react'
+import { appliquerEssai } from './styleEssai.js'
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
@@ -178,7 +179,11 @@ export function appliquer(apparence) {
   // Titres : leur police, sinon celle des textes (voir index.css : --titres).
   const titres = POLICES.find((p) => p.cle === (apparence.policeTitres ?? '') && p.cle !== '')
   racine.setProperty('--titres', (titres ?? police ?? POLICES[0]).famille)
+  appliquerEssai(sombre)
 }
+
+// Fond sombre : là seulement l'essai du nouveau style est proposé.
+export const fondSombre = (apparence) => !clair(apparence.couleurFond)
 
 // La dernière apparence d'école reçue, gardée sur l'appareil : affichée dès
 // l'ouverture, avant la réponse du serveur, pour ne plus voir le logo de
