@@ -26,7 +26,7 @@ from saisons.portee import toutes_saisons
 from session_clips import lab, people
 from session_clips.cutting import _heard, _load_frames, _poses_path, sounds_path
 from session_clips.fights import find_fights, find_signs, trim
-from session_clips.models import Clip, ClipSession, Piece
+from session_clips.models import Clip, ClipParticipant, ClipSession, Piece
 from session_clips.signals import (
     L_HIP,
     L_SHOULDER,
@@ -52,7 +52,41 @@ def _pieces(db, session_id: int) -> list[Piece]:
     return list(db.scalars(select(Piece).where(Piece.session_id == session_id).order_by(Piece.position)))
 
 
+def _qui(db, compte_id: int) -> str:
+    """« compte 12 = personne 7 (Sébastien R.) » : la personne de Fights derrière un compte."""
+    from comptes import Compte
+    from documents_contretemps.adapter import personne_id
+    from saisons.portee import toutes_saisons
+
+    with toutes_saisons(db):
+        compte = db.get(Compte, compte_id)
+        return f"compte {compte_id} = personne {personne_id(db, compte)} ({compte.prenom} {compte.nom[:1]}.)" if compte else f"compte {compte_id}"
+
+
+def _place(out) -> None:
+    """La place sur le disque (Seb, 21/11 : peur de remplir le serveur) : libre, et
+    prise par chaque dossier de `VIDEOS_DIR` (pieces = rushes des séances…)."""
+    import shutil
+
+    from videos.stockage import DOSSIER_VIDEOS_LIVE as racine
+
+    if not racine.exists():
+        return
+    go = 1024**3
+    d = shutil.disk_usage(racine)
+    out(f"disque : {d.free / go:.1f} Go libres sur {d.total / go:.1f} Go")
+    tailles: dict[str, int] = {}
+    for f in racine.rglob("*"):
+        if f.is_file():
+            parts = f.relative_to(racine).parts
+            cle = "/".join(parts[1:2] if len(parts) > 2 else parts[:1])
+            tailles[cle] = tailles.get(cle, 0) + f.stat().st_size
+    for cle, n in sorted(tailles.items(), key=lambda kv: -kv[1])[:12]:
+        out(f"   {cle} : {n / go:.2f} Go")
+
+
 def lister(db, out=print) -> None:
+    _place(out)
     for x in db.scalars(select(ClipSession).order_by(ClipSession.id.desc()).limit(10)):
         pieces = _pieces(db, x.id)
         filmed = sum(p.duration_seconds or 0 for p in pieces)
@@ -77,7 +111,23 @@ def lister(db, out=print) -> None:
             f" · fichier {video.lien_fichier if video else '-'} ({size} octets)"
             f" · à incruster : {demande or 'non'}"
             + (" · incrustée" if video and video.lien_fichier.endswith("-i.mp4") else "")
+            # Qui est dedans, et qui l'a filmé : « Combats » ne montre que les
+            # combats validés où l'on est nommé (Seb, 21/11).
+            + f" · position {c.position} · à vérifier={c.to_check}"
+            + f" · combattants {[p.person_id for p in db.scalars(select(ClipParticipant).where(ClipParticipant.clip_id == c.id))]}"
+            + f" · filmé par {_qui(db, video.uploaded_by) if video else '-'}"
         )
+    # Deux fiches au même nom dans le choix du Timer (Seb, 21/11 : ses combats
+    # n'arrivaient pas dans Combats) : un doublon à fusionner.
+    from collections import Counter
+
+    from session_clips_contretemps.adapter import AnnuaireSparring
+
+    for org in sorted({x.org_id for x in db.scalars(select(ClipSession).order_by(ClipSession.id.desc()).limit(3))}):
+        gens = AnnuaireSparring().people(db, org)
+        compte = Counter(p.name for p in gens)
+        doubles = [f"{p.name} = personne {p.id}" for p in gens if compte[p.name] > 1]
+        out(f"école {org} · noms en double dans le Timer : {', '.join(doubles) or 'aucun'}")
     # Entraîner l'écoute (Seb, 14/11) : ce qui est gardé, école par école.
     for school in sorted(DOSSIER_VIDEOS_LIVE.glob("*")):
         voice, tests = school / "voice", school / "voice-tests"
