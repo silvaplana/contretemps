@@ -97,6 +97,11 @@ ouverture sans réseau (téléphone qui se réveille, mise en ligne en cours) ef
 - Retour dans l'appli après plus de 30 s, ou réseau revenu : tout est relu, comme à l'ouverture.
 - La session mémorisée n'est effacée que sur un refus du serveur (401, 403, 404), jamais sur une
   panne ou une absence de réponse.
+- **Mise en ligne en cours** (Seb, 21/11/2026) : une demande sans réponse ou en erreur serveur fait
+  vérifier `/health` ; s'il ne répond pas non plus, un bandeau en haut dit « Mise à jour en cours, ça
+  revient dans une minute » (au lieu d'écrans vides), `/health` est relu toutes les 3 s, et au retour
+  l'appli se recharge seule (sans recharger si une saisie est en cours : les listes sont relues).
+  Téléphone hors réseau : pas de bandeau.
 - **Journal de l'appli** : chaque demande sans réponse, en erreur serveur (5xx) ou refusée (401),
   et une liste de 0 élève reçue, sont notées sur le téléphone (50 au plus), puis envoyées au serveur
   dès qu'une demande repasse (`POST /journal/appli`, fichier `journal-appli.log` à côté de la
