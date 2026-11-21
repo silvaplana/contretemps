@@ -25,7 +25,9 @@ from .models import AutoImportRule, AutoImportSeen
 logger = logging.getLogger(__name__)
 PARIS = ZoneInfo("Europe/Paris")
 ACCEPTES = {"image/jpeg", "image/png", "image/webp", "image/gif", "image/heic", "image/heif", "application/pdf"}
-NATURES = {"achat": "achat", "frais": "frais", "honoraires": "honoraires", "vente": "vente"}
+NATURES = {"achat": "achat", "frais": "frais", "honoraires": "honoraires", "vente": "vente", "salaire": "salaire"}
+# Sources dossier (Seb, 21/11) : le fichier reste où il est, renommé au nom de Pièces ; pas de copie.
+FOLDER_SOURCES = ("docs", "drive")
 MAX_PAR_PASSAGE = 50  # le reste au passage suivant (lecture des pièces payante)
 
 
@@ -140,10 +142,38 @@ class AutoImport:
 
     @staticmethod
     def _docs_member(rule: AutoImportRule):
+        return AutoImport._member(rule.organization_id, rule.created_by or 0)
+
+    @staticmethod
+    def _member(org_id: int, person_id: int):
         from documents.ports import Member
 
-        return Member(person_id=rule.created_by or 0, org_id=rule.organization_id, display_name="Importation automatique de pièces",
+        return Member(person_id=person_id, org_id=org_id, display_name="Importation automatique de pièces",
                       is_admin=True, groups=frozenset({"role:admin", "role:tresorier"}), writes_closed_periods=True)
+
+    def rename(self, db: Session, org_id: int, link: dict, name: str) -> dict | None:
+        """Renomme sur place le fichier d'une pièce reliée (port `renommer` de
+        Pièces) : Docs ou drive, « nom (2) » si le nom est pris ; le nouveau
+        lien et `name`, None si le fichier n'est plus là."""
+        if link.get("doc_node_id"):
+            from documents.models import DocNode
+            from drives.providers import free_name
+
+            node = db.get(DocNode, link["doc_node_id"])
+            if node is None or node.org_id != org_id or node.deleted_at is not None:
+                return None
+            taken = set(db.scalars(select(DocNode.name).where(
+                DocNode.org_id == org_id, DocNode.space == node.space, DocNode.parent_id == node.parent_id,
+                DocNode.owner_person_id == node.owner_person_id, DocNode.deleted_at.is_(None), DocNode.id != node.id,
+            )))
+            name = free_name(name, taken)
+            if name != node.name:
+                self.documents.update(db, self._member(org_id, node.owner_person_id or node.created_by or 0), node.id, name=name)
+            return {"doc_node_id": node.id, "name": name}
+        if link.get("drive_id") and link.get("drive_path") and self.drives is not None:
+            path = self.drives.call(db, org_id, link["drive_id"], lambda c: c.rename(link["drive_path"], name))
+            return {"drive_id": link["drive_id"], "drive_path": path, "name": path.rpartition("/")[2]}
+        return None
 
     # --- Sources ----------------------------------------------------------
 
@@ -295,7 +325,8 @@ class AutoImport:
                 hashes.add(sha)
                 created += 1
                 continue
-            link = self._deposit(db, rule, f, content)
+            folder = rule.source_kind in FOLDER_SOURCES
+            link = f.link if folder else self._deposit(db, rule, f, content)
             note = self.notes.etablir(
                 db, self._membre(rule), nature=f.nature or NATURES.get(rule.nature) or "achat",
                 fichier=(content, f.name, mime), jour=f.day, lien=link,
@@ -303,6 +334,12 @@ class AutoImport:
             self._seen(db, rule, f.key, sha, getattr(note, "id", None))
             hashes.add(sha)
             created += 1
+            if folder and hasattr(note, "depenses"):
+                # Renommé sur place : le nouveau nom montre que le fichier est traité (Seb, 21/11).
+                self.notes.renommer_sur_place(db, note)
+                moved = next((p.drive_path for d in note.depenses for p in d.pieces if p.linked and p.drive_path), None)
+                if rule.source_kind == "drive" and moved and f"drive:{rule.source_ref}:{moved}" != f.key:
+                    self._seen(db, rule, f"drive:{rule.source_ref}:{moved}", sha, note.id)
         return created
 
     def _sale(self, db: Session, rule: AutoImportRule, f: SourceFile, content: bytes, mime: str):

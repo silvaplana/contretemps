@@ -268,6 +268,10 @@ class Ports:
     # date › sub-folders, creating what is missing; returns its path on the
     # drive. None: the host has no drives.
     deposer: Callable[[Session, int, int, str, list[str], str, bytes, str, date | None], str] | None = None
+    # Importation automatique de pièces (import-auto-pieces.md §4) : renomme sur place le fichier
+    # d'un justificatif relié (db, org_id, lien {doc_node_id} ou {drive_id, drive_path}, nom voulu)
+    # → le nouveau lien (le nom peut gagner « (2) ») ; None : introuvable. None : pas de renommage.
+    renommer: Callable[[Session, int, dict, str], dict | None] | None = None
     # The school's seasons, for one place per season (financier.md §8.13).
     # None: the host has no seasons, one setting for all.
     saisons: Callable[[Session, int], list[Saison]] | None = None
