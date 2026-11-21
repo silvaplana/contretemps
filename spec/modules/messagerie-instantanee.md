@@ -362,7 +362,7 @@ https://claude.ai/artifact/DRaBaxfSGLorh1LJNNhef2) :
 
 - Le **trombone** de la zone de saisie ouvre **Fichier | Sondage**, comme dans WhatsApp ; l'appareil
   photo reste à côté. « Sondage » ouvre une fenêtre : la question, de 2 à 10 réponses (« + Ajouter une
-  réponse », ✕ pour en retirer une), « Plusieurs réponses possibles », puis **Envoyer** (le bouton dit
+  réponse », ✕ pour en retirer une), « Plusieurs réponses possibles » (cochée par défaut, Seb 21 novembre), puis **Envoyer** (le bouton dit
   ce qui manque tant qu'il manque quelque chose).
 - Le sondage part comme un message : dans la bulle, la question, « Une seule réponse » ou « Plusieurs
   réponses possibles », chaque réponse avec sa barre et son nombre.

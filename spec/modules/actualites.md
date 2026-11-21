@@ -770,7 +770,7 @@ le lien est ajouté.
 Comme dans WhatsApp (maquette « Sondage », https://claude.ai/artifact/DRaBaxfSGLorh1LJNNhef2) :
 
 - Dans l'éditeur, « Sondage » sous Photo, Vidéo, Lien, Document (pas pour une Brève) : une
-  question, de 2 à 10 réponses, « Plusieurs réponses possibles » en option. Avec un sondage, le texte
+  question, de 2 à 10 réponses, « Plusieurs réponses possibles » en option, cochée par défaut (Seb, 21 novembre). Avec un sondage, le texte
   est facultatif.
 - Sur la carte : on touche une réponse pour voter, on la retouche pour retirer son vote, une autre
   pour changer d'avis. Les barres et les nombres se voient tout de suite ; « Voir les votes » montre

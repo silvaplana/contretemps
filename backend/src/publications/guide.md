@@ -87,7 +87,7 @@ Nouvelle publication / Modifier
   pas publiée) et la convocation s'ouvre dans Docs, en Brouillon, pour la corriger ; ← ramène aux
   actus, où l'on rouvre l'actu par son crayon.
 - « Sondage » (sous Photo, Vidéo, Lien, Document ; pas pour une Brève) : « Question », les
-  « Réponses » (2 à 10, ✕ en retire une, « + Ajouter une réponse »), « Plusieurs réponses possibles ».
+  « Réponses » (2 à 10, ✕ en retire une, « + Ajouter une réponse »), « Plusieurs réponses possibles » (cochée au départ).
   Le texte devient facultatif.
 - « En haut jusqu'au » (Important seulement). « Envoyer une notification ».
 - « Envoyer par mail » (interrupteur, qui publie) : chaque personne de la saison qui lit le blog
