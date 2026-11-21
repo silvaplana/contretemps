@@ -97,6 +97,11 @@
     color: var(--text);
     border-bottom-color: var(--accent);
   }
+  /* Les onglets collés en haut (Admin, Fights) gardent leur fond : sans lui,
+     ce qui défile dessous se voyait au travers (Seb, 21/11, Fights › Timer). */
+  .admin-screen__tabs.segmented {
+    background: var(--bg);
+  }
 
   /* --- Champs de recherche : pleins, sans contour --- */
   .search-bar {
