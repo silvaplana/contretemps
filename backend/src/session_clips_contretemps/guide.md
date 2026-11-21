@@ -89,7 +89,8 @@ Timer étendu (coachs, Fights › Timer, téléphone en paysage) :
   vidéo incrustée est prête environ une demi-minute plus tard ; en attendant, le combat porte « En
   préparation » dans Combats. Pendant ce temps, une pastille en bas à gauche du Timer suit l'envoi
   (« Envoi X % », « En préparation… », puis où trouver le combat : Combats si on y est nommé, sinon
-  Tournage).
+  Tournage). Si on est l'un des combattants, le combat est dans Combats dès « Archiver », sa
+  vignette avec la barre de l'envoi.
 - La croix en haut à droite rend le Timer simple, où se règlent la durée du round et les repos.
 
 Entraîner l’écoute (coachs, Fights › ⋮ ; ← revient à Fights) : choisir le mot (Combattez, Time, avec le

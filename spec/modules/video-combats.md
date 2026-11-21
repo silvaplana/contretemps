@@ -956,7 +956,9 @@ simple, avec ses modes et ses réglages ; toucher le temps y revient).
   posés. Après « Archiver », une pastille en bas à gauche du Timer étendu suit l'envoi (paysage) :
   « Envoi X % », « En préparation… », puis « Prêt dans Combats » (si on est l'un des combattants),
   « Prêt : à vérifier dans Tournage » ou « Prêt dans Tournage, séance du jour » ; elle s'efface 15 s
-  après. Combats ne montre que les combats où l'on est nommé (Seb, 21/11). Tant que le serveur y travaille, le combat porte « En préparation »
+  après. Combats ne montre que les combats où l'on est nommé (Seb, 21/11) ; on y
+  est dès « Archiver », et pendant l'envoi depuis ce téléphone la vignette montre la première image
+  avec une barre de progression. Au gong, le chrono incrusté finit à 0:00. Tant que le serveur y travaille, le combat porte « En préparation »
   dans Combats (et « en préparation : la vidéo avec les effets arrive dans quelques minutes » à la
   lecture), relu toutes les 15 s (Seb, 21/11 : « qu'on le sache ») ; le téléphone qui a filmé lâche
   alors sa propre copie pour la version du serveur.

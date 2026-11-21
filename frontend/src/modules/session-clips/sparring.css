@@ -1986,3 +1986,12 @@
   top: 0;
   z-index: 1;
 }
+
+.sc-vignette__envoi {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 4px;
+  background: var(--color-primary, #f5c518);
+  transition: width 0.3s;
+}

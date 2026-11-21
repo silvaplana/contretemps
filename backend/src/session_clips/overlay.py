@@ -172,9 +172,10 @@ def timeline(overlay: dict, duration: float, name_voice: Path | None) -> dict:
     return plan
 
 
-def chrono_at(overlay: dict, t: float) -> tuple[str, str] | None:
+def chrono_at(overlay: dict, t: float, end: float | None = None) -> tuple[str, str] | None:
     """(étiquette, temps) du chrono à l'instant t de la vidéo, comme le Timer
-    l'affichait : « R2 », « Repos » ou rien en un seul round."""
+    l'affichait : « R2 », « Repos » ou rien en un seul round. Au gong (`end`),
+    il finit à 0:00 (Seb, 21/11 : il s'arrêtait à 0:01)."""
     phases = sorted(overlay.get("phases") or [], key=lambda p: p["t"])
     if not phases:
         return None
@@ -183,6 +184,8 @@ def chrono_at(overlay: dict, t: float) -> tuple[str, str] | None:
         if p["t"] <= t:
             current = p
     left = max(0, math.ceil(current["total"] - max(0.0, t - current["t"]) - 1e-6))
+    if end is not None and t >= end:
+        left = 0
     label = "" if (overlay.get("rounds") or 1) <= 1 else ("REPOS" if current["n"] == 0 else f"R{current['n']}")
     return label, f"{left // 60}:{left % 60:02d}"
 
@@ -444,7 +447,7 @@ class Frames:
             names = round(t * FPS) if t < MOVE_END else "top"
             if self.plan["banner"] is not None and t >= self.plan["banner"] and names == "top":
                 names = "final"
-        clock = chrono_at(self.o, min(t, self.plan["end"] - 1e-3)) if self.o.get("chrono") else None
+        clock = chrono_at(self.o, min(t, self.plan["end"] - 1e-3), self.plan["end"] - 1e-3) if self.o.get("chrono") else None
         band = None
         if self.plan["banner"] is not None and t >= self.plan["banner"]:
             band = min(round((t - self.plan["banner"]) * FPS), round(0.5 * FPS))
