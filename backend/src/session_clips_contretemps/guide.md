@@ -3,7 +3,7 @@ professeurs et les admins. Il n'apparaît que si la case Fights est cochée dans
 Personnalisation › Fonctionnalités (éteinte au départ). Un élève n'a que « Mes combats » ; un coach
 (admin ou professeur) a trois onglets en haut : Combats (ses combats), Tournage (en deux
 volets dépliants : Tournage et Montage) et Timer, et le menu ⋮ en haut à droite : « Paramètres de tournage », « Paramètres du Timer », « Tests de découpage vidéo » et « Entraîner l’écoute ». Fights se rouvre
-sur le dernier de ces onglets utilisé.
+sur le dernier de ces onglets utilisé, sauf le Timer : il rouvre alors sur l'onglet d'avant.
 
 Mes combats
 - En tête, la ligne « ★ Favoris ». Puis ses combats validés, par séance (date · cours) : « vs

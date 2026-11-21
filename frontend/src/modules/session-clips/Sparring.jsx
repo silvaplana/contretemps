@@ -31,7 +31,8 @@ import './sparring.css'
 
 const ANNULER_MS = 10000
 const AUCUN = new Map()
-// Le dernier sous-onglet ouvert, retrouvé à la réouverture de l'appli (Seb, 12/11).
+// Le dernier sous-onglet ouvert, retrouvé à la réouverture de l'appli (Seb, 12/11),
+// sauf le Timer, qui prend tout l'écran : l'appli rouvre sur l'onglet d'avant (Seb, 21/11).
 const ONGLET_VU = 'sc-onglet'
 
 function ongletGarde() {
@@ -55,7 +56,7 @@ export default function Sparring({ ecoleId, cours, appli }) {
   useEffect(() => {
     api.moi().then((m) => {
       setMe(m)
-      if (m.is_coach) setOnglet(['tournage', 'mes', 'timer'].includes(ongletGarde()) ? ongletGarde() : 'tournage')
+      if (m.is_coach) setOnglet(['tournage', 'mes'].includes(ongletGarde()) ? ongletGarde() : 'tournage')
     }, () => setMe({ person_id: null, is_coach: false }))
   }, [])
   useEffect(() => () => clearTimeout(minuteur.current), [])
@@ -115,6 +116,7 @@ export default function Sparring({ ecoleId, cours, appli }) {
   }, [version, ouvert])
   function choisirOnglet(o) {
     setOnglet(o)
+    if (o === 'timer') return
     try {
       localStorage.setItem(ONGLET_VU, o)
     } catch {
