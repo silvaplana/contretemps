@@ -279,6 +279,12 @@ def test_incrustation_ratee(client, db_session, e, monkeypatch):
     db_session.refresh(clip)
     db_session.refresh(video)
     assert clip.overlay is None and video.compresse is False
+    # Le diagnostic du serveur montre où en est le combat.
+    from app.lire_seance_fights import lister
+
+    lignes = []
+    lister(db_session, lignes.append)
+    assert any(f"combat {clip.id} " in ligne and "à incruster : non" in ligne for ligne in lignes)
 
 
 def test_favoris(client, db_session, e):
