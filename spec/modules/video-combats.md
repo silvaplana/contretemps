@@ -600,7 +600,8 @@ flèche ←.
   Montage se relit toutes les 5 s sur tous les téléphones, pour que la découpe se voie aussi sur la
   caméra. La
   vignette d'un essai, si l'image du serveur manque, est la première image de la vidéo. Fights
-  rouvre le dernier onglet choisi sur ce téléphone, même après avoir fermé l'appli (Seb, 12/11). Une
+  rouvre le dernier onglet choisi sur ce téléphone, même après avoir fermé l'appli (Seb, 12/11), sauf le Timer (plein écran) : on
+  retrouve l'onglet d'avant (Seb, 21/11). Une
   séance de Montage porte le nombre de combats « à vérifier ».
 - Le module s'éteint par organisation (Admin > École > Personnalisation de l'application >
   Fonctionnalités) : éteint = bouton caché, routes « introuvable » (spec/core.md §9 bis).
