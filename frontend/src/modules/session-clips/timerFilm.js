@@ -10,6 +10,7 @@ export function useFilm(actif) {
   const rec = useRef(null)
   const morceaux = useRef([])
   const voulu = useRef(false) // « Démarrer » touché avant que la caméra soit prête
+  const horloge = useRef({ debut: 0, pause: 0, depuis: null }) // le temps filmé, pauses ôtées
 
   function lancer() {
     morceaux.current = []
@@ -18,6 +19,7 @@ export function useFilm(actif) {
     r.ondataavailable = (ev) => ev.data.size && morceaux.current.push(ev.data)
     r.start(1000)
     rec.current = r
+    horloge.current = { debut: performance.now(), pause: 0, depuis: null }
   }
 
   useEffect(() => {
@@ -61,6 +63,18 @@ export function useFilm(actif) {
     },
     pause(oui) {
       if (rec.current?.state === (oui ? 'recording' : 'paused')) rec.current[oui ? 'pause' : 'resume']()
+      const h = horloge.current
+      if (oui && h.depuis == null) h.depuis = performance.now()
+      if (!oui && h.depuis != null) {
+        h.pause += performance.now() - h.depuis
+        h.depuis = null
+      }
+    },
+    // Où en est la vidéo (secondes) : pour placer le chrono incrusté.
+    temps() {
+      const h = horloge.current
+      if (!rec.current) return 0
+      return Math.max(0, ((h.depuis ?? performance.now()) - h.debut - h.pause) / 1000)
     },
     // Le fichier du combat, ou null si rien n'a été filmé.
     arreter() {

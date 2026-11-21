@@ -104,7 +104,7 @@ class SessionClipsReceiver:
 
         @app.post(f"{PREFIX}/fights", response_model=ClipOut, status_code=201)
         def create_fight(body: FightCreate, m: Member = member, s: Session = db):
-            return self._clips_out(s, m, [guard(lambda: client.add_fight(s, m, body.upload_id, body.people, body.winner, body.draw))])[0]
+            return self._clips_out(s, m, [guard(lambda: client.add_fight(s, m, body.upload_id, body.people, body.winner, body.draw, body.overlay.model_dump() if body.overlay else None))])[0]
 
         @app.patch(f"{PREFIX}/sessions/{{session_id}}", response_model=SessionOut)
         def rename_session(session_id: int, body: SessionRename, m: Member = member, s: Session = db):

@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from datetime import date, datetime, timezone
 
-from sqlalchemy import BigInteger, Boolean, Date, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, BigInteger, Boolean, Date, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from db import Base
@@ -68,6 +68,9 @@ class Clip(Base):
     # Match nul déclaré au Timer étendu (Seb, 21/11) ; le vainqueur, lui, est
     # sur sa place (`sc_participants.winner`).
     draw: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
+    # Incrustation demandée au Timer étendu (Seb, 21/11 ; overlay.py) : ce
+    # qu'il faut dessiner sur la vidéo, vidé une fois la vidéo refaite.
+    overlay: Mapped[dict | None] = mapped_column(JSON(none_as_null=True), nullable=True)
 
 
 class ClipParticipant(Base):

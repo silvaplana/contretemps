@@ -924,12 +924,34 @@ simple, avec ses modes et ses réglages ; toucher le temps y revient).
   Modèle (≈ 350 Mo) téléchargé de GitHub à la première annonce dans `KOKORO_DIR` (défaut
   `./data/kokoro`, volume persistant). Sans nom, ou voix indisponible : « The fighter in the left
   (right) corner! ». Un nouvel appui coupe l'annonce en cours.
-- **Plus tard** (Seb, 21/11) : trois cases d'incrustation dans la vidéo archivée, chacune au choix :
-  les noms des combattants au début (l'un arrive de gauche, l'autre de droite, ils se cognent au
-  milieu puis restent), le vainqueur à la fin, le chrono. Faites par le serveur pendant la
-  recompression, l'envoi depuis le téléphone ne change pas.
-  Et peut-être une quatrième, « Musique » (Seb, 21/11) : pas de musique protégée (Rocky…) dans
-  l'appli ; proposé : des musiques épiques libres de droits (question posée à Seb).
+- **Incrustation dans la vidéo archivée** (Seb, 21/11, maquette
+  https://claude.ai/artifact/EnShfzDt9KyDjydtttA5n4). Dans Paramètres du Timer, sous « Filmer le
+  combat », une partie « Dans la vidéo archivée » avec quatre cases, chacune au choix, gardées sur
+  l'appareil :
+  - « Les noms au début » (suppose « Nommer les combattants ») : rouge à gauche, bleu à droite, ils
+    arrivent chacun de leur côté, se cognent au milieu (éclair, tremblement, « VS » qui jaillit), puis
+    montent en haut et y restent jusqu'à la fin. Un nom manquant : « Inconnu ».
+  - « Le vainqueur à la fin » (suppose « Déclarer le vainqueur ») : au gong la vidéo s'arrête sur sa
+    dernière image (assombrie) ; une fois le gong fini, George annonce le vainqueur si « Annoncer le
+    vainqueur » est cochée, la musique baisse, et le bandeau (poing levé, « VAINQUEUR », le nom) monte
+    au moment où le nom est dit ; le perdant s'éteint en haut. Match nul : « = » et « MATCH NUL ».
+    Sans annonce : le bandeau juste après le gong. Rien de déclaré : ni gong ajouté ni arrêt sur image.
+  - « Le chrono » : en haut à droite, les chiffres rouges du Timer, sans fond ; « R1, R2… » (et
+    « REPOS ») seulement s'il y a plusieurs rounds. Le téléphone note où commence chaque round et
+    repos dans la vidéo (pauses ôtées) ; le serveur refait le décompte.
+  - « Une musique » : choisie en un geste à « Archiver » (« Quelle musique ? », quatre tuiles :
+    Entraînement, Entrée du combattant, Rock de victoire, Sans musique ; ▶ dans le coin pour écouter
+    avant). Trois musiques composées pour Fights, libres de droits (pas de musique protégée, Rocky…) :
+    `/mnt/project-files/appbase/timer-mma/voix/composer-les-musiques.py`. Jouée en boucle sous le son
+    du combat, baissée pendant l'annonce, fondue à la fin.
+  Fait par le serveur, une seule compression (jamais deux, Seb 15/10) : la vidéo arrive telle que
+  filmée, marquée « déjà compressée » pour que la compression ordinaire la laisse ; le worker de
+  compression (`app/video_compression_worker.py`) l'incruste et la compresse en une fois
+  (`session_clips/overlay.py` : images dessinées avec Pillow, une par changement, posées par ffmpeg,
+  sons mélangés). Demande gardée sur le combat (`sc_clips.overlay`, JSON vidé une fois fait). Prête
+  environ une demi-minute après « Archiver » (estimation, à mesurer). En cas d'échec : la
+  compression ordinaire, sans incrustation. L'envoi depuis le téléphone ne change pas ; « Partager »
+  envoie la vidéo telle que filmée.
 
 ### 6.6 Plus tard
 

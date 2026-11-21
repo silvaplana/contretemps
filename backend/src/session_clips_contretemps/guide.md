@@ -70,7 +70,8 @@ Timer (coachs, Fights › Timer) : un minuteur de rounds avec la cloche.
 Paramètres du Timer (coachs, Fights › ⋮ ; ← revient à Fights) : les cases « Filmer le combat »,
 « Nommer les combattants », « Déclarer le vainqueur » et, dessous, « Annoncer le vainqueur » (un
 speaker annonce le vainqueur ou le match nul, en anglais). Rien de coché : le Timer simple. Une case
-cochée : le Timer étendu, téléphone en paysage.
+cochée : le Timer étendu, téléphone en paysage. Avec « Filmer le combat », la partie « Dans la vidéo
+archivée » : « Les noms au début », « Le vainqueur à la fin », « Le chrono », « Une musique ».
 
 Timer étendu (coachs, Fights › Timer, téléphone en paysage) :
 - En haut, les deux noms (« … » : on touche, un écran de choix s'ouvre, sans clavier : une barre de
@@ -82,7 +83,10 @@ Timer étendu (coachs, Fights › Timer, téléphone en paysage) :
   droite la cloche (« Démarrer », puis « Arrêter ») et le chronomètre (« Pause » / « Reprendre »).
 - La cloche lance et arrête le film. À la fin du combat : la vidéo à revoir et trois touches,
   « Archiver » (le combat va dans Combats, dans la séance du jour), « Partager » (WhatsApp,
-  messages…) et « Jeter » (« Annuler » pendant 10 secondes).
+  messages…) et « Jeter » (« Annuler » pendant 10 secondes). Avec « Une musique » cochée,
+  « Archiver » ouvre « Quelle musique ? » : quatre tuiles (Entraînement, Entrée du combattant, Rock de
+  victoire, Sans musique) ; toucher une tuile archive avec elle, ▶ dans le coin l'écoute avant. La
+  vidéo incrustée est prête environ une demi-minute plus tard.
 - La croix en haut à droite rend le Timer simple, où se règlent la durée du round et les repos.
 
 Entraîner l’écoute (coachs, Fights › ⋮ ; ← revient à Fights) : choisir le mot (Combattez, Time, avec le

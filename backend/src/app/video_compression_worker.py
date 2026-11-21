@@ -34,6 +34,7 @@ from sqlalchemy.orm import configure_mappers
 
 from app.messagerie_stockage import pieces_jointes
 from db import SessionLocal
+from session_clips.overlay import render_pending
 from videos import Videos
 
 INTERVALLE_SECONDES = 30
@@ -60,6 +61,14 @@ def run() -> None:
                     print("Envois de vidéos de la messagerie abandonnés effacés.")
                 for fichier in videos_client.effacer_orphelins(db):
                     print(f"Fichier vidéo orphelin effacé : {fichier.name}")
+            # Fights : les combats archivés du Timer, incrustés et compressés
+            # en une fois (session_clips/overlay.py).
+            try:
+                if faites := render_pending(db, videos_client):
+                    print(f"Fights : {faites} combat(s) incrusté(s).")
+            except Exception:
+                db.rollback()
+                print("Fights : erreur pendant une incrustation.")
             for video in videos_client.videos_a_compresser(db):
                 try:
                     if videos_client.compresser(db, video):

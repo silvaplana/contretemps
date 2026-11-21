@@ -11,6 +11,14 @@ const CASES = [
 ]
 // Sous « Déclarer le vainqueur », qu'elle suppose (Seb, 21/11).
 const ANNONCE = ['annonce', 'Annoncer le vainqueur', 'Au poing levé, un speaker annonce : « And the winner, by unanimous decision, is… » et le nom ; au « = » : « It’s a draw! ».']
+// Ce qu'on incruste dans la vidéo archivée (Seb, 21/11, maquette
+// https://claude.ai/artifact/EnShfzDt9KyDjydtttA5n4) ; la 3e colonne : la case qu'elle suppose.
+const INCRUSTATION = [
+  ['incrNoms', 'Les noms au début', 'Ils arrivent chacun de leur côté et se cognent au milieu.', 'noms'],
+  ['incrVainqueur', 'Le vainqueur à la fin', 'Après le gong, avec l’annonce si elle est cochée.', 'vainqueur'],
+  ['incrChrono', 'Le chrono', 'En chiffres rouges ; R1, R2… s’il y a plusieurs rounds.'],
+  ['incrMusique', 'Une musique', 'Choisie en un geste à « Archiver ».'],
+]
 
 export default function ParametresTimer({ onBack }) {
   const [r, setR] = useState(lire)
@@ -43,6 +51,26 @@ export default function ParametresTimer({ onBack }) {
             </span>
           </label>
         ))}
+        {r.film && (
+          <>
+            <p className="sc-te__titre-incr">Dans la vidéo archivée</p>
+            {INCRUSTATION.map(([cle, libelle, aide, suppose]) => (
+              <label key={cle} className="sc-coche">
+                <input
+                  type="checkbox"
+                  checked={r[cle] && (!suppose || r[suppose])}
+                  disabled={suppose && !r[suppose]}
+                  onChange={(ev) => cocher(cle, ev.target.checked)}
+                />
+                <span>
+                  {libelle}
+                  <small>{aide}</small>
+                </span>
+              </label>
+            ))}
+            <p className="sc-te__aide">La vidéo est prête une demi-minute après « Archiver ».</p>
+          </>
+        )}
         <p className="sc-te__aide">
           <strong>{estEtendu(r) ? 'Timer étendu, téléphone en paysage' : 'Timer simple'}</strong>
         </p>

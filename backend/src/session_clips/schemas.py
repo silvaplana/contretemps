@@ -20,6 +20,28 @@ class SessionCreate(BaseModel):
     held_on: date
 
 
+class OverlayPhase(BaseModel):
+    """Un round (`n` ≥ 1) ou un repos (`n` = 0) qui commence à `t` secondes
+    dans la vidéo, pour `total` secondes."""
+
+    t: float
+    n: int
+    total: int
+
+
+class OverlayRequest(BaseModel):
+    """Timer étendu : ce qu'il faut incruster dans la vidéo archivée (cases
+    de Paramètres du Timer, musique choisie à « Archiver »)."""
+
+    names: bool = False
+    winner: bool = False
+    chrono: bool = False
+    music: Literal["montage", "entree", "rock"] | None = None
+    announce: bool = False  # George annonce le vainqueur, après le gong
+    rounds: int = 1
+    phases: list[OverlayPhase] = []
+
+
 class FightCreate(BaseModel):
     """« Filmer un combat » : l'envoi (`upload_id`, module Vidéos) et les
     deux combattants, sans ordre ; le Timer étendu peut laisser un nom
@@ -30,6 +52,7 @@ class FightCreate(BaseModel):
     # Timer étendu : la place (0 ou 1) du vainqueur, vide si personne n'est déclaré.
     winner: int | None = None
     draw: bool = False  # match nul
+    overlay: OverlayRequest | None = None
 
 
 class FavoriteUpdate(BaseModel):

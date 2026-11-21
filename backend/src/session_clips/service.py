@@ -17,6 +17,7 @@ from videos import Video, Videos
 
 from . import people
 from .models import Clip, ClipParticipant, ClipSession, Favorite, LabTest, Piece, Recorder, SessionAttendee, Viewed
+from .overlay import wanted as overlay_wanted
 from .ports import Directory, Member, Notifier
 
 
@@ -281,7 +282,7 @@ class SessionClips:
 
     def add_fight(
         self, db: Session, member: Member, upload_id: str, people: list[int | None], winner: int | None = None,
-        draw: bool = False,
+        draw: bool = False, overlay: dict | None = None,
     ) -> Clip:
         """« Filmer un combat » (bouton +) : un combat filmé à la main, gardé,
         puis nommé. Il rejoint la séance du jour, sans vidéo entière ni
@@ -290,7 +291,8 @@ class SessionClips:
 
         Timer étendu (Seb, 21/11) : un nom peut manquer (le combat attend
         alors un coach), `winner` est la place du vainqueur déclaré et `draw`
-        un match nul."""
+        un match nul. `overlay` : ce qu'il faut incruster (overlay.py) ; la
+        vidéo n'est alors compressée qu'une fois, avec l'incrustation."""
         self._require_coach(member)
         if len(people) != 2 or (people[0] is not None and people[0] == people[1]):
             raise ValueError("Choisissez deux combattants différents")
@@ -320,10 +322,21 @@ class SessionClips:
             db.add(session)
             db.flush()
         position = (db.scalar(select(func.max(Clip.position)).where(Clip.session_id == session.id)) or 0) + 1
+        incrust = overlay_wanted(overlay)
         video = self.videos.finaliser(
-            db, upload_id, nom=video_name(today, "", f"combat {position}"), uploaded_by=member.person_id
+            db, upload_id, nom=video_name(today, "", f"combat {position}"), uploaded_by=member.person_id,
+            deja_compresse=incrust,
         )
         clip = self.add_clip(db, session.id, video.id, people)
+        if incrust:
+            names = {p.id: p.name for p in self.directory.people(db, member.org_id)}
+            clip.overlay = {
+                **overlay,
+                "labels": [names.get(p) if p else None for p in people],
+                "people": people,
+                "voices": [self.directory.full_name(db, member.org_id, p) if p else None for p in people],
+                "result": "draw" if draw else winner,
+            }
         if winner is not None:
             db.get(ClipParticipant, (clip.id, winner)).winner = True
         clip.draw = draw

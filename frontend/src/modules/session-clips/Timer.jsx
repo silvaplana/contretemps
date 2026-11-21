@@ -17,6 +17,10 @@ import annonceNul from './sons/annonce-nul.mp3'
 import annonceGauche from './sons/annonce-gauche.mp3'
 import annonceDroite from './sons/annonce-droite.mp3'
 import foule from './sons/foule.mp3'
+// Les musiques à incruster dans la vidéo archivée, composées pour Fights (Seb, 21/11).
+import musiqueMontage from './sons/musique-montage.mp3'
+import musiqueEntree from './sons/musique-entree.mp3'
+import musiqueRock from './sons/musique-rock.mp3'
 
 // Fights › Timer (coachs ; Seb, 13/11, maquette https://claude.ai/artifact/2U8ASb7oeDcgbib9vwkyza) :
 // un round seul, ou des rounds avec repos. Cloche d'un coup au début, clac clac
@@ -66,6 +70,66 @@ const TEINTES = [0, 28, 200, 265, 150, 330, 45, 180]
 const teinte = (n) => TEINTES[[...n].reduce((a, c) => a + c.charCodeAt(0), 0) % TEINTES.length]
 const initiale = (n) => plat(n)[0]?.toUpperCase() ?? '?'
 const INCONNU = { id: null, name: 'Inconnu' }
+const MUSIQUES = [
+  ['montage', 'Entraînement', '🎺', 45, musiqueMontage],
+  ['entree', 'Entrée du combattant', '🥁', 265, musiqueEntree],
+  ['rock', 'Rock de victoire', '🎸', 0, musiqueRock],
+  [null, 'Sans musique', '🔇', 220],
+]
+
+// « Archiver » avec « Une musique » cochée (Seb, 21/11) : un seul geste,
+// toucher une musique archive la vidéo avec elle ; ▶ l'écoute avant.
+function ChoixMusique({ onChoisir, onFermer }) {
+  const [flash, setFlash] = useState(undefined)
+  const [ecoute, setEcoute] = useState(null)
+  const lecteur = useRef(null)
+  useEffect(() => () => lecteur.current?.pause(), [])
+  function ecouter(ev, id, son) {
+    ev.stopPropagation()
+    lecteur.current?.pause()
+    if (ecoute === id) return setEcoute(null)
+    lecteur.current = new Audio(son)
+    lecteur.current.onended = () => setEcoute(null)
+    lecteur.current.play().catch(() => {})
+    setEcoute(id)
+  }
+  function choisir(id) {
+    lecteur.current?.pause()
+    setFlash(id)
+    setTimeout(() => onChoisir(id), 350)
+  }
+  return (
+    <div className="sc-te__select" role="dialog" aria-label="Quelle musique ?">
+      <div className="sc-te__select-tete">
+        <b>Quelle musique ?</b>
+        <button type="button" className="sc-te__select-fermer" aria-label="Fermer" onClick={onFermer}>
+          ✕
+        </button>
+      </div>
+      <div className="sc-te__musiques">
+        {MUSIQUES.map(([id, nom, icone, t, son]) => (
+          <div
+            key={nom}
+            role="button"
+            tabIndex={0}
+            className={`sc-te__musique${id ? '' : ' sc-te__musique--sans'}${flash === id ? ' sc-te__carte--flash' : ''}`}
+            style={{ '--t': t }}
+            onClick={() => choisir(id)}
+            onKeyDown={(ev) => ev.key === 'Enter' && choisir(id)}
+          >
+            <span className="sc-te__musique-icone" aria-hidden="true">{icone}</span>
+            {nom}
+            {son && (
+              <button type="button" className="sc-te__ecoute" aria-label={`Écouter ${nom}`} onClick={(ev) => ecouter(ev, id, son)}>
+                {ecoute === id ? '❚❚' : '▶'}
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 function ChoixCombattant({ titre, membres, autre, actuel, onChoisir, onFermer }) {
   const habitues = membres.some((m) => m.regular)
@@ -132,6 +196,8 @@ export default function Timer({ ecoleId, rafraichir }) {
   const [message, setMessage] = useState(null) // { texte, annuler }
   const [membres, setMembres] = useState([])
   const [choix, setChoix] = useState(null) // la place (0 ou 1) dont on choisit le combattant
+  const [choixMusique, setChoixMusique] = useState(false)
+  const phases = useRef([]) // rounds et repos dans la vidéo, pour le chrono incrusté
   const annonces = useRef({}) // id du membre -> adresse du son de son nom (George)
   const joue = useRef([])
   const annonceTour = useRef(0)
@@ -262,6 +328,7 @@ export default function Timer({ ecoleId, rafraichir }) {
       setMessage(null)
       if (r.film) film.demarrer()
     }
+    phases.current = []
     setRun(phase('round', 1))
   }
 
@@ -271,7 +338,8 @@ export default function Timer({ ecoleId, rafraichir }) {
     sonner(3)
     if (!etendu) return
     setTermine(true)
-    if (r.film) film.arreter().then((fichier) => fichier && setFin({ fichier, url: URL.createObjectURL(fichier) }))
+    const vues = phases.current
+    if (r.film) film.arreter().then((fichier) => fichier && setFin({ fichier, url: URL.createObjectURL(fichier), phases: vues }))
   }
 
   function suivant() {
@@ -284,8 +352,25 @@ export default function Timer({ ecoleId, rafraichir }) {
   const titre = () => (noms.some(Boolean) ? noms.map((n) => n?.name ?? '?').join(' vs ') : 'Combat')
 
   // « Archiver » : le combat part dans Combats, l'envoi continue derrière.
-  async function archiver() {
-    const corps = { people: noms.map((n) => n?.id ?? null), winner: typeof resultat === 'number' ? resultat : null, draw: resultat === 'nul' }
+  // L'incrustation (Seb, 21/11) se fait au serveur, selon Paramètres du Timer.
+  async function archiver(musique = null) {
+    setChoixMusique(false)
+    const vainqueur = r.vainqueur && r.incrVainqueur
+    const overlay = {
+      names: r.noms && r.incrNoms,
+      winner: vainqueur,
+      chrono: r.incrChrono,
+      music: r.incrMusique ? musique : null,
+      announce: vainqueur && r.annonce,
+      rounds: r.mode === 'rounds' ? r.nombre : 1,
+      phases: fin.phases ?? [],
+    }
+    const corps = {
+      people: noms.map((n) => n?.id ?? null),
+      winner: typeof resultat === 'number' ? resultat : null,
+      draw: resultat === 'nul',
+      overlay,
+    }
     const { fichier, url } = fin
     const nom = titre()
     suivant()
@@ -347,6 +432,7 @@ export default function Timer({ ecoleId, rafraichir }) {
     dit.current = new Set()
     const total = nom === 'round' ? r.round : r.repos
     if (nom === 'round') sonner(1)
+    if (etendu && r.film) phases.current.push({ t: film.temps(), n: nom === 'round' ? n : 0, total })
     return { phase: nom, n, total, fin: Date.now() + total * 1000, pause: null }
   }
 
@@ -528,7 +614,7 @@ export default function Timer({ ecoleId, rafraichir }) {
         </div>
         {fin ? (
           <div className="sc-te__choix">
-            <button type="button" className="sc-te__choix-principal" onClick={archiver}>
+            <button type="button" className="sc-te__choix-principal" onClick={() => (r.incrMusique ? setChoixMusique(true) : archiver())}>
               <b>Archiver</b>
               <small>Il va dans Combats</small>
             </button>
@@ -556,6 +642,7 @@ export default function Timer({ ecoleId, rafraichir }) {
             onFermer={() => setChoix(null)}
           />
         )}
+        {choixMusique && fin && <ChoixMusique onChoisir={archiver} onFermer={() => setChoixMusique(false)} />}
         {message && (
           <div className="sc-te__message" role="status">
             {message.texte}
