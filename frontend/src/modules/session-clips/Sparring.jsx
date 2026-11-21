@@ -1471,7 +1471,7 @@ function Lecture({ clipId, me, version, caches, montrer, supprimer, rafraichir, 
         </button>
       </div>
       <div className="sc__corps">
-        {c.video && <VideoThumb key={c.id} video={c.video} />}
+        {c.video && <VideoThumb key={c.id} video={c.video} pleinEcran />}
         <div className="sc-fiche">
           <Noms c={c} />
           <span className="sc-meta">
