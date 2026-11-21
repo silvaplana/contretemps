@@ -843,7 +843,7 @@ navigateur (`Timer.jsx`, aucune donnée au serveur) :
   rounds s'enchaînent avec un repos entre eux) ;
 - le chrono en gros, en chiffres rouges à sept segments comme une horloge de salle (Seb, 21/11 ; ils
   clignotent les 10 dernières secondes du round), « Combat » ou « Repos » en bleu au-dessus, « Round 2
-  sur 3 », une barre ;
+  sur 3 » ; pas de barre de progression, les chiffres suffisent (Seb, 21/11) ;
 - pas de bouton jaune : deux dessins toujours à l'écran, côte à côte, avec leur mot dessous (Seb, 21/11,
   maquette https://claude.ai/artifact/3L9dnVxxWC1UKoNioRpX9V). Le chronomètre de l'arbitre : ▶
   « Démarrer », puis ⏸ « Pause », puis ▶ « Reprendre ». La cloche du ring vue de face : **Arrêter**
