@@ -621,7 +621,9 @@ tous les anciens combats.
   · ADULTES »).
 - Chaque ligne : vignette avec la durée, « Seb R. vs Karim B. » (soi-même d'abord, puis l'adversaire ; Seb, 21/11), « Combat 3 · 2 min 20 ».
 - Un clip « à vérifier » n'y apparaît qu'une fois validé par un coach : jamais un mauvais nom sous les
-  yeux d'un membre.
+  yeux d'un membre. Exception (Seb, 21/11) : un combat du Timer où l'on s'est nommé et où seul l'autre
+  nom manque (« Inconnu ») est tout de suite dans les Combats de la personne nommée ; il reste à
+  vérifier pour que le coach nomme l'autre.
 - Vide : « Vos combats filmés apparaîtront ici le lendemain de la séance. »
 - Sans accord pour être filmé (§6.8) : « Vos combats ne sont pas filmés », et le lien vers la case du
   profil.

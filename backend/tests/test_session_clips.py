@@ -219,6 +219,11 @@ def test_combat_du_timer_etendu(client, db_session, e):
     r = filmer(people=[None, karim], winner=0)
     assert r.status_code == 201, r.text
     assert r.json()["to_check"] and [p["winner"] for p in r.json()["participants"]] == [True, False]
+    # Seb, 21/11 : Karim est nommé, le combat est déjà dans ses Combats
+    # (l'autre nom attend un coach) ; il peut l'ouvrir.
+    mine = client.get("/session-clips/mine", headers=e["h"]["karim"]).json()
+    assert r.json()["id"] in [c["id"] for c in mine]
+    assert client.get(f"/session-clips/clips/{r.json()['id']}", headers=e["h"]["karim"]).status_code == 200
     assert filmer(people=[None, None]).json()["participants"][0]["winner"] is False
     assert filmer(people=[seb, karim], winner=2).status_code == 400
     nul = filmer(people=[seb, karim], draw=True).json()
@@ -343,8 +348,8 @@ def test_nouveaux_combats(client, db_session, e, monkeypatch):
     monkeypatch.setattr(sc, "notifier", type("N", (), {"notify": lambda self, db, org, people, title, body: envois.append((sorted(people), title, body))})())
     h = e["h"]
     clip = sc.add_clip(db_session, seance["id"], _video(db_session, e["ecole"], "a").id, [e["seb"].id, None])
-    # Pas encore validé : rien de nouveau.
-    assert client.get("/session-clips/new", headers=h["seb"]).json() == {"count": 0}
+    # Pas encore validé, mais Seb est nommé : déjà nouveau pour lui (Seb, 21/11).
+    assert client.get("/session-clips/new", headers=h["seb"]).json() == {"count": 1}
     client.put(f"/session-clips/clips/{clip.id}/participants", json={"people": [e["seb"].id, e["karim"].id]}, headers=h["coach"])
     client.post(f"/session-clips/clips/{clip.id}/validate", headers=h["coach"])
     assert envois == [(sorted([e["seb"].id, e["karim"].id]), "Nouveau combat", "Seb R. vs Karim B. : il est dans Fights › Combats.")]
