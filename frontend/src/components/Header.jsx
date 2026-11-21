@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { fondSombre, useApparence } from '../api/apparence.js'
 import * as installation from '../api/installation.js'
 import { basculerEssai, essaiAllume } from '../api/styleEssai.js'
-import { ROLE_LABEL, estMonteeEnPrivilege, isSuperuser, trierParRole } from '../data/roles.js'
+import { ROLE_LABEL, estMonteeEnPrivilege, isOwner, trierParRole } from '../data/roles.js'
 import { useFermerAuClicExterieur } from '../hooks/useFermerAuClicExterieur.js'
 import { ID_ACTIONS_ENTETE, ID_TITRE_ENTETE } from './ActionsEntete.jsx'
 import CodeConfirmModal from './CodeConfirmModal.jsx'
@@ -60,7 +60,8 @@ export default function Header({
   // iPhone, Safari Mac, Firefox... : pas d'installation en un appui, la
   // ligne du menu ouvre l'explication du geste.
   const [instructionsInstallation, setInstructionsInstallation] = useState(false)
-  // Essai du nouveau style (api/styleEssai.js) : Super User, fond sombre.
+  // Essai du nouveau style (api/styleEssai.js) : Administrateur principal
+  // (donc Super User aussi), fond sombre.
   const sombre = fondSombre(useApparence())
   const [essai, setEssai] = useState(essaiAllume)
 
@@ -185,7 +186,7 @@ export default function Header({
                     {user.prenom} {user.nom}
                   </button>
                 )}
-                {isSuperuser(user) && sombre && (
+                {isOwner(user) && sombre && (
                   <button
                     type="button"
                     onClick={() => {
