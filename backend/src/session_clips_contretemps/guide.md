@@ -60,8 +60,8 @@ Une séance ou un essai découpé est encadré en vert s'il a au moins un combat
 
 Timer (coachs, Fights › Timer) : un minuteur de rounds avec la cloche.
 - En haut, deux modes : « Un round » ou « Rounds et repos ».
-- Le chrono en gros, puis deux dessins toujours à l'écran : le chronomètre (« Démarrer »,
-  puis « Pause » / « Reprendre ») et la cloche (« Arrêter »).
+- Le chrono en gros, puis deux dessins toujours à l'écran : la cloche (« Démarrer »,
+  puis « Arrêter ») et le chronomètre (« Pause » / « Reprendre » pendant le décompte).
 - Sous les dessins, le volet « Réglages » (fermé, son résumé à droite) : durée du round, repos et nombre
   de rounds, case « Prévenir 10 s avant la fin (clac clac) ». Pour le volume : les boutons du téléphone.
 

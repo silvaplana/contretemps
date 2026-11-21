@@ -845,9 +845,9 @@ navigateur (`Timer.jsx`, aucune donnée au serveur) :
   clignotent les 10 dernières secondes du round), « Combat » ou « Repos » en bleu au-dessus, « Round 2
   sur 3 » ; pas de barre de progression, les chiffres suffisent (Seb, 21/11) ;
 - pas de bouton jaune : deux dessins toujours à l'écran, côte à côte, avec leur mot dessous (Seb, 21/11,
-  maquette https://claude.ai/artifact/3L9dnVxxWC1UKoNioRpX9V). Le chronomètre de l'arbitre : ▶
-  « Démarrer », puis ⏸ « Pause », puis ▶ « Reprendre ». La cloche du ring vue de face : **Arrêter**
-  (en retrait tant que rien ne tourne ; le Timer s'arrête tout de suite). La cloche bouge comme elle
+  maquette https://claude.ai/artifact/3L9dnVxxWC1UKoNioRpX9V), comme au bord du ring. La cloche vue de
+  face démarre et arrête le round (« Démarrer », puis « Arrêter ») ; le chronomètre de l'arbitre ne sert
+  qu'à ⏸ « Pause » et ▶ « Reprendre », en retrait tant que rien ne tourne. La cloche bouge comme elle
   sonne : le marteau tape un coup au début de chaque round, trois coups à la fin du round et quand on
   arrête (avec le son des trois coups), au rythme du son (0,2 s par coup) ;
 - sous les dessins, le volet **Réglages**, fermé, qui montre son résumé (« 3 × 3:00 · repos 1:00 ») :

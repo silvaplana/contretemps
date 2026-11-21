@@ -990,8 +990,8 @@
   font-size: 18px;
   font-weight: 600;
 }
-/* Rien à arrêter : la cloche est là, en retrait (sauf pendant ses trois coups). */
-.sc-timer__dessin:disabled:not(.sc-timer__dessin--sonne) {
+/* Rien à mettre en pause : le chronomètre est là, en retrait. */
+.sc-timer__dessin:disabled {
   opacity: 0.4;
 }
 .sc-timer__dessin svg {
