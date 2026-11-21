@@ -65,6 +65,9 @@ class Clip(Base):
     # secondes) : la découpe au fil des morceaux ne coupe pas deux fois le
     # même combat. Vide pour les autres clips.
     start_seconds: Mapped[float | None] = mapped_column(Float, nullable=True)
+    # Match nul déclaré au Timer étendu (Seb, 21/11) ; le vainqueur, lui, est
+    # sur sa place (`sc_participants.winner`).
+    draw: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
 
 
 class ClipParticipant(Base):
@@ -78,6 +81,8 @@ class ClipParticipant(Base):
     slot: Mapped[int] = mapped_column(Integer, primary_key=True)
     person_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
     outsider: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
+    # Déclaré vainqueur au Timer étendu (Seb, 21/11). Aucun : pas de vainqueur déclaré.
+    winner: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
 
 
 class SessionAttendee(Base):

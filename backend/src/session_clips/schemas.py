@@ -22,10 +22,14 @@ class SessionCreate(BaseModel):
 
 class FightCreate(BaseModel):
     """« Filmer un combat » : l'envoi (`upload_id`, module Vidéos) et les
-    deux combattants, Rouge puis Bleu."""
+    deux combattants, sans ordre ; le Timer étendu peut laisser un nom
+    vide et donner le résultat."""
 
     upload_id: str
-    people: list[int]
+    people: list[int | None]
+    # Timer étendu : la place (0 ou 1) du vainqueur, vide si personne n'est déclaré.
+    winner: int | None = None
+    draw: bool = False  # match nul
 
 
 class FavoriteUpdate(BaseModel):
@@ -84,6 +88,7 @@ class ParticipantOut(BaseModel):
     person_id: int | None
     name: str | None
     outsider: bool = False
+    winner: bool = False
 
 
 class ClipOut(BaseModel):
@@ -92,6 +97,7 @@ class ClipOut(BaseModel):
     position: int
     title: str
     to_check: bool
+    draw: bool = False  # match nul déclaré au Timer étendu
     # Dans les « ★ Favoris » de l'appelant.
     favorite: bool = False
     check_reason: str | None = None

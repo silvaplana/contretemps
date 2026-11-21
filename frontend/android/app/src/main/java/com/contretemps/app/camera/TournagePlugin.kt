@@ -3,6 +3,7 @@ package com.contretemps.app.camera
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Intent
+import android.content.pm.ActivityInfo
 import android.util.Base64
 import android.net.Uri
 import android.os.Build
@@ -114,6 +115,20 @@ class TournagePlugin : Plugin() {
     @PluginMethod
     fun preview(call: PluginCall) {
         RecorderService.previewing = call.getBoolean("on", false) == true
+        call.resolve()
+    }
+
+    /**
+     * Timer étendu de Fights (Seb, 21/11) : l'écran en paysage tant qu'il est
+     * ouvert, même rotation automatique coupée, pour que le film soit droit.
+     */
+    @PluginMethod
+    fun landscape(call: PluginCall) {
+        val on = call.getBoolean("on", false) == true
+        activity.runOnUiThread {
+            activity.requestedOrientation =
+                if (on) ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE else ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        }
         call.resolve()
     }
 

@@ -1136,6 +1136,395 @@
     animation: none;
   }
 }
+/* Timer étendu (Seb, 21/11 ; maquette https://claude.ai/artifact/XZJhcgDeweToDP9B9PhvPg) :
+   tout en paysage, mesuré sur la largeur de l'écran. En haut les deux noms
+   et le résultat, dessous l'image du film et le temps, à droite la cloche. */
+.sc-te {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  grid-template-columns: 1fr 31vw;
+  gap: 1.5vw;
+  padding: 2vw 2.5vw;
+  padding-left: max(2.5vw, env(safe-area-inset-left, 0px));
+  padding-right: max(2.5vw, env(safe-area-inset-right, 0px));
+  overflow: auto;
+  background: var(--bg);
+  color: var(--text);
+  font-size: max(17px, 2.5vw);
+}
+.sc-te .sc-timer__fermer {
+  top: 0.6vw;
+  right: max(1vw, env(safe-area-inset-right, 0px));
+  z-index: 2;
+}
+.sc-te__tourner {
+  display: none;
+}
+@media (orientation: portrait) {
+  .sc-te {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    font-size: 22px;
+    font-weight: 700;
+    text-align: center;
+  }
+  .sc-te > :not(.sc-te__tourner):not(.sc-timer__fermer) {
+    display: none;
+  }
+  .sc-te__tourner {
+    display: block;
+  }
+}
+.sc-te__gauche {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 1.5vw;
+  min-width: 0;
+}
+.sc-te__noms {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 1.5vw;
+  min-height: 9.5vw;
+}
+.sc-te__contre {
+  color: var(--text-muted);
+  text-align: center;
+}
+.sc-te__resultat {
+  display: flex;
+  align-items: center;
+  gap: 1vw;
+}
+.sc-te__champ {
+  position: relative;
+  min-width: 0;
+}
+.sc-te__champ input {
+  width: 100%;
+  height: max(48px, 7.4vw);
+  padding: 0 1vw;
+  border: 1px solid var(--border);
+  border-radius: 1.6vw;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: max(17px, 2.8vw);
+  font-weight: 700;
+  text-align: center;
+}
+.sc-te__champ input::placeholder {
+  color: var(--text-muted);
+  font-weight: 900;
+  letter-spacing: 0.3em;
+}
+.sc-te__propositions {
+  position: absolute;
+  z-index: 3;
+  top: calc(max(48px, 7.4vw) + 0.6vw);
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6vw;
+  padding: 0.8vw;
+  border: 1px solid var(--border);
+  border-radius: 1.6vw;
+  background: var(--surface);
+  box-shadow: 0 1vw 3vw rgba(0, 0, 0, 0.6);
+}
+.sc-te__propositions button {
+  min-height: max(48px, 6.6vw);
+  border: 0;
+  border-radius: 1.2vw;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: max(17px, 2.6vw);
+  font-weight: 700;
+}
+/* La première proposition est celle que la touche Entrée valide. */
+.sc-te__propositions button:first-child {
+  outline: 2px solid var(--accent);
+}
+/* Poings levés et « = » : gris tant que rien n'est déclaré. */
+.sc-te__poing,
+.sc-te__nul {
+  flex: none;
+  padding: 0;
+  border: 0;
+  background: none;
+  filter: grayscale(1) brightness(1.05);
+  opacity: 0.5;
+  transition: filter 0.2s, opacity 0.2s, transform 0.2s;
+}
+.sc-te__poing {
+  width: max(40px, 7.6vw);
+  height: max(48px, 9.2vw);
+}
+.sc-te__poing svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.sc-te__poing--droite svg {
+  transform: scaleX(-1);
+}
+.sc-te__nul {
+  width: max(48px, 6.4vw);
+  height: max(48px, 6.4vw);
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff6a8, #f5e94a 45%, #a8960f);
+  box-shadow: inset 0 -0.4vw 0.8vw rgba(0, 0, 0, 0.35);
+  color: #15161a;
+  font-size: max(28px, 4.4vw);
+  font-weight: 900;
+  line-height: 1;
+}
+.sc-te__poing[aria-pressed='true'],
+.sc-te__nul[aria-pressed='true'] {
+  filter: drop-shadow(0 0 1.4vw rgba(245, 233, 74, 0.9));
+  opacity: 1;
+  transform: translateY(-0.4vw) scale(1.12);
+}
+.sc-te__poing--appel {
+  animation: sc-te-appel 1s ease-in-out infinite;
+}
+@keyframes sc-te-appel {
+  50% {
+    opacity: 0.95;
+    transform: scale(1.08);
+  }
+}
+.sc-te__milieu {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 2vw;
+  min-height: 0;
+}
+.sc-te__milieu--sans-film {
+  grid-template-columns: 1fr;
+}
+.sc-te__mini {
+  position: relative;
+  width: 35vw;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 1.6vw;
+  background: #000;
+}
+.sc-te__mini video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.sc-te__mini b {
+  position: absolute;
+  top: 1vw;
+  left: 1vw;
+  display: flex;
+  align-items: center;
+  gap: 0.8vw;
+  padding: 0.4vw 1.2vw;
+  border-radius: 5vw;
+  background: rgba(0, 0, 0, 0.6);
+  color: #c9ccd3;
+  font-size: max(17px, 2.1vw);
+  font-weight: 600;
+}
+.sc-te__mini b::before {
+  content: '';
+  width: 1.5vw;
+  height: 1.5vw;
+  border-radius: 50%;
+  background: #9a9ea8;
+}
+.sc-te__mini--filme {
+  border-color: #ff2d20;
+}
+.sc-te__mini--filme b {
+  color: #fff;
+}
+.sc-te__mini--filme b::before {
+  background: #ff2d20;
+  animation: sc-te-cli 1s steps(1) infinite;
+}
+@keyframes sc-te-cli {
+  50% {
+    opacity: 0.3;
+  }
+}
+.sc-te__retardateur {
+  position: absolute;
+  right: 1vw;
+  bottom: 1vw;
+  display: flex;
+  align-items: center;
+  gap: 0.8vw;
+  min-height: max(48px, 6.4vw);
+  padding: 0.4vw 1.4vw 0.4vw 0.8vw;
+  border: 0;
+  border-radius: 5vw;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  font: inherit;
+  font-size: max(17px, 2.4vw);
+  font-weight: 700;
+}
+.sc-te__retardateur svg {
+  display: block;
+  width: 6vw;
+  height: 4.5vw;
+}
+.sc-te__compte {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  font-size: 15vw;
+  font-weight: 900;
+  text-shadow: 0 0 2vw #000;
+}
+.sc-te .sc-timer__temps svg {
+  height: 13vw;
+}
+.sc-te__milieu--sans-film .sc-timer__temps svg {
+  height: 19vw;
+}
+.sc-te__round {
+  min-height: 1.3em;
+  color: var(--text-muted);
+  font-weight: 600;
+  text-align: center;
+}
+.sc-te__question {
+  margin: 0;
+  font-size: max(17px, 2.8vw);
+  font-weight: 700;
+  line-height: 1.3;
+}
+.sc-te__dessins {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: end;
+  justify-content: center;
+  column-gap: 1vw;
+  padding-bottom: 0.5vw;
+}
+.sc-te__dessins .sc-timer__dessin {
+  grid-column: auto;
+  grid-row: auto;
+  font-size: max(17px, 2.3vw);
+}
+.sc-te__dessins .sc-timer__dessin svg {
+  width: 9vw;
+  height: 9vw;
+}
+.sc-te__dessins .sc-timer__dessin.sc-timer__dessin--cloche {
+  font-size: max(20px, 3.2vw);
+}
+.sc-te__dessins .sc-timer__dessin.sc-timer__dessin--cloche svg {
+  width: 20vw;
+  height: 20vw;
+}
+/* La fin du combat : Archiver, Partager ou Jeter à la place de la cloche. */
+.sc-te__choix {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1.4vw;
+  padding-top: 7vw;
+}
+.sc-te__choix button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: max(48px, 9.5vw);
+  border: 1px solid var(--border);
+  border-radius: 1.8vw;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+.sc-te__choix b {
+  font-size: max(19px, 3.2vw);
+}
+.sc-te__choix small {
+  color: var(--text-muted);
+  font-size: max(14px, 2.1vw);
+}
+.sc-te__choix .sc-te__choix-principal {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-contrast, #15161a);
+}
+.sc-te__choix-principal small {
+  color: inherit;
+  opacity: 0.75;
+}
+.sc-te__choix .sc-te__jeter {
+  min-height: max(48px, 6.6vw);
+  border-color: transparent;
+  background: none;
+  color: var(--text-muted);
+  font-size: max(17px, 2.6vw);
+  font-weight: 600;
+}
+.sc-te__message {
+  position: absolute;
+  left: 2.5vw;
+  bottom: 2vw;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 2vw;
+  max-width: 62vw;
+  padding: 1.2vw 1.8vw;
+  border-radius: 1.6vw;
+  background: var(--text);
+  color: var(--bg);
+  font-size: max(17px, 2.4vw);
+  font-weight: 600;
+}
+.sc-te__message button {
+  min-height: 48px;
+  padding: 0 12px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 800;
+  text-decoration: underline;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sc-te__poing--appel,
+  .sc-te__mini--filme b::before {
+    animation: none;
+  }
+}
+.sc-te__aide {
+  margin: 0;
+  padding: 10px 0;
+  color: var(--text-muted);
+  font-size: 17px;
+  line-height: 1.4;
+}
+.sc-noms__resultat {
+  color: var(--text-muted);
+  font-weight: 400;
+}
 .sc-timer__resume {
   margin-left: auto;
   padding-left: 12px;

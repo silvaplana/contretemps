@@ -868,6 +868,45 @@ navigateur (`Timer.jsx`, aucune donnée au serveur) :
 - le décompte suit l'horloge (juste même si le navigateur ralentit), et l'écran reste allumé pendant le
   décompte quand le téléphone le permet.
 
+#### Timer étendu *(Seb, 21/11 ; maquette https://claude.ai/artifact/XZJhcgDeweToDP9B9PhvPg)*
+
+**Fights › ⋮ › Paramètres du Timer** (`ParametresTimer.jsx`) : trois cases, gardées sur le téléphone
+avec les autres réglages du Timer (`timerReglages.js`) : « Filmer le combat », « Nommer les
+combattants », « Déclarer le vainqueur ». Rien de coché : le Timer simple ci-dessus, inchangé. Dès
+qu'une case est cochée : le **Timer étendu**, qui n'existe qu'en plein écran (la croix rend le Timer
+simple, avec ses modes et ses réglages ; toucher le temps y revient).
+
+- **Tout en paysage.** L'appli Android tourne l'écran elle-même, même rotation automatique coupée
+  (`TournagePlugin.landscape`) ; dans le navigateur on demande le plein écran et le paysage
+  (`screen.orientation.lock`). Si l'écran reste en portrait : « Tournez le téléphone en paysage. »
+  (pas de film de travers).
+- **En haut**, les deux noms et, entre eux, le résultat : un **poing levé** pour celui de gauche,
+  **« = »** pour le match nul, un poing levé pour celui de droite. Gris au départ ; on en touche un, il
+  s'allume (le retoucher l'éteint). Ils clignotent à la fin du combat tant que rien n'est déclaré.
+- **Nommer** : on touche « … », on tape les premières lettres (accents ignorés, début d'un mot du
+  nom), trois membres au plus sont proposés ; un appui ou Entrée valide le premier. Sans rien taper,
+  les premiers membres sont proposés. Un nom peut rester vide.
+- **Filmer** : c'est ce téléphone qui filme, caméra arrière, son brut (`timerFilm.js`,
+  `MediaRecorder`, 1280 × 720, 4 Mbit/s). À gauche la miniature de ce qu'il voit (« Prêt à filmer »,
+  « Ça filme », « Caméra indisponible »). Le film part à la cloche du début et s'arrête à la fin du
+  combat (dernier round fini, ou cloche touchée) ; Pause met aussi le film en pause ; les repos entre
+  les rounds sont filmés.
+- **Retardateur** : la petite caméra « 5 s » sur la miniature, pour se filmer soi-même. 5, 4, 3, 2, 1
+  en gros avec un « tin » à chaque seconde, puis la cloche sonne et le combat démarre.
+- **Fin du combat** (film coché) : le temps et la cloche laissent la place à la vidéo du combat, à
+  revoir, et à trois touches : **Archiver** (principal ; « Il va dans Combats »), **Partager**
+  (le partage du téléphone, WhatsApp… ; sinon la vidéo est téléchargée ; l'écran reste, pour pouvoir
+  aussi archiver) et **Jeter** (Annuler pendant 10 s). Rien n'est envoyé au serveur avant Archiver.
+- **Archiver** réutilise l'envoi par blocs du module Vidéos et la route de « Filmer un combat »
+  (`POST /session-clips/fights`), qui accepte maintenant un nom vide (`people: [id | null, id | null]`,
+  le combat attend alors un coach, à vérifier), `winner` (0 ou 1, la place du vainqueur) et `draw`
+  (match nul). Le combat rejoint la séance du jour. Dans une séance, le nom du vainqueur est suivi de
+  « vainqueur », un match nul de « match nul ».
+- **Données** : `sc_participants.winner` (le vainqueur est une des deux personnes, sans ordre ni
+  coin) et `sc_clips.draw` (le match nul n'est à personne). Migration `c5d8e2f4a6b1`.
+- Sans « Filmer le combat », les noms et le résultat ne sont qu'à l'écran : rien n'est gardé.
+- **Plus tard** (Seb, 21/11) : incruster le temps et les noms dans la vidéo archivée.
+
 ### 6.6 Plus tard
 
 Hors du premier code, notés pour ne pas les perdre (Seb, 27 octobre).

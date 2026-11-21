@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Capacitor, registerPlugin } from '@capacitor/core'
+import { DANS_L_APPLI, Natif } from './natif.js'
 import SegmentedTabs from '../../components/SegmentedTabs.jsx'
 import * as api from './api.js'
 
@@ -17,9 +17,6 @@ const IMAGE_MS = 4000
 const MAINTENIR_MS = 500
 const REPOS_MS = 3000
 const RELIRE_MS = 2000 // l’état de la caméra se voit vite sur la télécommande (Seb, 13/11)
-// Le film en tâche de fond de l'appli Tournage (frontend/android, camera/TournagePlugin.kt).
-const Natif = registerPlugin('Tournage')
-const DANS_L_APPLI = Capacitor.isNativePlatform()
 const APPLI = 'https://github.com/silvaplana/contretemps/releases/tag/tournage-latest'
 // Le rôle de ce téléphone et le jeton de la caméra, gardés sur l'appareil.
 const ROLE = 'sc-tournage-role'

@@ -2,7 +2,7 @@ Fights : onglet de la barre du bas (sous « Plus » si la barre est pleine), pou
 professeurs et les admins. Il n'apparaît que si la case Fights est cochée dans Admin › École ›
 Personnalisation › Fonctionnalités (éteinte au départ). Un élève n'a que « Mes combats » ; un coach
 (admin ou professeur) a trois onglets en haut : Combats (ses combats), Tournage (en deux
-volets dépliants : Tournage et Montage) et Timer, et le menu ⋮ en haut à droite : « Paramètres de tournage », « Tests de découpage vidéo » et « Entraîner l’écoute ». Fights se rouvre
+volets dépliants : Tournage et Montage) et Timer, et le menu ⋮ en haut à droite : « Paramètres de tournage », « Paramètres du Timer », « Tests de découpage vidéo » et « Entraîner l’écoute ». Fights se rouvre
 sur le dernier de ces onglets utilisé.
 
 Mes combats
@@ -66,6 +66,22 @@ Timer (coachs, Fights › Timer) : un minuteur de rounds avec la cloche.
   rend les onglets et la barre du bas (toucher le temps y revient).
 - Sous les dessins, le volet « Réglages » (fermé, son résumé à droite) : durée du round, repos et nombre
   de rounds, case « Prévenir 10 s avant la fin (clac clac) ». Pour le volume : les boutons du téléphone.
+
+Paramètres du Timer (coachs, Fights › ⋮ ; ← revient à Fights) : trois cases, « Filmer le combat »,
+« Nommer les combattants », « Déclarer le vainqueur ». Rien de coché : le Timer simple. Une case
+cochée : le Timer étendu, téléphone en paysage.
+
+Timer étendu (coachs, Fights › Timer, téléphone en paysage) :
+- En haut, les deux noms (« … » : on touche, on tape les premières lettres, on choisit le membre
+  proposé) et, entre eux, le résultat : un poing levé pour celui de gauche, « = » pour le match nul,
+  un poing levé pour celui de droite ; on en touche un, il s'allume.
+- À gauche, l'image de ce que le téléphone filme, avec la petite caméra « 5 s » : le retardateur
+  (compte à rebours de 5 secondes, puis la cloche sonne et le combat démarre). Au milieu le temps, à
+  droite la cloche (« Démarrer », puis « Arrêter ») et le chronomètre (« Pause » / « Reprendre »).
+- La cloche lance et arrête le film. À la fin du combat : la vidéo à revoir et trois touches,
+  « Archiver » (le combat va dans Combats, dans la séance du jour), « Partager » (WhatsApp,
+  messages…) et « Jeter » (« Annuler » pendant 10 secondes).
+- La croix en haut à droite rend le Timer simple, où se règlent la durée du round et les repos.
 
 Entraîner l’écoute (coachs, Fights › ⋮ ; ← revient à Fights) : choisir le mot (Combattez, Time, avec le
 nombre d'enregistrements), toucher « ● Enregistrer « Combattez ! » » et crier le mot dans les 2 s ; l'enregistrement s'ajoute

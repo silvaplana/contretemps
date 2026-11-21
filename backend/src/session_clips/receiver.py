@@ -103,7 +103,7 @@ class SessionClipsReceiver:
 
         @app.post(f"{PREFIX}/fights", response_model=ClipOut, status_code=201)
         def create_fight(body: FightCreate, m: Member = member, s: Session = db):
-            return self._clips_out(s, m, [guard(lambda: client.add_fight(s, m, body.upload_id, body.people))])[0]
+            return self._clips_out(s, m, [guard(lambda: client.add_fight(s, m, body.upload_id, body.people, body.winner, body.draw))])[0]
 
         @app.patch(f"{PREFIX}/sessions/{{session_id}}", response_model=SessionOut)
         def rename_session(session_id: int, body: SessionRename, m: Member = member, s: Session = db):
@@ -589,6 +589,7 @@ class SessionClipsReceiver:
         client = self.client
         people = client.participants(s, [c.id for c in clips])
         outsiders = client.outsiders(s, [c.id for c in clips])
+        winners = client.winners(s, [c.id for c in clips])
         names = client.directory.names(s, m.org_id, {p for ps in people.values() for p in ps if p is not None})
         videos = client.video_map(s, [c.video_id for c in clips])
         favorites = client.favorite_ids(s, m.person_id, [c.id for c in clips])
@@ -617,11 +618,13 @@ class SessionClipsReceiver:
                     position=c.position,
                     title=clip_title(shown, rank.get(c.id, 1)),
                     to_check=c.to_check,
+                    draw=c.draw,
                     favorite=c.id in favorites,
                     new=not c.to_check and m.person_id in ps and c.id not in viewed,
                     check_reason=c.check_reason,
                     participants=[
-                        ParticipantOut(person_id=p, name=n, outsider=o) for p, n, o in zip(ps, shown, out_slots)
+                        ParticipantOut(person_id=p, name=n, outsider=o, winner=(c.id, i) in winners)
+                        for i, (p, n, o) in enumerate(zip(ps, shown, out_slots))
                     ],
                     video=VideoSortie.model_validate(video) if video is not None else None,
                     session_title=sessions[c.session_id].title,

@@ -113,12 +113,12 @@ def test_combattant_inconnu(client, db_session, e):
     r = client.put(f"/session-clips/clips/{clip.id}/participants", json={"people": [e["karim"].id, "outsider"]}, headers=h)
     assert r.status_code == 200, r.text
     assert r.json()["title"] == "Karim B. vs Inconnu"
-    assert r.json()["participants"][1] == {"person_id": None, "name": "Inconnu", "outsider": True}
+    assert r.json()["participants"][1] == {"person_id": None, "name": "Inconnu", "outsider": True, "winner": False}
     assert client.post(f"/session-clips/clips/{clip.id}/validate", headers=h).status_code == 200
     assert [c["title"] for c in client.get("/session-clips/mine", headers=e["h"]["karim"]).json()] == ["Karim B. vs Inconnu"]
     # Le remettre à « pas encore nommé ».
     r = client.put(f"/session-clips/clips/{clip.id}/participants", json={"people": [e["karim"].id, None]}, headers=h)
-    assert r.json()["participants"][1] == {"person_id": None, "name": None, "outsider": False}
+    assert r.json()["participants"][1] == {"person_id": None, "name": None, "outsider": False, "winner": False}
 
 
 def test_supprimer_un_clip_efface_sa_video(client, db_session, e):
@@ -194,6 +194,34 @@ def test_filmer_un_combat(client, db_session, e):
     # Deux combattants différents, coach seulement.
     assert filmer([seb, seb])[1].status_code == 400
     assert client.post("/session-clips/fights", json={"upload_id": upload, "people": [seb, karim]}, headers=e["h"]["seb"]).status_code == 403
+
+
+def test_combat_du_timer_etendu(client, db_session, e):
+    """Timer étendu (Seb, 21/11) : le combat filmé peut partir sans nom (il
+    attend alors un coach) et avec son vainqueur."""
+    h = e["h"]["coach"]
+
+    def filmer(**corps):
+        upload = client.post(
+            f"/ecoles/{e['ecole'].id}/videos/televersements",
+            json={"extension": ".webm", "octets_total": 100},
+            headers=h,
+        ).json()["id"]
+        return client.post("/session-clips/fights", json={"upload_id": upload, **corps}, headers=h)
+
+    seb, karim = e["seb"].id, e["karim"].id
+    r = filmer(people=[seb, karim], winner=1)
+    assert r.status_code == 201, r.text
+    assert [p["winner"] for p in r.json()["participants"]] == [False, True] and not r.json()["to_check"]
+    # Un nom manque : à vérifier, le vainqueur reste sur sa place.
+    r = filmer(people=[None, karim], winner=0)
+    assert r.status_code == 201, r.text
+    assert r.json()["to_check"] and [p["winner"] for p in r.json()["participants"]] == [True, False]
+    assert filmer(people=[None, None]).json()["participants"][0]["winner"] is False
+    assert filmer(people=[seb, karim], winner=2).status_code == 400
+    nul = filmer(people=[seb, karim], draw=True).json()
+    assert nul["draw"] and not any(p["winner"] for p in nul["participants"])
+    assert filmer(people=[seb, karim], winner=0, draw=True).status_code == 400
 
 
 def test_favoris(client, db_session, e):
