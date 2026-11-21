@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Deroulant } from './Labo.jsx'
+import { CHRONO, CLOCHE } from './timerDessins.js'
 import clocheDebut from './sons/cloche-debut-de-round.mp3'
 import clocheFin from './sons/cloche-fin-de-round.mp3'
 import clacClac from './sons/clac-clac-10-secondes.mp3'
@@ -24,10 +25,40 @@ function lire() {
 
 const mmss = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
 
+// Le temps en chiffres rouges à sept segments, comme sur une horloge de salle
+// (Seb, 21/11). Les segments éteints restent à peine visibles.
+const H = (y) => `9,${y} 14,${y - 5} 46,${y - 5} 51,${y} 46,${y + 5} 14,${y + 5}`
+const V = (x, y) => `${x},${y} ${x + 5},${y + 5} ${x + 5},${y + 37} ${x},${y + 42} ${x - 5},${y + 37} ${x - 5},${y + 5}`
+const SEGMENTS = { a: H(6), g: H(54), d: H(102), f: V(6, 9), b: V(54, 9), e: V(6, 57), c: V(54, 57) }
+const ALLUMES = ['abcdef', 'bc', 'abged', 'abgcd', 'fgbc', 'afgcd', 'afgedc', 'abc', 'abcdefg', 'abcdfg']
+
+function Afficheur({ texte, className }) {
+  return (
+    <div className={className} role="timer" aria-label={texte}>
+      {[...texte].map((c, i) =>
+        c === ':' ? (
+          <svg key={i} viewBox="0 0 24 108" aria-hidden="true">
+            <rect x="7" y="27" width="11" height="11" rx="2" />
+            <rect x="7" y="70" width="11" height="11" rx="2" />
+          </svg>
+        ) : (
+          <svg key={i} viewBox="0 0 60 108" aria-hidden="true">
+            {Object.entries(SEGMENTS).map(([nom, points]) => (
+              <polygon key={nom} points={points} className={ALLUMES[c].includes(nom) ? '' : 'sc-timer__eteint'} />
+            ))}
+          </svg>
+        ),
+      )}
+    </div>
+  )
+}
+
 export default function Timer() {
   const [r, setR] = useState(lire)
   const [run, setRun] = useState(null) // { phase: 'round'|'repos', n, fin (ms), total, pause (ms restants) }
   const [, setTic] = useState(0)
+  // Arrêter : le Timer s'arrête tout de suite, la cloche reste le temps de ses trois coups.
+  const [sonne, setSonne] = useState(false)
   const sons = useRef({})
   const dit = useRef(new Set()) // sons déjà joués dans cette phase
   const veille = useRef(null)
@@ -123,7 +154,7 @@ export default function Timer() {
         <div className={`sc-timer__phase${repos ? ' sc-timer__phase--repos' : run ? '' : ' sc-timer__phase--pret'}`}>
           {run ? (repos ? 'Repos' : 'Combat') : 'Prêt'}
         </div>
-        <div className={`sc-timer__temps${run && !repos && reste <= 10 ? ' sc-timer__temps--fin' : ''}`}>{mmss(reste)}</div>
+        <Afficheur className={`sc-timer__temps${run && !repos && reste <= 10 ? ' sc-timer__temps--fin' : ''}`} texte={mmss(reste)} />
         <div className="sc-timer__round">
           {r.mode === 'rounds' && (run ? `Round ${run.n} sur ${r.nombre}` : `${r.nombre} rounds`)}
         </div>
@@ -135,16 +166,40 @@ export default function Timer() {
         </div>
       </div>
 
-      <button type="button" className="btn btn--primary sc-timer__go" onClick={demarrer}>
-        {!run ? 'Démarrer' : run.pause != null ? 'Reprendre' : 'Pause'}
-      </button>
-      {run && (
-        <button type="button" className="sc-timer__stop" onClick={() => setRun(null)}>
-          Arrêter
+      {!run && !sonne && (
+        <button type="button" className="btn btn--primary sc-timer__go" onClick={demarrer}>
+          Démarrer
         </button>
       )}
+      {(run || sonne) && (
+        <div className="sc-timer__dessins">
+          {run && (
+            <button
+              type="button"
+              className={`sc-timer__dessin${run.pause != null ? ' sc-timer__dessin--reprendre' : ''}`}
+              onClick={demarrer}
+            >
+              <span dangerouslySetInnerHTML={{ __html: CHRONO }} />
+              {run.pause != null ? 'Reprendre' : 'Pause'}
+            </button>
+          )}
+          <button
+            type="button"
+            className={`sc-timer__dessin${sonne ? ' sc-timer__dessin--sonne' : ''}`}
+            disabled={!run}
+            onClick={() => {
+              setRun(null)
+              setSonne(true)
+              setTimeout(() => setSonne(false), 1500)
+            }}
+          >
+            <span dangerouslySetInnerHTML={{ __html: CLOCHE }} />
+            Arrêter
+          </button>
+        </div>
+      )}
 
-      {!run && (
+      {!run && !sonne && (
         <Deroulant
           titre={
             <>
