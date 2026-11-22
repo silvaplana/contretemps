@@ -376,6 +376,7 @@ function MesCombats({ me, version, caches, choisis, basculer, onOpen }) {
           <strong>{adversaires(c, me)}</strong>
           <span className="sc-meta">
             Combat {c.position}
+            {c.video?.publieeLe && ` · ${api.heure(c.video.publieeLe)}`}
             {duree(c.video) && ` · ${duree(c.video)}`}
             {c.new && <span className="sc-chip sc-chip--info">Nouveau</span>}
             {etatPreparation(c) && <span className="sc-chip sc-chip--info">{etatPreparation(c)}</span>}
@@ -392,6 +393,7 @@ function LigneCoach({ c, choisis, basculer, onOpen }) {
       <strong>{c.title}</strong>
       <span className="sc-meta">
         Combat {c.position}
+        {c.video?.publieeLe && ` · ${api.heure(c.video.publieeLe)}`}
         {c.to_check && <span className="sc-chip sc-chip--warn">À vérifier</span>}
         {etatPreparation(c) && <span className="sc-chip sc-chip--info">{etatPreparation(c)}</span>}
       </span>
@@ -1497,6 +1499,7 @@ function Lecture({ clipId, me, version, caches, montrer, supprimer, rafraichir, 
           <span className="sc-meta">
             {api.jour(c.held_on)}
             {c.session_title ? ` · ${c.session_title}` : ''} · combat {c.position}
+            {c.video?.publieeLe && ` · ${api.heure(c.video.publieeLe)}`}
             {c.video?.statut === 'en_cours'
               ? ` · ${etatPreparation(c).toLowerCase()} depuis le téléphone qui a filmé`
               : c.preparing && ` · ${etatPreparation(c).toLowerCase()} : la vidéo avec les effets arrive dans quelques minutes`}
