@@ -102,6 +102,9 @@ ouverture sans réseau (téléphone qui se réveille, mise en ligne en cours) ef
   revient dans une minute » (au lieu d'écrans vides), `/health` est relu toutes les 3 s, et au retour
   l'appli se recharge seule (sans recharger si une saisie est en cours : les listes sont relues).
   Téléphone hors réseau : pas de bandeau.
+- **Mise en ligne sans coupure** (Seb, 21/11/2026) : le Caddy du conteneur frontend fait attendre les
+  demandes `/api` jusqu'à 90 s pendant que le backend redémarre (`lb_try_duration`), au lieu de
+  répondre en erreur. Le bandeau ci-dessus ne reste que pour une coupure plus longue.
 - **Journal de l'appli** : chaque demande sans réponse, en erreur serveur (5xx) ou refusée (401),
   et une liste de 0 élève reçue, sont notées sur le téléphone (50 au plus), puis envoyées au serveur
   dès qu'une demande repasse (`POST /journal/appli`, fichier `journal-appli.log` à côté de la
