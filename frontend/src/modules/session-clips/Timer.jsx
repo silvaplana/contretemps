@@ -260,6 +260,35 @@ function figerSens(oui) {
   }
 }
 
+// La première image du film, en JPEG de 464 px de large comme les vignettes
+// du serveur, et sa durée si le navigateur la connaît (Seb, 22/11).
+function premiereImage(url) {
+  return new Promise((resolve) => {
+    const v = document.createElement('video')
+    v.muted = true
+    v.playsInline = true
+    v.preload = 'auto'
+    const fini = (r) => {
+      v.removeAttribute('src')
+      resolve(r)
+    }
+    v.onloadeddata = () => {
+      v.currentTime = 0.1
+    }
+    v.onseeked = () => {
+      const c = document.createElement('canvas')
+      c.width = 464
+      c.height = Math.round((464 * v.videoHeight) / v.videoWidth) || 261
+      c.getContext('2d').drawImage(v, 0, 0, c.width, c.height)
+      const duree = Number.isFinite(v.duration) ? Math.round(v.duration) : null
+      c.toBlob((jpeg) => fini(jpeg ? { jpeg, duree } : null), 'image/jpeg', 0.85)
+    }
+    v.onerror = () => fini(null)
+    setTimeout(() => fini(null), 5000)
+    v.src = url
+  })
+}
+
 export default function Timer({ ecoleId, rafraichir, me }) {
   const [r, setR] = useState(lire)
   // Timer étendu (Seb, 21/11) : en paysage, il filme le combat, nomme les deux
@@ -447,6 +476,7 @@ export default function Timer({ ecoleId, rafraichir, me }) {
       overlay,
     }
     const garde = { fin, noms, resultat }
+    const image = premiereImage(fin.url)
     const nom = titre()
     const cle = Date.now()
     suivant()
@@ -462,7 +492,10 @@ export default function Timer({ ecoleId, rafraichir, me }) {
         clip = await reessayer(() => api.filmerCombat({ upload_id: id, ...corps }))
         return clip.video
       })
-      URL.revokeObjectURL(fin.url)
+      image.then((i) => {
+        URL.revokeObjectURL(fin.url)
+        if (i) api.poserVignette(clip.id, i.jpeg, i.duree).then(rafraichir, () => {})
+      })
       setEnvois((l) => l.map((e) => (e.cle === cle ? { ...e, clip } : e)))
       // Incrusté au serveur : passer à sa version dès qu'elle est prête.
       if (Object.values(overlay).some((v) => v === true) || overlay.music) sansCopieLocale(video.id)

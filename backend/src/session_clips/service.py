@@ -17,6 +17,7 @@ from videos import Video, Videos
 
 from . import people
 from .models import Clip, ClipParticipant, ClipSession, Favorite, LabTest, Piece, Recorder, SessionAttendee, Viewed
+from .overlay import thumbnail_from_frame
 from .overlay import wanted as overlay_wanted
 from .ports import Directory, Member, Notifier
 
@@ -208,6 +209,25 @@ class SessionClips:
         """Les combats validés de la personne qu'elle n'a pas encore ouverts."""
         mine = [c.id for c in self.my_clips(db, member)]
         return len(mine) - len(self.viewed_ids(db, member.person_id, mine))
+
+    def set_thumb(self, db: Session, member: Member, clip_id: int, jpeg: bytes, duration: float | None = None) -> None:
+        """La première image du combat, prise par le téléphone qui l'a filmé
+        (Seb, 22/11) : visible dans Combats avant la fin de l'envoi, avec les
+        incrustations demandées (noms, chrono) déjà posées."""
+        if not member.is_coach:
+            raise ForbiddenError("Réservé aux coachs")
+        if not jpeg.startswith(b"\xff\xd8") or len(jpeg) > 1_000_000:
+            raise ValueError("Vignette illisible")
+        clip = self.clip(db, member, clip_id)
+        video = self.videos.get(db, clip.video_id)
+        if video is None:
+            return
+        if overlay_wanted(clip.overlay):
+            try:
+                jpeg = thumbnail_from_frame(jpeg, clip.overlay, duration)
+            except Exception:  # noqa: BLE001 — l'image seule plutôt que rien
+                pass
+        self.videos.poser_vignette(db, video, jpeg)
 
     def mark_viewed(self, db: Session, member: Member, clip: Clip) -> None:
         """La personne ouvre un de ses combats validés : il n'est plus nouveau."""

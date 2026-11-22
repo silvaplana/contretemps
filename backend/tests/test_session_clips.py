@@ -367,3 +367,61 @@ def test_nouveaux_combats(client, db_session, e, monkeypatch):
     assert client.get("/session-clips/new", headers=h["seb"]).json() == {"count": 0}
     assert [c["new"] for c in client.get("/session-clips/mine", headers=h["seb"]).json()] == [False]
     assert client.get("/session-clips/new", headers=h["karim"]).json() == {"count": 1}
+
+
+def test_vignette_du_telephone(client, db_session, e, tmp_path, monkeypatch):
+    """Seb, 22/11 : la première image du combat, envoyée par le téléphone qui
+    l'a filmé, se voit avant la fin de l'envoi ; coachs seulement."""
+    import videos.videos as vv
+
+    monkeypatch.setattr(vv, "dossier_ecole", lambda ecole_id: tmp_path)
+    h = e["h"]["coach"]
+    upload = client.post(
+        f"/ecoles/{e['ecole'].id}/videos/televersements", json={"extension": ".webm", "octets_total": 100}, headers=h
+    ).json()["id"]
+    clip = client.post("/session-clips/fights", json={"upload_id": upload, "people": [e["seb"].id, None]}, headers=h).json()
+    assert clip["video"]["statut"] == "en_cours" and clip["video"]["poster_url"] is None
+    jpeg = b"\xff\xd8\xff\xe0" + b"0" * 100
+    assert client.put(f"/session-clips/clips/{clip['id']}/thumb", content=jpeg, headers=e["h"]["seb"]).status_code == 403
+    assert client.put(f"/session-clips/clips/{clip['id']}/thumb", content=b"pas une image", headers=h).status_code == 400
+    assert client.put(f"/session-clips/clips/{clip['id']}/thumb", content=jpeg, headers=h).status_code == 204
+    mine = client.get("/session-clips/mine", headers=e["h"]["seb"]).json()
+    assert mine[0]["video"]["poster_url"]
+    video = db_session.get(Video, clip["video"]["id"])
+    db_session.refresh(video)
+    assert (tmp_path / video.poster.split("/")[-1]).read_bytes() == jpeg
+
+
+def test_progression_de_la_preparation(monkeypatch, tmp_path):
+    """Seb, 22/11 : la barre avance au prorata de la durée, à la vitesse
+    apprise sur les derniers combats ; jamais 100 % avant la fin."""
+    from session_clips import overlay as ov
+
+    monkeypatch.setattr(ov, "SPEED_FILE", tmp_path / "vitesse.json")
+    assert ov.progress(None, 60) is None
+    assert ov.progress({"names": True}, 60) == 0.0
+    ov._learn(work=30, length=60)  # 0,5 s de travail par seconde
+    assert ov.speed() == 0.5
+    monkeypatch.setattr(ov.time, "time", lambda: 1000.0)
+    assert ov.progress({"started_at": 985.0}, 60) == pytest.approx(0.5)
+    assert ov.progress({"started_at": 1.0}, 60) == 0.95
+    ov._learn(work=60, length=60)
+    assert ov.speed() == pytest.approx(0.65)
+
+
+def test_vignette_avec_incrustations():
+    """Seb, 22/11 : la vignette est la première image avec les noms posés."""
+    import io
+
+    from PIL import Image
+
+    from session_clips import overlay as ov
+
+    photo = io.BytesIO()
+    Image.new("RGB", (464, 261), (40, 40, 40)).save(photo, "JPEG")
+    demande = {"names": True, "chrono": True, "labels": ["Seb R.", "Karim B."], "result": 0, "rounds": 1,
+               "phases": [{"t": 0, "n": 1, "total": 60}]}
+    vignette = Image.open(io.BytesIO(ov.thumbnail_from_frame(photo.getvalue(), demande, 45)))
+    assert vignette.size == (464, 261)
+    # Des couleurs vives (plaques des noms) sur l'image grise.
+    assert max(max(px) - min(px) for px in vignette.getdata()) > 100

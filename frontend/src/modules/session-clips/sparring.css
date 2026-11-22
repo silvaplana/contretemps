@@ -1977,6 +1977,11 @@
   transition: width 0.3s;
 }
 
+/* La préparation au serveur, relue toutes les 15 s : la barre glisse d'une lecture à l'autre. */
+.sc-vignette__envoi--prep {
+  transition: width 15s linear;
+}
+
 /* Timer étendu, téléphone debout (Seb, 21/11 ; maquette
    https://claude.ai/artifact/V2svDuF74XVHNbYNuk3ui6) : les noms en haut avec
    les poings dessous, l'image du film au milieu, le temps, puis la cloche. */

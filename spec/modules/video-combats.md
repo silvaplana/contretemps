@@ -975,7 +975,16 @@ simple, avec ses modes et ses réglages ; toucher le temps y revient).
   après. L'envoi n'abandonne jamais : sans réseau, il réessaie et repart dès que le réseau revient ;
   la vidéo reste rangée sur le téléphone (IndexedDB) jusqu'à son arrivée entière, et si l'appli est
   fermée ou rechargée l'envoi reprend où il en était à la prochaine ouverture (Seb, 22/11 : un combat
-  perdu après 6 min sans réseau). Changer d'écran ne gêne pas l'envoi. Combats ne montre que les combats où l'on est nommé (Seb, 21/11) ; on y
+  perdu après 6 min sans réseau). Changer d'écran ne gêne pas l'envoi.
+  Vignette tout de suite (Seb, 22/11) : à « Archiver », le téléphone prend la première image du film
+  (JPEG 464 px) et l'envoie (`PUT /session-clips/clips/{id}/thumb?duration=`) ; le serveur y pose
+  aussitôt les incrustations demandées, comme dans la vidéo une fois les noms en place
+  (`overlay.thumbnail_from_frame`). Elle se voit dans Combats avant la fin de l'envoi ; celle du
+  serveur la remplace quand la vidéo est prête. Dans Combats, un combat pas prêt dit « Envoi en
+  cours » (la vidéo n'est pas encore arrivée du téléphone qui a filmé) puis « En préparation X % »
+  avec une barre sous la vignette : le serveur retient combien de secondes de travail lui prend une
+  seconde de vidéo (moyenne glissante sur les derniers combats, `overlay-speed.json` sous
+  VIDEOS_DIR) et avance au prorata de la durée ; jamais plus de 95 % avant la fin. Combats ne montre que les combats où l'on est nommé (Seb, 21/11) ; on y
   est dès « Archiver », et pendant l'envoi depuis ce téléphone la vignette montre la première image
   avec une barre de progression. Au gong, le chrono incrusté finit à 0:00. Tant que le serveur y travaille, le combat porte « En préparation »
   dans Combats (et « en préparation : la vidéo avec les effets arrive dans quelques minutes » à la

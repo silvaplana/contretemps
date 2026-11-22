@@ -262,9 +262,21 @@ class Videos:
             poster = chemin_relatif(televersement.ecole_id, chemin_poster_disque.name)
 
         video.lien_fichier = chemin_relatif(televersement.ecole_id, nom_disque)
-        video.poster = poster
+        video.poster = poster or video.poster  # sinon celle du téléphone (poser_vignette)
         video.duree_secondes = duree_secondes(chemin_disque)
         video.statut = "complete"
+        db.commit()
+
+    def poser_vignette(self, db: Session, video: Video, jpeg: bytes) -> None:
+        """Une vignette envoyée par le téléphone avant la fin de l'envoi (Seb,
+        22/11 : « la première image tout de suite ») ; celle du serveur la
+        remplace dès que le fichier est complet. Jamais sur une vidéo qui a
+        déjà la sienne."""
+        if video.poster:
+            return
+        nom = f"{uuid4().hex}-v.jpg"
+        (dossier_ecole(video.ecole_id) / nom).write_bytes(jpeg)
+        video.poster = chemin_relatif(video.ecole_id, nom)
         db.commit()
 
     def _nettoyer_abandonnes(self, db: Session) -> None:
