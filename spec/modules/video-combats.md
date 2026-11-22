@@ -981,7 +981,7 @@ simple, avec ses modes et ses réglages ; toucher le temps y revient).
   aussitôt les incrustations demandées, comme dans la vidéo une fois les noms en place
   (`overlay.thumbnail_from_frame`). Elle se voit dans Combats avant la fin de l'envoi ; celle du
   serveur la remplace quand la vidéo est prête. Dans Combats, un combat pas prêt dit « Envoi en
-  cours » (la vidéo n'est pas encore arrivée du téléphone qui a filmé) puis « En préparation X % »
+  cours X % » (octets reçus par le serveur, vus de tout téléphone ; la vidéo n'est pas encore arrivée du téléphone qui a filmé) puis « En préparation X % »
   avec une barre sous la vignette : le serveur retient combien de secondes de travail lui prend une
   seconde de vidéo (moyenne glissante sur les derniers combats, `overlay-speed.json` sous
   VIDEOS_DIR) et avance au prorata de la durée ; jamais plus de 95 % avant la fin. Combats ne montre que les combats où l'on est nommé (Seb, 21/11) ; on y

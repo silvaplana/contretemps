@@ -126,6 +126,8 @@ class ClipOut(BaseModel):
     preparing: bool = False
     # Sa progression approchée, de 0 à 0,95 (Seb, 22/11 ; overlay.progress).
     preparing_progress: float | None = None
+    # L'envoi depuis le téléphone qui a filmé, de 0 à 1, tant qu'il n'est pas fini.
+    upload_progress: float | None = None
     # Dans les « ★ Favoris » de l'appelant.
     favorite: bool = False
     check_reason: str | None = None

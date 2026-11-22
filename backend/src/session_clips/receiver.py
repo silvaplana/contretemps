@@ -620,6 +620,7 @@ class SessionClipsReceiver:
         winners = client.winners(s, [c.id for c in clips])
         names = client.directory.names(s, m.org_id, {p for ps in people.values() for p in ps if p is not None})
         videos = client.video_map(s, [c.video_id for c in clips])
+        uploads = client.videos.progression_envois(s, [v.id for v in videos.values() if v.statut == "en_cours"])
         favorites = client.favorite_ids(s, m.person_id, [c.id for c in clips])
         viewed = client.viewed_ids(s, m.person_id, [c.id for c in clips])
         sessions = {c.session_id: s.get(ClipSession, c.session_id) for c in clips}
@@ -649,6 +650,7 @@ class SessionClipsReceiver:
                     draw=c.draw,
                     preparing=c.overlay is not None,
                     preparing_progress=overlay_progress(c.overlay, video.duree_secondes if video else None),
+                    upload_progress=uploads.get(c.video_id),
                     favorite=c.id in favorites,
                     new=not c.to_check and m.person_id in ps and c.id not in viewed,
                     check_reason=c.check_reason,
