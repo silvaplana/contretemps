@@ -85,6 +85,14 @@ class Videos:
             return {}
         return {v.id: v for v in db.scalars(select(Video).where(Video.id.in_(video_ids)))}
 
+    def progression_envois(self, db: Session, video_ids: list[int]) -> dict[int, float]:
+        """Où en est l'envoi des vidéos encore « en_cours », de 0 à 1 (Seb,
+        22/11 : « Envoi en cours X % », vu de n'importe quel téléphone)."""
+        if not video_ids:
+            return {}
+        rows = db.scalars(select(Televersement).where(Televersement.video_id.in_(video_ids)))
+        return {t.video_id: t.octets_recus / t.octets_total for t in rows if t.octets_total and not t.complet}
+
     @staticmethod
     def chemin_nomme(video: Video, nom: str) -> Path | None:
         """Le fichier `nom` du dossier de l'école de la vidéo — celui que

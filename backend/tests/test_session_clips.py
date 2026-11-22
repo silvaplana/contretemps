@@ -381,6 +381,11 @@ def test_vignette_du_telephone(client, db_session, e, tmp_path, monkeypatch):
     ).json()["id"]
     clip = client.post("/session-clips/fights", json={"upload_id": upload, "people": [e["seb"].id, None]}, headers=h).json()
     assert clip["video"]["statut"] == "en_cours" and clip["video"]["poster_url"] is None
+    # « Envoi en cours X % », vu de n'importe quel téléphone.
+    assert clip["upload_progress"] == 0.0
+    r = client.put(f"/videos/televersements/{upload}", content=b"x" * 50, headers={**h, "X-Decalage": "0"})
+    assert r.status_code == 200, r.text
+    assert client.get("/session-clips/mine", headers=e["h"]["seb"]).json()[0]["upload_progress"] == 0.5
     jpeg = b"\xff\xd8\xff\xe0" + b"0" * 100
     assert client.put(f"/session-clips/clips/{clip['id']}/thumb", content=jpeg, headers=e["h"]["seb"]).status_code == 403
     assert client.put(f"/session-clips/clips/{clip['id']}/thumb", content=b"pas une image", headers=h).status_code == 400

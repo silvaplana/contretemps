@@ -306,7 +306,7 @@ function duree(video) {
 // Où en est un combat avant d'être prêt (Seb, 22/11) : l'envoi depuis le
 // téléphone qui l'a filmé, puis la préparation au serveur, approchée.
 function etatPreparation(c) {
-  if (c.video?.statut === 'en_cours') return 'Envoi en cours'
+  if (c.video?.statut === 'en_cours') return c.upload_progress != null ? `Envoi en cours ${Math.round(c.upload_progress * 100)} %` : 'Envoi en cours'
   if (!c.preparing) return null
   return c.preparing_progress > 0 ? `En préparation ${Math.round(c.preparing_progress * 100)} %` : 'En préparation'
 }
@@ -428,7 +428,10 @@ function LigneClip({ c, choisis, basculer, onOpen, children }) {
         else onOpen(c.id)
       }}
     >
-      <Vignette video={c.video} preparation={c.preparing ? (c.preparing_progress ?? 0) : null} />
+      <Vignette
+        video={c.video}
+        preparation={c.video?.statut === 'en_cours' ? c.upload_progress : c.preparing ? (c.preparing_progress ?? 0) : null}
+      />
       <span>
         {children}
         {c.favorite && <Icon name="star" size={16} className="sc-etoile" />}
@@ -1495,7 +1498,7 @@ function Lecture({ clipId, me, version, caches, montrer, supprimer, rafraichir, 
             {api.jour(c.held_on)}
             {c.session_title ? ` · ${c.session_title}` : ''} · combat {c.position}
             {c.video?.statut === 'en_cours'
-              ? ' · envoi en cours depuis le téléphone qui a filmé'
+              ? ` · ${etatPreparation(c).toLowerCase()} depuis le téléphone qui a filmé`
               : c.preparing && ` · ${etatPreparation(c).toLowerCase()} : la vidéo avec les effets arrive dans quelques minutes`}
           </span>
         </div>

@@ -93,7 +93,7 @@ Timer étendu (coachs, Fights › Timer ; debout, les poings sont sous les noms 
   préparation » dans Combats. Pendant ce temps, une pastille en bas à gauche du Timer suit l'envoi
   (« Envoi X % », « En préparation… », puis où trouver le combat : Combats si on y est nommé, sinon
   Tournage). Si on est l'un des combattants, le combat est dans Combats dès « Archiver », sa
-  vignette (la première image, noms déjà posés) avec la barre de l'envoi, puis « Envoi en cours »
+  vignette (la première image, noms déjà posés) avec la barre de l'envoi, puis « Envoi en cours X % »
   ou « En préparation X % » et sa barre. On peut lancer le combat suivant tout de suite. Sans
   réseau, l'envoi attend et repart seul ; appli fermée, il reprend à la prochaine ouverture.
 - La croix en haut à droite rend le Timer simple, où se règlent la durée du round et les repos.
