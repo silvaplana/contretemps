@@ -93,7 +93,11 @@ export async function ecrireBloc(uploadId, decalage, bloc) {
     erreur.decalageActuel = detail?.detail?.octets_recus
     throw erreur
   }
-  if (!reponse.ok) throw new Error(`Requête échouée (${reponse.status})`)
+  if (!reponse.ok) {
+    const erreur = new Error(`Requête échouée (${reponse.status})`)
+    erreur.status = reponse.status
+    throw erreur
+  }
   const donnees = await reponse.json()
   return { octetsRecus: donnees.octets_recus, complet: donnees.complet }
 }

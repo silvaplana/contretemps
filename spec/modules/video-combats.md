@@ -972,7 +972,10 @@ simple, avec ses modes et ses réglages ; toucher le temps y revient).
   ~3 min, puis le combat revient à l'écran, « touchez Archiver pour réessayer » ; trois films perdus
   ainsi le 21/11), « Envoi X % », « En préparation… », puis « Prêt dans Combats » (si on est l'un des combattants),
   « Prêt : à vérifier dans Tournage » ou « Prêt dans Tournage, séance du jour » ; elle s'efface 15 s
-  après. Combats ne montre que les combats où l'on est nommé (Seb, 21/11) ; on y
+  après. L'envoi n'abandonne jamais : sans réseau, il réessaie et repart dès que le réseau revient ;
+  la vidéo reste rangée sur le téléphone (IndexedDB) jusqu'à son arrivée entière, et si l'appli est
+  fermée ou rechargée l'envoi reprend où il en était à la prochaine ouverture (Seb, 22/11 : un combat
+  perdu après 6 min sans réseau). Changer d'écran ne gêne pas l'envoi. Combats ne montre que les combats où l'on est nommé (Seb, 21/11) ; on y
   est dès « Archiver », et pendant l'envoi depuis ce téléphone la vignette montre la première image
   avec une barre de progression. Au gong, le chrono incrusté finit à 0:00. Tant que le serveur y travaille, le combat porte « En préparation »
   dans Combats (et « en préparation : la vidéo avec les effets arrive dans quelques minutes » à la

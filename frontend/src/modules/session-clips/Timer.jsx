@@ -455,7 +455,7 @@ export default function Timer({ ecoleId, rafraichir, me }) {
     // au lieu d'être perdu (Seb, 21/11 : trois films disparus).
     setEnvois((l) => [...l, { cle, uploadId: null, nom, clip: null }])
     try {
-      const uploadId = await reessayer(() => demarrerTeleversement(ecoleId, fin.fichier))
+      const uploadId = await reessayer(() => demarrerTeleversement(ecoleId, fin.fichier, { garder: true }))
       setEnvois((l) => l.map((e) => (e.cle === cle ? { ...e, uploadId } : e)))
       let clip = null
       const video = await finaliserTeleversement(uploadId, async (id) => {
