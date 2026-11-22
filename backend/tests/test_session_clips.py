@@ -430,3 +430,19 @@ def test_vignette_avec_incrustations():
     assert vignette.size == (464, 261)
     # Des couleurs vives (plaques des noms) sur l'image grise.
     assert max(max(px) - min(px) for px in vignette.getdata()) > 100
+
+
+def test_effacer_un_combat_efface_son_deja_vu(client, db_session, e):
+    """Seb, 22/11 : les numéros des combats effacés sont redonnés ; le nouveau
+    combat n'hérite pas du « déjà vu » de l'ancien."""
+    from session_clips.models import Viewed
+
+    seance = _session(client, e)
+    sc = core.session_clips_client
+    clip = sc.add_clip(db_session, seance["id"], _video(db_session, e["ecole"]).id, [e["seb"].id, e["karim"].id])
+    clip_id = clip.id
+    client.get(f"/session-clips/clips/{clip_id}", headers=e["h"]["seb"])
+    assert db_session.get(Viewed, (e["seb"].id, clip_id)) is not None
+    assert client.delete(f"/session-clips/clips/{clip_id}", headers=e["h"]["coach"]).status_code == 204
+    db_session.expire_all()
+    assert db_session.get(Viewed, (e["seb"].id, clip_id)) is None
