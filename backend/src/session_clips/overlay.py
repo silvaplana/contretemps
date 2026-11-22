@@ -17,12 +17,15 @@ n'attend devant.
 
 from __future__ import annotations
 
+import json
 import math
 import os
 import re
 import shutil
 import subprocess
 import tempfile
+from io import BytesIO
+import time
 from functools import lru_cache
 from pathlib import Path
 
@@ -61,6 +64,41 @@ def wanted(overlay: dict | None) -> bool:
     return bool(overlay) and any(overlay.get(k) for k in ("names", "winner", "chrono", "music"))
 
 
+# Combien de secondes de travail pour une seconde de vidéo, apprises sur les
+# derniers combats (Seb, 22/11 : une barre de préparation, même approchée).
+SPEED_FILE = DOSSIER_VIDEOS_LIVE / "overlay-speed.json"
+DEFAULT_SPEED = 2.0
+
+
+def speed() -> float:
+    try:
+        return float(json.loads(SPEED_FILE.read_text())["speed"])
+    except (OSError, ValueError, KeyError, TypeError):
+        return DEFAULT_SPEED
+
+
+def _learn(work: float, length: float) -> None:
+    if length <= 0:
+        return
+    measured = work / length
+    learned = measured if not SPEED_FILE.exists() else 0.7 * speed() + 0.3 * measured
+    try:
+        SPEED_FILE.write_text(json.dumps({"speed": round(learned, 3)}))
+    except OSError:
+        pass
+
+
+def progress(overlay: dict | None, length: float | None) -> float | None:
+    """Où en est l'incrustation, de 0 à 0,95 (le reste quand c'est fini) :
+    0 tant qu'elle n'a pas commencé, puis au prorata de la durée."""
+    if not overlay:
+        return None
+    started = overlay.get("started_at")
+    if not started:
+        return 0.0
+    return min(0.95, (time.time() - started) / (speed() * (length or 60)))
+
+
 def pending(db: Session) -> list[Clip]:
     return list(db.scalars(select(Clip).where(Clip.overlay.is_not(None)).order_by(Clip.id)))
 
@@ -83,6 +121,9 @@ def render_pending(db: Session, videos) -> int:
         # « -i » : incrustée (le diagnostic du serveur le montre).
         target = source.with_name(f"{source.stem}-i.mp4")
         ok = False
+        started = time.time()
+        clip.overlay = {**clip.overlay, "started_at": started}
+        db.commit()
         try:
             ok = render(source, target, clip.overlay, org_id)
         except Exception:  # noqa: BLE001 — jamais bloquer le worker
@@ -91,6 +132,7 @@ def render_pending(db: Session, videos) -> int:
         clip.overlay = None
         if ok:
             video.duree_secondes = round(seconds(target))  # le vainqueur ajoute quelques secondes
+            _learn(time.time() - started, video.duree_secondes)
             # La vignette aussi, prise une fois les noms en place (Seb, 21/11 :
             # la première image n'a encore rien d'incrusté).
             poster = target.with_suffix(".jpg")
@@ -521,6 +563,19 @@ class Frames:
 
 
 # --- ffmpeg -----------------------------------------------------------------------
+
+
+def thumbnail_from_frame(jpeg: bytes, overlay: dict, duration: float | None) -> bytes:
+    """La vignette tout de suite (Seb, 22/11) : la première image envoyée par
+    le téléphone, avec les incrustations posées comme dans la vidéo une fois
+    les noms en place, sans attendre la vidéo entière."""
+    base = Image.open(BytesIO(jpeg)).convert("RGBA")
+    plan = timeline(overlay, max(duration or 60.0, 10.0), None)
+    at = MOVE_END + 0.4 if overlay.get("names") else 0.5
+    base.alpha_composite(Frames(overlay, plan, base.width, base.height).draw(at))
+    out = BytesIO()
+    base.convert("RGB").save(out, "JPEG", quality=85)
+    return out.getvalue()
 
 
 def render(source: Path, target: Path, overlay: dict, org_id: int) -> bool:

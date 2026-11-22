@@ -20,6 +20,7 @@ from videos.videos import DecalageInvalide
 from . import announcer, camera, gesture_notes, lab, voice
 from . import people as who_is
 from .models import Clip, ClipSession, LabTest, Piece
+from .overlay import progress as overlay_progress
 from .ports import Member
 from .schemas import (
     FilmPart,
@@ -222,6 +223,12 @@ class SessionClipsReceiver:
             clip = guard(lambda: client.clip(s, m, clip_id))
             client.mark_viewed(s, m, clip)
             return self._clips_out(s, m, [clip])[0]
+
+        @app.put(f"{PREFIX}/clips/{{clip_id}}/thumb", status_code=204)
+        async def set_thumb(clip_id: int, request: Request, duration: float | None = None, m: Member = member, s: Session = db):
+            """`duration` : la durée filmée, connue du téléphone (place du chrono)."""
+            jpeg = await request.body()
+            guard(lambda: client.set_thumb(s, m, clip_id, jpeg, duration))
 
         @app.get(f"{PREFIX}/new")
         def new_clips(m: Member = member, s: Session = db):
@@ -641,6 +648,7 @@ class SessionClipsReceiver:
                     to_check=c.to_check,
                     draw=c.draw,
                     preparing=c.overlay is not None,
+                    preparing_progress=overlay_progress(c.overlay, video.duree_secondes if video else None),
                     favorite=c.id in favorites,
                     new=not c.to_check and m.person_id in ps and c.id not in viewed,
                     check_reason=c.check_reason,

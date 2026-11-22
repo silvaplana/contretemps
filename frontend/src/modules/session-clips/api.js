@@ -52,6 +52,9 @@ export const detailSeance = async (id) => seance(await appel(`/sessions/${id}`))
 export const creerSeance = async (corps) => seance(await appel('/sessions', json('POST', corps)))
 export const filmerCombat = async (corps) => clip(await appel('/fights', json('POST', corps)))
 export const mesCombats = async () => (await appel('/mine')).map(clip)
+// La première image, tout de suite (Seb, 22/11) : le serveur y pose les incrustations.
+export const poserVignette = (id, jpeg, duree) =>
+  appel(`/clips/${id}/thumb${duree ? `?duration=${duree}` : ''}`, { method: 'PUT', headers: { 'Content-Type': 'image/jpeg' }, body: jpeg })
 // La pastille de Fights : combats validés pas encore ouverts (Seb, 17/11).
 export const nouveaux = () => appel('/new')
 export const obtenirClip = async (id) => clip(await appel(`/clips/${id}`))

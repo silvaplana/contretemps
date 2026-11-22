@@ -124,6 +124,8 @@ class ClipOut(BaseModel):
     draw: bool = False  # match nul déclaré au Timer étendu
     # Le serveur incruste encore la vidéo (Seb, 21/11 : « qu'on le sache »).
     preparing: bool = False
+    # Sa progression approchée, de 0 à 0,95 (Seb, 22/11 ; overlay.progress).
+    preparing_progress: float | None = None
     # Dans les « ★ Favoris » de l'appelant.
     favorite: bool = False
     check_reason: str | None = None

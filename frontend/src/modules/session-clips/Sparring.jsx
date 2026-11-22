@@ -303,7 +303,15 @@ function duree(video) {
 }
 
 // Pendant l'envoi depuis ce téléphone : la première image et la progression (Seb, 21/11).
-function Vignette({ video }) {
+// Où en est un combat avant d'être prêt (Seb, 22/11) : l'envoi depuis le
+// téléphone qui l'a filmé, puis la préparation au serveur, approchée.
+function etatPreparation(c) {
+  if (c.video?.statut === 'en_cours') return 'Envoi en cours'
+  if (!c.preparing) return null
+  return c.preparing_progress > 0 ? `En préparation ${Math.round(c.preparing_progress * 100)} %` : 'En préparation'
+}
+
+function Vignette({ video, preparation }) {
   const progression = useProgressionVideo(video?.statut === 'en_cours' ? video.id : null)
   const copie = useCopieLocale(video ?? {})
   if (progression && copie) {
@@ -318,6 +326,9 @@ function Vignette({ video }) {
   return (
     <span className="sc-vignette">
       {video?.poster ? <img src={video.poster} alt="" /> : <Icon name="video" size={22} />}
+      {preparation != null && (
+        <i className="sc-vignette__envoi sc-vignette__envoi--prep" style={{ width: `${Math.round(preparation * 100)}%` }} />
+      )}
     </span>
   )
 }
@@ -367,7 +378,7 @@ function MesCombats({ me, version, caches, choisis, basculer, onOpen }) {
             Combat {c.position}
             {duree(c.video) && ` · ${duree(c.video)}`}
             {c.new && <span className="sc-chip sc-chip--info">Nouveau</span>}
-            {c.preparing && <span className="sc-chip sc-chip--info">En préparation</span>}
+            {etatPreparation(c) && <span className="sc-chip sc-chip--info">{etatPreparation(c)}</span>}
           </span>
         </LigneClip>
       </div>
@@ -382,7 +393,7 @@ function LigneCoach({ c, choisis, basculer, onOpen }) {
       <span className="sc-meta">
         Combat {c.position}
         {c.to_check && <span className="sc-chip sc-chip--warn">À vérifier</span>}
-        {c.preparing && <span className="sc-chip sc-chip--info">En préparation</span>}
+        {etatPreparation(c) && <span className="sc-chip sc-chip--info">{etatPreparation(c)}</span>}
       </span>
     </LigneClip>
   )
@@ -417,7 +428,7 @@ function LigneClip({ c, choisis, basculer, onOpen, children }) {
         else onOpen(c.id)
       }}
     >
-      <Vignette video={c.video} />
+      <Vignette video={c.video} preparation={c.preparing ? (c.preparing_progress ?? 0) : null} />
       <span>
         {children}
         {c.favorite && <Icon name="star" size={16} className="sc-etoile" />}
@@ -1421,7 +1432,7 @@ function Lecture({ clipId, me, version, caches, montrer, supprimer, rafraichir, 
     api.obtenirClip(clipId).then(setC, (e) => montrer(e.message))
   }, [clipId, version, montrer, relire])
   useEffect(() => {
-    if (!c?.preparing) return undefined
+    if (!c?.preparing && c?.video?.statut !== 'en_cours') return undefined
     const id = setTimeout(() => setRelire((n) => n + 1), 15000)
     return () => clearTimeout(id)
   }, [c])
@@ -1483,7 +1494,9 @@ function Lecture({ clipId, me, version, caches, montrer, supprimer, rafraichir, 
           <span className="sc-meta">
             {api.jour(c.held_on)}
             {c.session_title ? ` · ${c.session_title}` : ''} · combat {c.position}
-            {c.preparing && ' · en préparation : la vidéo avec les effets arrive dans quelques minutes'}
+            {c.video?.statut === 'en_cours'
+              ? ' · envoi en cours depuis le téléphone qui a filmé'
+              : c.preparing && ` · ${etatPreparation(c).toLowerCase()} : la vidéo avec les effets arrive dans quelques minutes`}
           </span>
         </div>
         {autres.filter((x) => !caches.has(x.id)).length > 0 && (
