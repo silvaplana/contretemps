@@ -9,8 +9,12 @@
 // persisté sur disque local, donc perdu au reload sans nécessiter de
 // nettoyage particulier ici (le backend, lui, nettoie tout seul les
 // sessions abandonnées après quelques heures, voir videos.py).
+// Exception, les combats du Timer de Fights (Seb, 22/11) : `garder` range la
+// vidéo sur le téléphone jusqu'à la fin de l'envoi, qui reprend à la
+// prochaine ouverture de l'appli (voir envoisGardes.js, reprendreEnvois).
 import { useEffect, useSyncExternalStore } from 'react'
 import * as videosApi from '../api/videos.js'
+import { envoisGardes, garderEnvoi, oublierEnvoi } from './envoisGardes.js'
 
 const TAILLE_BLOC = 2 * 1024 * 1024 // 2 Mo
 
@@ -98,16 +102,18 @@ export function useTeleversementsTermines(onTermine) {
 // choisi/filmé, avant même de connaître le titre) — renvoie l'id de
 // session dès qu'il est connu, l'envoi des blocs continue derrière sans
 // attendre l'appelant.
-export async function demarrerTeleversement(ecoleId, fichier) {
+export async function demarrerTeleversement(ecoleId, fichier, { garder = false } = {}) {
   const previewUrl = URL.createObjectURL(fichier)
   const extension = `.${fichier.name.split('.').pop() || 'mp4'}`
   const session = await videosApi.ouvrirTeleversement(ecoleId, extension, fichier.size)
+  if (garder) await garderEnvoi({ uploadId: session.id, fichier, videoId: null })
   sessions.set(session.id, {
     octetsEnvoyes: 0,
     octetsTotal: fichier.size,
     complet: false,
     videoId: null,
     previewUrl,
+    garder,
   })
   notifierProgression()
   envoyerBlocs(session.id, fichier)
@@ -125,17 +131,17 @@ async function envoyerBlocs(uploadId, fichier) {
       sessions.set(uploadId, { ...etat, octetsEnvoyes: decalage })
       notifierProgression()
     }
-  } catch {
-    // Annulé (voir annulerTeleversement) ou définitivement échoué après
-    // 20 tentatives (voir envoyerUnBloc) — reste "en_cours" sans avancer,
-    // pas d'autre action possible côté client pour l'instant (amélioration
-    // future : bouton "réessayer"). Ne doit jamais faire planter le reste
-    // de l'appli.
+  } catch (err) {
+    // Annulé (voir annulerTeleversement) ou refusé par le serveur (envoi
+    // introuvable, voir envoyerUnBloc) — reste "en_cours" sans avancer.
+    // Ne doit jamais faire planter le reste de l'appli.
+    if (err.status) oublierEnvoi(uploadId)
     return
   }
 
   const etat = sessions.get(uploadId)
   if (!etat) return
+  if (etat.garder) oublierEnvoi(uploadId)
   sessions.set(uploadId, { ...etat, complet: true })
   notifierProgression()
 
@@ -157,10 +163,22 @@ async function envoyerBlocs(uploadId, fichier) {
 
 // Bloc envoyé jusqu'à réussite — coupure réseau (voir demande
 // utilisateur : "gestion des interruptions et des ratés") : délai
-// croissant entre tentatives, jamais abandonné de lui-même (seul
-// annulerTeleversement interrompt réellement), sauf après 20 échecs
-// consécutifs (~ quelques minutes de tentatives, au-delà ça ne relève
-// probablement plus d'une coupure temporaire).
+// croissant entre tentatives (10 s au plus), reprise dès que le réseau
+// revient, jamais abandonné de lui-même (Seb, 22/11 : 6 min sans réseau
+// avaient fait perdre un combat). Seuls annulerTeleversement et un refus
+// du serveur (envoi introuvable…) l'arrêtent.
+function attendre(ms) {
+  return new Promise((resolve) => {
+    const fini = () => {
+      clearTimeout(minuteur)
+      window.removeEventListener('online', fini)
+      resolve()
+    }
+    const minuteur = setTimeout(fini, ms)
+    window.addEventListener('online', fini)
+  })
+}
+
 async function envoyerUnBloc(uploadId, fichier, decalageDepart) {
   let decalage = decalageDepart
   let tentative = 0
@@ -177,9 +195,9 @@ async function envoyerUnBloc(uploadId, fichier, decalageDepart) {
         decalage = err.decalageActuel
         continue
       }
+      if (err.status >= 400 && err.status < 500 && err.status !== 408 && err.status !== 429) throw err
       tentative += 1
-      if (tentative > 20) throw err
-      await new Promise((resolve) => setTimeout(resolve, Math.min(1000 * tentative, 10000)))
+      await attendre(Math.min(1000 * tentative, 10000))
     }
   }
 }
@@ -222,8 +240,38 @@ export async function finaliserTeleversement(uploadId, creer) {
     } else {
       sessions.set(uploadId, { ...etat, videoId: video.id })
       videoIdVersUploadId.set(video.id, uploadId)
+      if (etat.garder) {
+        const garde = (await envoisGardes()).find((e) => e.uploadId === uploadId)
+        if (garde) await garderEnvoi({ ...garde, videoId: video.id })
+      }
     }
     notifierProgression()
   }
   return video
 }
+
+// À l'ouverture de l'appli : reprendre les envois gardés sur ce téléphone
+// (voir demarrerTeleversement, `garder`). Le serveur dit où il en est (409
+// au premier bloc). Un envoi jamais rattaché à une vidéo ne sert à rien.
+async function reprendreEnvois() {
+  for (const { uploadId, fichier, videoId } of await envoisGardes()) {
+    if (sessions.has(uploadId)) continue
+    if (!videoId) {
+      oublierEnvoi(uploadId)
+      continue
+    }
+    sessions.set(uploadId, {
+      octetsEnvoyes: 0,
+      octetsTotal: fichier.size,
+      complet: false,
+      videoId,
+      previewUrl: URL.createObjectURL(fichier),
+      garder: true,
+    })
+    videoIdVersUploadId.set(videoId, uploadId)
+    notifierProgression()
+    envoyerBlocs(uploadId, fichier)
+  }
+}
+
+if (typeof indexedDB !== 'undefined') reprendreEnvois()
