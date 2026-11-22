@@ -619,7 +619,7 @@ tous les anciens combats.
 
 - Les clips où la personne apparaît, du plus récent au plus ancien, regroupés par séance (« JEU. 23 OCT.
   · ADULTES »).
-- Chaque ligne : vignette avec la durée, « Seb R. vs Karim B. » (soi-même d'abord, puis l'adversaire ; Seb, 21/11), « Combat 3 · 20 h 43 · 2 min 20 » (l'heure du combat, Seb 22/11).
+- Chaque ligne : vignette avec la durée, « Seb R. vs Karim B. » (soi-même d'abord, puis l'adversaire ; Seb, 21/11), « Combat 3 · 20 h 43 · 2 min 20 » (l'heure du combat, Seb 22/11). Un numéro de combat n'est jamais redonné après un effacement (SQLite AUTOINCREMENT sur `sc_clips`, Seb 22/11).
 - Un clip « à vérifier » n'y apparaît qu'une fois validé par un coach : jamais un mauvais nom sous les
   yeux d'un membre. Exception (Seb, 21/11) : un combat du Timer où l'on s'est nommé et où seul l'autre
   nom manque (« Inconnu ») est tout de suite dans les Combats de la personne nommée ; il reste à

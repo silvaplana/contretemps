@@ -75,16 +75,23 @@ export default function Sparring({ ecoleId, cours, appli }) {
     (ids) => {
       const liste = [].concat(ids)
       setCaches((c) => new Set([...c, ...liste]))
-      const retard = setTimeout(() => {
-        Promise.all(liste.map((id) => api.supprimer(id))).then(rafraichir, (e) => montrer(e.message))
-      }, ANNULER_MS)
-      montrer(liste.length > 1 ? `${liste.length} clips supprimés` : 'Clip supprimé', () => {
-        clearTimeout(retard)
+      // Une fois effacés, on ne les cache plus : le serveur redonne les
+      // numéros libérés aux combats suivants (Seb, 22/11 : deux combats
+      // filmés juste après restaient invisibles).
+      const montrerDeNouveau = () =>
         setCaches((c) => {
           const n = new Set(c)
           liste.forEach((id) => n.delete(id))
           return n
         })
+      const retard = setTimeout(() => {
+        Promise.all(liste.map((id) => api.supprimer(id)))
+          .then(rafraichir, (e) => montrer(e.message))
+          .finally(montrerDeNouveau)
+      }, ANNULER_MS)
+      montrer(liste.length > 1 ? `${liste.length} clips supprimés` : 'Clip supprimé', () => {
+        clearTimeout(retard)
+        montrerDeNouveau()
       })
     },
     [montrer, rafraichir],

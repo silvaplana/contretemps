@@ -51,6 +51,9 @@ class ClipSession(Base):
 
 class Clip(Base):
     __tablename__ = "sc_clips"
+    # Un numéro de combat n'est jamais redonné (Seb, 22/11 : un combat effacé
+    # puis un nouveau au même numéro restait caché sur le téléphone).
+    __table_args__ = {"sqlite_autoincrement": True}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     session_id: Mapped[int] = mapped_column(ForeignKey("sc_sessions.id"), nullable=False, index=True)

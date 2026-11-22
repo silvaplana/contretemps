@@ -525,6 +525,9 @@ class SessionClips:
         if clip_ids:
             db.execute(delete(ClipParticipant).where(ClipParticipant.clip_id.in_(clip_ids)))
             db.execute(delete(Favorite).where(Favorite.clip_id.in_(clip_ids)))
+            # SQLite redonne les numéros libérés : un nouveau combat ne doit
+            # pas hériter du « déjà vu » de l'ancien (Seb, 22/11).
+            db.execute(delete(Viewed).where(Viewed.clip_id.in_(clip_ids)))
             db.execute(delete(Clip).where(Clip.id.in_(clip_ids)))
         for session in db.scalars(select(ClipSession).where(ClipSession.raw_video_id == video_id)):
             session.raw_video_id = None
