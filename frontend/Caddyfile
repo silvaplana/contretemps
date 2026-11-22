@@ -22,7 +22,13 @@
 	# Requêtes /api/... -> conteneur "backend", en retirant le préfixe /api.
 	handle /api/* {
 		uri strip_prefix /api
-		reverse_proxy backend:8000
+		# Mise en ligne sans coupure (Seb, 21/11/2026) : pendant que le
+		# backend redémarre, la demande attend qu'il réponde (jusqu'à 90 s)
+		# au lieu d'échouer. Seules les connexions refusées sont retentées.
+		reverse_proxy backend:8000 {
+			lb_try_duration 90s
+			lb_try_interval 500ms
+		}
 	}
 
 	# Assets Vite (JS/CSS) : le nom de fichier contient un hash du contenu
