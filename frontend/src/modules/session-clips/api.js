@@ -89,6 +89,14 @@ export function jour(iso) {
   return texte.charAt(0).toUpperCase() + texte.slice(1)
 }
 
+// L'heure du combat, « 20 h 43 » à l'heure du téléphone (Seb, 22/11) : celle
+// de l'envoi de sa vidéo, que le serveur garde en UTC.
+export function heure(iso) {
+  if (!iso) return ''
+  const d = new Date(/[Z+]/.test(iso.slice(10)) ? iso : `${iso}Z`)
+  return `${d.getHours()} h ${String(d.getMinutes()).padStart(2, '0')}`
+}
+
 // Le fichier du clip, pour le garder ou le partager (§6.5).
 async function fichierDuClip(c) {
   const reponse = await fetch(c.video.url)
