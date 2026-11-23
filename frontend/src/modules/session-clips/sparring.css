@@ -1201,8 +1201,6 @@
 }
 .sc-te__champ--vide {
   color: var(--text-muted);
-  font-weight: 900;
-  letter-spacing: 0.3em;
 }
 /* Le choix du combattant, comme l'écran de sélection d'un jeu de combat. */
 .sc-te__select {
