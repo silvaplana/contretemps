@@ -33,6 +33,13 @@ import com.getcapacitor.annotation.PermissionCallback
 )
 class TournagePlugin : Plugin() {
 
+    /** La version de l'appli installée, pour le menu du badge (Header.jsx). */
+    @PluginMethod
+    fun version(call: PluginCall) {
+        val info = context.packageManager.getPackageInfo(context.packageName, 0)
+        call.resolve(JSObject().put("name", info.versionName ?: ""))
+    }
+
     @PluginMethod
     fun start(call: PluginCall) {
         val prefs = Prefs(context)

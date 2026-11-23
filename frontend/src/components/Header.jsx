@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { fondSombre, useApparence } from '../api/apparence.js'
 import * as installation from '../api/installation.js'
 import { basculerEssai, essaiAllume } from '../api/styleEssai.js'
@@ -11,6 +11,7 @@ import { InstructionsInstallation } from './InstructionsInstallation.jsx'
 import Logo from './Logo.jsx'
 import Modal from './Modal.jsx'
 import { BubbleCloseIcon, BubbleIcon } from '../modules/documents/icons.jsx'
+import { DANS_L_APPLI, Natif } from '../modules/session-clips/natif.js'
 
 // La version du site en ligne : le moment de sa mise en ligne (vite.config.js).
 const VERSION = new Date(import.meta.env.VITE_VERSION_SITE).toLocaleString('fr-FR', {
@@ -19,6 +20,21 @@ const VERSION = new Date(import.meta.env.VITE_VERSION_SITE).toLocaleString('fr-F
   hour: '2-digit',
   minute: '2-digit',
 }).replace(' ', ' à ')
+
+// Où tourne l'appli, sous la version du site : l'appli Android (Capacitor,
+// avec sa version : ancienne si elle ne sait pas la donner), l'appli
+// installée (PWA) ou le navigateur.
+function useOuTourne() {
+  const [appli, setAppli] = useState(DANS_L_APPLI ? 'Appli Android' : null)
+  useEffect(() => {
+    if (!DANS_L_APPLI) return
+    Natif.version()
+      .then(({ name }) => setAppli(`Appli Android ${name}`))
+      .catch(() => setAppli('Appli Android ancienne : à mettre à jour'))
+  }, [])
+  if (appli) return appli
+  return window.matchMedia('(display-mode: standalone)').matches ? 'Appli installée (PWA)' : 'Navigateur'
+}
 
 // En-tête d'écran (voir spec/SPEC.md section 4).
 // - mode="simple" : logo + titre (écrans Admin et Profil, non "scopés cours").
@@ -43,6 +59,7 @@ export default function Header({
   // { permis, ouvert, basculer }. Bouton à gauche du badge.
   assistant,
 }) {
+  const ouTourne = useOuTourne()
   const [coursOpen, setCoursOpen] = useState(false)
   const [familleOpen, setFamilleOpen] = useState(false)
   const [familleMenuTop, setFamilleMenuTop] = useState(0)
@@ -207,7 +224,11 @@ export default function Header({
                 >
                   <Icon name="logout" size={18} /> Se déconnecter
                 </button>
-                <p className="header-version">Version du {VERSION}</p>
+                <p className="header-version">
+                  Version du {VERSION}
+                  <br />
+                  {ouTourne}
+                </p>
               </div>
             )}
           </div>
