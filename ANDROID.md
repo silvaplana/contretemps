@@ -9,6 +9,13 @@ tout le monde garde la PWA pour le reste.
 - **Elle reçoit les partages** (Seb, 13/11) : dans la liste « Partager » d'Android, un lien ou un
   texte ouvre `/partage?…` de l'école, l'écran « Envoyer à… » (`MainActivity.partage`, filtre
   `ACTION_SEND` dans `AndroidManifest.xml`).
+- **Elle envoie les vidéos de toute l'appli** (Seb, 23/11) : le Timer de Fights, les
+  chorégraphies, les publications. La page écrit la vidéo dans `<filesDir>/video-uploads/`
+  (plugin `EnvoisVideo`, `uploads/VideoUploadsPlugin.kt`), puis une tâche WorkManager en premier
+  plan l'envoie par blocs de 4 Mo (`uploads/UploadWorker.kt`) : l'envoi finit appli fermée, repart
+  au retour du réseau et survit à un redémarrage du téléphone. La page suit l'avancement
+  (`state`) ; hors de l'appli, c'est elle qui envoie, avec reprise à la réouverture
+  (`frontend/src/utils/videoUploads.js`, `spec/SPEC.md` §6.8).
 - **Elle filme** quand Fights › Tournage est sur « Caméra » : plugin `camera/TournagePlugin.kt` et
   service de premier plan `camera/RecorderService.kt` (repris de l'appli caméra `recorder/`).
 - **L'icône est celle de l'école** : l'action prend `<adresse>/icons/icon-512-maskable.png` (la même
