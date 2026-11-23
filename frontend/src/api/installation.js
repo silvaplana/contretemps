@@ -105,6 +105,24 @@ function estSamsungInternet() {
   return /SamsungBrowser/i.test(navigator.userAgent) && /android/i.test(navigator.userAgent)
 }
 
+// Arrivé par une invitation « Appli Android » (lien `?appli=android`, Seb
+// 23/11) : l'écran d'installation propose de télécharger l'appli Android de
+// l'école au lieu de l'appli web. Gardé sur l'appareil.
+const CLE_APPLI_ANDROID = 'contretemps:inviteAppliAndroid'
+try {
+  if (new URLSearchParams(window.location.search).get('appli') === 'android') localStorage.setItem(CLE_APPLI_ANDROID, '1')
+} catch {
+  // stockage refusé : l'appli web sera proposée
+}
+
+export function inviteAppliAndroid() {
+  try {
+    return estAndroid() && localStorage.getItem(CLE_APPLI_ANDROID) === '1'
+  } catch {
+    return false
+  }
+}
+
 function estAndroid() {
   return /android/i.test(navigator.userAgent)
 }

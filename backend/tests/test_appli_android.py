@@ -96,14 +96,14 @@ def test_inviter_un_administrateur_sur_l_appli_android(client, db_session, asc, 
     github["version"] = {"build": 40, "date": "18/11", "apk": {ASC: apk}}
     assert client.post(route, json={"compte_ids": [admin.id], "appli_android": True}).status_code == 200
     _, _, texte, html = mails[-1]
-    assert "Activer mon accès :\nhttps://" in texte
-    assert "installez l'appli « Tournage ASC La Ciotat »" in texte
-    assert f"Télécharger l'appli Android :\n{apk}" in texte and apk in html
-    assert texte.index("Activer mon accès") < texte.index("Télécharger")
+    # Un seul lien, celui du site (Seb 23/11) : il proposera l'appli Android une fois connecté.
+    assert "d'installer l'appli « Tournage ASC La Ciotat »" in texte
+    assert texte.count("https://") == 1 and "&appli=android\n" in texte
+    assert apk not in texte and apk not in html
 
     # « Appli normale » : le mail de toujours, sans l'appli Android.
     client.post(route, json={"compte_ids": [admin.id]})
-    assert "Télécharger" not in mails[-1][2] and "Activer mon accès" in mails[-1][2]
+    assert "appli=android" not in mails[-1][2] and "Tournage" not in mails[-1][2] and "Activer mon accès" in mails[-1][2]
 
 
 def test_le_beausset_ne_peut_pas_inviter_sur_l_appli_android(client, db_session, beausset, github, mails):
@@ -113,4 +113,4 @@ def test_le_beausset_ne_peut_pas_inviter_sur_l_appli_android(client, db_session,
     route = f"/ecoles/{beausset.id}/invitations"
     assert client.post(route, json={"compte_ids": [admin.id], "appli_android": True}).status_code == 409
     assert client.post(route, json={"compte_ids": [admin.id]}).status_code == 200
-    assert "Télécharger" not in mails[-1][2]
+    assert "appli=android" not in mails[-1][2]

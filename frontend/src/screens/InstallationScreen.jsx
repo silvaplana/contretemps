@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { InstructionsInstallation } from '../components/InstructionsInstallation.jsx'
 import Logo from '../components/Logo.jsx'
 import * as installation from '../api/installation.js'
+import { appliAndroid } from '../api/personnalisation.js'
 
 // Plein écran, juste après une connexion réussie (voir App.jsx) — demande
 // utilisateur du 2026-09-22 : remplace l'ancien encart de l'écran de
@@ -9,9 +10,18 @@ import * as installation from '../api/installation.js'
 // l'appli n'est pas déjà installée et si "Ne plus me demander" n'a jamais
 // été coché sur cet appareil (voir App.jsx et api/installation.js :
 // neJamaisDemander) — sinon, redemande à CHAQUE connexion.
-export default function InstallationScreen({ onContinuer, compteId }) {
+export default function InstallationScreen({ onContinuer, compteId, ecoleId }) {
   const mode = installation.useModeInstallation()
   const [neJamaisDemander, setNeJamaisDemander] = useState(false)
+  // Invité sur l'appli Android (Seb 23/11) : le lien du fichier, au lieu de l'appli web.
+  const [apk, setApk] = useState(null)
+  useEffect(() => {
+    if (!ecoleId || !installation.inviteAppliAndroid()) return
+    appliAndroid(ecoleId).then(
+      (a) => a.actif && a.url && setApk(a.url),
+      () => {},
+    )
+  }, [ecoleId])
   // Devient vrai après un clic sur "Oui, installer" pour tout ce qui n'est
   // pas une installation en un appui (iOS, Safari Mac, Firefox, Android
   // hors Chrome...) : affiche alors les instructions pas-à-pas — pour
@@ -46,7 +56,20 @@ export default function InstallationScreen({ onContinuer, compteId }) {
         <h1>Installez l’application</h1>
       </div>
 
-      {instructionsAffichees ? (
+      {apk ? (
+        <div className="installation-screen__choix">
+          <a className="btn btn--primary btn--block" href={apk}>
+            Télécharger l’appli Android
+          </a>
+          <p className="invitation-installation__texte">
+            Ouvrez le fichier téléchargé, autorisez Chrome à installer des applis si le téléphone le demande, puis
+            touchez Installer. Connectez-vous avec votre email et votre mot de passe.
+          </p>
+          <button type="button" className="btn btn--secondary btn--block" onClick={continuer}>
+            Continuer dans le navigateur web
+          </button>
+        </div>
+      ) : instructionsAffichees ? (
         <div className="invitation-installation">
           <InstructionsInstallation mode={mode} compteId={compteId} />
         </div>
