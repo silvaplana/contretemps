@@ -676,7 +676,8 @@ export default function Timer({ ecoleId, rafraichir, me }) {
           aria-label={i ? 'Combattant de droite' : 'Combattant de gauche'}
           onClick={() => setChoix(i)}
         >
-          {noms[i]?.name ?? '…'}
+          {/* Pas encore nommé : « Gauche » / « Droite » en gris (Seb, 23/11). */}
+          {noms[i]?.name ?? (i ? 'Droite' : 'Gauche')}
         </button>
       ) : (
         <span />
