@@ -21,6 +21,9 @@ import java.util.concurrent.ConcurrentHashMap
  * `<uploadId>.bin` la vidéo, `<uploadId>.meta` où l'envoyer. Le `.meta`
  * n'existe qu'une fois la vidéo écrite en entier (commit) : un envoi
  * interrompu pendant l'écriture n'est donc jamais envoyé à moitié.
+ *
+ * Le film du Timer (camera/TimerCamera) est déjà sur le téléphone, dans ce
+ * dossier (`film-<heure>.mp4`) : son `.meta` le désigne (`file`), sans copie.
  */
 object VideoQueue {
 
@@ -39,16 +42,21 @@ object VideoQueue {
     private fun meta(context: Context, uploadId: String) = File(folder(context), "$uploadId.meta")
 
     /** Vidéo écrite en entier : on note où l'envoyer et on lance la tâche de fond. */
-    fun commit(context: Context, uploadId: String, server: String, token: String?, accountId: String?) {
+    fun commit(context: Context, uploadId: String, server: String, token: String?, accountId: String?, film: File? = null) {
         meta(context, uploadId).writeText(
             JSONObject()
                 .put("server", server)
                 .put("token", token ?: JSONObject.NULL)
                 .put("accountId", accountId ?: JSONObject.NULL)
+                .put("file", film?.name ?: JSONObject.NULL)
                 .toString(),
         )
         start(context)
     }
+
+    /** Un film du Timer de ce dossier, ou null (on n'envoie rien d'autre). */
+    fun film(context: Context, path: String): File? =
+        File(path).takeIf { it.parentFile == folder(context) && it.name.startsWith("film-") && it.exists() }
 
     /** Les envois qui attendent, le plus ancien d'abord. */
     fun pending(context: Context): List<Upload> =
@@ -57,14 +65,14 @@ object VideoQueue {
             .sortedBy { it.lastModified() }
             .mapNotNull { file ->
                 val id = file.nameWithoutExtension
-                val video = bin(context, id)
-                if (!video.exists()) {
-                    file.delete()
-                    return@mapNotNull null
-                }
                 val json = try {
                     JSONObject(file.readText())
                 } catch (e: Exception) {
+                    file.delete()
+                    return@mapNotNull null
+                }
+                val video = filmOf(context, json) ?: bin(context, id)
+                if (!video.exists()) {
                     file.delete()
                     return@mapNotNull null
                 }
@@ -77,8 +85,19 @@ object VideoQueue {
                 )
             }
 
+    private fun filmOf(context: Context, json: JSONObject): File? =
+        json.optString("file").takeIf { it.isNotEmpty() && it != "null" }?.let { File(folder(context), it) }
+
     /** Envoi fini (ou refusé) : la vidéo quitte le téléphone. */
     fun forget(context: Context, uploadId: String) {
+        val meta = meta(context, uploadId)
+        if (meta.exists()) {
+            try {
+                filmOf(context, JSONObject(meta.readText()))?.delete()
+            } catch (e: Exception) {
+                // .meta illisible : rien d'autre à effacer.
+            }
+        }
         bin(context, uploadId).delete()
         meta(context, uploadId).delete()
         sent.remove(uploadId)
@@ -91,9 +110,15 @@ object VideoQueue {
      */
     private fun sweep(context: Context) {
         val vieux = System.currentTimeMillis() - 6 * 60 * 60 * 1000
+        // Les films du Timer jamais archivés (appli tuée avant « Archiver » ou « Jeter »).
+        val films = (folder(context).listFiles() ?: emptyArray())
+            .filter { it.extension == "meta" }
+            .mapNotNull { try { JSONObject(it.readText()).optString("file") } catch (e: Exception) { null } }
+            .toSet()
         for (file in folder(context).listFiles() ?: emptyArray()) {
-            if (file.extension != "bin" || file.lastModified() > vieux) continue
-            if (!File(folder(context), "${file.nameWithoutExtension}.meta").exists()) file.delete()
+            if (file.lastModified() > vieux) continue
+            if (file.extension == "bin" && !File(folder(context), "${file.nameWithoutExtension}.meta").exists()) file.delete()
+            if (file.name.startsWith("film-") && file.name !in films) file.delete()
         }
     }
 

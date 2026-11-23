@@ -14,7 +14,7 @@
 import { useEffect, useSyncExternalStore } from 'react'
 import * as videosApi from '../api/videos.js'
 import { envoisGardes, garderEnvoi, oublierEnvoi } from './envoisGardes.js'
-import { annulerEnvoiNatif, avancementNatif, confierEnvoi } from './envoisNatifs.js'
+import { annulerEnvoiNatif, avancementNatif, confierEnvoi, confierFilm } from './envoisNatifs.js'
 
 const TAILLE_BLOC = 2 * 1024 * 1024 // 2 Mo
 
@@ -38,7 +38,8 @@ const copiesLocales = new Map()
 const sansCopie = new Set()
 
 function garderCopieLocale(video, previewUrl) {
-  if (video?.id && previewUrl && !sansCopie.has(video.id)) copiesLocales.set(video.id, { url: previewUrl, publieeLe: video.publieeLe })
+  // Un film de l'appli quitte le téléphone une fois arrivé : pas de copie à garder.
+  if (video?.id && previewUrl?.startsWith('blob:') && !sansCopie.has(video.id)) copiesLocales.set(video.id, { url: previewUrl, publieeLe: video.publieeLe })
   else if (previewUrl) URL.revokeObjectURL(previewUrl)
 }
 
@@ -105,13 +106,17 @@ export function useTeleversementsTermines(onTermine) {
 // attendre l'appelant. `garder` (par défaut) range la vidéo sur le téléphone
 // jusqu'à son arrivée ; `garder: false` pour un fichier qu'on ne peut pas
 // refilmer plus tard de toute façon.
+// `fichier` peut aussi être un film déjà sur le téléphone, filmé par l'appli
+// Android (Timer de Fights : `{ chemin, url, size, name }`, voir timerFilm.js).
 export async function demarrerTeleversement(ecoleId, fichier, { garder = true } = {}) {
-  const previewUrl = URL.createObjectURL(fichier)
+  const film = Boolean(fichier.chemin)
+  const previewUrl = film ? fichier.url : URL.createObjectURL(fichier)
   const extension = `.${fichier.name.split('.').pop() || 'mp4'}`
   const session = await videosApi.ouvrirTeleversement(ecoleId, extension, fichier.size)
   // Dans l'appli Android, c'est Android qui envoie : la page n'a plus qu'à
   // suivre l'avancement, et l'envoi finit même appli fermée.
-  const natif = await confierEnvoi(session.id, fichier)
+  if (film) await confierFilm(session.id, fichier.chemin)
+  const natif = film || (await confierEnvoi(session.id, fichier))
   if (garder && !natif) await garderEnvoi({ uploadId: session.id, fichier, videoId: null })
   sessions.set(session.id, {
     octetsEnvoyes: 0,

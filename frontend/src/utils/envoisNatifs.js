@@ -61,6 +61,20 @@ export async function confierEnvoi(uploadId, fichier) {
   }
 }
 
+/**
+ * Le film du Timer, filmé par l'appli et déjà sur le téléphone
+ * (camera/TimerCamera.kt) : Android l'envoie tel quel, sans copie.
+ */
+export async function confierFilm(uploadId, chemin) {
+  await EnvoisVideo.adopt({
+    uploadId,
+    path: chemin,
+    server: adresseApi(),
+    token: jetonEnCours(),
+    accountId: compteEnCours() === null ? null : String(compteEnCours()),
+  })
+}
+
 /** Les envois encore dans la file : `{ uploadId, sent, size }`. */
 export async function avancementNatif() {
   if (!FILE_NATIVE) return []

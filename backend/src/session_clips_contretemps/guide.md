@@ -81,7 +81,8 @@ Timer étendu (coachs, Fights › Timer ; debout, les poings sont sous les noms 
   deux lignes (une lettre sans personne est grisée), ★ pour les habitués de ce jour-là, puis les combattants en cartes qu'on fait défiler ; on
   touche la carte) et, entre eux, le résultat : un poing levé pour celui de gauche, « = » pour le match nul,
   un poing levé pour celui de droite ; on en touche un, il s'allume.
-- À gauche, l'image de ce que le téléphone filme, avec la petite caméra « 5 s » : le retardateur
+- À gauche, l'image de ce que le téléphone filme, avec en bas à gauche la lampe de la caméra (un
+  appui l'allume ou l'éteint) et en bas à droite la petite caméra « 5 s » : le retardateur
   (compte à rebours de 5 secondes, puis la cloche sonne et le combat démarre). Au milieu le temps, à
   droite la cloche (« Démarrer », puis « Arrêter ») et le chronomètre (« Pause » / « Reprendre »).
 - La cloche lance et arrête le film. À la fin du combat : la vidéo à revoir et trois touches,

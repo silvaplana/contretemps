@@ -48,6 +48,16 @@ class VideoUploadsPlugin : Plugin() {
         call.resolve()
     }
 
+    /** Le film du Timer, déjà sur le téléphone (camera/TimerCamera) : à Android de l'envoyer, sans copie. */
+    @PluginMethod
+    fun adopt(call: PluginCall) {
+        val id = call.getString("uploadId") ?: return call.reject("uploadId")
+        val server = call.getString("server") ?: return call.reject("server")
+        val film = VideoQueue.film(context, call.getString("path") ?: "") ?: return call.reject("Film introuvable")
+        VideoQueue.commit(context, id, server, call.getString("token"), call.getString("accountId"), film)
+        call.resolve()
+    }
+
     /** Ce qui attend encore, avec les octets déjà chez le serveur. */
     @PluginMethod
     fun state(call: PluginCall) {

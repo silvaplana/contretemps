@@ -137,6 +137,75 @@ class TournagePlugin : Plugin() {
         call.resolve()
     }
 
+    // --- Le Timer étendu filmé par l'appli (TimerCamera, Seb 23/11) -------
+
+    /** Ouvre la caméra du Timer (miniature et lampe), sans filmer. */
+    @PluginMethod
+    fun timerOpen(call: PluginCall) {
+        if (getPermissionState("camera") != PermissionState.GRANTED) {
+            requestPermissionForAlias("camera", call, "afterTimerPermission")
+            return
+        }
+        TimerCamera.open(context)
+        call.resolve()
+    }
+
+    @PermissionCallback
+    private fun afterTimerPermission(call: PluginCall) {
+        if (getPermissionState("camera") != PermissionState.GRANTED) {
+            call.reject("Autorisez la caméra et le micro pour filmer.")
+            return
+        }
+        TimerCamera.open(context)
+        call.resolve()
+    }
+
+    /** La dernière petite image de la caméra (jpeg en base64), et son état. */
+    @PluginMethod
+    fun timerFrame(call: PluginCall) {
+        call.resolve(JSObject().apply {
+            put("open", TimerCamera.open)
+            put("recording", TimerCamera.recording)
+            TimerCamera.error?.let { put("error", it) }
+            TimerCamera.frame?.let { put("image", "data:image/jpeg;base64," + Base64.encodeToString(it, Base64.NO_WRAP)) }
+        })
+    }
+
+    @PluginMethod
+    fun timerRecord(call: PluginCall) {
+        if (TimerCamera.record(context)) call.resolve() else call.reject("Caméra indisponible")
+    }
+
+    @PluginMethod
+    fun timerPause(call: PluginCall) {
+        TimerCamera.pause(call.getBoolean("on", false) == true)
+        call.resolve()
+    }
+
+    /** Arrête le film : le chemin du fichier et sa taille, ou rien. */
+    @PluginMethod
+    fun timerStop(call: PluginCall) {
+        val file = TimerCamera.stop()
+        call.resolve(JSObject().apply {
+            if (file != null) {
+                put("path", file.absolutePath)
+                put("size", file.length())
+            }
+        })
+    }
+
+    @PluginMethod
+    fun timerLight(call: PluginCall) {
+        TimerCamera.light(call.getBoolean("on", false) == true)
+        call.resolve()
+    }
+
+    @PluginMethod
+    fun timerClose(call: PluginCall) {
+        TimerCamera.close()
+        call.resolve()
+    }
+
     /** Samsung et d'autres coupent les applis en veille : on demande à être laissé tranquille. */
     @SuppressLint("BatteryLife")
     private fun askBatteryExemption() {

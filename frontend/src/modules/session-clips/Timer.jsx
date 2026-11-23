@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Deroulant } from './Labo.jsx'
-import { CAMERA, CHRONO, CLOCHE, POING } from './timerDessins.js'
+import { CAMERA, CHRONO, CLOCHE, LAMPE, POING } from './timerDessins.js'
 import { ecrire, estEtendu, lire } from './timerReglages.js'
 import { useFilm } from './timerFilm.js'
 import { DANS_L_APPLI, Natif } from './natif.js'
@@ -435,7 +435,7 @@ export default function Timer({ ecoleId, rafraichir, me }) {
     if (!etendu) return
     setTermine(true)
     const vues = phases.current
-    if (r.film) film.arreter().then((fichier) => fichier && setFin({ fichier, url: URL.createObjectURL(fichier), phases: vues }))
+    if (r.film) film.arreter().then((fichier) => fichier && setFin({ fichier, url: fichier.url ?? URL.createObjectURL(fichier), phases: vues }))
   }
 
   function suivant() {
@@ -506,11 +506,15 @@ export default function Timer({ ecoleId, rafraichir, me }) {
   // « Partager » : le menu du téléphone (WhatsApp…) ; sinon la vidéo est téléchargée.
   async function partager() {
     try {
-      if (navigator.canShare?.({ files: [fin.fichier] })) await navigator.share({ files: [fin.fichier], title: titre() })
+      // Filmé par l'appli : le film est sur le téléphone, on le relit pour le menu de partage.
+      const fichier = fin.fichier.chemin
+        ? new File([await (await fetch(fin.url)).blob()], fin.fichier.name, { type: fin.fichier.type })
+        : fin.fichier
+      if (navigator.canShare?.({ files: [fichier] })) await navigator.share({ files: [fichier], title: titre() })
       else {
         const lien = document.createElement('a')
         lien.href = fin.url
-        lien.download = fin.fichier.name
+        lien.download = fichier.name
         lien.click()
         dire('Vidéo téléchargée')
       }
@@ -698,8 +702,23 @@ export default function Timer({ ecoleId, rafraichir, me }) {
             <div className={`sc-te__milieu${r.film ? '' : ' sc-te__milieu--sans-film'}`}>
               {r.film && (
                 <div className={`sc-te__mini${run ? ' sc-te__mini--filme' : ''}`}>
-                  <video key="direct" ref={film.brancher} muted playsInline autoPlay />
+                  {film.natif ? (
+                    <img key="direct" ref={film.brancher} alt="" />
+                  ) : (
+                    <video key="direct" ref={film.brancher} muted playsInline autoPlay />
+                  )}
                   <b>{film.etat === 'refus' ? 'Caméra indisponible' : run ? 'Ça filme' : film.etat === 'pret' ? 'Prêt à filmer' : 'Caméra…'}</b>
+                  {/* La lampe de la caméra (Seb, 23/11), si ce téléphone sait l'allumer. */}
+                  {film.etat === 'pret' && film.lampe !== undefined && (
+                    <button
+                      type="button"
+                      className="sc-te__lampe"
+                      aria-pressed={film.lampe}
+                      aria-label={film.lampe ? 'Éteindre la lampe' : 'Allumer la lampe'}
+                      onClick={() => film.allumer(!film.lampe)}
+                      dangerouslySetInnerHTML={{ __html: LAMPE }}
+                    />
+                  )}
                   {retard > 0 ? (
                     <strong className="sc-te__compte">{retard}</strong>
                   ) : (
