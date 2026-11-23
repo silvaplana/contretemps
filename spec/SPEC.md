@@ -1598,9 +1598,12 @@ règle pour tout ce qui envoie une vidéo (Chorégraphies, Fights › Timer, Pub
 - **Qualité** : 1080p partout — filmé en 1080p (Timer, Tournage), ou compressé sur le téléphone
   s'il sait le faire (`videoCompression.js`, puce vidéo du téléphone, 5 à 15× plus léger), sinon
   compressé par le serveur après coup (`videos/compression.py`). Une seule compression.
-- **Dans l'appli Android « Tournage »** (*à faire*), l'envoi passera par une file native (tâche de
-  fond WorkManager) et continuera appli fermée, comme la caméra de la salle le fait déjà
-  (`ANDROID.md`). Hors de l'appli (Chrome, iPhone), il reprend à la réouverture.
+- **Dans l'appli Android « Tournage »**, l'envoi passe par la file native : la page écrit la vidéo
+  sur le téléphone (plugin `EnvoisVideo`), une tâche WorkManager en premier plan l'envoie par blocs
+  de 4 Mo, et ça finit appli fermée, au retour du réseau, même après un redémarrage du téléphone
+  (`ANDROID.md`, `frontend/android/.../uploads/`). Si le plugin manque (vieille version de
+  l'appli) ou si le téléphone n'a plus de place, la page envoie elle-même. Hors de l'appli (Chrome,
+  iPhone), l'envoi reprend à la réouverture.
 
 ### 6.9 Conversations (messagerie WhatsApp-like)
 

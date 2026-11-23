@@ -14,6 +14,7 @@
 import { useEffect, useSyncExternalStore } from 'react'
 import * as videosApi from '../api/videos.js'
 import { envoisGardes, garderEnvoi, oublierEnvoi } from './envoisGardes.js'
+import { annulerEnvoiNatif, avancementNatif, confierEnvoi } from './envoisNatifs.js'
 
 const TAILLE_BLOC = 2 * 1024 * 1024 // 2 Mo
 
@@ -107,18 +108,75 @@ export async function demarrerTeleversement(ecoleId, fichier, { garder = true } 
   const previewUrl = URL.createObjectURL(fichier)
   const extension = `.${fichier.name.split('.').pop() || 'mp4'}`
   const session = await videosApi.ouvrirTeleversement(ecoleId, extension, fichier.size)
-  if (garder) await garderEnvoi({ uploadId: session.id, fichier, videoId: null })
+  // Dans l'appli Android, c'est Android qui envoie : la page n'a plus qu'à
+  // suivre l'avancement, et l'envoi finit même appli fermée.
+  const natif = await confierEnvoi(session.id, fichier)
+  if (garder && !natif) await garderEnvoi({ uploadId: session.id, fichier, videoId: null })
   sessions.set(session.id, {
     octetsEnvoyes: 0,
     octetsTotal: fichier.size,
     complet: false,
     videoId: null,
     previewUrl,
-    garder,
+    garder: garder && !natif,
+    natif,
   })
   notifierProgression()
-  envoyerBlocs(session.id, fichier)
+  if (natif) suivreEnvoisNatifs()
+  else envoyerBlocs(session.id, fichier)
   return session.id
+}
+
+// Les envois confiés à Android : on relit leur avancement chaque seconde, et
+// un envoi qui a quitté la file est arrivé (ou a été refusé : la vidéo dit
+// laquelle des deux).
+let suiviNatif = null
+
+function suivreEnvoisNatifs() {
+  if (suiviNatif) return
+  suiviNatif = setInterval(async () => {
+    const enCours = [...sessions.entries()].filter(([, etat]) => etat.natif)
+    if (!enCours.length) {
+      clearInterval(suiviNatif)
+      suiviNatif = null
+      return
+    }
+    const file = await avancementNatif()
+    for (const [uploadId, etat] of enCours) {
+      const ligne = file.find((u) => u.uploadId === uploadId)
+      if (!ligne) await terminerEnvoiNatif(uploadId)
+      else if (ligne.sent !== etat.octetsEnvoyes) {
+        sessions.set(uploadId, { ...etat, octetsEnvoyes: ligne.sent })
+        notifierProgression()
+      }
+    }
+  }, 1000)
+}
+
+async function terminerEnvoiNatif(uploadId) {
+  const etat = sessions.get(uploadId)
+  if (!etat) return
+  // "Ajouter" pas encore touché : finaliserTeleversement verra la vidéo
+  // complète côté serveur et fera le reste.
+  if (!etat.videoId) {
+    sessions.set(uploadId, { ...etat, octetsEnvoyes: etat.octetsTotal, complet: true, natif: false })
+    notifierProgression()
+    return
+  }
+  const video = await videosApi.obtenir(etat.videoId).catch(() => null)
+  // Toujours 'en_cours' : Android a renoncé (envoi refusé par le serveur).
+  // On laisse l'écran sur son dernier état plutôt que d'annoncer une arrivée.
+  if (!video || video.statut === 'en_cours') {
+    sessions.set(uploadId, { ...etat, natif: false })
+    notifierProgression()
+    return
+  }
+  sessions.set(uploadId, { ...etat, octetsEnvoyes: etat.octetsTotal, complet: true, natif: false })
+  for (const f of abonnesTermines) f(video)
+  garderCopieLocale(video, etat.previewUrl)
+  sessions.delete(uploadId)
+  videoIdVersUploadId.delete(etat.videoId)
+  notifierProgression()
 }
 
 async function envoyerBlocs(uploadId, fichier) {
@@ -213,6 +271,7 @@ export function annulerTeleversement(uploadId) {
   sessions.delete(uploadId)
   // Plus rien à reprendre : la vidéo gardée sur le téléphone part aussi.
   oublierEnvoi(uploadId)
+  annulerEnvoiNatif(uploadId)
   if (etat?.videoId) videoIdVersUploadId.delete(etat.videoId)
   notifierProgression()
   if (etat?.previewUrl) URL.revokeObjectURL(etat.previewUrl)

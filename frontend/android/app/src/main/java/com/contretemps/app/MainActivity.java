@@ -4,6 +4,8 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import com.contretemps.app.camera.TournagePlugin;
+import com.contretemps.app.uploads.VideoQueue;
+import com.contretemps.app.uploads.VideoUploadsPlugin;
 import com.getcapacitor.BridgeActivity;
 
 /** L'appli « Tournage <école> » : le site de l'école (server.url) dans Capacitor. */
@@ -12,7 +14,11 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         // Le film de Fights › Tournage (camera/), à enregistrer avant super.onCreate().
         registerPlugin(TournagePlugin.class);
+        // La file d'envoi des vidéos (uploads/), qui envoie même appli fermée.
+        registerPlugin(VideoUploadsPlugin.class);
         super.onCreate(savedInstanceState);
+        // Un envoi laissé en route (appli tuée, téléphone redémarré) repart.
+        VideoQueue.INSTANCE.start(this);
         // Propose les nouvelles versions publiées par GitHub Actions (et notifie en arrière-plan).
         Updater.init(this, getString(R.string.ecole));
         partage(getIntent());
