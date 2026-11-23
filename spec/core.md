@@ -125,9 +125,12 @@ nouveau, toute table nouvelle est en anglais.
   toujours sur l'appli normale. Dans Admin › École › Administrateurs, quand l'appli Android est
   prête, « Inviter » demande « Sur quelle appli ? » : « Appli normale » ou « Appli Android » (à
   choisir s'il filme dans Fights et que son téléphone sert de caméra pour la télécommande ; elle
-  n'a pas encore les notifications push). Le mail « Appli Android » garde « Activer mon accès »,
-  puis ajoute « Télécharger l'appli Android » (lien du fichier dans la release) et comment
-  l'installer. Sans appli prête, « Inviter » envoie directement le mail de l'appli normale.
+  n'a pas encore les notifications push). **Un seul lien par mail** (Seb 23 novembre) : celui du
+  site. Le mail « Appli Android » dit que le lien proposera ensuite l'appli ; son lien porte
+  `&appli=android`, gardé sur le téléphone, et une fois le mot de passe choisi (ou la connexion
+  faite) l'écran d'installation n'offre que « Télécharger l'appli Android » (le fichier de la
+  release) et « Continuer dans le navigateur web », au lieu de l'appli web et de « avec Chrome »
+  (`InstallationScreen.jsx`, `installation.inviteAppliAndroid`). Sans appli prête, « Inviter » envoie directement le mail de l'appli normale.
 - **Connexions** (Seb 18 novembre, maquette https://claude.ai/artifact/KcVhuSbXUJwP1C6FaPQK7p) :
   volet d'Admin › École, sous Personnalisation, qui réunit les connexions à identifiants des
   modules allumés, une ligne chacune : HelloAsso, Site de la FFST, Boîte mail du club (l'écran de

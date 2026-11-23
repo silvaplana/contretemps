@@ -1174,6 +1174,7 @@ function App() {
     return (
       <InstallationScreen
         compteId={activeUser.id}
+        ecoleId={ecole?.id}
         onContinuer={() => {
           // Mémorisée seulement maintenant (voir onLogin ci-dessus) —
           // jamais si "Oui" a mené vers Chrome entre-temps (ouvrirDansChrome

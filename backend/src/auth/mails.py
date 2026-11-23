@@ -84,7 +84,9 @@ class MailsAcces:
             destinataire,
             paragraphes,
             "Activer mon accès",
-            self.lien("activer", jeton, sous_domaine, nature),
+            # Invité sur l'appli Android : le site proposera de la télécharger,
+            # pas l'appli web (Seb 23/11, InstallationScreen.jsx).
+            self.lien("activer", jeton, sous_domaine, nature) + ("&appli=android" if apk else ""),
             [
                 "Ce lien vous est personnel : ne le transférez à personne. Il est valable "
                 "15 jours et ne fonctionne qu'une seule fois.",
@@ -123,7 +125,8 @@ class MailsAcces:
             "Ouvrir l'application",
             # Le nom voyage dans le lien : l'écran de connexion s'ouvre avec
             # « Nom Prénom ou Email » déjà rempli (demande du 2026-10-02).
-            f"{self.appli(sous_domaine, nature)}/?identifiant={quote_plus(destinataire)}",
+            f"{self.appli(sous_domaine, nature)}/?identifiant={quote_plus(destinataire)}"
+            + ("&appli=android" if apk else ""),
             [
                 f"Ce message vous est envoyé à la demande de l'école {ecole_nom}. "
                 "Si vous ne la connaissez pas, vous pouvez l'ignorer.",
@@ -170,28 +173,17 @@ class MailsAcces:
     ) -> None:
         """Les deux versions du même message, texte et mise en forme, avec le
         lien écrit en clair dans les deux. `apk` : (nom, lien) de l'appli
-        Android de l'école, ajoutée après le lien quand l'admin a choisi
-        « Appli Android » à l'invitation (Seb 18/11/2026)."""
-        installer = (
-            [
-                f"Ensuite, sur votre téléphone Android, installez l'appli « {apk[0]} », qui sert à filmer dans Fights.",
-                "Télécharger l'appli Android",
-                apk[1],
-                "Ouvrez le fichier téléchargé, autorisez Chrome à installer des applis si le téléphone le demande, "
-                "puis touchez Installer. Connectez-vous avec votre email et votre mot de passe.",
-            ]
-            if apk
-            else []
-        )
-        texte = "\n\n".join(
-            [
-                f"Bonjour {destinataire},",
+        Android de l'école, quand l'admin a choisi « Appli Android » à
+        l'invitation (Seb 18/11/2026). Un seul lien dans le mail, celui du
+        site (Seb 23/11) : une fois connecté, le site propose de télécharger
+        l'appli Android (InstallationScreen.jsx, lien `&appli=android`)."""
+        if apk:
+            paragraphes = [
                 *paragraphes,
-                f"{bouton} :\n{lien}",
-                *([installer[0], f"{installer[1]} :\n{installer[2]}", installer[3]] if apk else []),
-                *fin,
+                f"Sur votre téléphone Android, le lien vous proposera ensuite d'installer l'appli « {apk[0]} », "
+                "qui sert à filmer dans Fights.",
             ]
-        ) + "\n"
+        texte = "\n\n".join([f"Bonjour {destinataire},", *paragraphes, f"{bouton} :\n{lien}", *fin]) + "\n"
         p = '<p style="margin:0 0 16px">{}</p>'
         html = (
             '<div style="font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.5;color:#3a2410;'
@@ -204,14 +196,6 @@ class MailsAcces:
             # réécrite, et les messageries la rendent cliquable.
             + f'<p style="margin:24px 0 4px;font-weight:bold">{escape(bouton)} :</p>'
             + f'<p style="margin:0 0 24px;word-break:break-all">{escape(lien)}</p>'
-            + (
-                p.format(escape(installer[0]))
-                + f'<p style="margin:0 0 4px;font-weight:bold">{escape(installer[1])} :</p>'
-                + f'<p style="margin:0 0 16px;word-break:break-all">{escape(installer[2])}</p>'
-                + '<p style="margin:0 0 24px">{}</p>'.format(escape(installer[3]))
-                if apk
-                else ""
-            )
             + "".join('<p style="margin:0 0 8px;font-size:13px;color:#8a6a4a">{}</p>'.format(escape(x)) for x in fin)
             + "</div>"
         )
