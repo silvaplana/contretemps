@@ -8,6 +8,8 @@ import { DANS_L_APPLI, Natif } from './natif.js'
 import { reessayer } from '../../utils/reessayer.js'
 import { demarrerTeleversement, finaliserTeleversement, sansCopieLocale, useProgressionTeleversement } from '../../utils/videoUploads.js'
 import * as api from './api.js'
+import { textePreparation } from './preparation.js'
+import { BandeauAvancement, LigneAvancement, pourcentEnvoi, texteEnvoi } from '../../components/Avancement.jsx'
 import clocheDebut from './sons/cloche-debut-de-round.mp3'
 import clocheFin from './sons/cloche-fin-de-round.mp3'
 import clacClac from './sons/clac-clac-10-secondes.mp3'
@@ -90,7 +92,9 @@ const MUSIQUES = [
 ]
 
 // Où en est un combat archivé (Seb, 21/11) : l'envoi, puis le travail du
-// serveur, puis où le retrouver. Relu toutes les 10 s tant qu'il n'est pas prêt.
+// serveur, puis où le retrouver. Une ligne du bandeau d'avancement du module
+// Vidéos (Seb, 23/11 : en bas de l'écran, le même que dans Combats). Relu
+// toutes les 3 s pendant la préparation, 10 s sinon, tant qu'il n'est pas prêt.
 function Envoi({ envoi, me, onFini }) {
   const progression = useProgressionTeleversement(envoi.uploadId)
   const [relu, setClip] = useState(null)
@@ -99,37 +103,26 @@ function Envoi({ envoi, me, onFini }) {
   const pret = clip && envoye && !clip.preparing && clip.video?.statut !== 'en_cours'
   useEffect(() => {
     if (!clip || pret) return undefined
-    const id = setTimeout(() => api.obtenirClip(clip.id).then(setClip, () => {}), 10000)
+    const id = setTimeout(() => api.obtenirClip(clip.id).then(setClip, () => {}), envoye ? 3000 : 10000)
     return () => clearTimeout(id)
-  }, [clip, pret])
+  }, [clip, pret, envoye])
   useEffect(() => {
     if (!pret) return undefined
     const id = setTimeout(onFini, 15000)
     return () => clearTimeout(id)
   }, [pret]) // eslint-disable-line react-hooks/exhaustive-deps
   const moi = clip?.participants.some((p) => p.person_id === me?.person_id)
-  const pourcent = progression?.octetsTotal ? Math.round((100 * progression.octetsEnvoyes) / progression.octetsTotal) : 100
-  const texte = !envoi.uploadId
-    ? 'Attente du serveur…'
+  const ligne = !envoi.uploadId
+    ? { texte: 'Attente du serveur…', etape: 'envoi', pourcent: 0 }
     : !envoye
-      ? `Envoi ${pourcent} %`
-    : !pret
-      ? 'En préparation…'
-      : moi
-        ? 'Prêt dans Combats'
-        : clip.to_check
-          ? 'Prêt : à vérifier dans Tournage'
-          : 'Prêt dans Tournage, séance du jour'
-  return (
-    <div className="sc-te__envoi" role="status">
-      <span>
-        <b>{envoi.nom}</b> · {texte}
-      </span>
-      <i className={pret ? 'sc-te__envoi-barre sc-te__envoi-barre--pret' : envoye ? 'sc-te__envoi-barre sc-te__envoi-barre--prep' : 'sc-te__envoi-barre'}>
-        <i style={{ width: `${envoye ? 100 : pourcent}%` }} />
-      </i>
-    </div>
-  )
+      ? { texte: texteEnvoi(progression), etape: 'envoi', pourcent: pourcentEnvoi(progression), bloque: progression.bloque }
+      : !pret
+        ? { texte: textePreparation(clip), etape: 'preparation', pourcent: Math.round(100 * (clip?.preparing_progress ?? 0)) }
+        : {
+            etape: 'pret',
+            texte: moi ? 'Prêt dans Combats' : clip.to_check ? 'Prêt : à vérifier dans Tournage' : 'Prêt dans Tournage, séance du jour',
+          }
+  return <LigneAvancement nom={envoi.nom} {...ligne} />
 }
 
 // « Archiver » avec « Une musique » cochée (Seb, 21/11) : un seul geste,
@@ -663,7 +656,8 @@ export default function Timer({ ecoleId, rafraichir, me }) {
         <span />
       )
     return createPortal(
-      <div className="sc-timer sc-te">
+      // Le bandeau d'avancement prend le bas de l'écran : on remonte le Timer d'autant.
+      <div className="sc-timer sc-te" style={envois.length ? { '--sc-te-bandeau': envois.length } : undefined}>
         <button type="button" className="sc-timer__fermer" aria-label="Quitter le plein écran" onClick={() => setPlein(false)}>
           ✕
         </button>
@@ -768,11 +762,11 @@ export default function Timer({ ecoleId, rafraichir, me }) {
         )}
         {choixMusique && fin && <ChoixMusique onChoisir={archiver} onFermer={() => setChoixMusique(false)} />}
         {envois.length > 0 && (
-          <div className="sc-te__envois">
+          <BandeauAvancement pleinEcran>
             {envois.map((e) => (
               <Envoi key={e.cle} envoi={e} me={me} onFini={() => setEnvois((l) => l.filter((x) => x !== e))} />
             ))}
-          </div>
+          </BandeauAvancement>
         )}
         {message && (
           <div className="sc-te__message" role="status">

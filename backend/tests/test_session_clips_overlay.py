@@ -52,7 +52,10 @@ def test_video_incrustee(tmp_path):
         check=True,
     )
     target = tmp_path / "combat-c.mp4"
-    assert ov.render(source, target, DEMANDE, 1)
+    suivi = ov.progress_file(source)
+    assert ov.render(source, target, DEMANDE, 1, suivi)
+    # Seb, 23/11 : l'avancement réel, noté pendant le travail, jusqu'au bout.
+    assert float(suivi.read_text()) == pytest.approx(1.0, abs=0.05)
     assert ov.video_size(target) == (320, 180)
     assert ov.has_audio(target)
     assert ov.seconds(target) == pytest.approx(ov.timeline(DEMANDE, 6.0, None)["total"], abs=0.3)

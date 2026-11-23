@@ -1592,6 +1592,13 @@ règle pour tout ce qui envoie une vidéo (Chorégraphies, Fights › Timer, Pub
 
 - **Par morceaux** de 2 Mo, avec le pourcentage à l'écran, reprise sur le vrai décalage du serveur
   (409) et jamais d'abandon de lui-même (`frontend/src/utils/videoUploads.js`).
+- **Avancement, le même partout** (Seb, 23/11 : « une brique vidéo sympa »,
+  `frontend/src/components/Avancement.jsx`) : barre jaune (couleur de l'école) pendant l'envoi ;
+  quand un morceau ne passe pas (10 s sans rien de neuf dans l'appli Android), un rond tourne,
+  « Attend le réseau », et la barre garde son niveau avec des rayures qui défilent ; bleue pendant
+  la préparation au serveur ; verte quand c'est prêt. Chorégraphies s'en sert sur l'aperçu de
+  « Ajouter une vidéo » et sur la vignette ; Fights en fait un bandeau en bas de l'écran (Timer et
+  Combats, `spec/modules/video-combats.md`).
 - **Gardée sur le téléphone** jusqu'à son arrivée (`envoisGardes.js`, IndexedDB) : l'envoi reprend
   à la prochaine ouverture si l'appli est fermée ou rechargée. Une vidéo jamais rattachée (le
   formulaire n'a pas été validé) est oubliée à l'ouverture suivante, comme « Annuler ».

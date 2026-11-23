@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { obtenir } from '../api/videos.js'
 import { useCopieLocale, useProgressionVideo } from '../utils/videoUploads.js'
+import { BarreAvancement } from './Avancement.jsx'
 import Icon from './Icon.jsx'
 
 // Vignette vidéo réutilisée par l'onglet Vidéo (VideoScreen.jsx) et le
@@ -95,9 +96,7 @@ export default function VideoThumb({ video: recue, pleinEcran = false }) {
         />
         {bascule}
         {enCours && progression && (
-          <div className="video-card__upload-progress">
-            <div className="video-card__upload-progress-bar" style={{ width: `${pourcentage}%` }} />
-          </div>
+          <BarreAvancement className="video-card__upload-progress" pourcent={pourcentage} bloque={progression.bloque} />
         )}
       </div>
     )

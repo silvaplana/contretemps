@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { BarreAvancement, Tourne } from '../../components/Avancement.jsx'
 import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
 import { compresserOuOriginal } from '../../utils/videoCompression.js'
@@ -140,22 +141,27 @@ export default function AjouterVideo({ ecoleId, creerVideo, onAdded }) {
           <div className="video-upload-preview">
             <video className="video-upload-preview__video" src={session.previewUrl} controls playsInline />
             {(compressionPourcentage !== null || !progression?.complet) && (
-              <div className="video-upload-preview__progress">
-                <div
-                  className="video-upload-preview__progress-bar"
-                  style={{ width: `${compressionPourcentage ?? pourcentage}%` }}
-                />
-              </div>
+              <BarreAvancement
+                className="video-upload-preview__progress"
+                pourcent={compressionPourcentage ?? pourcentage}
+                bloque={compressionPourcentage === null && progression?.bloque}
+              />
             )}
           </div>
           {(!envoiTermine || termineVisible || compressionPourcentage !== null) && (
             <p className="muted">
-              <Icon name={envoiTermine ? 'check' : 'clock'} size={14} />{' '}
+              {progression?.bloque && !envoiTermine && compressionPourcentage === null ? (
+                <Tourne />
+              ) : (
+                <Icon name={envoiTermine ? 'check' : 'clock'} size={14} />
+              )}{' '}
               {compressionPourcentage !== null
                 ? `Compression… ${compressionPourcentage}%`
                 : envoiTermine
                   ? 'Envoi terminé'
-                  : `Envoi en cours… ${pourcentage}%`}
+                  : progression?.bloque
+                    ? 'Attend le réseau'
+                    : `Envoi en cours… ${pourcentage}%`}
             </p>
           )}
 

@@ -973,10 +973,12 @@ simple, avec ses modes et ses réglages ; toucher le temps y revient).
   environ une demi-minute après « Archiver » (estimation, à mesurer). En cas d'échec : la
   compression ordinaire, sans incrustation. L'envoi depuis le téléphone ne change pas ; « Partager »
   envoie la vidéo telle que filmée. La vignette est tirée de la vidéo incrustée, une fois les noms
-  posés. Après « Archiver », une pastille en bas à gauche du Timer étendu suit l'envoi :
+  posés. Après « Archiver », le bandeau d'avancement du module Vidéos (`spec/SPEC.md` §6.8), en bas
+de l'écran (Seb, 23/11), suit l'envoi :
   « Attente du serveur… » (serveur injoignable, par exemple pendant une mise en ligne : réessayé
   ~3 min, puis le combat revient à l'écran, « touchez Archiver pour réessayer » ; trois films perdus
-  ainsi le 21/11), « Envoi X % », « En préparation… », puis « Prêt dans Combats » (si on est l'un des combattants),
+  ainsi le 21/11), « Envoi X % » (« Attend le réseau » quand il n'avance plus), « En attente, N vidéos
+  avant », « Préparation X % · encore 1 min », puis « Prêt dans Combats » (si on est l'un des combattants),
   « Prêt : à vérifier dans Tournage » ou « Prêt dans Tournage, séance du jour » ; elle s'efface 15 s
   après. L'envoi n'abandonne jamais : sans réseau, il réessaie et repart dès que le réseau revient ;
   la vidéo reste rangée sur le téléphone (IndexedDB) jusqu'à son arrivée entière, et si l'appli est
@@ -987,11 +989,16 @@ simple, avec ses modes et ses réglages ; toucher le temps y revient).
   (JPEG 464 px) et l'envoie (`PUT /session-clips/clips/{id}/thumb?duration=`) ; le serveur y pose
   aussitôt les incrustations demandées, comme dans la vidéo une fois les noms en place
   (`overlay.thumbnail_from_frame`). Elle se voit dans Combats avant la fin de l'envoi ; celle du
-  serveur la remplace quand la vidéo est prête. Dans Combats, un combat pas prêt dit « Envoi en
-  cours X % » (octets reçus par le serveur, vus de tout téléphone ; la vidéo n'est pas encore arrivée du téléphone qui a filmé) puis « En préparation X % »
-  avec une barre sous la vignette : le serveur retient combien de secondes de travail lui prend une
-  seconde de vidéo (moyenne glissante sur les derniers combats, `overlay-speed.json` sous
-  VIDEOS_DIR) et avance au prorata de la durée ; jamais plus de 95 % avant la fin. Combats ne montre que les combats où l'on est nommé (Seb, 21/11) ; on y
+  serveur la remplace quand la vidéo est prête. Dans Combats, le même bandeau, en bas de l'écran au-dessus
+  de la barre du bas (Seb, 23/11 : « la même progression dans Combats et dans Timer »), suit les combats
+  pas prêts : « Envoi X % » (octets reçus par le serveur, vus de tout téléphone ; suivi de près sur le
+  téléphone qui envoie), puis la préparation, puis « Prêt » en vert 15 s ; la vignette garde sa barre.
+  **Avancement réel de la préparation (Seb, 23/11)** : pendant l'incrustation, le serveur écrit où il en
+  est dans `<vidéo>-i.progress` à côté de la vidéo (les images d'abord, 15 % du travail, puis ffmpeg,
+  qui dit à chaque instant où il en est, `-progress`) ; `ClipOut` donne `preparing_progress` (au plus
+  99 % avant la fin), `preparing_left` (secondes restantes, d'après le temps passé) et
+  `preparing_queue` (combats qui passent avant). Sans fichier, l'ancienne estimation à la montre
+  (`overlay-speed.json`). Relu toutes les 3 s pendant la préparation. Combats ne montre que les combats où l'on est nommé (Seb, 21/11) ; on y
   est dès « Archiver », et pendant l'envoi depuis ce téléphone la vignette montre la première image
   avec une barre de progression. Au gong, le chrono incrusté finit à 0:00. Tant que le serveur y travaille, le combat porte « En préparation »
   dans Combats (et « en préparation : la vidéo avec les effets arrive dans quelques minutes » à la
