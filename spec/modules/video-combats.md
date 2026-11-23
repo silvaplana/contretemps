@@ -914,12 +914,28 @@ simple, avec ses modes et ses réglages ; toucher le temps y revient).
   (`EnvoisVideo.adopt`) ; un film ni archivé ni jeté est effacé au bout de 6 h. Ailleurs (Chrome,
   iPhone en PWA), la page filme (`timerFilm.js`, `MediaRecorder`, 1920 × 1080, 4 Mbit/s) ; sur
   iPhone, au mieux : si l'écran se met en veille, le film s'arrête (Seb, 23/11). À gauche la
-  miniature de ce qu'il voit (« Prêt à filmer », « Ça filme », « Caméra indisponible ») ; en bas à
-  gauche de la miniature, la **lampe** de la caméra (allumée ou éteinte d'un appui, film ou pas ;
+  miniature de ce qu'il voit (« Caméra prête », « Ça filme », « Caméra indisponible ») ; en bas à
+  gauche de la miniature, l'icône du rôle (caméra ou télécommande, ci-dessous) et juste à côté la **lampe** de la caméra (allumée ou éteinte d'un appui, film ou pas ;
   dans Chrome sur Android si le navigateur sait l'allumer). L'image et les chiffres laissent de
   l'air à la cloche en paysage (Seb, 23/11). Le film part à la cloche du début et s'arrête à la fin du
   combat (dernier round fini, ou cloche touchée) ; Pause met aussi le film en pause ; les repos entre
   les rounds sont filmés.
+- **Télécommande** (Seb, 23/11 ; maquette https://claude.ai/artifact/CYdzVr6fwkGb466jYWsAAo) : un
+  deuxième téléphone pilote celui qui filme. En bas à gauche de la miniature, l'icône du rôle de ce
+  téléphone, **caméra** ou **télécommande**, avec un point vert quand l'autre est là (la caméra est
+  pilotée, la télécommande est reliée), gris sinon ; on la touche pour changer, avant le combat
+  (réglage `telecommande`, gardé sur le téléphone ; il faut « Filmer le combat » coché sur les deux).
+  La caméra filme, sonne, éclaire et tient le chrono ; elle obéit aussi à ses propres touches. La
+  télécommande ne filme pas : en haut de l'image « Caméra pas prête » (personne), « Caméra prête » ou
+  « La caméra filme », avec l'image de la caméra (une par seconde) ; ses noms, poings, cloche, Pause,
+  lampe, retardateur, Archiver (et le choix de musique) et Jeter (Annuler 10 s) partent vers la caméra ;
+  elle montre les noms, le résultat, le temps, le round et le bandeau d'avancement de la caméra ; pas de
+  Partager (la vidéo est sur la caméra). Les réglages qui comptent (noms, vainqueur, musique) sont ceux
+  de la caméra. Une seule caméra par école, comme Tournage. Les deux téléphones passent par le serveur
+  toutes les 400 ms (`POST /session-clips/timer/link/camera` : l'état, l'image une fois sur deux,
+  reçoit les ordres et « pilotée » ; `POST /session-clips/timer/link/remote` : les ordres, reçoit l'état
+  et l'image si elle est neuve). Rien en base : le relais est en mémoire (`session_clips/timer_link.py`,
+  un seul processus d'API) ; sans nouvelles depuis 4 s, le lien est rompu (`timerLiaison.js`).
 - **Retardateur** : la petite caméra « 5 s » sur la miniature, pour se filmer soi-même. 5, 4, 3, 2, 1
   en gros avec un « tin » à chaque seconde, puis la cloche sonne et le combat démarre.
 - **Fin du combat** (film coché) : le temps et la cloche laissent la place à la vidéo du combat, à

@@ -78,3 +78,8 @@ export const CAMERA = `<svg viewBox="0 0 64 48" aria-hidden="true"><defs><linear
 
 // La lampe de la caméra du Timer (maquette du 23/11).
 export const LAMPE = `<svg viewBox="0 0 48 48" aria-hidden="true"><g transform="rotate(-35 24 24)"><path d="M18 6h12v6l-3 5H21l-3-5z" fill="#e8eaee" stroke="#2a2d33" stroke-width="1.6" stroke-linejoin="round"/><rect x="20.5" y="17" width="7" height="24" rx="2.5" fill="#7d838e" stroke="#2a2d33" stroke-width="1.6"/><rect x="22.5" y="23" width="3" height="6" rx="1.2" fill="#2a2d33"/><path d="M19.5 7.5h9" stroke="#fffbd2" stroke-width="2.6" stroke-linecap="round"/></g><g stroke="#fff3a0" stroke-width="2.4" stroke-linecap="round"><path d="M33 6l3-4M38 11l5-2M28 3l0-2"/></g></svg>`
+
+// Le rôle de ce téléphone dans le Timer télécommandé (Seb, 23/11) : la caméra
+// ou la télécommande, en bas à gauche de l'image.
+export const CAMESCOPE = `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="2.5" y="6.5" width="13" height="11" rx="2.2"/><path d="M15.5 10.5l6-3.5v10l-6-3.5z"/></svg>`
+export const TELECOMMANDE = `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7.5" y="2.5" width="9" height="19" rx="3"/><circle cx="12" cy="7.5" r="1.8"/><path d="M10.5 12.5h3M10.5 15.5h3M10.5 18.5h3"/></svg>`

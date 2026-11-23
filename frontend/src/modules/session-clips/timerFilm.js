@@ -45,6 +45,7 @@ function useFilmNatif(actif) {
   const [etat, setEtat] = useState('attente')
   const [lampe, setLampe] = useState(false)
   const image = useRef(null)
+  const derniere = useRef(null) // la dernière image, pour la télécommande
   const enCours = useRef(false)
   const pret = useRef(false)
   const voulu = useRef(false)
@@ -73,6 +74,7 @@ function useFilmNatif(actif) {
           setEtat('pret')
           if (voulu.current && !enCours.current) lancer()
         }
+        if (s.image) derniere.current = s.image
         if (s.image && image.current) image.current.src = s.image
       } catch {
         // Pont occupé : à la prochaine.
@@ -97,6 +99,10 @@ function useFilmNatif(actif) {
     // La miniature : <img ref={film.brancher} alt="" />
     brancher(el) {
       image.current = el
+    },
+    // Ce que voit la caméra, pour la télécommande (data:image/jpeg).
+    photo() {
+      return derniere.current
     },
     lampe,
     allumer(oui) {
@@ -194,6 +200,16 @@ function useFilmPage(actif) {
     brancher(el) {
       image.current = el
       if (el && flux.current && el.srcObject !== flux.current) el.srcObject = flux.current
+    },
+    // Ce que voit la caméra, pour la télécommande (data:image/jpeg).
+    photo() {
+      const v = image.current
+      if (!v?.videoWidth) return null
+      const c = document.createElement('canvas')
+      c.width = 480
+      c.height = Math.round((480 * v.videoHeight) / v.videoWidth)
+      c.getContext('2d').drawImage(v, 0, 0, c.width, c.height)
+      return c.toDataURL('image/jpeg', 0.6)
     },
     demarrer() {
       voulu.current = true

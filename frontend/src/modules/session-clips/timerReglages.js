@@ -3,7 +3,9 @@
 const REGLAGES = 'sc-timer'
 const DEPART = { mode: 'un', round: 180, repos: 60, nombre: 3, prevenir: true, film: false, noms: false, vainqueur: false, annonce: false,
   // Dans la vidéo archivée (Seb, 21/11).
-  incrNoms: false, incrVainqueur: false, incrChrono: false, incrMusique: false }
+  incrNoms: false, incrVainqueur: false, incrChrono: false, incrMusique: false,
+  // Ce téléphone est la télécommande d'un autre, qui filme (Seb, 23/11).
+  telecommande: false }
 
 export function lire() {
   try {

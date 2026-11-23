@@ -64,6 +64,9 @@ export const supprimer = (id) => appel(`/clips/${id}`, { method: 'DELETE' })
 export const membres = () => appel('/people')
 // Timer étendu (Seb, 21/11) : les membres, ★ habitués de ce jour de la semaine d'abord.
 export const nomsTimer = () => appel('/timer/names')
+// Le Timer télécommandé (Seb, 23/11) : la caméra et la télécommande passent par le serveur.
+export const lienCamera = (state, frame) => appel('/timer/link/camera', json('POST', { state, frame }))
+export const lienTelecommande = (orders, seen_frame) => appel('/timer/link/remote', json('POST', { orders, seen_frame }))
 // Le nom d'un membre dit par George, pour annoncer le vainqueur : l'adresse du son.
 export async function annonceNom(id) {
   const reponse = await fetch(`${BASE}/timer/announce/${id}`)
