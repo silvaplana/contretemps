@@ -1791,12 +1791,6 @@
   background: rgba(0, 0, 0, 0.3);
 }
 
-.video-card__upload-progress-bar {
-  height: 100%;
-  background: var(--accent);
-  transition: width 0.2s ease;
-}
-
 /* Vignette d'aperçu LOCAL pendant l'envoi (voir VideoThumb.jsx) — le
    fichier choisi est déjà dans le navigateur, jouable sans dépendre du
    serveur ("tu peux voir la vidéo pendant l'upload", demande utilisateur
@@ -1822,12 +1816,6 @@
   bottom: 0;
   height: 4px;
   background: rgba(0, 0, 0, 0.3);
-}
-
-.video-upload-preview__progress-bar {
-  height: 100%;
-  background: var(--accent);
-  transition: width 0.2s ease;
 }
 
 .video-upload-form__actions {
@@ -6047,4 +6035,112 @@ tr.is-resiliee td.data-table__name button {
   font-size: 17px;
   font-weight: 600;
   text-align: center;
+}
+
+/* L'avancement d'une vidéo, module Vidéos (components/Avancement.jsx,
+   Seb 23/11) : jaune pendant l'envoi, rayée quand il n'avance plus, bleue
+   pendant la préparation au serveur, verte quand c'est prêt. */
+.avancement-barre {
+  display: block;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(128, 128, 128, 0.3);
+  overflow: hidden;
+}
+.avancement-barre > i {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--accent);
+  transition: width 0.4s;
+}
+.avancement-barre--bloque > i {
+  background: repeating-linear-gradient(-45deg, var(--accent) 0 8px, color-mix(in srgb, var(--accent) 45%, #000) 8px 16px);
+  background-size: 22.6px 100%;
+  animation: avancement-rayures 0.8s linear infinite;
+}
+.avancement-barre--preparation > i {
+  background: #4a90ff;
+}
+.avancement-barre--pret > i {
+  background: #3ecf6e;
+}
+@keyframes avancement-rayures {
+  from { background-position: 0 0; }
+  to { background-position: 22.6px 0; }
+}
+.avancement-tourne {
+  flex: none;
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 3px solid rgba(128, 128, 128, 0.5);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: avancement-tourne 1s linear infinite;
+}
+@keyframes avancement-tourne {
+  to { transform: rotate(1turn); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .avancement-barre--bloque > i,
+  .avancement-tourne {
+    animation-duration: 3s;
+  }
+}
+
+/* Le bandeau, toujours en bas de l'écran (Fights : Timer et Combats). */
+.avancement {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--bottom-nav-height) + var(--chat-hauteur, 0px));
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px 16px 12px;
+  background: var(--card-bg);
+  border-top: 1px solid var(--border);
+  color: var(--text);
+  font-size: 17px;
+}
+.avancement--plein-ecran {
+  bottom: 0;
+  padding-bottom: max(12px, env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  background: rgba(14, 15, 19, 0.96);
+  border-top-color: #2c3038;
+  color: #f2f2f0;
+}
+.avancement__ligne {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.avancement__ligne > span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  white-space: nowrap;
+}
+.avancement__ligne b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.avancement__ligne em {
+  flex: none;
+  font-style: normal;
+  opacity: 0.85;
+}
+.avancement__ligne b + em::before {
+  content: '·';
+  margin-right: 8px;
+}
+.avancement__ligne--pret em {
+  color: #3ecf6e;
+  font-weight: 700;
+  opacity: 1;
 }

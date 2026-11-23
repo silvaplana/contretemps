@@ -15,11 +15,13 @@ from sqlalchemy.orm import Session
 
 from db import get_db
 from videos.schemas import VideoSortie
+from videos.stockage import DOSSIER_VIDEOS_LIVE
 from videos.videos import DecalageInvalide
 
 from . import announcer, camera, gesture_notes, lab, voice
 from . import people as who_is
 from .models import Clip, ClipSession, LabTest, Piece
+from . import overlay as overlays
 from .overlay import progress as overlay_progress
 from .ports import Member
 from .schemas import (
@@ -640,6 +642,8 @@ class SessionClipsReceiver:
             out_slots = [(c.id, i) in outsiders for i in range(len(ps))]
             shown = [OUTSIDER_NAME if o else names.get(p) if p is not None else None for p, o in zip(ps, out_slots)]
             video = videos.get(c.video_id)
+            source = DOSSIER_VIDEOS_LIVE / video.lien_fichier if video is not None and video.lien_fichier else None
+            prep = overlay_progress(c.overlay, video.duree_secondes if video else None, source)
             out.append(
                 ClipOut(
                     id=c.id,
@@ -649,7 +653,9 @@ class SessionClipsReceiver:
                     to_check=c.to_check,
                     draw=c.draw,
                     preparing=c.overlay is not None,
-                    preparing_progress=overlay_progress(c.overlay, video.duree_secondes if video else None),
+                    preparing_progress=prep,
+                    preparing_left=overlays.left(c.overlay, prep),
+                    preparing_queue=overlays.queue(s, c) if c.overlay else None,
                     upload_progress=uploads.get(c.video_id),
                     favorite=c.id in favorites,
                     new=not c.to_check and m.person_id in ps and c.id not in viewed,

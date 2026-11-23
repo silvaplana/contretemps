@@ -90,12 +90,13 @@ Timer étendu (coachs, Fights › Timer ; debout, les poings sont sous les noms 
   « Archiver » ouvre « Quelle musique ? » : neuf tuiles (Entraînement, Entrée du combattant, Rock de
   victoire, Tambours de guerre, Dernier round, Électro, Boom bap, Funk, Sans musique) ; toucher une tuile archive avec elle, ▶ dans le coin l'écoute avant. La
   vidéo incrustée est prête environ une demi-minute plus tard ; en attendant, le combat porte « En
-  préparation » dans Combats. Pendant ce temps, une pastille en bas à gauche du Timer suit l'envoi
-  (« Envoi X % », « En préparation… », puis où trouver le combat : Combats si on y est nommé, sinon
-  Tournage). Si on est l'un des combattants, le combat est dans Combats dès « Archiver », sa
-  vignette (la première image, noms déjà posés) avec la barre de l'envoi, puis « Envoi en cours X % »
-  ou « En préparation X % » et sa barre. On peut lancer le combat suivant tout de suite. Sans
-  réseau, l'envoi attend et repart seul ; appli fermée, il reprend à la prochaine ouverture.
+  préparation » dans Combats. Pendant ce temps, un bandeau en bas de l'écran du Timer suit l'envoi
+  (« Envoi X % », « Attend le réseau » avec un rond qui tourne quand rien ne passe, « Préparation X % ·
+  encore 1 min », puis en vert où trouver le combat : Combats si on y est nommé, sinon Tournage).
+  Si on est l'un des combattants, le combat est dans Combats dès « Archiver », sa vignette (la
+  première image, noms déjà posés) avec la barre de l'envoi, et le même bandeau en bas de l'écran
+  de Combats. On peut lancer le combat suivant tout de suite. Sans réseau, l'envoi attend et repart
+  seul ; appli fermée, il reprend à la prochaine ouverture.
 - La croix en haut à droite rend le Timer simple, où se règlent la durée du round et les repos.
 
 Entraîner l’écoute (coachs, Fights › ⋮ ; ← revient à Fights) : choisir le mot (Combattez, Time, avec le

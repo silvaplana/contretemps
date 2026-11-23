@@ -414,6 +414,25 @@ def test_progression_de_la_preparation(monkeypatch, tmp_path):
     assert ov.speed() == pytest.approx(0.65)
 
 
+def test_avancement_reel_de_la_preparation(monkeypatch, tmp_path):
+    """Seb, 23/11 : l'avancement réel, lu dans le fichier du travail, le
+    temps qui reste, et la place dans la file."""
+    from session_clips import overlay as ov
+
+    source = tmp_path / "combat.mp4"
+    monkeypatch.setattr(ov.time, "time", lambda: 1000.0)
+    demande = {"names": True, "started_at": 940.0}
+    # Pas encore de fichier : l'estimation à la montre.
+    assert ov.progress(demande, 60, source) < 0.96
+    ov.progress_file(source).write_text("0.600")
+    assert ov.progress(demande, 60, source) == pytest.approx(0.6)
+    # 60 s pour 60 % : encore 40 s.
+    assert ov.left(demande, 0.6) == 40
+    assert ov.left({"names": True}, None) is None
+    ov.progress_file(source).write_text("1.000")
+    assert ov.progress(demande, 60, source) == 0.99
+
+
 def test_vignette_avec_incrustations():
     """Seb, 22/11 : la vignette est la première image avec les noms posés."""
     import io

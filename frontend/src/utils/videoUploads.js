@@ -18,7 +18,8 @@ import { annulerEnvoiNatif, avancementNatif, confierEnvoi } from './envoisNatifs
 
 const TAILLE_BLOC = 2 * 1024 * 1024 // 2 Mo
 
-// uploadId -> { octetsEnvoyes, octetsTotal, complet, videoId, previewUrl }
+// uploadId -> { octetsEnvoyes, octetsTotal, complet, videoId, previewUrl, bloque }
+// `bloque` : l'envoi n'avance plus (pas de réseau…), voir components/Avancement.jsx.
 const sessions = new Map()
 const videoIdVersUploadId = new Map()
 const abandonnes = new Set()
@@ -120,6 +121,7 @@ export async function demarrerTeleversement(ecoleId, fichier, { garder = true } 
     previewUrl,
     garder: garder && !natif,
     natif,
+    avanceLe: Date.now(),
   })
   notifierProgression()
   if (natif) suivreEnvoisNatifs()
@@ -131,6 +133,7 @@ export async function demarrerTeleversement(ecoleId, fichier, { garder = true } 
 // un envoi qui a quitté la file est arrivé (ou a été refusé : la vidéo dit
 // laquelle des deux).
 let suiviNatif = null
+const NATIF_BLOQUE = 10000
 
 function suivreEnvoisNatifs() {
   if (suiviNatif) return
@@ -146,7 +149,12 @@ function suivreEnvoisNatifs() {
       const ligne = file.find((u) => u.uploadId === uploadId)
       if (!ligne) await terminerEnvoiNatif(uploadId)
       else if (ligne.sent !== etat.octetsEnvoyes) {
-        sessions.set(uploadId, { ...etat, octetsEnvoyes: ligne.sent })
+        sessions.set(uploadId, { ...etat, octetsEnvoyes: ligne.sent, bloque: false, avanceLe: Date.now() })
+        notifierProgression()
+      } else if (!etat.bloque && Date.now() - (etat.avanceLe ?? 0) > NATIF_BLOQUE) {
+        // Android envoie par blocs de 4 Mo : rien de neuf depuis 10 s, c'est
+        // que le réseau ne passe pas (ou plus).
+        sessions.set(uploadId, { ...etat, bloque: true })
         notifierProgression()
       }
     }
@@ -187,7 +195,7 @@ async function envoyerBlocs(uploadId, fichier) {
       decalage = await envoyerUnBloc(uploadId, fichier, decalage)
       const etat = sessions.get(uploadId)
       if (!etat) return // annulé entre-temps
-      sessions.set(uploadId, { ...etat, octetsEnvoyes: decalage })
+      sessions.set(uploadId, { ...etat, octetsEnvoyes: decalage, bloque: false })
       notifierProgression()
     }
   } catch (err) {
@@ -255,6 +263,13 @@ async function envoyerUnBloc(uploadId, fichier, decalageDepart) {
         continue
       }
       if (err.status >= 400 && err.status < 500 && err.status !== 408 && err.status !== 429) throw err
+      // Le bloc n'est pas passé : « Attend le réseau » jusqu'au prochain qui
+      // passe (Seb, 23/11 : qu'on voie quand ça n'avance plus).
+      const etat = sessions.get(uploadId)
+      if (etat && !etat.bloque) {
+        sessions.set(uploadId, { ...etat, bloque: true })
+        notifierProgression()
+      }
       tentative += 1
       await attendre(Math.min(1000 * tentative, 10000))
     }

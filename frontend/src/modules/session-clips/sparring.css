@@ -1154,6 +1154,9 @@
   color: var(--text);
   font-size: max(17px, 2.5vw);
 }
+.sc-te[style*='--sc-te-bandeau'] {
+  padding-bottom: calc(2vw + var(--sc-te-bandeau) * 64px);
+}
 .sc-te .sc-timer__fermer {
   top: 0.6vw;
   right: max(1vw, env(safe-area-inset-right, 0px));
@@ -1598,51 +1601,6 @@
   color: var(--text-muted);
   font-size: max(17px, 2.6vw);
   font-weight: 600;
-}
-.sc-te__envois {
-  position: absolute;
-  left: max(2.5vw, env(safe-area-inset-left, 0px));
-  bottom: 2vw;
-  z-index: 3;
-  display: flex;
-  flex-direction: column;
-  gap: 0.6vw;
-  pointer-events: none;
-}
-.sc-te__envoi {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5vw;
-  min-width: 34vw;
-  padding: 0.8vw 1.4vw;
-  border-radius: 1.4vw;
-  background: rgba(10, 11, 14, 0.88);
-  border: 1px solid #2c3038;
-  color: #f2f2f2;
-  font-size: max(15px, 1.9vw);
-}
-.sc-te__envoi-barre {
-  display: block;
-  height: 6px;
-  border-radius: 3px;
-  background: #2c3038;
-  overflow: hidden;
-}
-.sc-te__envoi-barre i {
-  display: block;
-  height: 100%;
-  background: #f5e94a;
-  transition: width 0.4s;
-}
-.sc-te__envoi-barre--prep i {
-  animation: sc-te-prep 1.2s ease-in-out infinite alternate;
-}
-.sc-te__envoi-barre--pret i {
-  background: #3ecf6e;
-}
-@keyframes sc-te-prep {
-  from { opacity: 0.35; }
-  to { opacity: 1; }
 }
 .sc-te__message {
   position: absolute;
@@ -2156,9 +2114,5 @@
   }
   .sc-te__musique-icone {
     font-size: 34px;
-  }
-  .sc-te__envois {
-    left: max(16px, env(safe-area-inset-left, 0px));
-    bottom: 16px;
   }
 }

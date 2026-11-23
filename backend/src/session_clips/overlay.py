@@ -88,15 +88,62 @@ def _learn(work: float, length: float) -> None:
         pass
 
 
-def progress(overlay: dict | None, length: float | None) -> float | None:
-    """Où en est l'incrustation, de 0 à 0,95 (le reste quand c'est fini) :
-    0 tant qu'elle n'a pas commencé, puis au prorata de la durée."""
+# L'avancement réel (Seb, 23/11 : « à moins que tu penses qu'on peut avoir un
+# avancement réel ») : pendant le travail, un petit fichier à côté de la vidéo
+# dit où il en est, de 0 à 1. Les images d'abord (DRAW_SHARE du travail),
+# puis ffmpeg, qui dit à chaque instant où il en est dans la vidéo.
+DRAW_SHARE = 0.15
+
+
+def progress_file(source: Path) -> Path:
+    return source.with_name(f"{source.stem}-i.progress")
+
+
+def _write_progress(path: Path | None, value: float) -> None:
+    if path is None:
+        return
+    try:
+        path.write_text(f"{value:.3f}")
+    except OSError:
+        pass
+
+
+def _read_progress(path: Path) -> float | None:
+    try:
+        return float(path.read_text())
+    except (OSError, ValueError):
+        return None
+
+
+def progress(overlay: dict | None, length: float | None, source: Path | None = None) -> float | None:
+    """Où en est l'incrustation, de 0 à 0,99 (le reste quand c'est fini) :
+    0 tant qu'elle n'a pas commencé, puis l'avancement réel lu dans le
+    fichier du travail ; à défaut, au prorata de la durée."""
     if not overlay:
         return None
     started = overlay.get("started_at")
     if not started:
         return 0.0
+    real = _read_progress(progress_file(source)) if source is not None else None
+    if real is not None:
+        return min(0.99, max(0.0, real))
     return min(0.95, (time.time() - started) / (speed() * (length or 60)))
+
+
+def left(overlay: dict | None, done: float | None) -> int | None:
+    """Les secondes qui restent, d'après le temps passé et l'avancement."""
+    started = (overlay or {}).get("started_at")
+    if not started or not done or done < 0.05:
+        return None
+    spent = time.time() - started
+    return max(0, round(spent * (1 - done) / done))
+
+
+def queue(db: Session, clip: Clip) -> int:
+    """Combien de combats passent avant celui-ci (toutes écoles : juste un nombre)."""
+    if not clip.overlay or clip.overlay.get("started_at"):
+        return 0
+    return sum(1 for c in pending(db) if c.id < clip.id)
 
 
 def pending(db: Session) -> list[Clip]:
@@ -125,9 +172,10 @@ def render_pending(db: Session, videos) -> int:
         clip.overlay = {**clip.overlay, "started_at": started}
         db.commit()
         try:
-            ok = render(source, target, clip.overlay, org_id)
+            ok = render(source, target, clip.overlay, org_id, progress_file(source))
         except Exception:  # noqa: BLE001 — jamais bloquer le worker
             ok = False
+        progress_file(source).unlink(missing_ok=True)
         names = bool((clip.overlay or {}).get("names"))
         clip.overlay = None
         if ok:
@@ -578,8 +626,9 @@ def thumbnail_from_frame(jpeg: bytes, overlay: dict, duration: float | None) -> 
     return out.getvalue()
 
 
-def render(source: Path, target: Path, overlay: dict, org_id: int) -> bool:
-    """Fabrique la vidéo incrustée et compressée. `False` si ffmpeg échoue."""
+def render(source: Path, target: Path, overlay: dict, org_id: int, follow: Path | None = None) -> bool:
+    """Fabrique la vidéo incrustée et compressée. `False` si ffmpeg échoue.
+    `follow` : le fichier où noter l'avancement (voir progress)."""
     size = video_size(source)
     if size is None:
         return False
@@ -608,12 +657,14 @@ def render(source: Path, target: Path, overlay: dict, org_id: int) -> bool:
                 made[k] = work / f"u{len(made)}.png"
                 frames.draw(t).save(made[k], compress_level=1)
             os.link(made[k], work / f"f{i:06d}.png")
-        return _ffmpeg(source, target, work, overlay, plan, width, height, duration)
+            if i % (FPS * 5) == 0:
+                _write_progress(follow, DRAW_SHARE * i / count)
+        return _ffmpeg(source, target, work, overlay, plan, width, height, duration, follow)
     finally:
         shutil.rmtree(work, ignore_errors=True)
 
 
-def _ffmpeg(source, target, work, overlay, plan, width, height, duration) -> bool:
+def _ffmpeg(source, target, work, overlay, plan, width, height, duration, follow=None) -> bool:
     total, end = plan["total"], plan["end"]
     args = [imageio_ffmpeg.get_ffmpeg_exe(), "-y", "-loglevel", "error", "-i", str(source),
             "-framerate", str(FPS), "-i", str(work / "f%06d.png")]
@@ -647,11 +698,34 @@ def _ffmpeg(source, target, work, overlay, plan, width, height, duration) -> boo
     graph = ";".join([video, *audio, f"{''.join(mix)}amix=inputs={len(mix)}:normalize=0:duration=longest,alimiter=limit=0.95[a]"])
     args += ["-filter_complex", graph, "-map", "[v]", "-map", "[a]", "-t", f"{total:.3f}",
              "-c:v", "libx264", "-crf", str(CRF), "-preset", "veryfast", "-c:a", "aac", "-b:a", "128k",
-             "-movflags", "+faststart", str(target)]
+             "-movflags", "+faststart", "-progress", "pipe:1", "-nostats", str(target)]
+    return _run(args, target, total, follow)
+
+
+def _run(args, target: Path, total: float, follow: Path | None) -> bool:
+    """ffmpeg, en lisant ce qu'il dit de son avancement (`out_time_us=`)."""
+    deadline = time.time() + 3600
     try:
-        out = subprocess.run(args, capture_output=True, text=True, timeout=3600)
+        with tempfile.TemporaryFile(mode="w+") as errors:
+            proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=errors, text=True)
+            try:
+                for line in proc.stdout:
+                    if line.startswith("out_time_us=") and total > 0:
+                        try:
+                            done = int(line.split("=", 1)[1]) / 1e6 / total
+                        except ValueError:
+                            continue
+                        _write_progress(follow, DRAW_SHARE + (1 - DRAW_SHARE) * min(1.0, max(0.0, done)))
+                    if time.time() > deadline:
+                        proc.kill()
+                        break
+                code = proc.wait(timeout=60)
+            finally:
+                if proc.poll() is None:
+                    proc.kill()
+            if code != 0:
+                errors.seek(0)
+                print(errors.read()[-2000:])
     except (OSError, subprocess.SubprocessError):
         return False
-    if out.returncode != 0:
-        print(out.stderr[-2000:])
-    return out.returncode == 0 and target.exists()
+    return code == 0 and target.exists()

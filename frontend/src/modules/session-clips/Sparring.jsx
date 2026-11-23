@@ -13,6 +13,8 @@ import {
   useTeleversementsTermines,
 } from '../../utils/videoUploads.js'
 import * as api from './api.js'
+import { textePreparation } from './preparation.js'
+import { BandeauAvancement, LigneAvancement, pourcentEnvoi, texteEnvoi } from '../../components/Avancement.jsx'
 import { Deroulant, EssaiLabo, Graphe, Labo, ParametresTournage, useSuppressionEssai } from './Labo.jsx'
 import Tournage from './Tournage.jsx'
 import Timer from './Timer.jsx'
@@ -359,39 +361,82 @@ function MesCombats({ me, version, caches, choisis, basculer, onOpen }) {
     })
     return () => clearTimeout(minuteur)
   }, [version, relire])
-  // Un combat en préparation (incrustation, Seb 21/11) : relu toutes les 15 s jusqu'à ce qu'il soit prêt.
+  // Un combat en préparation (incrustation, Seb 21/11) : relu jusqu'à ce
+  // qu'il soit prêt, toutes les 3 s pendant la préparation (l'avancement est
+  // réel, Seb 23/11), 15 s pendant l'envoi depuis un autre téléphone.
   const prepare = clips?.some((c) => c.preparing || c.video?.statut === 'en_cours')
+  const prepareAuServeur = clips?.some((c) => c.preparing && c.video?.statut !== 'en_cours')
   useEffect(() => {
     if (!prepare) return undefined
-    const id = setTimeout(() => setRelire((n) => n + 1), 15000)
+    const id = setTimeout(() => setRelire((n) => n + 1), prepareAuServeur ? 3000 : 15000)
     return () => clearTimeout(id)
-  }, [prepare, clips])
+  }, [prepare, prepareAuServeur, clips])
+  // Ceux qui viennent d'être prêts restent 15 s en vert dans le bandeau.
+  const [prets, setPrets] = useState([])
+  const avant = useRef(new Set())
+  useEffect(() => {
+    if (!clips) return undefined
+    const enCours = new Set(clips.filter((c) => c.preparing || c.video?.statut === 'en_cours').map((c) => c.id))
+    const finis = [...avant.current].filter((id) => !enCours.has(id))
+    avant.current = enCours
+    if (!finis.length) return undefined
+    setPrets((l) => [...l, ...finis])
+    const id = setTimeout(() => setPrets((l) => l.filter((x) => !finis.includes(x))), 15000)
+    return () => clearTimeout(id)
+  }, [clips])
   if (!clips) return null
   const visibles = clips.filter((c) => !caches.has(c.id))
   if (!visibles.length) return <p className="sc-vide">Vos combats filmés apparaîtront ici le lendemain de la séance.</p>
-  return visibles.map((c, i) => {
-    const entete = c.session_id !== visibles[i - 1]?.session_id
-    return (
-      <div key={c.id} className="sc-groupe">
-        {entete && (
-          <div className="sc-jour">
-            {api.jour(c.held_on)}
-            {c.session_title ? ` · ${c.session_title}` : ''}
-          </div>
-        )}
-        <LigneClip c={c} choisis={choisis} basculer={basculer} onOpen={onOpen}>
-          <strong>{adversaires(c, me)}</strong>
-          <span className="sc-meta">
-            Combat {c.position}
-            {c.video?.publieeLe && ` · ${api.heure(c.video.publieeLe)}`}
-            {duree(c.video) && ` · ${duree(c.video)}`}
-            {c.new && <span className="sc-chip sc-chip--info">Nouveau</span>}
-            {etatPreparation(c) && <span className="sc-chip sc-chip--info">{etatPreparation(c)}</span>}
-          </span>
-        </LigneClip>
-      </div>
-    )
-  })
+  const avancent = visibles.filter((c) => c.preparing || c.video?.statut === 'en_cours' || prets.includes(c.id))
+  return [
+    ...visibles.map((c, i) => {
+      const entete = c.session_id !== visibles[i - 1]?.session_id
+      return (
+        <div key={c.id} className="sc-groupe">
+          {entete && (
+            <div className="sc-jour">
+              {api.jour(c.held_on)}
+              {c.session_title ? ` · ${c.session_title}` : ''}
+            </div>
+          )}
+          <LigneClip c={c} choisis={choisis} basculer={basculer} onOpen={onOpen}>
+            <strong>{adversaires(c, me)}</strong>
+            <span className="sc-meta">
+              Combat {c.position}
+              {c.video?.publieeLe && ` · ${api.heure(c.video.publieeLe)}`}
+              {duree(c.video) && ` · ${duree(c.video)}`}
+              {c.new && <span className="sc-chip sc-chip--info">Nouveau</span>}
+            </span>
+          </LigneClip>
+        </div>
+      )
+    }),
+    // De la place sous le dernier combat, pour qu'il ne reste pas caché sous le bandeau.
+    avancent.length > 0 && <div key="place" style={{ height: avancent.length * 64 }} aria-hidden="true" />,
+    avancent.length > 0 && (
+      <BandeauAvancement key="avancement">
+        {avancent.map((c) => (
+          <AvancementCombat key={c.id} c={c} me={me} />
+        ))}
+      </BandeauAvancement>
+    ),
+  ]
+}
+
+// Une ligne du bandeau d'avancement (module Vidéos), comme dans le Timer :
+// l'envoi (suivi ici si c'est ce téléphone qui envoie), la préparation au
+// serveur, puis prêt.
+function AvancementCombat({ c, me }) {
+  const envoi = c.video?.statut === 'en_cours'
+  const progression = useProgressionVideo(envoi ? c.video.id : null)
+  const ligne = envoi
+    ? progression
+      ? { texte: texteEnvoi(progression), etape: 'envoi', pourcent: pourcentEnvoi(progression), bloque: progression.bloque }
+      : { texte: `Envoi ${Math.round(100 * (c.upload_progress ?? 0))} %`, etape: 'envoi', pourcent: Math.round(100 * (c.upload_progress ?? 0)) }
+    : c.preparing
+      ? { texte: textePreparation(c), etape: 'preparation', pourcent: Math.round(100 * (c.preparing_progress ?? 0)) }
+      : { texte: 'Prêt', etape: 'pret' }
+  return <LigneAvancement nom={adversaires(c, me)} {...ligne} />
 }
 
 function LigneCoach({ c, choisis, basculer, onOpen }) {

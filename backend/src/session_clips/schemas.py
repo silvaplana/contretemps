@@ -124,8 +124,11 @@ class ClipOut(BaseModel):
     draw: bool = False  # match nul déclaré au Timer étendu
     # Le serveur incruste encore la vidéo (Seb, 21/11 : « qu'on le sache »).
     preparing: bool = False
-    # Sa progression approchée, de 0 à 0,95 (Seb, 22/11 ; overlay.progress).
+    # Sa progression, réelle depuis le 23/11 (overlay.progress), de 0 à 0,99.
     preparing_progress: float | None = None
+    # Les secondes qui restent, et combien de combats passent avant (Seb, 23/11).
+    preparing_left: int | None = None
+    preparing_queue: int | None = None
     # L'envoi depuis le téléphone qui a filmé, de 0 à 1, tant qu'il n'est pas fini.
     upload_progress: float | None = None
     # Dans les « ★ Favoris » de l'appelant.
