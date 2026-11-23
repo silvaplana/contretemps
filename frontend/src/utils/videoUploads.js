@@ -3,15 +3,14 @@
 // level, pas de useState), pour survivre à la fermeture de la modale
 // "Ajouter une vidéo" ou à un changement d'écran pendant l'envoi (voir
 // AjouterVideo.jsx : "Ajouter" ferme l'écran mais l'envoi continue en
-// tâche de fond). Ne survit PAS à un rechargement de page/fermeture de
-// l'app (décision utilisateur explicite : "si on ferme l'app, on annule
-// tout, pas besoin de survivre à ça") — tout est en mémoire, jamais
-// persisté sur disque local, donc perdu au reload sans nécessiter de
-// nettoyage particulier ici (le backend, lui, nettoie tout seul les
-// sessions abandonnées après quelques heures, voir videos.py).
-// Exception, les combats du Timer de Fights (Seb, 22/11) : `garder` range la
-// vidéo sur le téléphone jusqu'à la fin de l'envoi, qui reprend à la
-// prochaine ouverture de l'appli (voir envoisGardes.js, reprendreEnvois).
+// tâche de fond). Il survit aussi au rechargement de la page et à la
+// fermeture de l'appli (Seb, 23/11 : « il faut que ce module soit béton de
+// chez béton ») : `garder` range la vidéo sur le téléphone jusqu'à la fin de
+// l'envoi, qui reprend à la prochaine ouverture (voir envoisGardes.js,
+// reprendreEnvois). C'est le cas de TOUS les envois du module depuis le
+// 23/11 — le Timer de Fights l'avait déjà depuis le 22/11, après un combat
+// perdu. Le backend, lui, nettoie tout seul les envois jamais terminés (voir
+// videos.py : DELAI_ENVOI_INTERROMPU).
 import { useEffect, useSyncExternalStore } from 'react'
 import * as videosApi from '../api/videos.js'
 import { envoisGardes, garderEnvoi, oublierEnvoi } from './envoisGardes.js'
@@ -101,8 +100,10 @@ export function useTeleversementsTermines(onTermine) {
 // Démarre tout de suite (voir demande utilisateur : dès le fichier
 // choisi/filmé, avant même de connaître le titre) — renvoie l'id de
 // session dès qu'il est connu, l'envoi des blocs continue derrière sans
-// attendre l'appelant.
-export async function demarrerTeleversement(ecoleId, fichier, { garder = false } = {}) {
+// attendre l'appelant. `garder` (par défaut) range la vidéo sur le téléphone
+// jusqu'à son arrivée ; `garder: false` pour un fichier qu'on ne peut pas
+// refilmer plus tard de toute façon.
+export async function demarrerTeleversement(ecoleId, fichier, { garder = true } = {}) {
   const previewUrl = URL.createObjectURL(fichier)
   const extension = `.${fichier.name.split('.').pop() || 'mp4'}`
   const session = await videosApi.ouvrirTeleversement(ecoleId, extension, fichier.size)
@@ -210,6 +211,8 @@ export function annulerTeleversement(uploadId) {
   const etat = sessions.get(uploadId)
   abandonnes.add(uploadId)
   sessions.delete(uploadId)
+  // Plus rien à reprendre : la vidéo gardée sur le téléphone part aussi.
+  oublierEnvoi(uploadId)
   if (etat?.videoId) videoIdVersUploadId.delete(etat.videoId)
   notifierProgression()
   if (etat?.previewUrl) URL.revokeObjectURL(etat.previewUrl)
