@@ -127,6 +127,9 @@ if [ -z "${DEPLOY_APRES_PULL:-}" ]; then
 fi
 
 echo "==> Version : $(git log -1 --format='%h %s')"
+# Le numéro de version montré dans le menu du badge (Seb, 23/11) : un de plus
+# à chaque mise en ligne (docker-compose.yml le passe aux frontends).
+export VERSION_NUMERO="$(git rev-list --count HEAD)"
 
 echo "==> Reconstruction et redémarrage des conteneurs"
 docker compose up -d --build

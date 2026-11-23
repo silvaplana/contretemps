@@ -28,6 +28,10 @@ ARG VITE_GOOGLE_CLIENT_ID=
 ARG VITE_BASE=
 ARG VITE_ENTETE_ECOLE=
 ENV VITE_ENTETE_ECOLE=${VITE_ENTETE_ECOLE}
+# Le numéro de la version, montré dans le menu du badge (Seb, 23/11) : le
+# nombre de commits de main, donné par deploy.sh. Vide en local.
+ARG VITE_VERSION_NUMERO=
+ENV VITE_VERSION_NUMERO=${VITE_VERSION_NUMERO}
 # Page d'inscription (« Inscription élève » d'Admin > Élèves) : sur une
 # adresse d'école, elle reste sur silvaplana.cloud, d'où une adresse complète.
 ARG VITE_INSCRIPTION_URL=

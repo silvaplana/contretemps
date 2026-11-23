@@ -13,7 +13,9 @@ import Modal from './Modal.jsx'
 import { BubbleCloseIcon, BubbleIcon } from '../modules/documents/icons.jsx'
 import { DANS_L_APPLI, Natif } from '../modules/session-clips/natif.js'
 
-// La version du site en ligne : le moment de sa mise en ligne (vite.config.js).
+// La version du site en ligne : son numéro (un de plus à chaque mise en
+// ligne, deploy.sh ; Seb 23/11) et le moment de sa mise en ligne (vite.config.js).
+const NUMERO = import.meta.env.VITE_VERSION_NUMERO
 const VERSION = new Date(import.meta.env.VITE_VERSION_SITE).toLocaleString('fr-FR', {
   day: 'numeric',
   month: '2-digit',
@@ -225,7 +227,7 @@ export default function Header({
                   <Icon name="logout" size={18} /> Se déconnecter
                 </button>
                 <p className="header-version">
-                  Version du {VERSION}
+                  Version {NUMERO ? `${NUMERO} ` : ''}du {VERSION}
                   <br />
                   {ouTourne}
                 </p>
