@@ -35,6 +35,11 @@ tout le monde garde la PWA pour le reste.
   `version.json` dans la release GitHub « tournage-latest » à l'ouverture et toutes les 12 h, et
   propose « Nouvelle version disponible › Installer ». Il ne faut un nouvel APK que quand on touche
   à `frontend/android/` (la partie native), pas quand on change le site.
+- **Quelle appli ?** Le menu du badge dit « Version 1234 du 23/11 à 11:54 » (le numéro : nombre
+  de commits de main, passé par `deploy.sh` au build ; un de plus à chaque mise en ligne), puis
+  « Appli Android 1.N »
+  (`TournagePlugin.version`), « Appli Android ancienne : à mettre à jour » (APK d'avant cette
+  méthode), « Appli installée (PWA) » ou « Navigateur » (Seb, 23 novembre).
 
 ## Construire
 

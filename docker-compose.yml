@@ -127,6 +127,8 @@ services:
         # jamais committé. Vide tant qu'il n'existe pas -> Drive simplement
         # désactivé côté frontend, sans erreur.
         VITE_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+        # Numéro de version du menu du badge (deploy.sh, Seb 23/11).
+        VITE_VERSION_NUMERO: ${VERSION_NUMERO:-}
     restart: unless-stopped
     container_name: contretemps-frontend
     # Réseau par défaut du projet (communication avec "backend") + réseau
@@ -152,6 +154,8 @@ services:
         CADDYFILE: Caddyfile.ecoles
         VITE_INSCRIPTION_URL: https://silvaplana.cloud/contretemps-inscription/
         VITE_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+        # Numéro de version du menu du badge (deploy.sh, Seb 23/11).
+        VITE_VERSION_NUMERO: ${VERSION_NUMERO:-}
     restart: unless-stopped
     container_name: contretemps-frontend-ecoles
     networks:
