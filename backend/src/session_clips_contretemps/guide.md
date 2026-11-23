@@ -81,10 +81,19 @@ Timer étendu (coachs, Fights › Timer ; debout, les poings sont sous les noms 
   deux lignes (une lettre sans personne est grisée), ★ pour les derniers combattants choisis puis les habitués de ce jour-là, puis les combattants en cartes qu'on fait défiler, les derniers choisis à gauche ; on
   touche la carte) et, entre eux, le résultat : un poing levé pour celui de gauche, « = » pour le match nul,
   un poing levé pour celui de droite ; on en touche un, il s'allume.
-- À gauche, l'image de ce que le téléphone filme, avec en bas à gauche la lampe de la caméra (un
+- À gauche, l'image de ce que le téléphone filme (« Caméra prête », puis « Ça filme »), avec en bas
+  à gauche l'icône du rôle de ce téléphone, caméra ou télécommande (point vert : l'autre téléphone est
+  là ; on la touche avant le combat pour changer), juste à côté la lampe de la caméra (un
   appui l'allume ou l'éteint) et en bas à droite la petite caméra « 5 s » : le retardateur
   (compte à rebours de 5 secondes, puis la cloche sonne et le combat démarre). Au milieu le temps, à
   droite la cloche (« Démarrer », puis « Arrêter ») et le chronomètre (« Pause » / « Reprendre »).
+- Télécommande : un deuxième téléphone, au bord du tapis, pilote celui qui filme. Sur les deux,
+  « Filmer le combat » coché ; sur celui qui ne filme pas, toucher l'icône caméra en bas à gauche :
+  elle devient une télécommande. En haut de l'image : « Caméra prête », « Caméra pas prête » ou « La
+  caméra filme », avec l'image de la caméra. Les noms, le résultat, la cloche, Pause, la lampe, le
+  retardateur, puis « Archiver » ou « Jeter » partent vers la caméra, qui filme, sonne et éclaire ;
+  pas de « Partager » sur la télécommande (la vidéo est sur la caméra). Le bandeau d'avancement de
+  l'envoi s'affiche aussi sur la télécommande.
 - La cloche lance et arrête le film. À la fin du combat : la vidéo à revoir et trois touches,
   « Archiver » (le combat va dans Combats, dans la séance du jour), « Partager » (WhatsApp,
   messages…) et « Jeter » (« Annuler » pendant 10 secondes). Avec « Une musique » cochée,

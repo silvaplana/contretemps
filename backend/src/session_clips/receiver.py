@@ -18,7 +18,7 @@ from videos.schemas import VideoSortie
 from videos.stockage import DOSSIER_VIDEOS_LIVE
 from videos.videos import DecalageInvalide
 
-from . import announcer, camera, gesture_notes, lab, voice
+from . import announcer, camera, gesture_notes, lab, timer_link, voice
 from . import people as who_is
 from .models import Clip, ClipSession, LabTest, Piece
 from . import overlay as overlays
@@ -59,6 +59,8 @@ from .schemas import (
     SessionOut,
     SessionRename,
     ThisPhone,
+    TimerCameraIn,
+    TimerRemoteIn,
     VoiceAnswer,
     VoiceMissing,
     VoiceNote,
@@ -269,6 +271,19 @@ class SessionClipsReceiver:
                 PersonOut(id=i, name=names[i], regular=i in regulars, recent=recent.get(i))
                 for i in client.timer_order(s, m.org_id, date.today())
             ]
+
+        # Le Timer télécommandé (Seb, 23/11) : la caméra et la télécommande
+        # passent par le serveur toutes les demi-secondes (timer_link.py).
+        @app.post(f"{PREFIX}/timer/link/camera")
+        def timer_link_camera(body: TimerCameraIn, m: Member = member):
+            coach(m)
+            orders, linked = timer_link.camera(m.org_id, body.state, body.frame)
+            return {"orders": orders, "linked": linked}
+
+        @app.post(f"{PREFIX}/timer/link/remote")
+        def timer_link_remote(body: TimerRemoteIn, m: Member = member):
+            coach(m)
+            return timer_link.remote(m.org_id, body.orders, body.seen_frame)
 
         # L'annonce du vainqueur : son nom dit par George.
         @app.get(f"{PREFIX}/timer/announce/{{person_id}}")

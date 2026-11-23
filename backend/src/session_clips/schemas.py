@@ -6,7 +6,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from videos.schemas import VideoSortie
 
@@ -109,6 +109,20 @@ class PersonOut(BaseModel):
     # Timer étendu : son rang parmi les derniers combattants de l'école (0 = le
     # plus récent), rien s'il n'a pas combattu récemment (Seb, 23/11).
     recent: int | None = None
+
+
+class TimerCameraIn(BaseModel):
+    """Timer télécommandé (timer_link.py) : l'état de la caméra, None quand elle s'en va."""
+
+    state: dict | None = None
+    frame: str | None = None
+
+
+class TimerRemoteIn(BaseModel):
+    """Timer télécommandé : les ordres de la télécommande, et la dernière image qu'elle a."""
+
+    orders: list[dict] = Field(default_factory=list, max_length=20)
+    seen_frame: int = 0
 
 
 class ParticipantOut(BaseModel):

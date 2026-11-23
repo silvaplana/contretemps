@@ -96,3 +96,31 @@ def test_voix_indisponible(client, e, monkeypatch, tmp_path):
     monkeypatch.setattr(announcer, "speak", speak)
     monkeypatch.setattr(announcer, "dossier_ecole", lambda org: tmp_path / str(org))
     assert client.get(f"/session-clips/timer/announce/{e['karim'].id}", headers=e["h"]["coach"]).status_code == 503
+
+
+def test_timer_telecommande(client, e):
+    """Seb, 23/11 : la télécommande pilote le Timer de la caméra, par le serveur."""
+    from session_clips import timer_link
+
+    timer_link.reset()
+    h = e["h"]["coach"]
+    cam = "/session-clips/timer/link/camera"
+    tel = "/session-clips/timer/link/remote"
+    # Pas de caméra : la télécommande n'est pas reliée, ses ordres sont perdus.
+    r = client.post(tel, json={"orders": [{"do": "bell"}]}, headers=h).json()
+    assert r["linked"] is False and r["state"] is None
+    # La caméra arrive : elle voit la télécommande (vue il y a moins de 4 s), pas d'ordre perdu en route.
+    r = client.post(cam, json={"state": {"reste": 180}, "frame": "data:image/jpeg;base64,AAA"}, headers=h).json()
+    assert r == {"orders": [], "linked": True}
+    r = client.post(tel, json={"orders": [{"do": "bell"}, {"do": "light", "on": True}]}, headers=h).json()
+    assert r["linked"] and r["state"] == {"reste": 180} and r["frame"] == "data:image/jpeg;base64,AAA"
+    # L'image déjà reçue n'est pas renvoyée.
+    assert client.post(tel, json={"seen_frame": r["frame_id"]}, headers=h).json()["frame"] is None
+    assert client.post(cam, json={"state": {"reste": 179}}, headers=h).json()["orders"] == [{"do": "bell"}, {"do": "light", "on": True}]
+    # Chaque école a sa caméra.
+    assert timer_link.remote(e["ecole"].id + 999, [], 0)["linked"] is False
+    # La caméra s'en va.
+    client.post(cam, json={"state": None}, headers=h)
+    assert client.post(tel, json={}, headers=h).json()["linked"] is False
+    # Réservé aux coachs.
+    assert client.post(tel, json={}, headers=e["h"]["seb"]).status_code == 403

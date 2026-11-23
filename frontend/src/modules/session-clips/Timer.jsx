@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Deroulant } from './Labo.jsx'
-import { CAMERA, CHRONO, CLOCHE, LAMPE, POING } from './timerDessins.js'
+import { CAMERA, CAMESCOPE, CHRONO, CLOCHE, LAMPE, POING, TELECOMMANDE } from './timerDessins.js'
+import { useLienCamera, useTelecommande } from './timerLiaison.js'
 import { ecrire, estEtendu, lire } from './timerReglages.js'
 import { useFilm } from './timerFilm.js'
 import { DANS_L_APPLI, Natif } from './natif.js'
@@ -95,7 +96,7 @@ const MUSIQUES = [
 // serveur, puis où le retrouver. Une ligne du bandeau d'avancement du module
 // Vidéos (Seb, 23/11 : en bas de l'écran, le même que dans Combats). Relu
 // toutes les 3 s pendant la préparation, 10 s sinon, tant qu'il n'est pas prêt.
-function Envoi({ envoi, me, onFini }) {
+function Envoi({ envoi, me, onFini, onLigne }) {
   const progression = useProgressionTeleversement(envoi.uploadId)
   const [relu, setClip] = useState(null)
   const clip = relu ?? envoi.clip
@@ -122,6 +123,10 @@ function Envoi({ envoi, me, onFini }) {
             etape: 'pret',
             texte: moi ? 'Prêt dans Combats' : clip.to_check ? 'Prêt : à vérifier dans Tournage' : 'Prêt dans Tournage, séance du jour',
           }
+  // La même ligne sur la télécommande, si elle pilote ce téléphone.
+  useEffect(() => {
+    onLigne?.(ligne)
+  })
   return <LigneAvancement nom={envoi.nom} {...ligne} />
 }
 
@@ -342,10 +347,15 @@ export default function Timer({ ecoleId, rafraichir, me }) {
     for (const [k, f] of Object.entries(SONS)) sons.current[k] = new Audio(f)
   }, [])
   useEffect(() => ecrire(r), [r])
-  const film = useFilm(etendu && r.film && plein)
+  // Le Timer télécommandé (Seb, 23/11) : ce téléphone est la caméra (il
+  // filme, sonne, éclaire, tient le chrono) ou la télécommande d'une autre.
+  const tele = etendu && r.film && r.telecommande
+  const lien = useTelecommande(tele && plein)
+  const lignes = useRef({}) // cle de l'envoi -> sa ligne d'avancement, pour la télécommande
+  const film = useFilm(etendu && r.film && plein && !tele)
   useEffect(() => {
-    if (r.noms) api.nomsTimer().then(setMembres, () => {})
-  }, [r.noms])
+    if (r.noms || tele) api.nomsTimer().then(setMembres, () => {})
+  }, [r.noms, tele])
   // Paysage ou portrait, au choix du vidéaste (Seb, 21/11) : l'écran suit le
   // téléphone, puis le sens est figé du premier coup de cloche jusqu'à
   // Archiver ou Jeter, pour que le film ne bascule pas en plein combat.
@@ -391,8 +401,7 @@ export default function Timer({ ecoleId, rafraichir, me }) {
 
   // Le nom du vainqueur dit par George : préparé dès que le combattant est choisi.
   function nommer(i, m) {
-    const suite = i ? [noms[0], m] : [m, noms[1]]
-    setNoms(suite)
+    setNoms((n) => (i ? [n[0], m] : [m, n[1]]))
     setChoix(null)
     if (m.id) setMembres((l) => remonter(l, m.id))
     if (r.annonce && m.id && !annonces.current[m.id]) {
@@ -608,9 +617,11 @@ export default function Timer({ ecoleId, rafraichir, me }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [run, r])
 
-  // L'écran reste allumé pendant le décompte, si le téléphone le permet.
+  // L'écran reste allumé pendant le décompte, si le téléphone le permet
+  // (sur la télécommande aussi, pendant que la caméra compte).
+  const decompte = !!run || !!(tele && lien.etat?.run)
   useEffect(() => {
-    if (!run) return
+    if (!decompte) return
     navigator.wakeLock?.request('screen').then(
       (v) => (veille.current = v),
       () => {},
@@ -619,7 +630,7 @@ export default function Timer({ ecoleId, rafraichir, me }) {
       veille.current?.release().catch(() => {})
       veille.current = null
     }
-  }, [run == null]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [decompte])
 
   function pause() {
     film.pause(run.pause == null)
@@ -627,64 +638,153 @@ export default function Timer({ ecoleId, rafraichir, me }) {
     else setRun({ ...run, pause: run.fin - Date.now() })
   }
 
+  // Caméra pilotée : ce qu'elle montre à la télécommande, et les ordres qu'elle en reçoit.
+  const etatCamera = () => ({
+    run: run && { phase: run.phase, n: run.n, pause: run.pause != null, ms: run.pause ?? run.fin - Date.now() },
+    reste,
+    nombre: r.mode === 'rounds' ? r.nombre : 0,
+    noms,
+    resultat,
+    termine,
+    fin: !!fin,
+    retard,
+    lampe: film.lampe ?? null,
+    camera: film.etat,
+    sonne,
+    reglages: { noms: r.noms, vainqueur: r.vainqueur, incrMusique: r.incrMusique },
+    envois: envois.map((e) => lignes.current[e.cle] ?? { nom: e.nom, texte: 'Attente du serveur…', etape: 'envoi', pourcent: 0 }),
+  })
+  function ordre(o) {
+    if (o.do === 'bell' && run) terminer()
+    else if (o.do === 'bell' && !fin && !retard) debuter()
+    else if (o.do === 'pause' && run) pause()
+    else if (o.do === 'light' && film.etat === 'pret' && film.lampe !== undefined) film.allumer(!!o.on)
+    else if (o.do === 'timer5' && !run && !fin && !retard) {
+      tin()
+      setRetard(RETARD_S)
+    } else if (o.do === 'name' && (o.i === 0 || o.i === 1) && o.m) nommer(o.i, o.m)
+    else if (o.do === 'win') declarer(o.quoi)
+    else if (o.do === 'archive' && fin) archiver(o.music ?? null)
+    else if (o.do === 'discard' && fin) jeter()
+    else if (o.do === 'undo') message?.annuler?.()
+  }
+  const pilotee = useLienCamera(etendu && r.film && plein && !tele, etatCamera, film.photo, ordre)
+
+  // Ce qu'on montre : l'état de ce téléphone, ou celui de la caméra vu de la télécommande.
+  const ec = lien.etat
+  const rv = tele ? { ...r, ...ec?.reglages } : r
+  const nomsV = tele ? (ec?.noms ?? [null, null]) : noms
+  const resultatV = tele ? (ec?.resultat ?? null) : resultat
+  const termineV = tele ? !!ec?.termine : termine
+  const finV = tele ? !!ec?.fin : !!fin
+  const enMarche = tele ? !!ec?.run : !!run
+  const enPause = tele ? !!ec?.run?.pause : run?.pause != null
+  const phaseV = tele ? ec?.run?.phase : run?.phase
+  const numeroV = tele ? ec?.run?.n : run?.n
+  const nombreV = tele ? (ec?.nombre ?? 0) : r.mode === 'rounds' ? r.nombre : 0
+  const retardV = tele ? (ec?.retard ?? 0) : retard
+  const sonneV = tele ? (ec?.sonne ?? null) : sonne
+  const resteV = !tele
+    ? reste
+    : !ec
+      ? r.round
+      : ec.run && !ec.run.pause
+        ? Math.max(0, Math.ceil((ec.run.ms - (Date.now() - lien.recu)) / 1000))
+        : ec.reste
+  const envoyer = lien.envoyer
+
   const regler = (k, d, min, max) => setR((x) => ({ ...x, [k]: Math.min(max, Math.max(min, x[k] + d)) }))
-  const repos = run?.phase === 'repos'
+  const repos = phaseV === 'repos'
   const resume = r.mode === 'rounds' ? `${r.nombre} × ${mmss(r.round)} · repos ${mmss(r.repos)}` : mmss(r.round)
 
   const chrono = (
     <button
       type="button"
-      className={`sc-timer__dessin${run?.pause != null ? ' sc-timer__dessin--reprendre' : ''}`}
-      disabled={!run}
-      onClick={pause}
+      className={`sc-timer__dessin${enPause ? ' sc-timer__dessin--reprendre' : ''}`}
+      disabled={!enMarche}
+      onClick={() => (tele ? envoyer({ do: 'pause' }) : pause())}
     >
       <span dangerouslySetInnerHTML={{ __html: CHRONO }} />
       {/* Rien d'écrit sous le chronomètre tant que rien ne tourne (Seb, 21/11). */}
-      <span className="sc-timer__mot">{!run ? '' : run.pause != null ? 'Reprendre' : 'Pause'}</span>
+      <span className="sc-timer__mot">{!enMarche ? '' : enPause ? 'Reprendre' : 'Pause'}</span>
     </button>
   )
   const cloche = (
     <button
       type="button"
-      className={`sc-timer__dessin sc-timer__dessin--cloche${sonne ? ' sc-timer__dessin--sonne' : ''}`}
-      style={sonne ? { '--coups': sonne.n } : undefined}
-      disabled={!!fin || retard > 0}
-      onClick={run ? terminer : debuter}
+      className={`sc-timer__dessin sc-timer__dessin--cloche${sonneV ? ' sc-timer__dessin--sonne' : ''}`}
+      style={sonneV ? { '--coups': sonneV.n } : undefined}
+      disabled={finV || retardV > 0 || (tele && !lien.relie)}
+      onClick={() => (tele ? envoyer({ do: 'bell' }) : run ? terminer() : debuter())}
     >
-      <span key={sonne?.id ?? 0} dangerouslySetInnerHTML={{ __html: CLOCHE }} />
-      <span className="sc-timer__mot">{run ? 'Arrêter' : 'Démarrer'}</span>
+      <span key={sonneV?.id ?? 0} dangerouslySetInnerHTML={{ __html: CLOCHE }} />
+      <span className="sc-timer__mot">{enMarche ? 'Arrêter' : 'Démarrer'}</span>
     </button>
   )
 
   if (etendu && plein) {
-    const appel = termine && resultat === null ? ' sc-te__poing--appel' : ''
+    const appel = termineV && resultatV === null ? ' sc-te__poing--appel' : ''
+    const gagne = (quoi) => (tele ? envoyer({ do: 'win', quoi }) : declarer(quoi))
     const poing = (i) => (
       <button
         type="button"
         className={`sc-te__poing${i ? ' sc-te__poing--droite' : ''}${appel}`}
-        aria-pressed={resultat === i}
-        aria-label={`Vainqueur : ${noms[i]?.name ?? (i ? 'à droite' : 'à gauche')}`}
-        onClick={() => declarer(i)}
+        aria-pressed={resultatV === i}
+        aria-label={`Vainqueur : ${nomsV[i]?.name ?? (i ? 'à droite' : 'à gauche')}`}
+        onClick={() => gagne(i)}
         dangerouslySetInnerHTML={{ __html: POING }}
       />
     )
     const champ = (i) =>
-      r.noms ? (
+      rv.noms ? (
         <button
           type="button"
-          className={`sc-te__champ${noms[i] ? '' : ' sc-te__champ--vide'}`}
+          className={`sc-te__champ${nomsV[i] ? '' : ' sc-te__champ--vide'}`}
           aria-label={i ? 'Combattant de droite' : 'Combattant de gauche'}
           onClick={() => setChoix(i)}
         >
           {/* Pas encore nommé : « Gauche » / « Droite » en gris (Seb, 23/11). */}
-          {noms[i]?.name ?? (i ? 'Droite' : 'Gauche')}
+          {nomsV[i]?.name ?? (i ? 'Droite' : 'Gauche')}
         </button>
       ) : (
         <span />
       )
+    // Télécommande : la caméra est-elle là, prête ? (en haut de l'image)
+    const etatFilm = tele
+      ? !lien.relie
+        ? 'Caméra pas prête'
+        : enMarche
+          ? 'La caméra filme'
+          : ec.camera === 'refus'
+            ? 'Caméra indisponible'
+            : ec.camera === 'pret'
+              ? 'Caméra prête'
+              : 'Caméra…'
+      : film.etat === 'refus'
+        ? 'Caméra indisponible'
+        : run
+          ? 'Ça filme'
+          : film.etat === 'pret'
+            ? 'Caméra prête'
+            : 'Caméra…'
+    const lampeOk = tele ? lien.relie && ec.camera === 'pret' && ec.lampe != null : film.etat === 'pret' && film.lampe !== undefined
+    const lampeAllumee = tele ? !!ec?.lampe : film.lampe
+    const relie = tele ? lien.relie : pilotee
+    const envoisV = tele ? (ec?.envois ?? []) : null
+    function jeterIci() {
+      if (!tele) return jeter()
+      envoyer({ do: 'discard' })
+      dire('Combat jeté', () => {
+        envoyer({ do: 'undo' })
+        setMessage(null)
+      })
+    }
     return createPortal(
       // Le bandeau d'avancement prend le bas de l'écran : on remonte le Timer d'autant.
-      <div className="sc-timer sc-te" style={envois.length ? { '--sc-te-bandeau': envois.length } : undefined}>
+      <div
+        className="sc-timer sc-te"
+        style={(envoisV ?? envois).length ? { '--sc-te-bandeau': (envoisV ?? envois).length } : undefined}
+      >
         <button type="button" className="sc-timer__fermer" aria-label="Quitter le plein écran" onClick={() => setPlein(false)}>
           ✕
         </button>
@@ -692,66 +792,86 @@ export default function Timer({ ecoleId, rafraichir, me }) {
           {/* Entre les deux noms : un poing levé de chaque côté, « = » pour le match nul. */}
           <div className="sc-te__noms">
             {champ(0)}
-            {r.vainqueur ? (
+            {rv.vainqueur ? (
               <div className="sc-te__resultat">
                 {poing(0)}
                 <button
                   type="button"
                   className={`sc-te__nul${appel}`}
-                  aria-pressed={resultat === 'nul'}
+                  aria-pressed={resultatV === 'nul'}
                   aria-label="Match nul"
-                  onClick={() => declarer('nul')}
+                  onClick={() => gagne('nul')}
                 >
                   =
                 </button>
                 {poing(1)}
               </div>
             ) : (
-              <span className="sc-te__contre">{r.noms ? 'contre' : ''}</span>
+              <span className="sc-te__contre">{rv.noms ? 'contre' : ''}</span>
             )}
             {champ(1)}
           </div>
-          {fin ? (
+          {finV ? (
             // La cloche de fin a sonné : on revoit le combat, puis Archiver, Partager ou Jeter.
+            // Sur la télécommande, la dernière image de la caméra : la vidéo est sur l'autre téléphone.
             <div className="sc-te__milieu">
-              <div className="sc-te__mini">
-                <video key="revoir" src={fin.url} controls playsInline />
+              <div className={`sc-te__mini${tele ? ' sc-te__mini--sombre' : ''}`}>
+                {tele ? lien.image && <img src={lien.image} alt="" /> : <video key="revoir" src={fin.url} controls playsInline />}
               </div>
               <p className="sc-te__question">
-                {r.vainqueur && resultat === null ? 'Qui a gagné ? Touchez un poing, ou « = ».' : 'Que faire de ce combat ?'}
+                {rv.vainqueur && resultatV === null ? 'Qui a gagné ? Touchez un poing, ou « = ».' : 'Que faire de ce combat ?'}
               </p>
             </div>
           ) : (
             <div className={`sc-te__milieu${r.film ? '' : ' sc-te__milieu--sans-film'}`}>
               {r.film && (
-                <div className={`sc-te__mini${run ? ' sc-te__mini--filme' : ''}`}>
-                  {film.natif ? (
+                <div className={`sc-te__mini${enMarche ? ' sc-te__mini--filme' : ''}`}>
+                  {tele ? (
+                    lien.relie && lien.image ? <img src={lien.image} alt="" /> : <div className="sc-te__vide" />
+                  ) : film.natif ? (
                     <img key="direct" ref={film.brancher} alt="" />
                   ) : (
                     <video key="direct" ref={film.brancher} muted playsInline autoPlay />
                   )}
-                  <b>{film.etat === 'refus' ? 'Caméra indisponible' : run ? 'Ça filme' : film.etat === 'pret' ? 'Prêt à filmer' : 'Caméra…'}</b>
-                  {/* La lampe de la caméra (Seb, 23/11), si ce téléphone sait l'allumer. */}
-                  {film.etat === 'pret' && film.lampe !== undefined && (
+                  <b className={tele && !lien.relie ? 'sc-te__etat--non' : undefined}>{etatFilm}</b>
+                  {/* En bas à gauche, le rôle de ce téléphone (Seb, 23/11) : la caméra ou
+                      la télécommande ; le point vert, l'autre téléphone est là. On le
+                      touche pour changer, avant le combat. */}
+                  <button
+                    type="button"
+                    className="sc-te__role"
+                    disabled={enMarche || retardV > 0}
+                    aria-label={`${tele ? 'Télécommande' : 'Caméra'}, ${
+                      tele ? (relie ? 'reliée à la caméra' : 'pas reliée à la caméra') : relie ? 'pilotée par une télécommande' : 'pas de télécommande'
+                    }`}
+                    onClick={() => setR({ ...r, telecommande: !r.telecommande })}
+                  >
+                    <span dangerouslySetInnerHTML={{ __html: tele ? TELECOMMANDE : CAMESCOPE }} />
+                    <i className={`sc-te__lien${relie ? ' sc-te__lien--on' : ''}`} />
+                  </button>
+                  {/* Juste à côté, la lampe de la caméra (Seb, 23/11), d'ici ou de la télécommande. */}
+                  {lampeOk && (
                     <button
                       type="button"
                       className="sc-te__lampe"
-                      aria-pressed={film.lampe}
-                      aria-label={film.lampe ? 'Éteindre la lampe' : 'Allumer la lampe'}
-                      onClick={() => film.allumer(!film.lampe)}
+                      aria-pressed={lampeAllumee}
+                      aria-label={lampeAllumee ? 'Éteindre la lampe' : 'Allumer la lampe'}
+                      onClick={() => (tele ? envoyer({ do: 'light', on: !lampeAllumee }) : film.allumer(!film.lampe))}
                       dangerouslySetInnerHTML={{ __html: LAMPE }}
                     />
                   )}
-                  {retard > 0 ? (
-                    <strong className="sc-te__compte">{retard}</strong>
+                  {retardV > 0 ? (
+                    <strong className="sc-te__compte">{retardV}</strong>
                   ) : (
-                    !run && (
+                    !enMarche &&
+                    (!tele || lien.relie) && (
                       // Se filmer soi-même : on pose le téléphone, la cloche sonne 5 s après.
                       <button
                         type="button"
                         className="sc-te__retardateur"
                         aria-label="Retardateur : la cloche sonne dans 5 secondes"
                         onClick={() => {
+                          if (tele) return envoyer({ do: 'timer5' })
                           tin()
                           setRetard(RETARD_S)
                         }}
@@ -763,26 +883,33 @@ export default function Timer({ ecoleId, rafraichir, me }) {
                 </div>
               )}
               <div>
-                <Afficheur className={`sc-timer__temps${run && !repos && reste <= 10 ? ' sc-timer__temps--fin' : ''}`} texte={mmss(reste)} />
+                <Afficheur className={`sc-timer__temps${enMarche && !repos && resteV <= 10 ? ' sc-timer__temps--fin' : ''}`} texte={mmss(resteV)} />
                 <div className="sc-te__round">
                   {repos ? 'Repos' : ''}
-                  {r.mode === 'rounds' && run ? `${repos ? ' · ' : ''}Round ${run.n} sur ${r.nombre}` : ''}
+                  {nombreV && enMarche ? `${repos ? ' · ' : ''}Round ${numeroV} sur ${nombreV}` : ''}
                 </div>
               </div>
             </div>
           )}
         </div>
-        {fin ? (
+        {finV ? (
           <div className="sc-te__choix">
-            <button type="button" className="sc-te__choix-principal" onClick={() => (r.incrMusique ? setChoixMusique(true) : archiver())}>
+            <button
+              type="button"
+              className="sc-te__choix-principal"
+              onClick={() => (rv.incrMusique ? setChoixMusique(true) : tele ? envoyer({ do: 'archive' }) : archiver())}
+            >
               <b>Archiver</b>
               <small>Il va dans Combats</small>
             </button>
-            <button type="button" onClick={partager}>
-              <b>Partager</b>
-              <small>WhatsApp, messages…</small>
-            </button>
-            <button type="button" className="sc-te__jeter" onClick={jeter}>
+            {/* La vidéo est sur la caméra : on la partage de là-bas. */}
+            {!tele && (
+              <button type="button" onClick={partager}>
+                <b>Partager</b>
+                <small>WhatsApp, messages…</small>
+              </button>
+            )}
+            <button type="button" className="sc-te__jeter" onClick={jeterIci}>
               Jeter
             </button>
           </div>
@@ -796,20 +923,50 @@ export default function Timer({ ecoleId, rafraichir, me }) {
           <ChoixCombattant
             titre={choix ? 'Combattant de droite' : 'Combattant de gauche'}
             membres={membres}
-            autre={noms[1 - choix]}
-            actuel={noms[choix]}
-            onChoisir={(m) => nommer(choix, m)}
+            autre={nomsV[1 - choix]}
+            actuel={nomsV[choix]}
+            onChoisir={(m) => {
+              if (!tele) return nommer(choix, m)
+              setChoix(null)
+              if (m.id) setMembres((l) => remonter(l, m.id))
+              envoyer({ do: 'name', i: choix, m: { id: m.id, name: m.name } })
+            }}
             onFermer={() => setChoix(null)}
           />
         )}
-        {choixMusique && fin && <ChoixMusique onChoisir={archiver} onFermer={() => setChoixMusique(false)} />}
-        {envois.length > 0 && (
-          <BandeauAvancement pleinEcran>
-            {envois.map((e) => (
-              <Envoi key={e.cle} envoi={e} me={me} onFini={() => setEnvois((l) => l.filter((x) => x !== e))} />
-            ))}
-          </BandeauAvancement>
+        {choixMusique && finV && (
+          <ChoixMusique
+            onChoisir={(musique) => {
+              if (!tele) return archiver(musique)
+              setChoixMusique(false)
+              envoyer({ do: 'archive', music: musique })
+            }}
+            onFermer={() => setChoixMusique(false)}
+          />
         )}
+        {tele
+          ? envoisV.length > 0 && (
+              <BandeauAvancement pleinEcran>
+                {envoisV.map((l, i) => (
+                  <LigneAvancement key={i} {...l} />
+                ))}
+              </BandeauAvancement>
+            )
+          : envois.length > 0 && (
+              <BandeauAvancement pleinEcran>
+                {envois.map((e) => (
+                  <Envoi
+                    key={e.cle}
+                    envoi={e}
+                    me={me}
+                    onLigne={(l) => {
+                      lignes.current[e.cle] = { nom: e.nom, ...l }
+                    }}
+                    onFini={() => setEnvois((l) => l.filter((x) => x !== e))}
+                  />
+                ))}
+              </BandeauAvancement>
+            )}
         {message && (
           <div className="sc-te__message" role="status">
             {message.texte}
