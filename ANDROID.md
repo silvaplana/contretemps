@@ -17,7 +17,9 @@ tout le monde garde la PWA pour le reste.
   (`state`) ; hors de l'appli, c'est elle qui envoie, avec reprise à la réouverture
   (`frontend/src/utils/videoUploads.js`, `spec/SPEC.md` §6.8).
 - **Elle filme** quand Fights › Tournage est sur « Caméra » : plugin `camera/TournagePlugin.kt` et
-  service de premier plan `camera/RecorderService.kt` (repris de l'appli caméra `recorder/`).
+  service de premier plan `camera/RecorderService.kt` (repris de l'appli caméra `recorder/`). Elle
+  filme aussi le Timer étendu de Fights (`camera/TimerCamera.kt`, mêmes réglages, Seb 23/11) : le
+  film est confié tel quel à la file d'envoi (`EnvoisVideo.adopt`).
 - **L'icône est celle de l'école** : l'action prend `<adresse>/icons/icon-512-maskable.png` (la même
   que la PWA) et en fabrique les icônes Android. Après un changement de logo, relancer l'action
   « Appli Tournage (APK) » à la main (Actions › Run workflow).

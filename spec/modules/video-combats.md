@@ -904,10 +904,20 @@ simple, avec ses modes et ses réglages ; toucher le temps y revient).
 - **Nommer** : on touche « … », on tape les premières lettres (accents ignorés, début d'un mot du
   nom), trois membres au plus sont proposés ; un appui ou Entrée valide le premier. Sans rien taper,
   les premiers membres sont proposés. Un nom peut rester vide.
-- **Filmer** : c'est ce téléphone qui filme, caméra arrière, son brut (`timerFilm.js`,
-  `MediaRecorder`, 1920 × 1080, 4 Mbit/s — 1080p comme la caméra de Tournage depuis le 23/11,
-  le téléphone descend tout seul s'il ne sait pas faire). À gauche la miniature de ce qu'il voit (« Prêt à filmer »,
-  « Ça filme », « Caméra indisponible »). Le film part à la cloche du début et s'arrête à la fin du
+- **Filmer** : c'est ce téléphone qui filme, caméra arrière, son brut. **Dans l'appli Android, c'est
+  l'appli qui filme (Seb, 23/11 : « que Tournage caméra et Timer utilisent les mêmes technos »)** :
+  `camera/TimerCamera.kt`, mêmes réglages que la caméra de Tournage (Camera2 + MediaRecorder, 1080p,
+  30 images/s, 4 Mbit/s), le film tourné comme l'écran figé au premier coup de cloche ; la miniature
+  est une petite image relue 5 fois par seconde (plugin `Tournage`, `timerOpen`/`timerFrame`/
+  `timerRecord`/`timerPause`/`timerStop`/`timerLight`/`timerClose`). Le film reste dans
+  `<filesDir>/video-uploads/film-<heure>.mp4` et part par la file d'envoi d'Android sans copie
+  (`EnvoisVideo.adopt`) ; un film ni archivé ni jeté est effacé au bout de 6 h. Ailleurs (Chrome,
+  iPhone en PWA), la page filme (`timerFilm.js`, `MediaRecorder`, 1920 × 1080, 4 Mbit/s) ; sur
+  iPhone, au mieux : si l'écran se met en veille, le film s'arrête (Seb, 23/11). À gauche la
+  miniature de ce qu'il voit (« Prêt à filmer », « Ça filme », « Caméra indisponible ») ; en bas à
+  gauche de la miniature, la **lampe** de la caméra (allumée ou éteinte d'un appui, film ou pas ;
+  dans Chrome sur Android si le navigateur sait l'allumer). L'image et les chiffres laissent de
+  l'air à la cloche en paysage (Seb, 23/11). Le film part à la cloche du début et s'arrête à la fin du
   combat (dernier round fini, ou cloche touchée) ; Pause met aussi le film en pause ; les repos entre
   les rounds sont filmés.
 - **Retardateur** : la petite caméra « 5 s » sur la miniature, pour se filmer soi-même. 5, 4, 3, 2, 1
