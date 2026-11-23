@@ -106,6 +106,9 @@ class PersonOut(BaseModel):
     id: int
     name: str
     regular: bool = False  # Timer étendu : habitué de ce jour de la semaine
+    # Timer étendu : son rang parmi les derniers combattants de l'école (0 = le
+    # plus récent), rien s'il n'a pas combattu récemment (Seb, 23/11).
+    recent: int | None = None
 
 
 class ParticipantOut(BaseModel):

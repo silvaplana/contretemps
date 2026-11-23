@@ -941,6 +941,12 @@ simple, avec ses modes et ses réglages ; toucher le temps y revient).
   8 semaines d'avant, ouvert au départ), puis les combattants en grandes cartes qu'on fait défiler
   (initiales en pastille de couleur, prénom, nom), « Inconnu (pas du club) » en dernier. Toucher une
   carte l'allume et referme l'écran. Route `GET /session-clips/timer/names` (`regular` pour ★).
+  **Les derniers choisis d'abord (Seb, 23/11 : « c'est eux qu'on sélectionnera le plus »)** : sous ★,
+  les 8 derniers combattants de l'école, le plus récent tout à gauche, puis les habitués du jour ;
+  sous une lettre, les 8 derniers de cette lettre, puis le reste de la lettre par ordre alphabétique.
+  Les derniers combattants viennent des 300 derniers combats de l'école (Timer et Tournage), pour que
+  tous les téléphones montrent les mêmes (`recent` : 0 = le plus récent, `service.recents`) ; un
+  combattant choisi passe aussitôt en tête sur ce téléphone.
 - **Annoncer le vainqueur** (Seb, 21/11 ; quatrième case, sous « Déclarer le vainqueur » et grisée
   sans elle) : au poing levé, un speaker annonce « And the winner, by unanimous decision, is… », le
   nom en entier, puis la foule crie ; au « = », « It's a draw! » et la foule. Voix « George » choisie
