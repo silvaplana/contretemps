@@ -26,7 +26,10 @@ export function useFilm(actif) {
     if (!actif) return undefined
     let fini = false
     const demande = navigator.mediaDevices?.getUserMedia({
-      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+      // 1080p comme la caméra de Tournage et la compression du module Vidéos
+      // (Seb, 23/11 : même qualité partout) ; le téléphone descend tout seul
+      // s'il ne sait pas faire.
+      video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } },
       // Le son brut, comme la caméra du Tournage.
       audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
     })

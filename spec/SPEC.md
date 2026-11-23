@@ -1587,6 +1587,21 @@ Le module vidéo est une brique **réutilisable**, destinée au futur socle comm
 - Quand une vidéo est supprimée, le module prévient le métier, qui défait ses liens (`Videos.quand_supprimee`).
 - Les vidéos portent leur saison : elles sont filtrées et verrouillées comme les autres données d'une saison (§2.6), et supprimées avec elle.
 
+**L'envoi (Seb, 23/11/2026 : « il faut que ce module soit béton de chez béton »)** — une seule
+règle pour tout ce qui envoie une vidéo (Chorégraphies, Fights › Timer, Publications, Labo) :
+
+- **Par morceaux** de 2 Mo, avec le pourcentage à l'écran, reprise sur le vrai décalage du serveur
+  (409) et jamais d'abandon de lui-même (`frontend/src/utils/videoUploads.js`).
+- **Gardée sur le téléphone** jusqu'à son arrivée (`envoisGardes.js`, IndexedDB) : l'envoi reprend
+  à la prochaine ouverture si l'appli est fermée ou rechargée. Une vidéo jamais rattachée (le
+  formulaire n'a pas été validé) est oubliée à l'ouverture suivante, comme « Annuler ».
+- **Qualité** : 1080p partout — filmé en 1080p (Timer, Tournage), ou compressé sur le téléphone
+  s'il sait le faire (`videoCompression.js`, puce vidéo du téléphone, 5 à 15× plus léger), sinon
+  compressé par le serveur après coup (`videos/compression.py`). Une seule compression.
+- **Dans l'appli Android « Tournage »** (*à faire*), l'envoi passera par une file native (tâche de
+  fond WorkManager) et continuera appli fermée, comme la caméra de la salle le fait déjà
+  (`ANDROID.md`). Hors de l'appli (Chrome, iPhone), il reprend à la réouverture.
+
 ### 6.9 Conversations (messagerie WhatsApp-like)
 
 Chaque message peut être envoyé **par messagerie interne (in-app, façon WhatsApp)** ou

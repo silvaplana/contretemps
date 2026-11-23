@@ -669,7 +669,12 @@ https://claude.ai/artifact/AktTkAwZjXtrKKEFV285B2, codé à l'étape 5b) : sous-
 coachs seulement. Le bouton caméra, son panneau, le code de jumelage et la bande rouge ci-dessous
 sont retirés de l'écran ; les routes de jumelage restent pour l'appli caméra à part (`recorder/`).
 - **Sélecteur Caméra | Éteint | Télécommande**, gardé sur chaque téléphone (stockage du navigateur).
-- **Caméra**, dans l'appli Tournage seulement : `POST /session-clips/camera/this-phone` fait de ce
+- **Caméra**, dans l'appli Tournage seulement, et ça ne changera pas (Seb, 23/11) : la caméra de la
+  salle filme la séance entière sans personne, et **l'écran ne doit jamais se mettre en veille** —
+  seul un service de premier plan (Capacitor) le garantit ; un navigateur met la caméra en sommeil
+  écran éteint et ne commande pas la lampe. Pour filmer téléphone en main, c'est le Timer (§6.5 ter),
+  qui marche partout. Sur iPhone il n'y a que la PWA pour l'instant (Seb, 23/11).
+- `POST /session-clips/camera/this-phone` fait de ce
   téléphone la caméra de l'école (jeton remis à l'appli, l'ancienne caméra est oubliée), puis le
   service de premier plan de `recorder/` (repris tel quel dans `frontend/android/.../camera/`) filme
   et envoie. Une image 16:9 de la caméra (`getUserMedia`) sert à cadrer ; elle lâche la caméra dès
@@ -900,7 +905,8 @@ simple, avec ses modes et ses réglages ; toucher le temps y revient).
   nom), trois membres au plus sont proposés ; un appui ou Entrée valide le premier. Sans rien taper,
   les premiers membres sont proposés. Un nom peut rester vide.
 - **Filmer** : c'est ce téléphone qui filme, caméra arrière, son brut (`timerFilm.js`,
-  `MediaRecorder`, 1280 × 720, 4 Mbit/s). À gauche la miniature de ce qu'il voit (« Prêt à filmer »,
+  `MediaRecorder`, 1920 × 1080, 4 Mbit/s — 1080p comme la caméra de Tournage depuis le 23/11,
+  le téléphone descend tout seul s'il ne sait pas faire). À gauche la miniature de ce qu'il voit (« Prêt à filmer »,
   « Ça filme », « Caméra indisponible »). Le film part à la cloche du début et s'arrête à la fin du
   combat (dernier round fini, ou cloche touchée) ; Pause met aussi le film en pause ; les repos entre
   les rounds sont filmés.
@@ -975,7 +981,8 @@ simple, avec ses modes et ses réglages ; toucher le temps y revient).
   après. L'envoi n'abandonne jamais : sans réseau, il réessaie et repart dès que le réseau revient ;
   la vidéo reste rangée sur le téléphone (IndexedDB) jusqu'à son arrivée entière, et si l'appli est
   fermée ou rechargée l'envoi reprend où il en était à la prochaine ouverture (Seb, 22/11 : un combat
-  perdu après 6 min sans réseau). Changer d'écran ne gêne pas l'envoi.
+  perdu après 6 min sans réseau) ; c'est depuis le 23/11 la règle de tous les envois du module
+  Vidéos (`spec/SPEC.md` §6.8). Changer d'écran ne gêne pas l'envoi.
   Vignette tout de suite (Seb, 22/11) : à « Archiver », le téléphone prend la première image du film
   (JPEG 464 px) et l'envoie (`PUT /session-clips/clips/{id}/thumb?duration=`) ; le serveur y pose
   aussitôt les incrustations demandées, comme dans la vidéo une fois les noms en place
