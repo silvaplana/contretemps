@@ -264,7 +264,11 @@ class SessionClipsReceiver:
             coach(m)
             names = {p.id: p.name for p in client.directory.people(s, m.org_id)}
             regulars = set(client.regulars(s, m.org_id, date.today()))
-            return [PersonOut(id=i, name=names[i], regular=i in regulars) for i in client.timer_order(s, m.org_id, date.today())]
+            recent = {person_id: n for n, person_id in enumerate(i for i in client.recents(s, m.org_id) if i in names)}
+            return [
+                PersonOut(id=i, name=names[i], regular=i in regulars, recent=recent.get(i))
+                for i in client.timer_order(s, m.org_id, date.today())
+            ]
 
         # L'annonce du vainqueur : son nom dit par George.
         @app.get(f"{PREFIX}/timer/announce/{{person_id}}")

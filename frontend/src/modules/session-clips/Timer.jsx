@@ -179,15 +179,36 @@ function ChoixMusique({ onChoisir, onFermer }) {
   )
 }
 
+// Les derniers combattants choisis d'abord, le plus récent à gauche (Seb,
+// 23/11) : les 8 derniers de l'école sous ★, puis les habitués du jour ; sous
+// une lettre, les 8 derniers de cette lettre, puis le reste par ordre alphabétique.
+const RECENTS = 8
+
+function ordonner(membres, lettre) {
+  const recents = membres
+    .filter((m) => m.recent != null)
+    .sort((a, b) => a.recent - b.recent)
+    .slice(0, RECENTS)
+  const pris = new Set(recents.map((m) => m.id))
+  if (lettre === '★') return [...recents, ...membres.filter((m) => m.regular && !pris.has(m.id))]
+  return [...recents, ...membres.filter((m) => !pris.has(m.id)).sort((a, b) => a.name.localeCompare(b.name, 'fr'))]
+}
+
+// Choisi au Timer : il passe en tête des récents, sans attendre le serveur.
+function remonter(membres, id) {
+  const avant = membres.find((m) => m.id === id)?.recent ?? Infinity
+  return membres.map((m) => (m.id === id ? { ...m, recent: 0 } : m.recent != null && m.recent < avant ? { ...m, recent: m.recent + 1 } : m))
+}
+
 function ChoixCombattant({ titre, membres, autre, actuel, onChoisir, onFermer }) {
-  const habitues = membres.some((m) => m.regular)
+  const habitues = membres.some((m) => m.regular || m.recent != null)
   const [lettre, setLettre] = useState(habitues ? '★' : null)
   const [flash, setFlash] = useState(null)
   // Tout l'alphabet sur deux lignes, sans défiler (Seb, 21/11) ; une lettre sans personne est éteinte.
   const presentes = new Set(membres.map((m) => initiale(m.name)))
-  const liste = membres.filter(
-    (m) => m.id !== autre?.id && (lettre === '★' ? m.regular : lettre === null || initiale(m.name) === lettre),
-  )
+  const autres = membres.filter((m) => m.id !== autre?.id)
+  const liste =
+    lettre === null ? autres : ordonner(lettre === '★' ? autres : autres.filter((m) => initiale(m.name) === lettre), lettre)
   function choisir(m) {
     setFlash(m)
     setTimeout(() => onChoisir(m), 350)
@@ -373,6 +394,7 @@ export default function Timer({ ecoleId, rafraichir, me }) {
     const suite = i ? [noms[0], m] : [m, noms[1]]
     setNoms(suite)
     setChoix(null)
+    if (m.id) setMembres((l) => remonter(l, m.id))
     if (r.annonce && m.id && !annonces.current[m.id]) {
       annonces.current[m.id] = api.annonceNom(m.id).catch(() => null)
     }

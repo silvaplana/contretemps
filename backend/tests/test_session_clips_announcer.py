@@ -52,6 +52,22 @@ def test_noms_du_timer_habitues_en_tete(client, db_session, e):
     assert client.get("/session-clips/timer/names", headers=e["h"]["seb"]).status_code == 403
 
 
+def test_noms_du_timer_derniers_combattants(client, db_session, e):
+    """Seb, 23/11 : les derniers combattants choisis d'abord, le plus récent en premier."""
+    seance = ClipSession(org_id=e["ecole"].id, held_on=date.today(), status="ready", created_by=e["coach"].id)
+    db_session.add(seance)
+    db_session.flush()
+    for gauche, droite in [("lucas", "seb"), ("karim", "seb")]:
+        video = videos_client.create(db_session, ecole_id=e["ecole"].id, nom="c", lien_fichier="c.mp4", uploaded_by=1)
+        core.session_clips_client.add_clip(db_session, seance.id, video.id, [e[gauche].id, e[droite].id])
+
+    r = client.get("/session-clips/timer/names", headers=e["h"]["coach"])
+    recents = {p["name"]: p["recent"] for p in r.json()}
+    # Le dernier combat d'abord : Karim puis Seb, puis Lucas du combat d'avant.
+    assert (recents["Karim B."], recents["Seb R."], recents["Lucas M."]) == (0, 1, 2)
+    assert recents["Flo D."] is None
+
+
 def test_annonce_du_vainqueur(client, e, monkeypatch, tmp_path):
     dits = []
 

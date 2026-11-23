@@ -160,6 +160,25 @@ class SessionClips:
         counts = self._same_day_counts(db, org_id, day)
         return sorted(set(counts) & set(rank), key=lambda i: (-counts[i], rank[i]))
 
+    def recents(self, db: Session, org_id: int, clips: int = 300) -> list[int]:
+        """Les derniers combattants de l'école, le plus récent d'abord, sans
+        doublon : d'après les `clips` derniers combats (Seb, 23/11 : « les
+        derniers fighters sélectionnés doivent être les plus à gauche »)."""
+        last = (
+            select(Clip.id)
+            .join(ClipSession, ClipSession.id == Clip.session_id)
+            .where(ClipSession.org_id == org_id)
+            .order_by(Clip.id.desc())
+            .limit(clips)
+            .subquery()
+        )
+        rows = db.execute(
+            select(ClipParticipant.person_id)
+            .where(ClipParticipant.clip_id.in_(select(last.c.id)), ClipParticipant.person_id.is_not(None))
+            .order_by(ClipParticipant.clip_id.desc(), ClipParticipant.slot)
+        )
+        return list(dict.fromkeys(person_id for (person_id,) in rows))
+
     def timer_order(self, db: Session, org_id: int, day: date) -> list[int]:
         """Les habitués d'abord, puis les autres par ordre alphabétique."""
         first = self.regulars(db, org_id, day)

@@ -78,7 +78,7 @@ archivée » : « Les noms au début », « Le vainqueur à la fin », « Le chr
 
 Timer étendu (coachs, Fights › Timer ; debout, les poings sont sous les noms et la cloche en bas) :
 - En haut, les deux noms (« … » : on touche, un écran de choix s'ouvre, sans clavier : tout l'alphabet sur
-  deux lignes (une lettre sans personne est grisée), ★ pour les habitués de ce jour-là, puis les combattants en cartes qu'on fait défiler ; on
+  deux lignes (une lettre sans personne est grisée), ★ pour les derniers combattants choisis puis les habitués de ce jour-là, puis les combattants en cartes qu'on fait défiler, les derniers choisis à gauche ; on
   touche la carte) et, entre eux, le résultat : un poing levé pour celui de gauche, « = » pour le match nul,
   un poing levé pour celui de droite ; on en touche un, il s'allume.
 - À gauche, l'image de ce que le téléphone filme, avec en bas à gauche la lampe de la caméra (un
